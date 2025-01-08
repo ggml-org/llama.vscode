@@ -1,4 +1,4 @@
-import axios, { AxiosRequestConfig } from 'axios';
+import axios from 'axios';
 import { Configuration } from './configuration';
 
 const STATUS_OK = 200

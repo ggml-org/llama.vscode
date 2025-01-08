@@ -1,6 +1,5 @@
-import axios, { AxiosRequestConfig } from 'axios';
 import { Configuration } from './configuration';
-import { LlamaResponse, LlamaServer } from './llama-server';
+import { LlamaServer } from './llama-server';
 import * as vscode from 'vscode';
 
 export class ExtraContext {
@@ -22,10 +21,9 @@ export class ExtraContext {
     periodicRingBufferUpdate() {
         if (this.queuedChunks == null
             || this.queuedChunks.length == 0
-            || Date.now() - this.lastComplStartTime > this.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL) {
+            || Date.now() - this.lastComplStartTime < this.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL) {
             return;
         }
-        const timestamp = new Date().toLocaleTimeString();
         let queueChunkLns = this.queuedChunksLines.shift()
         if (queueChunkLns != undefined) {
             this.chunksLines.push(queueChunkLns);
