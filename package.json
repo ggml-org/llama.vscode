@@ -1,0 +1,181 @@
+{
+  "name": "llama-vscode",
+  "displayName": "llama-vscode",
+  "description": "Provides code completions using llama.cpp server",
+  "version": "0.0.1",
+  "publisher": "ivailo",
+  "engines": {
+    "vscode": "^1.70.0"
+  },
+  "icon": "llama.png",
+  "activationEvents": [
+    "onLanguage:plaintext",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onCommand.acceptFirstLine"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "languages": [
+      {
+        "id": "plaintext",
+        "aliases": [
+          "Plain Text"
+        ],
+        "extensions": [
+          ".txt"
+        ]
+      }
+    ],
+    "commands": [
+      {
+        "command": "extension.triggerInlineCompletion",
+        "title": "Trigger Inline Completion"
+      },
+      {
+        "command": "extension.copyIntercept",
+        "title": "Copy Intercept"
+      },
+      {
+        "command": "extension.cutIntercept",
+        "title": "Cut Intercept"
+      },
+      {
+        "command": "extension.pasteIntercept",
+        "title": "Paste Intercept"
+      },
+      {
+        "command": "extension.acceptFirstLine",
+        "title": "Accept First Line"
+      },
+      {
+        "command": "extension.acceptFirstWord",
+        "title": "Accept First Word"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "extension.triggerInlineCompletion",
+        "key": "ctrl+l",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.copyIntercept",
+        "key": "ctrl+c",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.cutIntercept",
+        "key": "ctrl+x",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.pasteIntercept",
+        "key": "ctrl+v",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.acceptFirstLine",
+        "key": "shift+tab",
+        "when": "editorTextFocus && inlineSuggestionVisible"
+      },
+      {
+        "command": "extension.acceptFirstWord",
+        "key": "alt+w",
+        "when": "editorTextFocus && inlineSuggestionVisible"
+      }
+    ],
+    "configuration": {
+      "type": "object",
+      "title": "llama.vscode Configuration",
+      "properties": {
+        "llama-vscode.endpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:8080",
+          "description": "The URL to be used by the extension."
+        },
+        "llama-vscode.auto": {
+          "type": "boolean",
+          "default": true,
+          "description": "If code completion should be trggered automatically (true) or only by pressing Ctrl+l."
+        },
+        "llama-vscode.api_key": {
+          "type": "string",
+          "default": "",
+          "description": "llama.cpp server api key (optional)"
+        },
+        "llama-vscode.n_prefix": {
+          "type": "number",
+          "default": 256,
+          "description": "number of lines before the cursor location to include in the local prefix"
+        },
+        "llama-vscode.n_suffix": {
+          "type": "number",
+          "default": 64,
+          "description": "number of lines after  the cursor location to include in the local suffix"
+        },
+        "llama-vscode.n_predict": {
+          "type": "number",
+          "default": 128,
+          "description": "max number of tokens to predict"
+        },
+        "llama-vscode.t_max_prompt_ms": {
+          "type": "number",
+          "default": 500,
+          "description": "max alloted time for the prompt processing (TODO: not yet supported)"
+        },
+        "llama-vscode.t_max_predict_ms": {
+          "type": "number",
+          "default": 500,
+          "description": "max alloted time for the prediction"
+        },
+        "llama-vscode.show_info": {
+          "type": "boolean",
+          "default": true,
+          "description": "show extra info about the inference (false - disabled, true - show info in status line)"
+        },
+        "llama-vscode.max_line_suffix": {
+          "type": "number",
+          "default": 8,
+          "description": "do not auto-trigger FIM completion if there are more than this number of characters to the right of the cursor"
+        },
+        "llama-vscode.max_cache_keys": {
+          "type": "number",
+          "default": 250,
+          "description": "max number of cached completions to keep in result_cache"
+        },
+        "llama-vscode.ring_n_chunks": {
+          "type": "number",
+          "default": 16,
+          "description": "max number of chunks to pass as extra context to the server (0 to disable)"
+        },
+        "llama-vscode.ring_chunk_size": {
+          "type": "number",
+          "default": 64,
+          "description": "max size of the chunks (in number of lines). Note: adjust these numbers so that you don't overrun your context at ring_n_chunks = 64 and ring_chunk_size = 64 you need ~32k context"
+        },
+        "llama-vscode.ring_scope": {
+          "type": "number",
+          "default": 1024,
+          "description": "the range around the cursor position (in number of lines) for gathering chunks after FIM"
+        },
+        "llama-vscode.ring_update_ms": {
+          "type": "number",
+          "default": 1000,
+          "description": "how often to process queued chunks in normal mode"
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "axios": "^1.1.2"
+  },
+  "devDependencies": {
+    "@types/jest": "^29.5.14",
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.70.0",
+    "typescript": "^4.8.0",
+    "webpack": "^5.0.0",
+    "webpack-cli": "^4.0.0"
+  }
+}
