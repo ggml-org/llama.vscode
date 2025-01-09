@@ -18,7 +18,7 @@ export class LRUCache {
      * @param key The key to retrieve.
      * @returns The value associated with the key, or undefined if the key is not found.
      */
-    get(key: string): string | undefined {
+    get = (key: string): string | undefined => {
         if (!this.map.has(key)) {
             return undefined;
         }
@@ -37,7 +37,7 @@ export class LRUCache {
      * @param key The key to insert or update.
      * @param value The value to associate with the key.
      */
-    put(key: string, value: string): void {
+    put = (key: string, value: string): void => {
         if (this.map.has(key)) {
             // If the key exists, delete it to refresh its position
             this.map.delete(key);
@@ -58,14 +58,13 @@ export class LRUCache {
      * Get the current size of the cache.
      * @returns The number of items in the cache.
      */
-    size(): number {
+    size = (): number => {
         return this.map.size;
     }
 
-    getHash(request_context: string): string {
+    getHash = (request_context: string): string => {
         const hashSha256 = crypto.createHash('sha256');
-        let hashKey = hashSha256.update(request_context).digest('hex')
-        return hashKey
+        return hashSha256.update(request_context).digest('hex')
     }
 
 }

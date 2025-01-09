@@ -18,8 +18,9 @@ export class ExtraContext {
         this.llamaServer = llamaServer
     }
 
-    periodicRingBufferUpdate() {
-        if (this.queuedChunks == null
+    periodicRingBufferUpdate = () => {
+        if (this.queuedChunks === undefined
+            || this.queuedChunks === null
             || this.queuedChunks.length == 0
             || Date.now() - this.lastComplStartTime < this.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL) {
             return;
@@ -57,11 +58,11 @@ export class ExtraContext {
         }
     }
 
-    getDocumentLines(startLine: number, endLine: number, document: vscode.TextDocument) {
+    getDocumentLines = (startLine: number, endLine: number, document: vscode.TextDocument) => {
         return Array.from({ length: endLine - startLine + 1 }, (_, i) => document.lineAt(startLine + i).text);
     }
 
-    pickChunk(lines: string[], noMod: boolean, doEvict: boolean, doc: vscode.TextDocument) {
+    pickChunk = (lines: string[], noMod: boolean, doEvict: boolean, doc: vscode.TextDocument) => {
         // do not pick chunks from buffers with pending changes
         if (noMod && doc.isDirty) {
             return
@@ -122,7 +123,7 @@ export class ExtraContext {
         this.queuedChunksLines.push(newChunkLines)
     }
 
-    pickChunkAroundCursor(cursorLine: number, activeDocument: vscode.TextDocument) {
+    pickChunkAroundCursor = (cursorLine: number, activeDocument: vscode.TextDocument) => {
         let chunkLines = this.getDocumentLines(Math.max(0, cursorLine - this.extConfig.ring_chunk_size / 2), Math.min(cursorLine + this.extConfig.ring_chunk_size / 2, activeDocument.lineCount - 1), activeDocument)
         this.pickChunk(chunkLines, true, true, activeDocument);
     }
@@ -133,7 +134,7 @@ export class ExtraContext {
      * @param lines1 - The second chunk of text as an array of strings (lines).
      * @returns A number between 0 and 1 representing the Jaccard similarity.
      */
-    jaccardSimilarity(lines0: string[], lines1: string[]): number {
+    jaccardSimilarity = (lines0: string[], lines1: string[]): number => {
         if (lines0.length === 0 && lines1.length === 0) {
             return 1;
         }

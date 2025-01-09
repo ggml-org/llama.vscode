@@ -31,7 +31,7 @@ export class Configuration {
         this.setLlamaRequestConfig();
     }
 
-    private updateConfigs(config: vscode.WorkspaceConfiguration) {
+    private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
         // TODO Handle the case of wrong types for the configuration values
         this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
         this.auto = Boolean(config.get<boolean>("auto"));
@@ -50,21 +50,21 @@ export class Configuration {
         this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
     }
 
-    updateOnEvent(event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) {
+    updateOnEvent = (event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) => {
         this.updateConfigs(config);
         if (event.affectsConfiguration("llama-vscode.api_key")) {
                 this.setLlamaRequestConfig();
             }
     }
 
-    trimTrailingSlash(s: string): string {
+    trimTrailingSlash = (s: string): string => {
         if (s.length > 0 && s[s.length - 1] === '/') {
             return s.slice(0 - 1);
         }
         return s;
     }
 
-    setLlamaRequestConfig() {
+    setLlamaRequestConfig = () => {
         this.axiosRequestConfig = {};
         if (this.api_key != undefined && this.api_key != "") {
             this.axiosRequestConfig = {

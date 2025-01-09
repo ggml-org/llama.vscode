@@ -47,7 +47,7 @@ export class LlamaServer{
         else return response.data;
     }
 
-    prepareLlamaForNextCompletion(chunks: any[]): void {
+    prepareLlamaForNextCompletion = (chunks: any[]): void => {
         // Make a request to the API to prepare for the next FIM
         const requestPayload = {
             input_prefix: "",

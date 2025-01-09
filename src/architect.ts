@@ -1,3 +1,6 @@
+// TODO Illegal value for line on empty file
+// Rest Requests - less often
+// Reuse last completion if the typed letters are the same as the completion first letters
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
 import { ExtraContext } from './extra-context';
@@ -21,12 +24,12 @@ export class Architect {
         this.lruResultCache = new LRUCache(this.extConfig.max_cache_keys);
     }
 
-    setStatusBar(context: vscode.ExtensionContext) {
+    setStatusBar = (context: vscode.ExtensionContext) => {
         this.myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         context.subscriptions.push(this.myStatusBarItem);
     }
 
-    setOnChangeConfiguration(context: vscode.ExtensionContext) {
+    setOnChangeConfiguration = (context: vscode.ExtensionContext) => {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
             this.extConfig.updateOnEvent(event, config);
@@ -36,7 +39,7 @@ export class Architect {
         context.subscriptions.push(configurationChangeDisp);
     }
 
-    setOnChangeActiveFile(context: vscode.ExtensionContext) {
+    setOnChangeActiveFile = (context: vscode.ExtensionContext) => {
         let changeActiveTextEditorDisp = vscode.window.onDidChangeActiveTextEditor((editor) => {
             const previousEditor = vscode.window.activeTextEditor;
             if (previousEditor) {
@@ -54,7 +57,7 @@ export class Architect {
         context.subscriptions.push(changeActiveTextEditorDisp)
     }
 
-    registerCommandAcceptFirstLine(context: vscode.ExtensionContext) {
+    registerCommandAcceptFirstLine = (context: vscode.ExtensionContext) => {
         const acceptFirstLineCommand = vscode.commands.registerCommand(
             'extension.acceptFirstLine',
             async () => {
@@ -80,7 +83,7 @@ export class Architect {
         context.subscriptions.push(acceptFirstLineCommand);
     }
 
-    registerCommandAcceptFirstWord(context: vscode.ExtensionContext) {
+    registerCommandAcceptFirstWord = (context: vscode.ExtensionContext) => {
         const acceptFirstWordCommand = vscode.commands.registerCommand(
             'extension.acceptFirstWord',
             async () => {
@@ -109,7 +112,7 @@ export class Architect {
         context.subscriptions.push(acceptFirstWordCommand);
     }
 
-    setPeriodicRingBufferUpdate(context: vscode.ExtensionContext) {
+    setPeriodicRingBufferUpdate = (context: vscode.ExtensionContext) => {
         const ringBufferIntervalId = setInterval(this.extraContext.periodicRingBufferUpdate, this.extConfig.ring_update_ms);
         const rungBufferUpdateDisposable = {
             dispose: () => {
@@ -120,16 +123,15 @@ export class Architect {
         context.subscriptions.push(rungBufferUpdateDisposable);
     }
 
-    setOnSaveFile(context: vscode.ExtensionContext) {
+    setOnSaveFile = (context: vscode.ExtensionContext) => {
         const onSaveDocDisposable = vscode.workspace.onDidSaveTextDocument(this.handleDocumentSave);
         context.subscriptions.push(onSaveDocDisposable);
     }
 
-    registerCommandManualCompletion(context: vscode.ExtensionContext) {
+    registerCommandManualCompletion = (context: vscode.ExtensionContext) => {
         const triggerManualCompletionDisposable = vscode.commands.registerCommand('extension.triggerInlineCompletion', async () => {
-            const editor = vscode.window.activeTextEditor;
             // Manual triggering of the completion with a shortcut
-            if (!editor) {
+            if (!vscode.window.activeTextEditor) {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
@@ -138,7 +140,7 @@ export class Architect {
         context.subscriptions.push(triggerManualCompletionDisposable);
     }
 
-    setCompletionProvider(context: vscode.ExtensionContext) {
+    setCompletionProvider = (context: vscode.ExtensionContext) => {
         let ctx = this.extraContext
         let getComplitionItems = this.getComplitionItems
         let complitionProvider = {
@@ -154,7 +156,7 @@ export class Architect {
         context.subscriptions.push(providerDisposable);
     }
 
-    setClipboardEvents(context: vscode.ExtensionContext) {
+    setClipboardEvents = (context: vscode.ExtensionContext) => {
         const copyCmd = vscode.commands.registerCommand('extension.copyIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
@@ -203,7 +205,7 @@ export class Architect {
         context.subscriptions.push(copyCmd, cutCmd, pasteCmd);
     }
 
-    handleDocumentSave(document: vscode.TextDocument) {
+    handleDocumentSave = (document: vscode.TextDocument) => {
         if (this.fileSaveTimeout) {
             clearTimeout(this.fileSaveTimeout);
         }
@@ -296,7 +298,7 @@ export class Architect {
         }
     }
 
-    private async cacheFutureSuggestion(inputPrefix: string, inputSuffix: string, prompt: string, suggestionLines: string[]) {
+    private  cacheFutureSuggestion = async (inputPrefix: string, inputSuffix: string, prompt: string, suggestionLines: string[]) => {
         let futureInputPrefix = inputPrefix;
         let futureInputSuffix = inputSuffix;
         let futurePrompt = prompt + suggestionLines[0];
@@ -313,17 +315,17 @@ export class Architect {
         }
     }
 
-    getPrefixLines(document: vscode.TextDocument, position: vscode.Position, nPrefix: number): string[] {
+    getPrefixLines = (document: vscode.TextDocument, position: vscode.Position, nPrefix: number): string[] => {
         const startLine = Math.max(0, position.line - nPrefix);
         return Array.from({ length: position.line - startLine }, (_, i) => document.lineAt(startLine + i).text);
     }
 
-    getSuffixLines(document: vscode.TextDocument, position: vscode.Position, nSuffix: number): string[] {
+    getSuffixLines = (document: vscode.TextDocument, position: vscode.Position, nSuffix: number): string[] => {
         const endLine = Math.min(document.lineCount - 1, position.line + nSuffix);
         return Array.from({ length: endLine - position.line }, (_, i) => document.lineAt(position.line + 1 + i).text);
     }
 
-    showInfo(data: LlamaResponse) {
+    showInfo = (data: LlamaResponse) => {
         if (this.extConfig.show_info) {
             if (data.truncated) this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx}`;
             else this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx}, r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
@@ -332,7 +334,7 @@ export class Architect {
         }
     }
 
-    getSuggestion(completion: string, position: vscode.Position) {
+    getSuggestion = (completion: string, position: vscode.Position) => {
         return new vscode.InlineCompletionItem(
             completion,
             new vscode.Range(position, position)
@@ -340,7 +342,7 @@ export class Architect {
     }
 
     // logic for discarding predictions that repeat existing text 
-    shouldDiscardSuggestion(suggestionLines: string[], document: vscode.TextDocument, position: vscode.Position, linePrefix: string, lineSuffix: string) {
+    shouldDiscardSuggestion = (suggestionLines: string[], document: vscode.TextDocument, position: vscode.Position, linePrefix: string, lineSuffix: string) => {
         let discardSuggestion = false;
         
         // truncate the suggestion if the first line is empty
