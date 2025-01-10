@@ -1,5 +1,3 @@
-// TODO
-// Next word in case of end of line should be the first word of the next line
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
 import { ExtraContext } from './extra-context';
@@ -78,12 +76,21 @@ export class Architect {
                 if (!lastItem) {
                     return;
                 }
-                const firstLine = lastItem.split('\n')[0] || '';
+                let lastSuggestioLines = lastItem.split('\n')
+                let insertLine = lastSuggestioLines[0] || '';
+                let newCursorPosition = new vscode.Position(this.lastCompletion.position.line, this.lastCompletion.position.character + insertLine.length);
+
+                if (insertLine === "" && lastSuggestioLines.length > 1) {
+                    insertLine = '\n' + lastSuggestioLines[1];
+                    newCursorPosition = new vscode.Position(this.lastCompletion.position.line + 1, insertLine.length);
+                }
+
+                this.updateCacheAndLastCompletion(this.lastCompletion.inputPrefix , this.lastCompletion.inputSuffix, this.lastCompletion.prompt + insertLine, this.lastCompletion.suggestion.slice(insertLine.length), newCursorPosition);
 
                 // Insert the first line at the cursor
                 const position = editor.selection.active;
                 await editor.edit(editBuilder => {
-                    editBuilder.insert(position, firstLine);
+                    editBuilder.insert(position, insertLine);
                 });
             }
         );
@@ -100,16 +107,26 @@ export class Architect {
                 }
 
                 // Retrieve the last inline completion item
-                const lastItem = this.lastCompletion.suggestion;
-                if (!lastItem) {
+                const lastSuggestion = this.lastCompletion.suggestion;
+                if (!lastSuggestion) {
                     return;
                 }
-                let prefix = "";
-                let firstLine = lastItem.split('\n')[0];
-                if (firstLine[0] === ' ') prefix = " "
-                const firstWord = prefix + firstLine.trimStart().split(' ')[0] || '';
+                let lastSuggestioLines = lastSuggestion.split('\n')
+                let firstLine = lastSuggestioLines[0];
+                let prefix = this.getLeadingSpaces(firstLine)
+                let firstWord = prefix + firstLine.trimStart().split(' ')[0] || '';
+                let newCursorPosition = new vscode.Position(this.lastCompletion.position.line, this.lastCompletion.position.character + firstWord.length);
 
-                // Insert the first line at the cursor
+                if (firstWord === "" && lastSuggestioLines.length > 1) {
+                    let secondLine = lastSuggestioLines[1];
+                    prefix = this.getLeadingSpaces(secondLine)
+                    firstWord = '\n' + prefix + secondLine.trimStart().split(' ')[0] || '';
+                    newCursorPosition = new vscode.Position(this.lastCompletion.position.line + 1, firstWord.length);
+                }
+                
+                this.updateCacheAndLastCompletion(this.lastCompletion.inputPrefix, this.lastCompletion.inputSuffix, this.lastCompletion.prompt + firstWord, lastSuggestion.slice(firstWord.length), newCursorPosition);
+
+                // Insert the first word at the cursor
                 const position = editor.selection.active;
                 await editor.edit(editBuilder => {
                     editBuilder.insert(position, firstWord);
@@ -118,6 +135,12 @@ export class Architect {
         );
         context.subscriptions.push(acceptFirstWordCommand);
     }
+
+    getLeadingSpaces = (input: string): string => {
+        // Match the leading spaces using a regular expression
+        const match = input.match(/^[ \t]*/);
+        return match ? match[0] : "";
+      }
 
     setPeriodicRingBufferUpdate = (context: vscode.ExtensionContext) => {
         const ringBufferIntervalId = setInterval(this.extraContext.periodicRingBufferUpdate, this.extConfig.ring_update_ms);
@@ -269,8 +292,7 @@ export class Architect {
         if (newText == this.lastCompletion.suggestion.slice(0, newText.length)) {
             // cache the new completion and return
             let newCompletionText = this.lastCompletion.suggestion.slice(newText.length)
-            let newComplHashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt)
-            this.lruResultCache.put(newComplHashKey, newCompletionText)
+            this.updateCacheAndLastCompletion(inputPrefix, inputSuffix, prompt + newText, newCompletionText, position);
             return [this.getSuggestion(newCompletionText, position)];
         }
 
@@ -410,7 +432,13 @@ export class Architect {
         return discardSuggestion;
     }
 
-    private getCompletionDetails(cached_completion: string, position: vscode.Position, inputPrefix: string, inputSuffix: string, prompt: string) {
-        return { suggestion: cached_completion, position: position, inputPrefix: inputPrefix, inputSuffix: inputSuffix, prompt: prompt };
+    private updateCacheAndLastCompletion = (inputPrefix: string, inputSuffix: string, prompt: string, newCompletionText: string, position: vscode.Position) => {
+        let newComplHashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt);
+        this.lruResultCache.put(newComplHashKey, newCompletionText);
+        this.lastCompletion = this.getCompletionDetails(newCompletionText, position, inputPrefix, inputSuffix, prompt);
+    }
+
+    private getCompletionDetails = (completion: string, position: vscode.Position, inputPrefix: string, inputSuffix: string, prompt: string) => {
+        return { suggestion: completion, position: position, inputPrefix: inputPrefix, inputSuffix: inputSuffix, prompt: prompt };
     }
 }
