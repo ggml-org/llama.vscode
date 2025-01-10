@@ -1,5 +1,4 @@
 // TODO
-// Reuse last completion if the typed letters are the same as the completion first letters
 // Next word in case of end of line should be the first word of the next line
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
@@ -7,13 +6,21 @@ import { ExtraContext } from './extra-context';
 import { Configuration } from './configuration';
 import { LlamaResponse, LlamaServer } from './llama-server';
 
+interface SuggestionDetails {
+    suggestion: string;
+    position: vscode.Position;
+    inputPrefix: string;
+    inputSuffix: string;
+    prompt: string;
+}
+
 export class Architect {
     private extConfig: Configuration;
     private extraContext: ExtraContext;
     private llamaServer: LlamaServer
     private lruResultCache: LRUCache
     private fileSaveTimeout: NodeJS.Timeout | undefined;
-    private lastCompletion = ""
+    private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};     
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     
     constructor() {
@@ -67,7 +74,7 @@ export class Architect {
                 }
 
                 // Retrieve the last inline completion item
-                const lastItem = this.lastCompletion;
+                const lastItem = this.lastCompletion.suggestion;
                 if (!lastItem) {
                     return;
                 }
@@ -93,7 +100,7 @@ export class Architect {
                 }
 
                 // Retrieve the last inline completion item
-                const lastItem = this.lastCompletion;
+                const lastItem = this.lastCompletion.suggestion;
                 if (!lastItem) {
                     return;
                 }
@@ -256,13 +263,24 @@ export class Architect {
         const inputPrefix = prefixLines.join('\n') + '\n';
         const inputSuffix = lineSuffix + '\n' + suffixLines.join('\n') + '\n';
 
+        // Reuse last completion if possible
+        const range = new vscode.Range(this.lastCompletion.position, position);
+        let newText = document.getText(range);
+        if (newText == this.lastCompletion.suggestion.slice(0, newText.length)) {
+            // cache the new completion and return
+            let newCompletionText = this.lastCompletion.suggestion.slice(newText.length)
+            let newComplHashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt)
+            this.lruResultCache.put(newComplHashKey, newCompletionText)
+            return [this.getSuggestion(newCompletionText, position)];
+        }
+
         // Reuse cached completion if available
         let hashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt)
         let cached_completion = this.lruResultCache.get(hashKey)
         if (cached_completion != undefined) {
-            this.lastCompletion = cached_completion;
+            this.lastCompletion = this.getCompletionDetails(cached_completion, position, inputPrefix, inputSuffix, prompt);
             setTimeout(async () => {
-                await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, this.lastCompletion.split(/\r?\n/));
+                await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, this.lastCompletion.suggestion.split(/\r?\n/));
             }, 0);
             return [this.getSuggestion(cached_completion, position)];
         }
@@ -285,7 +303,7 @@ export class Architect {
             if (discardSuggestion) return [];
 
             this.lruResultCache.put(hashKey, suggestionText)
-            this.lastCompletion = suggestionText;
+            this.lastCompletion = this.getCompletionDetails(suggestionText, position, inputPrefix, inputSuffix, prompt);
 
             // Run async as not needed for the suggestion
             setTimeout(async () => {
@@ -390,5 +408,9 @@ export class Architect {
                 discardSuggestion = true;
         }
         return discardSuggestion;
+    }
+
+    private getCompletionDetails(cached_completion: string, position: vscode.Position, inputPrefix: string, inputSuffix: string, prompt: string) {
+        return { suggestion: cached_completion, position: position, inputPrefix: inputPrefix, inputSuffix: inputSuffix, prompt: prompt };
     }
 }
