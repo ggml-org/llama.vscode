@@ -1,6 +1,6 @@
-// TODO Illegal value for line on empty file
-// Rest Requests - less often
+// TODO
 // Reuse last completion if the typed letters are the same as the completion first letters
+// Next word in case of end of line should be the first word of the next line
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
 import { ExtraContext } from './extra-context';
@@ -142,11 +142,11 @@ export class Architect {
 
     setCompletionProvider = (context: vscode.ExtensionContext) => {
         let ctx = this.extraContext
-        let getComplitionItems = this.getComplitionItems
+        let getCompletionItems = this.getCompletionItems
         let complitionProvider = {
             async provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> {
                 ctx.lastComplStartTime = Date.now();
-                return await getComplitionItems(document, position, context, token);
+                return await getCompletionItems(document, position, context, token);
             }
         };
         const providerDisposable = vscode.languages.registerInlineCompletionItemProvider(
@@ -228,8 +228,13 @@ export class Architect {
         }, 500); // Adjust the delay as needed
     }
 
+    delay = (ms: number) => {
+        return new Promise<void>(resolve => setTimeout(resolve, ms));
+      }
+
     // Class field is used instead of a function to make "this" available
-    getComplitionItems = async (document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> => {
+    getCompletionItems = async (document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> => {
+        await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
         if (token.isCancellationRequested) {
             return null;
         }
@@ -306,9 +311,12 @@ export class Architect {
             futureInputPrefix = inputPrefix + prompt + suggestionLines.slice(0, -1).join('\n') + '\n';
             futurePrompt = suggestionLines[suggestionLines.length - 1];
         }
+        let hashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
+        let cached_completion = this.lruResultCache.get(hashKey)
+        if (cached_completion != undefined) return;
         let futureData = await this.llamaServer.getLlamaCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks);
         let futureSuggestion = "";
-        if (futureData != undefined && futureData.content) {
+        if (futureData != undefined && futureData.content != undefined) {
             futureSuggestion = futureData.content;
             let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt);
             this.lruResultCache.put(futureHashKey, futureSuggestion);
@@ -353,9 +361,15 @@ export class Architect {
             && suggestionLines[0].trim() == ""
             && suggestionLines.slice(1).every((value, index) => value === document.lineAt((position.line + 1) + index).text))
             discardSuggestion = true;
+        
+        // if last line
+        
 
         // truncate the suggestion if it repeats the suffix
         if (suggestionLines.length == 1 && suggestionLines[0] == lineSuffix) discardSuggestion = true;
+
+        // if cursor on the last line don't discard
+        if (position.line == document.lineCount - 1) return false;
 
         // find the first non-empty line (strip whitespace)
         let firstNonEmptyDocLine = position.line + 1;
