@@ -3,7 +3,7 @@
   "displayName": "llama-vscode",
   "description": "Provides code completions using llama.cpp server",
   "version": "0.0.1",
-  "publisher": "ivailo",
+  "publisher": "llama.cpp",
   "engines": {
     "vscode": "^1.70.0"
   },

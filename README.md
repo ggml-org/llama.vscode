@@ -20,11 +20,11 @@ Download the release files for Windows from https://github.com/ggerganov/llama.c
 In the extracted files folder put the model qwen2.5-coder-1.5b-q8_0.gguf and run:
 llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf -c 2048
 or if you have Nvidia GPUs and have downloaded latest cuda
-llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf -c 2048 --n-gpu-layers 99
+llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf -c 2048 --n-gpu-layers 99 -fa
 
 For Mac
 brew install llama.cpp
-llama-server --model qwen2.5-coder-1.5b-q8_0.gguf -c 2048 
+llama-server --model qwen2.5-coder-1.5b-q8_0.gguf -c 2048 -fa
 
 For Linux
 Download the release files for Windows from https://github.com/ggerganov/llama.cpp/releases and extract them.

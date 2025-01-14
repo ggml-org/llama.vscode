@@ -1,3 +1,8 @@
+// TODO
+// Прозорез на майкософт интелисенс - да не се показва или нещо друго по-красиво
+// Ако е от кеш - да се вижда отдолу в статус бара
+// Ctrl + L - пращане на заявка отново, за да ти прати ново предложение (може и друг символ)
+//Това е случаен текст. Не трябва да се пращат заявки, нито да се кешират Защо се пращат толкова много заявки?
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
 import { ExtraContext } from './extra-context';
@@ -20,6 +25,7 @@ export class Architect {
     private fileSaveTimeout: NodeJS.Timeout | undefined;
     private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};     
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
+    private isOtherKeyPressed = false
     
     constructor() {
         const config = vscode.workspace.getConfiguration("llama-vscode");
@@ -32,6 +38,18 @@ export class Architect {
     setStatusBar = (context: vscode.ExtensionContext) => {
         this.myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         context.subscriptions.push(this.myStatusBarItem);
+    }
+
+    setKeyPressed = (context: vscode.ExtensionContext) => {
+        const disposable = vscode.commands.registerCommand(
+            "extension.setVariable",
+            () => {
+                // Set the variable when the command is triggered
+                this.isOtherKeyPressed = true;
+            }
+        );
+    
+        context.subscriptions.push(disposable);
     }
 
     setOnChangeConfiguration = (context: vscode.ExtensionContext) => {
@@ -264,8 +282,9 @@ export class Architect {
 
     // Class field is used instead of a function to make "this" available
     getCompletionItems = async (document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> => {
+        this.isOtherKeyPressed = false
         await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
-        if (token.isCancellationRequested) {
+        if (this.isOtherKeyPressed || token.isCancellationRequested) {
             return null;
         }
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
@@ -279,6 +298,7 @@ export class Architect {
         const cursorIndex = position.character;
         const linePrefix = lineText.slice(0, cursorIndex);
         const lineSuffix = lineText.slice(cursorIndex);
+        const nindent = lineText.length - lineText.trimStart().length
         if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && lineSuffix.length > this.extConfig.max_line_suffix) {
             return null
         }
@@ -286,14 +306,16 @@ export class Architect {
         const inputPrefix = prefixLines.join('\n') + '\n';
         const inputSuffix = lineSuffix + '\n' + suffixLines.join('\n') + '\n';
 
-        // Reuse last completion if possible
-        const range = new vscode.Range(this.lastCompletion.position, position);
-        let newText = document.getText(range);
-        if (newText == this.lastCompletion.suggestion.slice(0, newText.length)) {
-            // cache the new completion and return
-            let newCompletionText = this.lastCompletion.suggestion.slice(newText.length)
-            this.updateCacheAndLastCompletion(inputPrefix, inputSuffix, prompt + newText, newCompletionText, position);
-            return [this.getSuggestion(newCompletionText, position)];
+        // Reuse last completion if cursor moved forward possible
+        if (this.lastCompletion && this.lastCompletion.position.isBefore(position)) {
+            const range = new vscode.Range(this.lastCompletion.position, position);
+            let newText = document.getText(range);
+            if (newText == this.lastCompletion.suggestion.slice(0, newText.length)) {
+                // cache the new completion and return
+                let newCompletionText = this.lastCompletion.suggestion.slice(newText.length)
+                this.updateCacheAndLastCompletion(inputPrefix, inputSuffix, prompt + newText, newCompletionText, position);
+                return [this.getSuggestion(newCompletionText, position)];
+            }
         }
 
         // Reuse cached completion if available
@@ -310,7 +332,7 @@ export class Architect {
         try {
             if (token.isCancellationRequested) return null;
 
-            const data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks)
+            const data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
             if (data == undefined || !data.content) return [];
             const suggestionText: string = data.content;
 
@@ -354,9 +376,9 @@ export class Architect {
         let hashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
         let cached_completion = this.lruResultCache.get(hashKey)
         if (cached_completion != undefined) return;
-        let futureData = await this.llamaServer.getLlamaCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks);
+        let futureData = await this.llamaServer.getLlamaCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks, prompt.length - prompt.trimStart().length);
         let futureSuggestion = "";
-        if (futureData != undefined && futureData.content != undefined) {
+        if (futureData != undefined && futureData.content != undefined && futureData.content != "") {
             futureSuggestion = futureData.content;
             let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt);
             this.lruResultCache.put(futureHashKey, futureSuggestion);

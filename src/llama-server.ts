@@ -26,7 +26,7 @@ export class LlamaServer{
         }
 
     // Class field is used instead of a function to make "this" available
-    getLlamaCompletion = async (inputPrefix: string, inputSuffix: string, prompt: string, chunks: any): Promise<LlamaResponse | undefined> => {
+    getLlamaCompletion = async (inputPrefix: string, inputSuffix: string, prompt: string, chunks: any, nindent: number): Promise<LlamaResponse | undefined> => {
         const requestPayload = {
             input_prefix: inputPrefix,
             input_suffix: inputSuffix,
@@ -37,6 +37,7 @@ export class LlamaServer{
             top_k: 40,
             top_p: 0.99,
             stream: false,
+            nindent: nindent,
             samplers: ["top_k", "top_p", "infill"],
             cache_prompt: true,
             t_max_prompt_ms: this.extConfig.t_max_prompt_ms,
