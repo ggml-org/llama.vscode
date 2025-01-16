@@ -8,6 +8,7 @@ export function activate(context: vscode.ExtensionContext) {
     architect.setOnChangeConfiguration(context);
     architect.setCompletionProvider(context);
     architect.registerCommandManualCompletion(context);
+    architect.registerCommandNoCacheCompletion(context);
     architect.setOnSaveFile(context);
     architect.setPeriodicRingBufferUpdate(context);
     architect.setClipboardEvents(context);

@@ -33,6 +33,10 @@
         "title": "Trigger Inline Completion"
       },
       {
+        "command": "extension.triggerNoCacheCompletion",
+        "title": "Trigger No Cache Completion"
+      },
+      {
         "command": "extension.copyIntercept",
         "title": "Copy Intercept"
       },
@@ -57,6 +61,11 @@
       {
         "command": "extension.triggerInlineCompletion",
         "key": "ctrl+l",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.triggerNoCacheCompletion",
+        "key": "ctrl+shift+l",
         "when": "editorTextFocus"
       },
       {
