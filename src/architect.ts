@@ -1,5 +1,4 @@
 // TODO
-// Копирай екстра контекста в буфера при шорткът
 // Dispose - провери дали всички ресурси се освобождават
 //(Нисък приоритет) Прозорец на майкософт интелисенс - да не се показва или нещо друго по-красиво
 import * as vscode from 'vscode';
@@ -201,6 +200,22 @@ export class Architect {
         context.subscriptions.push(triggerNoCacheCompletionDisposable);
     }
 
+    registerCommandCopyChunks = (context: vscode.ExtensionContext) => {
+        const triggerNoCacheCompletionDisposable = vscode.commands.registerCommand('extension.copyChungs', async () => {
+            // Manual triggering of the completion with a shortcut
+            if (!vscode.window.activeTextEditor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            if (this.extraContext.chunks.length > 0){
+                let extraContext = this.extraContext.chunks.reduce((accumulator, currentValue) => accumulator + "Time: " + currentValue.time + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
+                vscode.env.clipboard.writeText(extraContext)
+            }
+            else vscode.env.clipboard.writeText("No extra context.")
+        });
+        context.subscriptions.push(triggerNoCacheCompletionDisposable);
+    }
+
     setCompletionProvider = (context: vscode.ExtensionContext) => {
         let ctx = this.extraContext
         let getCompletionItems = this.getCompletionItems
@@ -298,6 +313,7 @@ export class Architect {
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
             return null;
         }
+        this.lastKeyPressTime = Date.now();
         let cashedlastKeyPressTime = this.lastKeyPressTime
         await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
         if (this.lastKeyPressTime > cashedlastKeyPressTime) {
@@ -328,7 +344,7 @@ export class Architect {
                 // cache the new completion and return
                 let newCompletionText = this.lastCompletion.suggestion.slice(newText.length)
                 if (newCompletionText.trim().length > 0){
-                    this.updateCacheAndLastCompletion(inputPrefix, inputSuffix, prompt + newText, newCompletionText, position);
+                    this.updateCacheAndLastCompletion(inputPrefix, inputSuffix, prompt, newCompletionText, position);
                     this.showTimeInfo(this.extraContext.lastComplStartTime)
                     return [this.getSuggestion(newCompletionText, position)];
                 }
@@ -357,7 +373,7 @@ export class Architect {
         }
 
         try {
-            if (token.isCancellationRequested) return null;
+            if (token.isCancellationRequested || this.lastKeyPressTime > cashedlastKeyPressTime) return null;
 
             this.showThinkingInfo();
             const data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
@@ -405,7 +421,7 @@ export class Architect {
         }
         let hashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
         let cached_completion = this.lruResultCache.get(hashKey)
-        if (cached_completion != undefined) return;
+        if (cached_completion == undefined) return;
         let futureData = await this.llamaServer.getLlamaCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks, prompt.length - prompt.trimStart().length);
         let futureSuggestion = "";
         if (futureData != undefined && futureData.content != undefined && futureData.content != "") {
@@ -506,9 +522,9 @@ export class Architect {
     }
 
     private updateCacheAndLastCompletion = (inputPrefix: string, inputSuffix: string, prompt: string, newCompletionText: string, position: vscode.Position) => {
+        if (!newCompletionText || newCompletionText.trim().length == 0) return
         let newComplHashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt);
         this.lastCompletion = this.getCompletionDetails(newCompletionText, position, inputPrefix, inputSuffix, prompt);
-        if (!newCompletionText || newCompletionText.trim().length == 0) return
         this.lruResultCache.put(newComplHashKey, newCompletionText);
         
     }

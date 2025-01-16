@@ -69,6 +69,11 @@
         "when": "editorTextFocus"
       },
       {
+        "command": "extension.copyChungs",
+        "key": "ctrl+alt+c",
+        "when": "editorTextFocus"
+      },
+      {
         "command": "extension.copyIntercept",
         "key": "ctrl+c",
         "when": "editorTextFocus"
