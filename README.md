@@ -3,11 +3,15 @@
 This is an extension, which uses llama.cpp server for code complition. It is similar to copilot, but is based on open source models
 
 ## Features
-If you use GPUs or other fast processors for the llama server - switch the setting llama.vscode.auto to true to get completions while typing.
-Press "Ctrl+l" to get a code completion.
-Use Tab to accept the suggested completion, Shift+Tab for the first row, Alt+w for the first word.
-
 Uses a unique llama.cpp server caching for faster completions.
+
+If you use GPUs or other fast processors for the llama server - switch the setting llama.vscode.auto to true to get completions while typing.
+Press "Ctrl+l" or Ctrl+Shift+l (no cache) to get a code completion.
+Use Tab to accept the suggested completion, Shift+Tab for the first row, Alt+w for the first word.
+In auto mode if you don't get a suggestion (but seems logical to have one) - go to the next line or go back(Backspace) and probably you will get one.
+
+You could choose a language for the messages in the status bar from the settings. (We will be happy to add more languages - just write  "thinking..." and "no suggestion" in your language of choice in a Marketplace comment).
+.
 
 
 ## Requirements
@@ -31,7 +35,7 @@ Download the release files for Windows from https://github.com/ggerganov/llama.c
 In the extracted files folder put the model qwen2.5-coder-1.5b-q8_0.gguf and run:
 ./server --model qwen2.5-coder-1.5b-q8_0.gguf -c 2048
 or for using GPUs (drivers for the GPUs should be available)
-./server --model qwen2.5-coder-1.5b-q8_0.gguf -c 2048 --n-gpu-layers 99
+./server --model qwen2.5-coder-1.5b-q8_0.gguf -c 2048 --n-gpu-layers 99 -fa
 
 If you have better hardware (GPUs) you could use bigger models from https://huggingface.co/ggml-org like qwen2.5-coder-3b-q8_0.gguf , qwen2.5-coder-7b-q8_0.gguf  or qwen2.5-coder-14b-q8_0.gguf .
 

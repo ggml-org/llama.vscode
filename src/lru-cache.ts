@@ -67,4 +67,8 @@ export class LRUCache {
         return hashSha256.update(request_context).digest('hex')
     }
 
+    getMap = () => {
+        return this.map;
+    }
+
 }

@@ -1,5 +1,15 @@
 // TODO
+// V Едно връщане на completion (независимо дали от кеш или от заявка). Преди връщането - кеширане на продължението ако е необходимо
+// V Кеширане на продължението при приемане на ред преди връщане
+// V Опростяване на приемането на следваща дума и следващ ред
+// V Пробвай с n_indent -4 дали предложенията ще са по-добри (не)
+// Без \r при чънковете, префикс, суфикс..... 
+// Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
+// Добави български език (и други езици) за думите е статус бара
+// Инсталация - добавяне на пътя до llama в Path (добавяне на библиотеката за изтегляне също ?)
+// Кратки съобщения в статус бара за потребителите
 // Dispose - провери дали всички ресурси се освобождават
+// V Добавяне на проверка за наличен кеш при включване на до 10 символа назад от курсора
 //(Нисък приоритет) Прозорец на майкософт интелисенс - да не се показва или нещо друго по-красиво
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
@@ -37,18 +47,6 @@ export class Architect {
     setStatusBar = (context: vscode.ExtensionContext) => {
         this.myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
         context.subscriptions.push(this.myStatusBarItem);
-    }
-
-    setKeyPressed = (context: vscode.ExtensionContext) => {
-        const disposable = vscode.commands.registerCommand(
-            "extension.setVariable",
-            () => {
-                // Set the variable when the command is triggered
-                this.lastKeyPressTime = Date.now();
-            }
-        );
-    
-        context.subscriptions.push(disposable);
     }
 
     setOnChangeConfiguration = (context: vscode.ExtensionContext) => {
@@ -95,14 +93,16 @@ export class Architect {
                 }
                 let lastSuggestioLines = lastItem.split('\n')
                 let insertLine = lastSuggestioLines[0] || '';
-                let newCursorPosition = new vscode.Position(this.lastCompletion.position.line, this.lastCompletion.position.character + insertLine.length);
+                // let newCursorPosition = new vscode.Position(this.lastCompletion.position.line, this.lastCompletion.position.character + insertLine.length);
 
-                if (insertLine === "" && lastSuggestioLines.length > 1) {
+                if (insertLine.trim() == "" && lastSuggestioLines.length > 1) {
                     insertLine = '\n' + lastSuggestioLines[1];
-                    newCursorPosition = new vscode.Position(this.lastCompletion.position.line + 1, insertLine.length);
+                    // newCursorPosition = new vscode.Position(this.lastCompletion.position.line + 1, lastSuggestioLines[1].length);
+                    // Update cache only on moving to a new line. For the same line the cache exists
+                    // this.updateCacheAndLastCompletion(this.lastCompletion.inputPrefix + "\n" + lastSuggestioLines[0]  , this.lastCompletion.inputSuffix, lastSuggestioLines[1], this.lastCompletion.suggestion.slice(insertLine.length), newCursorPosition);
                 }
 
-                this.updateCacheAndLastCompletion(this.lastCompletion.inputPrefix , this.lastCompletion.inputSuffix, this.lastCompletion.prompt + insertLine, this.lastCompletion.suggestion.slice(insertLine.length), newCursorPosition);
+                
 
                 // Insert the first line at the cursor
                 const position = editor.selection.active;
@@ -128,25 +128,23 @@ export class Architect {
                 if (!lastSuggestion) {
                     return;
                 }
-                let lastSuggestioLines = lastSuggestion.split('\n')
+                let lastSuggestioLines = lastSuggestion.split(/\r?\n/)
                 let firstLine = lastSuggestioLines[0];
                 let prefix = this.getLeadingSpaces(firstLine)
                 let firstWord = prefix + firstLine.trimStart().split(' ')[0] || '';
-                let newCursorPosition = new vscode.Position(this.lastCompletion.position.line, this.lastCompletion.position.character + firstWord.length);
+                let insertText = firstWord
 
                 if (firstWord === "" && lastSuggestioLines.length > 1) {
                     let secondLine = lastSuggestioLines[1];
                     prefix = this.getLeadingSpaces(secondLine)
-                    firstWord = '\n' + prefix + secondLine.trimStart().split(' ')[0] || '';
-                    newCursorPosition = new vscode.Position(this.lastCompletion.position.line + 1, firstWord.length);
-                }
-                
-                this.updateCacheAndLastCompletion(this.lastCompletion.inputPrefix, this.lastCompletion.inputSuffix, this.lastCompletion.prompt + firstWord, lastSuggestion.slice(firstWord.length), newCursorPosition);
+                    firstWord = prefix + secondLine.trimStart().split(' ')[0] || '';
+                    insertText = '\n' + firstWord
+                } 
 
                 // Insert the first word at the cursor
                 const position = editor.selection.active;
                 await editor.edit(editBuilder => {
-                    editBuilder.insert(position, firstWord);
+                    editBuilder.insert(position, insertText);
                 });
             }
         );
@@ -201,19 +199,47 @@ export class Architect {
     }
 
     registerCommandCopyChunks = (context: vscode.ExtensionContext) => {
-        const triggerNoCacheCompletionDisposable = vscode.commands.registerCommand('extension.copyChungs', async () => {
-            // Manual triggering of the completion with a shortcut
+        const triggerCopyChunksDisposable = vscode.commands.registerCommand('extension.copyChunks', async () => {
             if (!vscode.window.activeTextEditor) {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
+            let extraContext = ""
             if (this.extraContext.chunks.length > 0){
                 let extraContext = this.extraContext.chunks.reduce((accumulator, currentValue) => accumulator + "Time: " + currentValue.time + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
                 vscode.env.clipboard.writeText(extraContext)
             }
-            else vscode.env.clipboard.writeText("No extra context.")
+            let completionCache = ""
+            if (this.lruResultCache.size() > 0){
+                completionCache = Array.from(this.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
+                
+            }
+            vscode.env.clipboard.writeText("Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
         });
-        context.subscriptions.push(triggerNoCacheCompletionDisposable);
+        context.subscriptions.push(triggerCopyChunksDisposable);
+    }
+
+    registerCommandCopyComplCache = (context: vscode.ExtensionContext) => {
+        const triggerCopyComplCacheDisposable = vscode.commands.registerCommand('extension.copyComplCache', async () => {
+            if (!vscode.window.activeTextEditor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            if (this.lruResultCache.size() > 0){
+                let completionCache = Array.from(this.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
+                vscode.env.clipboard.writeText(completionCache)
+            }
+            else vscode.env.clipboard.writeText("No completion cache.")
+        });
+        context.subscriptions.push(triggerCopyComplCacheDisposable);
+    }
+    
+    registerOnType = (context: vscode.ExtensionContext) => {
+        const triggerCopyChunksDisposable = vscode.commands.registerCommand('type', (event: { text: string }) => { 
+            this.lastKeyPressTime = Date.now(); 
+            vscode.commands.executeCommand('default:type', event);
+        });
+        context.subscriptions.push(triggerCopyChunksDisposable);
     }
 
     setCompletionProvider = (context: vscode.ExtensionContext) => {
@@ -313,13 +339,13 @@ export class Architect {
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
             return null;
         }
+        // Type event sets this variable, but not for delete or backspace.
         this.lastKeyPressTime = Date.now();
         let cashedlastKeyPressTime = this.lastKeyPressTime
         await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
         if (this.lastKeyPressTime > cashedlastKeyPressTime) {
             return null;
         }
-        
 
         // Gather local context
         const prefixLines = this.getPrefixLines(document, position, this.extConfig.n_prefix);
@@ -336,73 +362,52 @@ export class Architect {
         const inputPrefix = prefixLines.join('\n') + '\n';
         const inputSuffix = lineSuffix + '\n' + suffixLines.join('\n') + '\n';
 
-        // Reuse last completion if cursor moved forward possible
-        if (!this.isForcedNewRequest && this.lastCompletion && this.lastCompletion.position.isBefore(position)) {
-            const range = new vscode.Range(this.lastCompletion.position, position);
-            let newText = document.getText(range);
-            if (newText == this.lastCompletion.suggestion.slice(0, newText.length)) {
-                // cache the new completion and return
-                let newCompletionText = this.lastCompletion.suggestion.slice(newText.length)
-                if (newCompletionText.trim().length > 0){
-                    this.updateCacheAndLastCompletion(inputPrefix, inputSuffix, prompt, newCompletionText, position);
-                    this.showTimeInfo(this.extraContext.lastComplStartTime)
-                    return [this.getSuggestion(newCompletionText, position)];
-                }
-            }
-        }
-
         // Reuse cached completion if available.
-        let hashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt)
-        if (!this.isForcedNewRequest) {          
-            let cached_completion = this.lruResultCache.get(hashKey)
-            if (cached_completion != undefined) {
-                this.lastCompletion = this.getCompletionDetails(cached_completion, position, inputPrefix, inputSuffix, prompt);
-                let suggestionLines = cached_completion.split(/\r?\n/)
-                if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)){
-                    this.showInfo(undefined);
-                    return [];
-                }
-                setTimeout(async () => {
-                    this.showCachedInfo()
-                    await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, this.lastCompletion.suggestion.split(/\r?\n/));
-                }, 0);   
-                return [this.getSuggestion(cached_completion, position)];
-            }
-        } else {
-            this.isForcedNewRequest = false
-        }
-
         try {
-            if (token.isCancellationRequested || this.lastKeyPressTime > cashedlastKeyPressTime) return null;
-
-            this.showThinkingInfo();
-            const data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
-            if (data == undefined || !data.content){
-                this.showInfo(data); 
+            let data: LlamaResponse | undefined
+            let hashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt)
+            let completion = this.getCachedCompletion(hashKey, inputPrefix, inputSuffix, prompt)
+            let isCachedResponse = !this.isForcedNewRequest && completion != undefined
+            if (!isCachedResponse) {  
+                this.isForcedNewRequest = false
+                if (token.isCancellationRequested || this.lastKeyPressTime > cashedlastKeyPressTime) return null;
+                this.showThinkingInfo();
+                
+                data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
+                if (data != undefined) completion = data.content;     
+                else completion = undefined
+            }
+            if (completion == undefined || completion.trim() == ""){
+                this.showInfo(undefined); 
                 return [];
             }
-            let suggestionText: string = data.content;
-            let suggestionLines = suggestionText.split(/\r?\n/)
+
+            let suggestionLines = completion.split(/\r?\n/)
             this.removeTrailingNewLines(suggestionLines);
-            suggestionText = suggestionLines.join('\n')
+            completion = suggestionLines.join('\n')
 
             if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)) {
                 this.showInfo(undefined);
                 return [];
             }
-                
+            if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
+            this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);
 
-            this.lruResultCache.put(hashKey, suggestionText)
-            this.lastCompletion = this.getCompletionDetails(suggestionText, position, inputPrefix, inputSuffix, prompt);
-
-            // Run async as not needed for the suggestion
-            setTimeout(async () => {
+            if (isCachedResponse) this.showCachedInfo()
+            else {
                 this.showInfo(data);
+                console.log("Before showing suggestion: data: ", data, " data.content: ", data?.content)
+                console.log("completion: ", completion,  " time: ", Date.now())
+            }       
+            
+            // Run async as not needed for the suggestion
+            setTimeout(async () => {               
                 await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
+                await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);   
                 this.extraContext.addFimContextChunks(position, context, document);
             }, 0);
 
-            return [this.getSuggestion(suggestionText, position)];
+            return [this.getSuggestion(completion, position)];
         } catch (err) {
             console.error("Error fetching llama completion:", err);
             vscode.window.showInformationMessage(`Error getting response. Please check if llama.cpp server is running. `);
@@ -419,18 +424,34 @@ export class Architect {
             futureInputPrefix = inputPrefix + prompt + suggestionLines.slice(0, -1).join('\n') + '\n';
             futurePrompt = suggestionLines[suggestionLines.length - 1];
         }
-        let hashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
-        let cached_completion = this.lruResultCache.get(hashKey)
-        if (cached_completion == undefined) return;
+        let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
+        let cached_completion = this.lruResultCache.get(futureHashKey)
+        if (cached_completion != undefined) return;
         let futureData = await this.llamaServer.getLlamaCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks, prompt.length - prompt.trimStart().length);
         let futureSuggestion = "";
-        if (futureData != undefined && futureData.content != undefined && futureData.content != "") {
+        if (futureData != undefined && futureData.content != undefined && futureData.content.trim() != "") {
             futureSuggestion = futureData.content;
             let suggestionLines = futureSuggestion.split(/\r?\n/)
             this.removeTrailingNewLines(suggestionLines);
             futureSuggestion = suggestionLines.join('\n')
             let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt);
             this.lruResultCache.put(futureHashKey, futureSuggestion);
+        }       
+    }
+  
+    private  cacheFutureAcceptLineSuggestion = async (inputPrefix: string, inputSuffix: string, prompt: string, suggestionLines: string[]) => {
+        // For one line suggestion there is nothing to cache
+        if (suggestionLines.length > 1) {
+            // let futureInputPrefix = inputPrefix;
+            let futureInputSuffix = inputSuffix;
+            // let futurePrompt = prompt + suggestionLines[0];
+            let futureInputPrefix = inputPrefix + prompt + suggestionLines[0] + '\n';
+            let futurePrompt = "";
+            let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
+            let futureSuggestion = suggestionLines.slice(1).join('\n')
+            let cached_completion = this.lruResultCache.get(futureHashKey)
+            if (cached_completion != undefined) return;
+            else this.lruResultCache.put(futureHashKey, futureSuggestion);
         }
     }
 
@@ -446,16 +467,22 @@ export class Architect {
 
     showInfo = (data: LlamaResponse | undefined) => {
         if (this.extConfig.show_info) {
-            if (data == undefined || data.content == undefined || data.content.trim() == "" )  this.myStatusBarItem.text = `llama-vscode | no suggestion | r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
-            else this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx ?? 0}, r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+            if (data == undefined || data.content == undefined || data.content.trim() == "" ) {
+                this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                // this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+            } else {
+                this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                // this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx ?? 0}, r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
             //vscode.window.showInformationMessage(`llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.tokens_evaluated}, r: ${chunks.length} / ${llama_config.ring_n_chunks}, e: ${ringNEvict}, q: ${queuedChunks.length} / ${MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - fimStartTime} ms `);
             this.myStatusBarItem.show();
+            }
         }
     }
 
     showCachedInfo = () => {
         if (this.extConfig.show_info) {
-            this.myStatusBarItem.text = `llama-vscode | C: ${this.lruResultCache.size()} / ${this.extConfig.max_cache_keys} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
+            this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
+            // this.myStatusBarItem.text = `llama-vscode | C: ${this.lruResultCache.size()} / ${this.extConfig.max_cache_keys} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
             this.myStatusBarItem.show();
         }
     }
@@ -469,7 +496,7 @@ export class Architect {
 
     showThinkingInfo = () => {
         if (this.extConfig.show_info) {
-            this.myStatusBarItem.text = `llama-vscode | thinking...`;
+            this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("thinking...")}`;
             this.myStatusBarItem.show();
         }
     }
@@ -505,6 +532,9 @@ export class Architect {
         while (firstNonEmptyDocLine < document.lineCount && document.lineAt(firstNonEmptyDocLine).text.trim() === "")
             firstNonEmptyDocLine++;
 
+        // if all lines to the end of file are empty don't discard
+        if (firstNonEmptyDocLine >= document.lineCount) return false;
+
         if (linePrefix + suggestionLines[0] === document.lineAt(firstNonEmptyDocLine).text) {
             // truncate the suggestion if it repeats the next line
             if (suggestionLines.length == 1) return true;
@@ -521,16 +551,21 @@ export class Architect {
         return discardSuggestion;
     }
 
-    private updateCacheAndLastCompletion = (inputPrefix: string, inputSuffix: string, prompt: string, newCompletionText: string, position: vscode.Position) => {
-        if (!newCompletionText || newCompletionText.trim().length == 0) return
-        let newComplHashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt);
-        this.lastCompletion = this.getCompletionDetails(newCompletionText, position, inputPrefix, inputSuffix, prompt);
-        this.lruResultCache.put(newComplHashKey, newCompletionText);
-        
-    }
-
     private getCompletionDetails = (completion: string, position: vscode.Position, inputPrefix: string, inputSuffix: string, prompt: string) => {
         return { suggestion: completion, position: position, inputPrefix: inputPrefix, inputSuffix: inputSuffix, prompt: prompt };
+    }
+
+    private getCachedCompletion(hashKey: string, inputPrefix: string, inputSuffix: string, prompt: string) {
+        let result = this.lruResultCache.get(hashKey);
+        if (result != undefined) return result
+        for (let i = prompt.length; i >= 0; i--) {
+            let newPrompt = prompt.slice(0, i)            
+            let hash = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + newPrompt)
+            let result = this.lruResultCache.get(hash)
+            if (result != undefined) return result.slice(prompt.length - newPrompt.length)
+        } 
+
+        return undefined
     }
 
     private removeTrailingNewLines(suggestionLines: string[]) {

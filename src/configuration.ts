@@ -17,19 +17,58 @@ export class Configuration {
     ring_chunk_size = 64
     ring_scope = 1024
     ring_update_ms = 1000
+    language = "bg"
     // additional configs
     axiosRequestConfig = {}
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000
     MIN_TIME_BETWEEN_COMPL = 600
     MAX_LAST_PICK_LINE_DISTANCE = 32
     MAX_QUEUED_CHUNKS = 16 
-    DELAY_BEFORE_COMPL_REQUEST = 150 
-
+    DELAY_BEFORE_COMPL_REQUEST = 150
+    private languageBg = new Map<string, string>([
+        ["no suggestion", "нямам предложение"],
+        ["thinking...", "мисля..."],
+    ]);
+    private languageEn = new Map<string, string>([
+        ["no suggestion", "no suggestion"],
+        ["thinking...", "thinking..."],
+    ]);
+    private languageDe = new Map<string, string>([
+        ["no suggestion", "kein Vorschlag"],
+        ["thinking...", "Ich denke..."],
+    ]);
+    private languageRu = new Map<string, string>([
+        ["no suggestion", "нет предложения"],
+        ["thinking...", "думаю"],
+    ]);
+    private languageEs = new Map<string, string>([
+        ["no suggestion", "ninguna propuesta"],
+        ["thinking...", "pensando..."],
+    ]);
+    private languageCn = new Map<string, string>([
+        ["no suggestion", "无建议"],
+        ["thinking...", "思考..."],
+    ]);
+    private languageFr = new Map<string, string>([
+        ["no suggestion", "pas de suggestion"],
+        ["thinking...", "pense..."],
+    ]);
+    languages = new Map<string, Map<string, string>>([
+        ["bg", this.languageBg],
+        ["en", this.languageEn],
+        ["de", this.languageDe],
+        ["ru", this.languageRu],
+        ["es", this.languageEs],
+        ["cn", this.languageCn],
+        ["fr", this.languageFr],
+    ]);
+    
 
 
     constructor(config: vscode.WorkspaceConfiguration) {
         this.updateConfigs(config);
         this.setLlamaRequestConfig();
+        
     }
 
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
@@ -49,6 +88,13 @@ export class Configuration {
         this.ring_chunk_size = Number(config.get<number>("ring_chunk_size"));
         this.ring_scope = Number(config.get<number>("ring_scope"));
         this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
+        this.language = String(config.get<string>("language"));
+    }
+
+    getUiText = (uiText: string): string | undefined => {
+        let langTexts = this.languages.get(this.language)
+        if (langTexts == undefined) langTexts = this.languages.get("en")
+        return langTexts?.get(uiText)
     }
 
     updateOnEvent = (event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) => {

@@ -3,7 +3,7 @@
   "displayName": "llama-vscode",
   "description": "Provides code completions using llama.cpp server",
   "version": "0.0.1",
-  "publisher": "ivailo",
+  "publisher": "llama-cpp",
   "engines": {
     "vscode": "^1.70.0"
   },
@@ -69,7 +69,7 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "extension.copyChungs",
+        "command": "extension.copyChunks",
         "key": "ctrl+alt+c",
         "when": "editorTextFocus"
       },
@@ -177,6 +177,11 @@
           "type": "number",
           "default": 1000,
           "description": "how often to process queued chunks in normal mode"
+        },
+        "llama-vscode.language": {
+          "type": "string",
+          "default": "cn",
+          "description": "language: bg - Bulgarian (Български), cn - Chinese, de - German (Deutsch), en - English, es - Spanish (Español), ru - Russian (Русский)"
         }
       }
     }
