@@ -55,6 +55,10 @@
       {
         "command": "extension.acceptFirstWord",
         "title": "Accept First Word"
+      },
+      {
+        "command": "extension.copyChunks",
+        "title": "Copy Chunks"
       }
     ],
     "keybindings": [
@@ -145,8 +149,8 @@
         },
         "llama-vscode.show_info": {
           "type": "boolean",
-          "default": true,
-          "description": "show extra info about the inference (false - disabled, true - show info in status line)"
+          "default": false,
+          "description": "show extra info about the inference (false - disabled, true - show extra info in status line)"
         },
         "llama-vscode.max_line_suffix": {
           "type": "number",

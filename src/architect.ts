@@ -1,5 +1,5 @@
 // TODO
-// По подразбиране порта по подразбиране да е друг (сървера и екстеншъна) - примерно 7878 (за да няма конфликти)
+// По подразбиране порта по подразбиране да е друг (сървера и екстеншъна) - примерно 8012 (за да няма конфликти)
 // Да не премигва при избор само на ред или дума
 // Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
 // - Търсенето в кеша при 250 елемента и 49 символа отнема 1/5 милисекунда => може по-голям кеш, може търсене до началото на реда
@@ -92,13 +92,9 @@ export class Architect {
                 }
                 let lastSuggestioLines = lastItem.split('\n')
                 let insertLine = lastSuggestioLines[0] || '';
-                // let newCursorPosition = new vscode.Position(this.lastCompletion.position.line, this.lastCompletion.position.character + insertLine.length);
 
                 if (insertLine.trim() == "" && lastSuggestioLines.length > 1) {
                     insertLine = '\n' + lastSuggestioLines[1];
-                    // newCursorPosition = new vscode.Position(this.lastCompletion.position.line + 1, lastSuggestioLines[1].length);
-                    // Update cache only on moving to a new line. For the same line the cache exists
-                    // this.updateCacheAndLastCompletion(this.lastCompletion.inputPrefix + "\n" + lastSuggestioLines[0]  , this.lastCompletion.inputSuffix, lastSuggestioLines[1], this.lastCompletion.suggestion.slice(insertLine.length), newCursorPosition);
                 }
 
                 
@@ -218,11 +214,10 @@ export class Architect {
     }
 
     setCompletionProvider = (context: vscode.ExtensionContext) => {
-        let ctx = this.extraContext
         let getCompletionItems = this.getCompletionItems
         let complitionProvider = {
             async provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> {
-                ctx.lastComplStartTime = Date.now();
+                // ctx.lastComplStartTime = Date.now();
                 return await getCompletionItems(document, position, context, token);
             }
         };
@@ -339,6 +334,7 @@ export class Architect {
             }
         }
         this.isRequestInProgress = true // Just before leaving the function should be set to false
+        this.extraContext.lastComplStartTime = Date.now();
 
         // Gather local context
         const prefixLines = this.getPrefixLines(document, position, this.extConfig.n_prefix);
@@ -463,39 +459,39 @@ export class Architect {
     }
 
     showInfo = (data: LlamaResponse | undefined) => {
-        if (this.extConfig.show_info) {
-            if (data == undefined || data.content == undefined || data.content.trim() == "" ) {
-                // this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+        if (data == undefined || data.content == undefined || data.content.trim() == "" ) {
+            if (this.extConfig.show_info) {
                 this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
             } else {
-                // this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+            }
+        } else {
+            if (this.extConfig.show_info) {
                 this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx ?? 0}, r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
-            //vscode.window.showInformationMessage(`llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.tokens_evaluated}, r: ${chunks.length} / ${llama_config.ring_n_chunks}, e: ${ringNEvict}, q: ${queuedChunks.length} / ${MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - fimStartTime} ms `);
-            this.myStatusBarItem.show();
+            } else {
+                this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
             }
         }
+        this.myStatusBarItem.show();
     }
 
     showCachedInfo = () => {
         if (this.extConfig.show_info) {
-            // this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
             this.myStatusBarItem.text = `llama-vscode | C: ${this.lruResultCache.size()} / ${this.extConfig.max_cache_keys} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
-            this.myStatusBarItem.show();
+        }else {
+            this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
         }
+        this.myStatusBarItem.show();
     }
 
     showTimeInfo = (startTime: number) => {
-        if (this.extConfig.show_info) {
-            this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - startTime} ms`;
-            this.myStatusBarItem.show();
-        }
+        this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - startTime} ms`;
+        this.myStatusBarItem.show();
     }
 
     showThinkingInfo = () => {
-        if (this.extConfig.show_info) {
-            this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("thinking...")}`;
-            this.myStatusBarItem.show();
-        }
+        this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("thinking...")}`;
+        this.myStatusBarItem.show();
     }
 
     getSuggestion = (completion: string, position: vscode.Position) => {
