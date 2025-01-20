@@ -1,16 +1,9 @@
 // TODO
-// V Едно връщане на completion (независимо дали от кеш или от заявка). Преди връщането - кеширане на продължението ако е необходимо
-// V Кеширане на продължението при приемане на ред преди връщане
-// V Опростяване на приемането на следваща дума и следващ ред
-// V Пробвай с n_indent -4 дали предложенията ще са по-добри (не)
-// Без \r при чънковете, префикс, суфикс..... 
+// Да не премигва при избор само на ред или дума
 // Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
-// Добави български език (и други езици) за думите е статус бара
-// Инсталация - добавяне на пътя до llama в Path (добавяне на библиотеката за изтегляне също ?)
-// Кратки съобщения в статус бара за потребителите
-// Dispose - провери дали всички ресурси се освобождават
-// V Добавяне на проверка за наличен кеш при включване на до 10 символа назад от курсора
-//(Нисък приоритет) Прозорец на майкософт интелисенс - да не се показва или нещо друго по-красиво
+// - Търсенето в кеша при 250 елемента и 49 символа отнема 1/5 милисекунда => може по-голям кеш, може търсене до началото на реда
+// - ShowInfo < 1/10 мс
+// (Нисък приоритет) Прозорец на майкософт интелисенс - да не се показва или нещо друго по-красиво
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
 import { ExtraContext } from './extra-context';
@@ -206,8 +199,7 @@ export class Architect {
             }
             let extraContext = ""
             if (this.extraContext.chunks.length > 0){
-                let extraContext = this.extraContext.chunks.reduce((accumulator, currentValue) => accumulator + "Time: " + currentValue.time + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
-                vscode.env.clipboard.writeText(extraContext)
+                extraContext = this.extraContext.chunks.reduce((accumulator, currentValue) => accumulator + "Time: " + currentValue.time + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
             }
             let completionCache = ""
             if (this.lruResultCache.size() > 0){
@@ -219,21 +211,6 @@ export class Architect {
         context.subscriptions.push(triggerCopyChunksDisposable);
     }
 
-    registerCommandCopyComplCache = (context: vscode.ExtensionContext) => {
-        const triggerCopyComplCacheDisposable = vscode.commands.registerCommand('extension.copyComplCache', async () => {
-            if (!vscode.window.activeTextEditor) {
-                vscode.window.showErrorMessage('No active editor!');
-                return;
-            }
-            if (this.lruResultCache.size() > 0){
-                let completionCache = Array.from(this.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
-                vscode.env.clipboard.writeText(completionCache)
-            }
-            else vscode.env.clipboard.writeText("No completion cache.")
-        });
-        context.subscriptions.push(triggerCopyComplCacheDisposable);
-    }
-    
     registerOnType = (context: vscode.ExtensionContext) => {
         const triggerCopyChunksDisposable = vscode.commands.registerCommand('type', (event: { text: string }) => { 
             this.lastKeyPressTime = Date.now(); 
@@ -391,17 +368,12 @@ export class Architect {
                 return [];
             }
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
-            this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);
-
-            if (isCachedResponse) this.showCachedInfo()
-            else {
-                this.showInfo(data);
-                console.log("Before showing suggestion: data: ", data, " data.content: ", data?.content)
-                console.log("completion: ", completion,  " time: ", Date.now())
-            }       
+            this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);                  
             
             // Run async as not needed for the suggestion
-            setTimeout(async () => {               
+            setTimeout(async () => {  
+                if (isCachedResponse) this.showCachedInfo()
+                else this.showInfo(data);         
                 await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
                 await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);   
                 this.extraContext.addFimContextChunks(position, context, document);
@@ -555,7 +527,7 @@ export class Architect {
         return { suggestion: completion, position: position, inputPrefix: inputPrefix, inputSuffix: inputSuffix, prompt: prompt };
     }
 
-    private getCachedCompletion(hashKey: string, inputPrefix: string, inputSuffix: string, prompt: string) {
+    private getCachedCompletion = (hashKey: string, inputPrefix: string, inputSuffix: string, prompt: string) => {
         let result = this.lruResultCache.get(hashKey);
         if (result != undefined) return result
         for (let i = prompt.length; i >= 0; i--) {
@@ -568,7 +540,7 @@ export class Architect {
         return undefined
     }
 
-    private removeTrailingNewLines(suggestionLines: string[]) {
+    private removeTrailingNewLines = (suggestionLines: string[]) => {
         while (suggestionLines.length > 0 && suggestionLines.at(-1)?.trim() == "") {
             suggestionLines.pop();
         }

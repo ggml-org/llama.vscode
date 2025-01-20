@@ -46,7 +46,8 @@ export class ExtraContext {
         // only gather chunks if the cursor has moved a lot
         // TODO: something more clever? reranking?
         // TODO Clarify if only on automatic trigerring the context chunks is needed
-        if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && deltaLines > this.extConfig.MAX_LAST_PICK_LINE_DISTANCE) {
+        // if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && deltaLines > this.extConfig.MAX_LAST_PICK_LINE_DISTANCE) {
+            if (deltaLines > this.extConfig.MAX_LAST_PICK_LINE_DISTANCE) {
             // expand the prefix even further
             let prefixChunkLines = this.getDocumentLines(Math.max(0, position.line - this.extConfig.ring_scope), Math.max(0, position.line - this.extConfig.n_prefix), document);
             this.pickChunk(prefixChunkLines, false, false, document);

@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 export class Configuration {
     // extension configs
-    endpoint = "http=//127.0.0.1=8080"
+    endpoint = "http=//127.0.0.1:8080"
     auto = true
     api_key = ""
     n_prefix = 256
@@ -39,7 +39,7 @@ export class Configuration {
     ]);
     private languageRu = new Map<string, string>([
         ["no suggestion", "нет предложения"],
-        ["thinking...", "думаю"],
+        ["thinking...", "думаю..."],
     ]);
     private languageEs = new Map<string, string>([
         ["no suggestion", "ninguna propuesta"],
@@ -106,7 +106,7 @@ export class Configuration {
 
     trimTrailingSlash = (s: string): string => {
         if (s.length > 0 && s[s.length - 1] === '/') {
-            return s.slice(0 - 1);
+            return s.slice(0, - 1);
         }
         return s;
     }

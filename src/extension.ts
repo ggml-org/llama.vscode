@@ -10,7 +10,6 @@ export function activate(context: vscode.ExtensionContext) {
     architect.registerCommandManualCompletion(context);
     architect.registerCommandNoCacheCompletion(context);
     architect.registerCommandCopyChunks(context);
-    architect.registerCommandCopyComplCache(context);
     architect.registerOnType(context);
     architect.setOnSaveFile(context);
     architect.setPeriodicRingBufferUpdate(context);
@@ -21,7 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
 }
 
 export function deactivate() {
-    // Clean up if necessary
+    // Nothing to do. VS Code will dispose all registerd disposables
 }
 
 

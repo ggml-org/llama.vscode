@@ -180,8 +180,8 @@
         },
         "llama-vscode.language": {
           "type": "string",
-          "default": "cn",
-          "description": "language: bg - Bulgarian (Български), cn - Chinese, de - German (Deutsch), en - English, es - Spanish (Español), ru - Russian (Русский)"
+          "default": "en",
+          "description": "language: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)"
         }
       }
     }
