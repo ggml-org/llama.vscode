@@ -70,7 +70,7 @@
       },
       {
         "command": "extension.copyChunks",
-        "key": "ctrl+alt+c",
+        "key": "ctrl+shift+,",
         "when": "editorTextFocus"
       },
       {
@@ -95,7 +95,7 @@
       },
       {
         "command": "extension.acceptFirstWord",
-        "key": "alt+w",
+        "key": "ctrl+right",
         "when": "editorTextFocus && inlineSuggestionVisible"
       }
     ],

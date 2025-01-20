@@ -21,5 +21,3 @@ export function activate(context: vscode.ExtensionContext) {
 export function deactivate() {
     // Nothing to do. VS Code will dispose all registerd disposables
 }
-
-
