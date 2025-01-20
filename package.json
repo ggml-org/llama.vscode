@@ -105,7 +105,7 @@
       "properties": {
         "llama-vscode.endpoint": {
           "type": "string",
-          "default": "http://127.0.0.1:8080",
+          "default": "http://127.0.0.1:8012",
           "description": "The URL to be used by the extension."
         },
         "llama-vscode.auto": {

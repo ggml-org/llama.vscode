@@ -35,9 +35,9 @@ For Windows
 Download file qwen2.5-coder-1.5b-q8_0.gguf from https://huggingface.co/ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF/blob/main/qwen2.5-coder-1.5b-q8_0.gguf  
 Download the release files for Windows from https://github.com/ggerganov/llama.cpp/releases and extract them.  
 In the extracted files folder put the model qwen2.5-coder-1.5b-q8_0.gguf and run:  
-llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf -c 2048 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
+llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf --port 8012 -c 2048 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
 or if you have Nvidia GPUs and have downloaded latest cuda  
-llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf -c 2048 --n-gpu-layers 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
+llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf --port 8012 -c 2048 --n-gpu-layers 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
   
 If you have better hardware (GPUs) you could use bigger models from https://huggingface.co/ggml-org like qwen2.5-coder-3b-q8_0.gguf , qwen2.5-coder-7b-q8_0.gguf  or qwen2.5-coder-14b-q8_0.gguf or other FIM-compatible model.  
 

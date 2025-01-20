@@ -28,6 +28,7 @@ export class Architect {
     private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};     
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     private lastKeyPressTime = Date.now()
+    private isRequestInProgress = false
     private isForcedNewRequest = false
     
     constructor() {
@@ -338,11 +339,14 @@ export class Architect {
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
             return null;
         }
+        if (this.isRequestInProgress) return null;
         // Type event sets this variable, but not for delete or backspace.
         this.lastKeyPressTime = Date.now();
+        this.isRequestInProgress = true // Before leaving the function should be set to false
         let cashedlastKeyPressTime = this.lastKeyPressTime
         await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
         if (this.lastKeyPressTime > cashedlastKeyPressTime) {
+            this.isRequestInProgress = false
             return null;
         }
 
@@ -355,6 +359,7 @@ export class Architect {
         const lineSuffix = lineText.slice(cursorIndex);
         const nindent = lineText.length - lineText.trimStart().length
         if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && lineSuffix.length > this.extConfig.max_line_suffix) {
+            this.isRequestInProgress = false
             return null
         }
         const prompt = linePrefix;
@@ -369,7 +374,10 @@ export class Architect {
             let isCachedResponse = !this.isForcedNewRequest && completion != undefined
             if (!isCachedResponse) {  
                 this.isForcedNewRequest = false
-                if (token.isCancellationRequested || this.lastKeyPressTime > cashedlastKeyPressTime) return null;
+                if (token.isCancellationRequested || this.lastKeyPressTime > cashedlastKeyPressTime){
+                    this.isRequestInProgress = false
+                    return null;
+                }
                 this.showThinkingInfo();
                 
                 data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
@@ -378,6 +386,7 @@ export class Architect {
             }
             if (completion == undefined || completion.trim() == ""){
                 this.showInfo(undefined); 
+                this.isRequestInProgress = false
                 return [];
             }
 
@@ -387,6 +396,7 @@ export class Architect {
 
             if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)) {
                 this.showInfo(undefined);
+                this.isRequestInProgress = false
                 return [];
             }
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
@@ -400,12 +410,13 @@ export class Architect {
                 await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);   
                 this.extraContext.addFimContextChunks(position, context, document);
             }, 0);
-
+            this.isRequestInProgress = false
             return [this.getSuggestion(completion, position)];
         } catch (err) {
             console.error("Error fetching llama completion:", err);
             vscode.window.showInformationMessage(`Error getting response. Please check if llama.cpp server is running. `);
             if (err instanceof Error) vscode.window.showInformationMessage(err.message);
+            this.isRequestInProgress = false
             return [];
         }
     }
@@ -462,11 +473,11 @@ export class Architect {
     showInfo = (data: LlamaResponse | undefined) => {
         if (this.extConfig.show_info) {
             if (data == undefined || data.content == undefined || data.content.trim() == "" ) {
-                this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
-                // this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                // this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                this.myStatusBarItem.text = `llama-vscode | ${this.extConfig.getUiText("no suggestion")} | r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
             } else {
-                this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
-                // this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx ?? 0}, r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                // this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
+                this.myStatusBarItem.text = `llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.n_ctx ?? 0}, r: ${this.extraContext.chunks.length} / ${this.extConfig.ring_n_chunks}, e: ${this.extraContext.ringNEvict}, q: ${this.extraContext.queuedChunks.length} / ${this.extConfig.MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - this.extraContext.lastComplStartTime} ms `;
             //vscode.window.showInformationMessage(`llama-vscode | c: ${data.tokens_cached} / ${data.generation_settings.tokens_evaluated}, r: ${chunks.length} / ${llama_config.ring_n_chunks}, e: ${ringNEvict}, q: ${queuedChunks.length} / ${MAX_QUEUED_CHUNKS} | p: ${data.timings?.prompt_n} (${data.timings?.prompt_ms?.toFixed(2)} ms, ${data.timings?.prompt_per_second?.toFixed(2)} t/s) | g: ${data.timings?.predicted_n} (${data.timings?.predicted_ms?.toFixed(2)} ms, ${data.timings?.predicted_per_second?.toFixed(2)} t/s) | t: ${Date.now() - fimStartTime} ms `);
             this.myStatusBarItem.show();
             }
@@ -475,8 +486,8 @@ export class Architect {
 
     showCachedInfo = () => {
         if (this.extConfig.show_info) {
-            this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
-            // this.myStatusBarItem.text = `llama-vscode | C: ${this.lruResultCache.size()} / ${this.extConfig.max_cache_keys} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
+            // this.myStatusBarItem.text = `llama-vscode | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
+            this.myStatusBarItem.text = `llama-vscode | C: ${this.lruResultCache.size()} / ${this.extConfig.max_cache_keys} | t: ${Date.now() - this.extraContext.lastComplStartTime} ms`;
             this.myStatusBarItem.show();
         }
     }
@@ -553,10 +564,11 @@ export class Architect {
         let result = this.lruResultCache.get(hashKey);
         if (result != undefined) return result
         for (let i = prompt.length; i >= 0; i--) {
-            let newPrompt = prompt.slice(0, i)            
+            let newPrompt = prompt.slice(0, i)
+            let promptCut = prompt.slice(i)            
             let hash = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + newPrompt)
             let result = this.lruResultCache.get(hash)
-            if (result != undefined) return result.slice(prompt.length - newPrompt.length)
+            if (result != undefined && promptCut == result.slice(0,promptCut.length)) return result.slice(prompt.length - newPrompt.length)
         } 
 
         return undefined
