@@ -27,7 +27,6 @@ export class Architect {
     private fileSaveTimeout: NodeJS.Timeout | undefined;
     private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};     
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-    private lastKeyPressTime = Date.now()
     private isRequestInProgress = false
     private isForcedNewRequest = false
     
@@ -218,14 +217,6 @@ export class Architect {
         context.subscriptions.push(triggerCopyChunksDisposable);
     }
 
-    registerOnType = (context: vscode.ExtensionContext) => {
-        const regusterOnTypeDisposable = vscode.commands.registerCommand('type', (event: { text: string }) => { 
-            this.lastKeyPressTime = Date.now(); 
-            vscode.commands.executeCommand('default:type', event);
-        });
-        context.subscriptions.push(regusterOnTypeDisposable);
-    }
-
     setCompletionProvider = (context: vscode.ExtensionContext) => {
         let ctx = this.extraContext
         let getCompletionItems = this.getCompletionItems
@@ -339,16 +330,15 @@ export class Architect {
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
             return null;
         }
-        if (this.isRequestInProgress) return null;
-        // Type event sets this variable, but not for delete or backspace.
-        this.lastKeyPressTime = Date.now();
-        this.isRequestInProgress = true // Before leaving the function should be set to false
-        let cashedlastKeyPressTime = this.lastKeyPressTime
-        await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
-        if (this.lastKeyPressTime > cashedlastKeyPressTime) {
-            this.isRequestInProgress = false
-            return null;
+        
+        // Start only if the previous request is finiched
+        while (this.isRequestInProgress) {
+            await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
+            if (token.isCancellationRequested) {
+                return null;
+            }
         }
+        this.isRequestInProgress = true // Just before leaving the function should be set to false
 
         // Gather local context
         const prefixLines = this.getPrefixLines(document, position, this.extConfig.n_prefix);
@@ -374,7 +364,7 @@ export class Architect {
             let isCachedResponse = !this.isForcedNewRequest && completion != undefined
             if (!isCachedResponse) {  
                 this.isForcedNewRequest = false
-                if (token.isCancellationRequested || this.lastKeyPressTime > cashedlastKeyPressTime){
+                if (token.isCancellationRequested){
                     this.isRequestInProgress = false
                     return null;
                 }
@@ -405,10 +395,12 @@ export class Architect {
             // Run async as not needed for the suggestion
             setTimeout(async () => {  
                 if (isCachedResponse) this.showCachedInfo()
-                else this.showInfo(data);         
-                await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
-                await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);   
-                this.extraContext.addFimContextChunks(position, context, document);
+                else this.showInfo(data);  
+                if (!(token.isCancellationRequested)){         
+                    await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
+                    await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);   
+                    this.extraContext.addFimContextChunks(position, context, document);
+                }
             }, 0);
             this.isRequestInProgress = false
             return [this.getSuggestion(completion, position)];
