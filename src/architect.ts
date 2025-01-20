@@ -1,4 +1,5 @@
 // TODO
+// По подразбиране порта по подразбиране да е друг (сървера и екстеншъна) - примерно 7878 (за да няма конфликти)
 // Да не премигва при избор само на ред или дума
 // Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
 // - Търсенето в кеша при 250 елемента и 49 символа отнема 1/5 милисекунда => може по-голям кеш, може търсене до началото на реда
@@ -56,15 +57,20 @@ export class Architect {
         let changeActiveTextEditorDisp = vscode.window.onDidChangeActiveTextEditor((editor) => {
             const previousEditor = vscode.window.activeTextEditor;
             if (previousEditor) {
-                this.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
+                setTimeout(async () => {  
+                    this.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
+                }, 0);
             }
-
+            // Clarify if this should be executed if the above was executed 
             if (editor) {
                 // Editor is now active in the UI, pick a chunk
                 let activeDocument = editor.document;
                 const selection = editor.selection;
                 const cursorPosition = selection.active;
-                this.extraContext.pickChunkAroundCursor(cursorPosition.line, activeDocument);
+                setTimeout(async () => {  
+                    this.extraContext.pickChunkAroundCursor(cursorPosition.line, activeDocument);
+                }, 0);
+                
             }
         });
         context.subscriptions.push(changeActiveTextEditorDisp)
@@ -212,11 +218,11 @@ export class Architect {
     }
 
     registerOnType = (context: vscode.ExtensionContext) => {
-        const triggerCopyChunksDisposable = vscode.commands.registerCommand('type', (event: { text: string }) => { 
+        const regusterOnTypeDisposable = vscode.commands.registerCommand('type', (event: { text: string }) => { 
             this.lastKeyPressTime = Date.now(); 
             vscode.commands.executeCommand('default:type', event);
         });
-        context.subscriptions.push(triggerCopyChunksDisposable);
+        context.subscriptions.push(regusterOnTypeDisposable);
     }
 
     setCompletionProvider = (context: vscode.ExtensionContext) => {
@@ -239,6 +245,8 @@ export class Architect {
         const copyCmd = vscode.commands.registerCommand('extension.copyIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
+                // Delegate to the built-in paste action
+                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
                 return;
             }
             const selection = editor.selection;
@@ -246,7 +254,11 @@ export class Architect {
 
 
             let selectedLines = selectedText.split(/\r?\n/);
-            this.extraContext.pickChunk(selectedLines, false, true, editor.document);
+             // Run async to not affect copy action
+            setTimeout(async () => {  
+                this.extraContext.pickChunk(selectedLines, false, true, editor.document);
+            }, 0);
+            
 
             // Delegate to the built-in command to complete the actual copy
             await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
@@ -255,28 +267,38 @@ export class Architect {
         const cutCmd = vscode.commands.registerCommand('extension.cutIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
+                // Delegate to the built-in paste action
+                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
                 return;
             }
             const selection = editor.selection;
             const selectedText = editor.document.getText(selection);
 
             let selectedLines = selectedText.split(/\r?\n/);
-            this.extraContext.pickChunk(selectedLines, false, true, editor.document);
+            // Run async to not affect cut action
+            setTimeout(async () => {  
+                this.extraContext.pickChunk(selectedLines, false, true, editor.document);
+            }, 0);
 
             // Delegate to the built-in cut
             await vscode.commands.executeCommand('editor.action.clipboardCutAction');
         });
 
         const pasteCmd = vscode.commands.registerCommand('extension.pasteIntercept', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                // Delegate to the built-in paste action
+                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                return;
+            }
+
             // Read the system clipboard using VS Code's API
             const clipboardText = await vscode.env.clipboard.readText();
             let selectedLines = clipboardText.split(/\r?\n/);
-
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) {
-                return;
-            }
-            this.extraContext.pickChunk(selectedLines, false, true, editor.document);
+            // Run async to not affect paste action
+            setTimeout(async () => {  
+                this.extraContext.pickChunk(selectedLines, false, true, editor.document);
+            }, 0);
 
             // Delegate to the built-in paste action
             await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
@@ -304,7 +326,7 @@ export class Architect {
 
 
 
-        }, 500); // Adjust the delay as needed
+        }, 1000); // Adjust the delay as needed
     }
 
     delay = (ms: number) => {
