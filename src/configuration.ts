@@ -23,8 +23,9 @@ export class Configuration {
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000
     MIN_TIME_BETWEEN_COMPL = 600
     MAX_LAST_PICK_LINE_DISTANCE = 32
-    MAX_QUEUED_CHUNKS = 16 
+    MAX_QUEUED_CHUNKS = 16
     DELAY_BEFORE_COMPL_REQUEST = 150
+
     private languageBg = new Map<string, string>([
         ["no suggestion", "нямам предложение"],
         ["thinking...", "мисля..."],
@@ -53,6 +54,7 @@ export class Configuration {
         ["no suggestion", "pas de suggestion"],
         ["thinking...", "pense..."],
     ]);
+
     languages = new Map<string, Map<string, string>>([
         ["bg", this.languageBg],
         ["en", this.languageEn],
@@ -62,13 +64,10 @@ export class Configuration {
         ["cn", this.languageCn],
         ["fr", this.languageFr],
     ]);
-    
-
 
     constructor(config: vscode.WorkspaceConfiguration) {
         this.updateConfigs(config);
         this.setLlamaRequestConfig();
-        
     }
 
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
@@ -100,8 +99,8 @@ export class Configuration {
     updateOnEvent = (event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) => {
         this.updateConfigs(config);
         if (event.affectsConfiguration("llama-vscode.api_key")) {
-                this.setLlamaRequestConfig();
-            }
+            this.setLlamaRequestConfig();
+        }
     }
 
     trimTrailingSlash = (s: string): string => {

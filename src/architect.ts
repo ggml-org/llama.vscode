@@ -308,9 +308,6 @@ export class Architect {
                 chunkLines = document.getText().split(/\r?\n/);
                 this.extraContext.pickChunk(chunkLines, true, true, document);
             }
-
-
-
         }, 1000); // Adjust the delay as needed
     }
 
@@ -501,8 +498,6 @@ export class Architect {
 
     // logic for discarding predictions that repeat existing text
     shouldDiscardSuggestion = (suggestionLines: string[], document: vscode.TextDocument, position: vscode.Position, linePrefix: string, lineSuffix: string) => {
-        // TODO Remove following line. It is just for test
-        if (linePrefix.length < 10) return false
         let discardSuggestion = false;
         if (suggestionLines.length == 0) return true;
         // truncate the suggestion if the first line is empty

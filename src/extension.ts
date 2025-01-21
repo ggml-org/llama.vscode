@@ -3,7 +3,7 @@ import { Architect } from './architect';
 
 export function activate(context: vscode.ExtensionContext) {
     let architect = new Architect();
-   
+
     architect.setStatusBar(context)
     architect.setOnChangeConfiguration(context);
     architect.setCompletionProvider(context);
@@ -14,7 +14,7 @@ export function activate(context: vscode.ExtensionContext) {
     architect.setPeriodicRingBufferUpdate(context);
     architect.setClipboardEvents(context);
     architect.setOnChangeActiveFile(context);
-    architect.registerCommandAcceptFirstLine(context);        
+    architect.registerCommandAcceptFirstLine(context);
     architect.registerCommandAcceptFirstWord(context);
 }
 

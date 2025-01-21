@@ -33,7 +33,7 @@ export class ExtraContext {
                 this.chunks.shift();
                 this.chunksLines.shift()
             }
-        }      
+        }
 
         this.llamaServer.prepareLlamaForNextCompletion(this.chunks)
     };
