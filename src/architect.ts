@@ -1,6 +1,6 @@
 // TODO
 // По подразбиране порта по подразбиране да е друг (сървера и екстеншъна) - примерно 8012 (за да няма конфликти)
-// Да не премигва при избор само на ред или дума
+// Да не премигва при избор само на ред или дума (върни частично проверката за съвпадение с последния рекуест?)
 // Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
 // - Търсенето в кеша при 250 елемента и 49 символа отнема 1/5 милисекунда => може по-голям кеш, може търсене до началото на реда
 // - ShowInfo < 1/10 мс
@@ -503,10 +503,15 @@ export class Architect {
 
     // logic for discarding predictions that repeat existing text 
     shouldDiscardSuggestion = (suggestionLines: string[], document: vscode.TextDocument, position: vscode.Position, linePrefix: string, lineSuffix: string) => {
+        // TODO Remove following line. It is just for test
+        if (linePrefix.length < 10) return false
         let discardSuggestion = false;
         if (suggestionLines.length == 0) return true;
         // truncate the suggestion if the first line is empty
         if (suggestionLines.length == 1 && suggestionLines[0].trim() == "") return true;
+
+        // if cursor on the last line don't discard
+        if (position.line == document.lineCount - 1) return false;
 
         // ... and the next lines are repeated
         if (suggestionLines.length > 1
@@ -517,8 +522,7 @@ export class Architect {
         // truncate the suggestion if it repeats the suffix
         if (suggestionLines.length == 1 && suggestionLines[0] == lineSuffix) return true;
 
-        // if cursor on the last line don't discard
-        if (position.line == document.lineCount - 1) return false;
+        
 
         // find the first non-empty line (strip whitespace)
         let firstNonEmptyDocLine = position.line + 1;
