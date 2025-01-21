@@ -25,7 +25,7 @@ TODO: gif
 
 ### VS Code extension setup
 
-Install the `llama-vscode` extension from the VS Code extension marketplace:
+Install the [llama-vscode](vscode:extension/ggml-org.llama-vscode) extension from the VS Code extension marketplace:
 
 ![image](https://github.com/user-attachments/assets/a5998b49-49c5-4623-b3a8-7100b72af27e)
 
