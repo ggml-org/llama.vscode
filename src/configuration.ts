@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 
 export class Configuration {
     // extension configs
-    endpoint = "http=//127.0.0.1:8080"
+    endpoint = "http=//127.0.0.1:8012"
     auto = true
     api_key = ""
     n_prefix = 256
@@ -17,7 +17,7 @@ export class Configuration {
     ring_chunk_size = 64
     ring_scope = 1024
     ring_update_ms = 1000
-    language = "bg"
+    language = "en"
     // additional configs
     axiosRequestConfig = {}
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000

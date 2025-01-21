@@ -1,9 +1,9 @@
 {
   "name": "llama-vscode",
   "displayName": "llama-vscode",
-  "description": "Provides code completions using llama.cpp server",
+  "description": "Local LLM-assisted text completion using llama.cpp",
   "version": "0.0.1",
-  "publisher": "llama-cpp",
+  "publisher": "ggml-org",
   "engines": {
     "vscode": "^1.70.0"
   },

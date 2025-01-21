@@ -1,77 +1,83 @@
 # llama.vscode
 
-llama.vscode is a code completion plugin and uses local (or remote) llama.cpp server. It is similar to copilot code completion, but is based on open source models and no code/no data leaves your computer (or llama.cpp server host).    
-  
-Uses a unique llama.cpp server caching for faster completions.
+Local LLM-assisted text completion extension for VS Code
+
+TODO: image
+
+---
+
+TODO: gif
+
+## Features
+
+- Auto-suggest on cursor movement
+- Toggle the suggestion manually by pressing `Ctrl+L`
+- Accept a suggestion with `Tab`
+- Accept the first line of a suggestion with `Shift+Tab`
+- Accept the next word with `Ctrl + Right Arrow`
+- Control max text generation time
+- Configure scope of context around the cursor
+- Ring context with chunks from open and edited files and yanked text
+- [Supports very large contexts even on low-end hardware via smart context reuse](https://github.com/ggerganov/llama.cpp/pull/9787)
+- Display performance stats
+
+## Installation
+
+### VS Code extension setup
+
+TODO: write instructions
+
+### llama.cpp setup
+
+The plugin requires a [llama.cpp](https://github.com/ggerganov/llama.cpp) server instance to be running at configured endpoint:
+
+TODO: add image to the config
+
+#### Mac OS
+
+```bash
+brew install llama.cpp
+```
+
+#### Any other OS
+
+Either [build from source](https://github.com/ggerganov/llama.cpp/blob/master/docs/build.md) or use the latest binaries: https://github.com/ggerganov/llama.cpp/releases
+
+### llama.cpp settings
+
+Here are recommended settings, depending on the amount of VRAM that you have:
+
+- More than 16GB VRAM:
+
+  ```bash
+  llama-server \
+      -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF \
+      --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 \
+      --ctx-size 0 --cache-reuse 256
+  ```
+
+- Less than 16GB VRAM:
+
+  ```bash
+  llama-server \
+      -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF \
+      --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 \
+      --ctx-size 0 --cache-reuse 256
+  ```
+
+### Recommended LLMs
+
+The plugin requires FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
+
+## Examples
+
+TODO: add examples
 
 
-## How to use it
-A running llama.cpp server is needed. No matter if it is local or remote (see below for instructions how to run it).  
+## Implementation details
 
-Just continue writing code and sometimes you will get a suggestion for complion.
+The extension aims to be very simple and lightweight and at the same time to provide high-quality and performant local FIM completions, even on consumer-grade hardware.
 
-Use following shortcuts:  
-Tab - accept the suggested completion  
-Shift+Tab - accept the first row of the completion  
-Ctrl+Right Arrow - accept the first word.  
-Ctrl+l - trigger completion manually
-  
-if you don't get a suggestion (but seems logical to have one) - go to the next line or go back (Backspace) and probably you will get one.  
-  
-If it works too slowly - switch the setting llama.vscode.auto to false and use "Ctrl+l" to get a code completion.  
-Sometimes the IntelliSense completion hides the llama.vscode completion - press Escape and you will see it.  
-  
-Yes, llama.vscode is with less features and with lower quality than copilot but still you get the most important benefit of AI for programmers and you have your freedom back.
+- The initial implementation was done by Ivaylo Gardev @igardev
+- Initial implementation and techincal description: https://github.com/ggerganov/llama.cpp/pull/9787
 
-## How to run llama.cpp server
-  
-For Linux  
-Download the release files for your OS from https://github.com/ggerganov/llama.cpp/releases (or build from source).  
-No GPUs:  
-llama-server --hf-repo ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF --hf-file qwen2.5-coder-7b-q8_0.gguf --port 8012 -c 2048 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
-With Nvidia GPUs and downloaded latest cuda  
-More than 16GB VRAM:  
-llama-server --hf-repo ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF --hf-file qwen2.5-coder-7b-q8_0.gguf --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
-Less than 16GB VRAM:  
-llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256   
-  
-For Mac  
-brew install llama.cpp  
-More than 16GB VRAM:  
-llama-server --hf-repo ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF --hf-file qwen2.5-coder-7b-q8_0.gguf --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
-Less than 16GB VRAM:  
-llama-server --hf-repo ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --hf-file qwen2.5-coder-1.5b-q8_0.gguf --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
-  
-For Windows  
-Download file qwen2.5-coder-1.5b-q8_0.gguf from https://huggingface.co/ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF/blob/main/qwen2.5-coder-1.5b-q8_0.gguf  
-Download the release files for Windows from https://github.com/ggerganov/llama.cpp/releases and extract them.  
-In the extracted files folder put the model qwen2.5-coder-1.5b-q8_0.gguf and run:  
-llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf --port 8012 -c 2048 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
-or if you have Nvidia GPUs and have downloaded latest cuda  
-llama-server.exe -m qwen2.5-coder-1.5b-q8_0.gguf --port 8012 -c 2048 --n-gpu-layers 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256  
-  
-If you have better hardware (GPUs) you could use bigger models from https://huggingface.co/ggml-org like qwen2.5-coder-3b-q8_0.gguf , qwen2.5-coder-7b-q8_0.gguf  or qwen2.5-coder-14b-q8_0.gguf. Any FIM-compatible model, supported by llama.cpp, could be used.  
-
-For more details on running llama server see https://github.com/ggerganov/llama.cpp/tree/master/examples/server .
-
-
-## Some Extension Settings
-
-llama.vscode.endpoint - The llama.cpp server endpoint to be used by the extension, for example http://127.0.0.1:8012/ (default)   
-  
-llama.vscode.auto - If code completion should be trggered automatically (true) or only by pressing Ctrl+l.  
-
-llama.vscode.show_info - show extra info about the inference (false - disabled, true - show extra info in the status line)  
-  
-llama.vscode.language - You could choose a language (for now 7 languages) for the messages in the status bar.  
-  
-llama.vscode.api_key - llama.cpp server api key (optional)  
-  
-
-## Known Issues
-
-## Release Notes
-
-### 0.0.1
-
-**Enjoy!**
