@@ -25,16 +25,16 @@ export class Architect {
     private llamaServer: LlamaServer
     private lruResultCache: LRUCache
     private fileSaveTimeout: NodeJS.Timeout | undefined;
-    private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};     
+    private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     private isRequestInProgress = false
     private isForcedNewRequest = false
-    
+
     constructor() {
         const config = vscode.workspace.getConfiguration("llama-vscode");
         this.extConfig = new Configuration(config)
         this.llamaServer = new LlamaServer(this.extConfig)
-        this.extraContext = new ExtraContext(this.extConfig, this.llamaServer)        
+        this.extraContext = new ExtraContext(this.extConfig, this.llamaServer)
         this.lruResultCache = new LRUCache(this.extConfig.max_cache_keys);
     }
 
@@ -57,20 +57,20 @@ export class Architect {
         let changeActiveTextEditorDisp = vscode.window.onDidChangeActiveTextEditor((editor) => {
             const previousEditor = vscode.window.activeTextEditor;
             if (previousEditor) {
-                setTimeout(async () => {  
+                setTimeout(async () => {
                     this.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
                 }, 0);
             }
-            // Clarify if this should be executed if the above was executed 
+            // Clarify if this should be executed if the above was executed
             if (editor) {
                 // Editor is now active in the UI, pick a chunk
                 let activeDocument = editor.document;
                 const selection = editor.selection;
                 const cursorPosition = selection.active;
-                setTimeout(async () => {  
+                setTimeout(async () => {
                     this.extraContext.pickChunkAroundCursor(cursorPosition.line, activeDocument);
                 }, 0);
-                
+
             }
         });
         context.subscriptions.push(changeActiveTextEditorDisp)
@@ -97,7 +97,7 @@ export class Architect {
                     insertLine = '\n' + lastSuggestioLines[1];
                 }
 
-                
+
 
                 // Insert the first line at the cursor
                 const position = editor.selection.active;
@@ -134,7 +134,7 @@ export class Architect {
                     prefix = this.getLeadingSpaces(secondLine)
                     firstWord = prefix + secondLine.trimStart().split(' ')[0] || '';
                     insertText = '\n' + firstWord
-                } 
+                }
 
                 // Insert the first word at the cursor
                 const position = editor.selection.active;
@@ -179,7 +179,7 @@ export class Architect {
         });
         context.subscriptions.push(triggerManualCompletionDisposable);
     }
-  
+
     registerCommandNoCacheCompletion = (context: vscode.ExtensionContext) => {
         const triggerNoCacheCompletionDisposable = vscode.commands.registerCommand('extension.triggerNoCacheCompletion', async () => {
             // Manual triggering of the completion with a shortcut
@@ -206,7 +206,6 @@ export class Architect {
             let completionCache = ""
             if (this.lruResultCache.size() > 0){
                 completionCache = Array.from(this.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
-                
             }
             vscode.env.clipboard.writeText("Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
         });
@@ -242,10 +241,9 @@ export class Architect {
 
             let selectedLines = selectedText.split(/\r?\n/);
              // Run async to not affect copy action
-            setTimeout(async () => {  
+            setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
             }, 0);
-            
 
             // Delegate to the built-in command to complete the actual copy
             await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
@@ -263,7 +261,7 @@ export class Architect {
 
             let selectedLines = selectedText.split(/\r?\n/);
             // Run async to not affect cut action
-            setTimeout(async () => {  
+            setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
             }, 0);
 
@@ -283,7 +281,7 @@ export class Architect {
             const clipboardText = await vscode.env.clipboard.readText();
             let selectedLines = clipboardText.split(/\r?\n/);
             // Run async to not affect paste action
-            setTimeout(async () => {  
+            setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
             }, 0);
 
@@ -325,7 +323,7 @@ export class Architect {
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
             return null;
         }
-        
+
         // Start only if the previous request is finiched
         while (this.isRequestInProgress) {
             await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
@@ -358,20 +356,20 @@ export class Architect {
             let hashKey = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + prompt)
             let completion = this.getCachedCompletion(hashKey, inputPrefix, inputSuffix, prompt)
             let isCachedResponse = !this.isForcedNewRequest && completion != undefined
-            if (!isCachedResponse) {  
+            if (!isCachedResponse) {
                 this.isForcedNewRequest = false
                 if (token.isCancellationRequested){
                     this.isRequestInProgress = false
                     return null;
                 }
                 this.showThinkingInfo();
-                
+
                 data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
-                if (data != undefined) completion = data.content;     
+                if (data != undefined) completion = data.content;
                 else completion = undefined
             }
             if (completion == undefined || completion.trim() == ""){
-                this.showInfo(undefined); 
+                this.showInfo(undefined);
                 this.isRequestInProgress = false
                 return [];
             }
@@ -386,15 +384,15 @@ export class Architect {
                 return [];
             }
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
-            this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);                  
-            
+            this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);
+
             // Run async as not needed for the suggestion
-            setTimeout(async () => {  
+            setTimeout(async () => {
                 if (isCachedResponse) this.showCachedInfo()
-                else this.showInfo(data);  
-                if (!(token.isCancellationRequested)){         
+                else this.showInfo(data);
+                if (!(token.isCancellationRequested)){
                     await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
-                    await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);   
+                    await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
                     this.extraContext.addFimContextChunks(position, context, document);
                 }
             }, 0);
@@ -429,9 +427,9 @@ export class Architect {
             futureSuggestion = suggestionLines.join('\n')
             let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt);
             this.lruResultCache.put(futureHashKey, futureSuggestion);
-        }       
+        }
     }
-  
+
     private  cacheFutureAcceptLineSuggestion = async (inputPrefix: string, inputSuffix: string, prompt: string, suggestionLines: string[]) => {
         // For one line suggestion there is nothing to cache
         if (suggestionLines.length > 1) {
@@ -501,7 +499,7 @@ export class Architect {
         );
     }
 
-    // logic for discarding predictions that repeat existing text 
+    // logic for discarding predictions that repeat existing text
     shouldDiscardSuggestion = (suggestionLines: string[], document: vscode.TextDocument, position: vscode.Position, linePrefix: string, lineSuffix: string) => {
         // TODO Remove following line. It is just for test
         if (linePrefix.length < 10) return false
@@ -517,12 +515,10 @@ export class Architect {
         if (suggestionLines.length > 1
             && (suggestionLines[0].trim() == "" || suggestionLines[0].trim() == lineSuffix.trim())
             && suggestionLines.slice(1).every((value, index) => value === document.lineAt((position.line + 1) + index).text))
-            return true;       
+            return true;
 
         // truncate the suggestion if it repeats the suffix
         if (suggestionLines.length == 1 && suggestionLines[0] == lineSuffix) return true;
-
-        
 
         // find the first non-empty line (strip whitespace)
         let firstNonEmptyDocLine = position.line + 1;
@@ -557,11 +553,11 @@ export class Architect {
         if (result != undefined) return result
         for (let i = prompt.length; i >= 0; i--) {
             let newPrompt = prompt.slice(0, i)
-            let promptCut = prompt.slice(i)            
+            let promptCut = prompt.slice(i)
             let hash = this.lruResultCache.getHash(inputPrefix + "|" + inputSuffix + "|" + newPrompt)
             let result = this.lruResultCache.get(hash)
             if (result != undefined && promptCut == result.slice(0,promptCut.length)) return result.slice(prompt.length - newPrompt.length)
-        } 
+        }
 
         return undefined
     }
