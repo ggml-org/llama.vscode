@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 
 export class Configuration {
     // extension configs
+    enabled = true
     endpoint = "http=//127.0.0.1:8012"
     auto = true
     api_key = ""
@@ -20,6 +21,7 @@ export class Configuration {
     language = "en"
     // additional configs
     axiosRequestConfig = {}
+    disabledLanguages: string[] = []
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000
     MIN_TIME_BETWEEN_COMPL = 600
     MAX_LAST_PICK_LINE_DISTANCE = 32
@@ -88,6 +90,8 @@ export class Configuration {
         this.ring_scope = Number(config.get<number>("ring_scope"));
         this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
         this.language = String(config.get<string>("language"));
+        this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
+        this.enabled = Boolean(config.get<boolean>("enabled", true));
     }
 
     getUiText = (uiText: string): string | undefined => {

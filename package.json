@@ -187,8 +187,24 @@
           "type": "string",
           "default": "en",
           "description": "language: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)"
+        },
+        "llama-vscode.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable completions"
+        },
+      
+        "llama-vscode.languageSettings": {
+            "type": "object",
+            "default": {
+              "*": true
+            },
+            "additionalProperties": {
+              "type": "boolean"
+            },
+            "description": "Enable/disable suggestions for specific languages"
+          }
         }
-      }
     }
   },
   "dependencies": {

@@ -39,8 +39,24 @@ export class Architect {
     }
 
     setStatusBar = (context: vscode.ExtensionContext) => {
-        this.myStatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
-        context.subscriptions.push(this.myStatusBarItem);
+        this.initializeStatusBar();
+        this.registerEventListeners(context);
+        
+        context.subscriptions.push(
+            vscode.commands.registerCommand('llama-vscode.showMenu', async () => {
+                const currentLanguage = vscode.window.activeTextEditor?.document.languageId;
+                const config = vscode.workspace.getConfiguration('llama-vscode');
+                const languageSettings = config.get<Record<string, boolean>>('languageSettings') || {};
+                const isLanguageEnabled = currentLanguage ? this.isCompletionEnabled(undefined, currentLanguage) : true;
+    
+                const items = this.createMenuItems(currentLanguage, isLanguageEnabled);
+                const selected = await vscode.window.showQuickPick(items, { title: "Llama Menu" });
+                
+                if (selected) {
+                    await this.handleMenuSelection(selected, currentLanguage, languageSettings);
+                }
+            })
+        );
     }
 
     setOnChangeConfiguration = (context: vscode.ExtensionContext) => {
@@ -213,16 +229,16 @@ export class Architect {
     }
 
     setCompletionProvider = (context: vscode.ExtensionContext) => {
-        let getCompletionItems = this.getCompletionItems
-        let complitionProvider = {
-            async provideInlineCompletionItems(document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> {
-                // ctx.lastComplStartTime = Date.now();
-                return await getCompletionItems(document, position, context, token);
-            }
-        };
         const providerDisposable = vscode.languages.registerInlineCompletionItemProvider(
             { pattern: '**' },
-            complitionProvider
+            {
+                provideInlineCompletionItems: async (document, position, context, token) => {
+                    if (!this.isCompletionEnabled(document)) {
+                        return undefined;
+                    }
+                    return await this.getCompletionItems(document, position, context, token);
+                }
+            }
         );
         context.subscriptions.push(providerDisposable);
     }
@@ -402,6 +418,104 @@ export class Architect {
             this.isRequestInProgress = false
             return [];
         }
+    }
+
+
+    private initializeStatusBar() {
+        this.myStatusBarItem = vscode.window.createStatusBarItem(
+            vscode.StatusBarAlignment.Right,
+            1000
+        );
+        this.myStatusBarItem.command = 'llama-vscode.showMenu';
+        this.myStatusBarItem.tooltip = "Llama Settings";
+        this.updateStatusBarText();
+        this.myStatusBarItem.show();
+    }
+    
+    private registerEventListeners(context: vscode.ExtensionContext) {
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeConfiguration(e => {
+                if (e.affectsConfiguration('llama-vscode')) {
+                    this.updateStatusBarText();
+                }
+            }),
+            vscode.window.onDidChangeActiveTextEditor(() => {
+                this.updateStatusBarText();
+            })
+        );
+    }
+    
+    private createMenuItems(currentLanguage: string | undefined, isLanguageEnabled: boolean): vscode.QuickPickItem[] {
+        return [
+            {
+                label: `${this.extConfig.enabled ? 'Disable' : 'Enable'} All Completions`,
+                description: `Turn ${this.extConfig.enabled ? 'off' : 'on'} completions globally`
+            },
+            currentLanguage ? {
+                label: `${isLanguageEnabled ? 'Disable' : 'Enable'} Completions for ${currentLanguage}`,
+                description: `Currently ${isLanguageEnabled ? 'enabled' : 'disabled'}`
+            } : null,
+            {
+                label: "$(gear) Edit Settings...",
+            },
+            {
+                label: "$(book) View Documentation...",
+            }
+        ].filter(Boolean) as vscode.QuickPickItem[];
+    }
+    
+    private async handleMenuSelection(selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
+        switch (selected.label) {
+            case "$(gear) Edit Settings...":
+                await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
+                break;
+            case "$(book) View Documentation...":
+                await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
+                break;
+            default:
+                await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
+                break;
+        }
+        this.updateStatusBarText();
+    }
+    
+    private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
+        const config = vscode.workspace.getConfiguration('llama-vscode');
+        if (label.includes('All Completions')) {
+            await config.update('enabled', !this.extConfig.enabled, true);
+        } else if (currentLanguage && label.includes(currentLanguage)) {
+            const isLanguageEnabled = languageSettings[currentLanguage] ?? true;
+            languageSettings[currentLanguage] = !isLanguageEnabled;
+            await config.update('languageSettings', languageSettings, true);
+        }
+    }
+    
+    private updateStatusBarText() {
+        const editor = vscode.window.activeTextEditor;
+        const currentLanguage = editor?.document.languageId;
+        const isEnabled = this.extConfig.enabled;
+        const isLanguageEnabled = currentLanguage ? this.isCompletionEnabled(editor.document) : true;
+        
+        if (!isEnabled) {
+            this.myStatusBarItem.text = "$(x) Llama";
+        } else if (currentLanguage && !isLanguageEnabled) {
+            this.myStatusBarItem.text = `$(x) Llama (${currentLanguage})`;
+        } else {
+            this.myStatusBarItem.text = "$(check) Llama";
+        }
+    }
+
+    private isCompletionEnabled(document?: vscode.TextDocument, language?: string): boolean {
+        if (!this.extConfig.enabled) return false;
+        
+        const languageToCheck = language ?? document?.languageId;
+        if (languageToCheck) {
+            const config = vscode.workspace.getConfiguration('llama-vscode');
+            const languageSettings = config.get<Record<string, boolean>>('languageSettings') || {};
+            return languageSettings[languageToCheck] ?? true;
+        }
+        
+        return true;
     }
 
     private  cacheFutureSuggestion = async (inputPrefix: string, inputSuffix: string, prompt: string, suggestionLines: string[]) => {
