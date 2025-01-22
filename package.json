@@ -150,7 +150,7 @@
         },
         "llama-vscode.show_info": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "show extra info about the inference (false - disabled, true - show extra info in status line)"
         },
         "llama-vscode.max_line_suffix": {
