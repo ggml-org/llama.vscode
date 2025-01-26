@@ -1,5 +1,4 @@
 // TODO
-// По подразбиране порта по подразбиране да е друг (сървера и екстеншъна) - примерно 8012 (за да няма конфликти)
 // Да не премигва при избор само на ред или дума (върни частично проверката за съвпадение с последния рекуест?)
 // Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
 // - Търсенето в кеша при 250 елемента и 49 символа отнема 1/5 милисекунда => може по-голям кеш, може търсене до началото на реда
@@ -24,11 +23,13 @@ export class Architect {
     private extraContext: ExtraContext;
     private llamaServer: LlamaServer
     private lruResultCache: LRUCache
+    private eventlogs: string[] = []
     private fileSaveTimeout: NodeJS.Timeout | undefined;
     private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
     private isRequestInProgress = false
     private isForcedNewRequest = false
+    private askAiPanel: vscode.WebviewPanel | undefined
 
     constructor() {
         const config = vscode.workspace.getConfiguration("llama-vscode");
@@ -36,6 +37,7 @@ export class Architect {
         this.llamaServer = new LlamaServer(this.extConfig)
         this.extraContext = new ExtraContext(this.extConfig, this.llamaServer)
         this.lruResultCache = new LRUCache(this.extConfig.max_cache_keys);
+        this.askAiPanel = undefined
     }
 
     setStatusBar = (context: vscode.ExtensionContext) => {
@@ -215,6 +217,10 @@ export class Architect {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
+            let eventLogsCombined = ""
+            if (this.eventlogs.length > 0){
+                eventLogsCombined = this.eventlogs.reverse().reduce((accumulator, currentValue) => accumulator + currentValue + "\n" , "");
+            }
             let extraContext = ""
             if (this.extraContext.chunks.length > 0){
                 extraContext = this.extraContext.chunks.reduce((accumulator, currentValue) => accumulator + "Time: " + currentValue.time + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
@@ -223,9 +229,129 @@ export class Architect {
             if (this.lruResultCache.size() > 0){
                 completionCache = Array.from(this.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
             }
-            vscode.env.clipboard.writeText("Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
+            vscode.env.clipboard.writeText("Events:\n" + eventLogsCombined + "\n\n------------------------------\n" + "Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
         });
         context.subscriptions.push(triggerCopyChunksDisposable);
+    }
+
+    registerCommandAskAi = (context: vscode.ExtensionContext) => {
+        const triggerAskAiDisposable = vscode.commands.registerCommand('extension.askAi', async () => {
+            if (!vscode.window.activeTextEditor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+
+            if (!this.extConfig.chatendpoint || this.extConfig.chatendpoint == "") return;
+
+            if (!this.askAiPanel) {
+                this.askAiPanel = vscode.window.createWebviewPanel(
+                    'htmlAskAiViewer', // Identifier for the Webview
+                    'Ask AI', // Title of the Webview
+                    vscode.ViewColumn.Three, // Editor column to show the Webview
+                    {
+                        enableScripts: true, // Allow JavaScript execution
+                        retainContextWhenHidden: true,
+                    },
+                );
+                context.subscriptions.push(this.askAiPanel)
+                const targetUrl = this.extConfig.chatendpoint + "/"
+                this.askAiPanel.webview.html = this.getWebviewContent(targetUrl);
+                // this.askAiPanel.webview.html = this.getWebviewContent();
+                this.askAiPanel.onDidDispose(() => {
+                    this.askAiPanel = undefined;
+                });
+                this.askAiPanel.webview.onDidReceiveMessage((message) => {
+                    if (message.command === 'escapePressed') {
+                        this.focusEditor();
+                    } else if (message.command === 'jsAction') {
+                        console.log(message.text); 
+                    }
+                });
+                this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' }); 
+            } else {
+                this.askAiPanel.reveal();
+                this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' }); 
+            }
+        });
+        context.subscriptions.push(triggerAskAiDisposable);
+    }
+
+    focusEditor = () => {
+        const activeEditor = vscode.window.activeTextEditor;
+        if (activeEditor) {
+            vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn, false);
+        }
+    }
+
+    getWebviewContent = (url: string): string => {
+        return `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>External Website</title>
+                  <script>
+                // Initialize the VS Code API
+                const vscode = acquireVsCodeApi();
+                // Listen for messages from the extension
+                window.addEventListener('message', (event) => {
+                    const message = event.data; // The message from the extension
+                    if (message.command === 'setText') {
+                        vscode.postMessage({ command: 'jsAction', text: 'command setText recieved' });
+                        const iframe = document.getElementById('askAiIframe');
+                        if (iframe) {
+                            vscode.postMessage({ command: 'jsAction', text: 'askAiIFrame obtained' });
+                            iframe.contentWindow.postMessage({ command: 'setText', text: message.text }, '*');
+                            vscode.postMessage({ command: 'jsAction', text: message.text });
+                        }
+                    }
+                });
+                if (message.command === 'escapePressed') {
+                    // Forward the message from the iframe to the VS Code extension
+                    vscode.postMessage({ command: 'escapePressed' });
+                }
+            })
+            </script>
+            <style>
+                body, html {
+                    margin: 0;
+                    padding: 0;
+                    width: 100%;
+                    height: 100%;
+                    overflow: hidden;
+                }
+                iframe {
+                    width: 100%;
+                    height: 100%;
+                    border: none;
+                }
+            </style>
+        </head>
+        <body>
+            <iframe src="${url}" id="askAiIframe"></iframe>
+            // TODO add it in the llama.cpp server UI (i.e. in the iframe)
+            // Listen for keydown events inside the iframe
+            // window.addEventListener('keydown', (event) => {
+            // if (event.key === 'Escape') {
+            //     // Send a message to the parent window
+            //     window.parent.postMessage({ command: 'escapePressed' }, '*');
+            // }
+            // });
+            // Listen for messages from the parent
+            // window.addEventListener('message', (event) => {
+            //     const { command, text } = event.data;
+            //     if (command === 'setText') {
+            //         const inputField = document.getElementById('msg-input');
+            //         if (inputField) {
+            //             inputField.value = text;
+            //             inputField.focus();
+            //         }
+            //     }
+            // });
+        </body>
+        </html>
+        `;
     }
 
     setCompletionProvider = (context: vscode.ExtensionContext) => {
@@ -259,10 +385,11 @@ export class Architect {
              // Run async to not affect copy action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in command to complete the actual copy
             await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
+            this.addEventLog("", "COPY_INTERCEPT", selectedLines[0])
         });
 
         const cutCmd = vscode.commands.registerCommand('extension.cutIntercept', async () => {
@@ -279,10 +406,11 @@ export class Architect {
             // Run async to not affect cut action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in cut
             await vscode.commands.executeCommand('editor.action.clipboardCutAction');
+            this.addEventLog("", "CUT_INTERCEPT", selectedLines[0])
         });
 
         const pasteCmd = vscode.commands.registerCommand('extension.pasteIntercept', async () => {
@@ -299,10 +427,11 @@ export class Architect {
             // Run async to not affect paste action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in paste action
             await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+            this.addEventLog("", "PASTE_INTERCEPT", selectedLines[0])
         });
         context.subscriptions.push(copyCmd, cutCmd, pasteCmd);
     }
@@ -325,15 +454,25 @@ export class Architect {
                 this.extraContext.pickChunk(chunkLines, true, true, document);
             }
         }, 1000); // Adjust the delay as needed
+        this.addEventLog("", "SAVE", "")
     }
 
     delay = (ms: number) => {
         return new Promise<void>(resolve => setTimeout(resolve, ms));
       }
 
+    addEventLog = (group: string, event: string, details: string) => {
+        this.eventlogs.push(Date.now() + ", " + group + ", " + event + ", " + details.replace(",", " "));
+        if (this.eventlogs.length > this.extConfig.MAX_EVENTS_IN_LOG) {
+            this.eventlogs.shift();
+        }
+    }
+
     // Class field is used instead of a function to make "this" available
     getCompletionItems = async (document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> => {
+        let group = "GET_COMPLETION_" + Date.now();
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
+            this.addEventLog(group, "MANUAL_MODE_AUTOMATIC_TRIGGERING_RETURN", "")
             return null;
         }
 
@@ -341,6 +480,7 @@ export class Architect {
         while (this.isRequestInProgress) {
             await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
             if (token.isCancellationRequested) {
+                this.addEventLog(group, "CANCELLATION_TOKEN_RETURN", "waiting")
                 return null;
             }
         }
@@ -357,6 +497,7 @@ export class Architect {
         const nindent = lineText.length - lineText.trimStart().length
         if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && lineSuffix.length > this.extConfig.max_line_suffix) {
             this.isRequestInProgress = false
+            this.addEventLog(group, "TOO_LONG_SUFFIX_RETURN", "")
             return null
         }
         const prompt = linePrefix;
@@ -373,6 +514,7 @@ export class Architect {
                 this.isForcedNewRequest = false
                 if (token.isCancellationRequested){
                     this.isRequestInProgress = false
+                    this.addEventLog(group, "CANCELLATION_TOKEN_RETURN", "just before server request")
                     return null;
                 }
                 this.showThinkingInfo();
@@ -384,6 +526,7 @@ export class Architect {
             if (completion == undefined || completion.trim() == ""){
                 this.showInfo(undefined);
                 this.isRequestInProgress = false
+                this.addEventLog(group, "NO_SUGGESTION_RETURN", "")
                 return [];
             }
 
@@ -394,6 +537,7 @@ export class Architect {
             if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)) {
                 this.showInfo(undefined);
                 this.isRequestInProgress = false
+                this.addEventLog(group, "DISCARD_SUGGESTION_RETURN", "")
                 return [];
             }
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
@@ -410,12 +554,17 @@ export class Architect {
                 }
             }, 0);
             this.isRequestInProgress = false
+            this.addEventLog(group, "NORMAL_RETURN", suggestionLines[0])
             return [this.getSuggestion(completion, position)];
         } catch (err) {
-            console.error("Error fetching llama completion:", err);
-            vscode.window.showInformationMessage(`Error getting response. Please check if llama.cpp server is running. `);
-            if (err instanceof Error) vscode.window.showInformationMessage(err.message);
+            vscode.window.showInformationMessage(`Error fetching completion. Please check if llama.cpp server is running. `);
+            let errorMessage = "Error fetching completion"
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage(err.message);
+                errorMessage = err.message
+            }
             this.isRequestInProgress = false
+            this.addEventLog(group, "ERROR_RETURN", errorMessage)
             return [];
         }
     }
@@ -427,7 +576,7 @@ export class Architect {
             1000
         );
         this.myStatusBarItem.command = 'llama-vscode.showMenu';
-        this.myStatusBarItem.tooltip = "Llama Settings";
+        this.myStatusBarItem.tooltip = "llama-vscode Settings";
         this.updateStatusBarText();
         this.myStatusBarItem.show();
     }
@@ -497,11 +646,11 @@ export class Architect {
         const isLanguageEnabled = currentLanguage ? this.isCompletionEnabled(editor.document) : true;
         
         if (!isEnabled) {
-            this.myStatusBarItem.text = "$(x) Llama";
+            this.myStatusBarItem.text = "$(x) llama-vscode";
         } else if (currentLanguage && !isLanguageEnabled) {
-            this.myStatusBarItem.text = `$(x) Llama (${currentLanguage})`;
+            this.myStatusBarItem.text = `$(x) llama-vscode (${currentLanguage})`;
         } else {
-            this.myStatusBarItem.text = "$(check) Llama";
+            this.myStatusBarItem.text = "$(check) llama-vscode";
         }
     }
 

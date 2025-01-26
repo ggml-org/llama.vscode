@@ -4,6 +4,7 @@ export class Configuration {
     // extension configs
     enabled = true
     endpoint = "http=//127.0.0.1:8012"
+    chatendpoint = "http=//127.0.0.1:8011"
     auto = true
     api_key = ""
     n_prefix = 256
@@ -27,6 +28,7 @@ export class Configuration {
     MAX_LAST_PICK_LINE_DISTANCE = 32
     MAX_QUEUED_CHUNKS = 16
     DELAY_BEFORE_COMPL_REQUEST = 150
+    MAX_EVENTS_IN_LOG = 250
 
     private languageBg = new Map<string, string>([
         ["no suggestion", "нямам предложение"],
@@ -75,6 +77,7 @@ export class Configuration {
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
         // TODO Handle the case of wrong types for the configuration values
         this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
+        this.chatendpoint = this.trimTrailingSlash(String(config.get<string>("chatendpoint")));
         this.auto = Boolean(config.get<boolean>("auto"));
         this.api_key = String(config.get<string>("api_key"));
         this.n_prefix = Number(config.get<number>("n_prefix"));
