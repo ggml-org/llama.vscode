@@ -73,10 +73,54 @@ export class Configuration {
         ["fr", this.languageFr],
     ]);
 
+<<<<<<< HEAD
     constructor(config: vscode.WorkspaceConfiguration) {
         this.updateConfigs(config);
         this.setLlamaRequestConfig();
         this.setOpenAiClient();
+=======
+  constructor(config: vscode.WorkspaceConfiguration) {
+    this.updateConfigs(config);
+    this.setLlamaRequestConfig();
+    this.setOpenAiClient();
+  }
+
+  private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
+    // TODO Handle the case of wrong types for the configuration values
+    this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
+    this.is_openai_compatible = Boolean(config.get<boolean>("is_openai_compatible"));
+    this.openAiClientModel = String(config.get<string>("openAiClientModel"));
+    this.auto = Boolean(config.get<boolean>("auto"));
+    this.api_key = String(config.get<string>("api_key"));
+    this.n_prefix = Number(config.get<number>("n_prefix"));
+    this.n_suffix = Number(config.get<number>("n_suffix"));
+    this.n_predict = Number(config.get<number>("n_predict"));
+    this.t_max_prompt_ms = Number(config.get<number>("t_max_prompt_ms"));
+    this.t_max_predict_ms = Number(config.get<number>("t_max_predict_ms"));
+    this.show_info = Boolean(config.get<boolean>("show_info"));
+    this.max_line_suffix = Number(config.get<number>("max_line_suffix"));
+    this.max_cache_keys = Number(config.get<number>("max_cache_keys"));
+    this.ring_n_chunks = Number(config.get<number>("ring_n_chunks"));
+    this.ring_chunk_size = Number(config.get<number>("ring_chunk_size"));
+    this.ring_scope = Number(config.get<number>("ring_scope"));
+    this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
+    this.language = String(config.get<string>("language"));
+    this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
+    this.enabled = Boolean(config.get<boolean>("enabled", true));
+  };
+
+  getUiText = (uiText: string): string | undefined => {
+    let langTexts = this.languages.get(this.language);
+    if (langTexts == undefined) langTexts = this.languages.get("en");
+    return langTexts?.get(uiText);
+  };
+
+  updateOnEvent = (event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) => {
+    this.updateConfigs(config);
+    if (event.affectsConfiguration("llama-vscode.api_key")) {
+      this.setLlamaRequestConfig();
+      this.setOpenAiClient();
+>>>>>>> 35adb98 (added openAiClientModel to config; tested with local vllm server)
     }
 
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
