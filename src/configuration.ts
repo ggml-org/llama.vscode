@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 export class Configuration {
     // extension configs
     enabled = true
+    launch_cmd = ""
     endpoint = "http=//127.0.0.1:8012"
     auto = true
     api_key = ""
@@ -74,6 +75,7 @@ export class Configuration {
 
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
         // TODO Handle the case of wrong types for the configuration values
+        this.launch_cmd = String(config.get<string>("launch_cmd"));
         this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
         this.auto = Boolean(config.get<boolean>("auto"));
         this.api_key = String(config.get<string>("api_key"));

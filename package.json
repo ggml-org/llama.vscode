@@ -108,6 +108,11 @@
       "type": "object",
       "title": "llama.vscode Configuration",
       "properties": {
+        "llama-vscode.launch_cmd": {
+          "type": "string",
+          "default": "llama-server.exe -m qwen2.5-coder-7b-q8_0.gguf --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256",
+          "description": "Shell command executed on Plugin start."
+        },
         "llama-vscode.endpoint": {
           "type": "string",
           "default": "http://127.0.0.1:8012",

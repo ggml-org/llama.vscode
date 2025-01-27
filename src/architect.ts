@@ -38,6 +38,23 @@ export class Architect {
         this.lruResultCache = new LRUCache(this.extConfig.max_cache_keys);
     }
 
+    launchCmd = (context: vscode.ExtensionContext) => {
+        let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
+            if (event.affectsConfiguration("llama-vscode.launch_cmd")) {
+                this.llamaServer.killCmd();
+                this.llamaServer.launchCmd();
+            }
+        });
+        context.subscriptions.push(configurationChangeDisp);
+        
+        this.llamaServer.onlaunchCmdClose((data) => {
+            vscode.window.showErrorMessage(`llama-vscode launchCmd Process closed, code: ${data.code}, stderr: ${data.stderr}`);
+        });
+
+        this.llamaServer.launchCmd();
+
+    }
+
     setStatusBar = (context: vscode.ExtensionContext) => {
         this.initializeStatusBar();
         this.registerEventListeners(context);
