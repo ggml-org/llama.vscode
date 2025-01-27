@@ -46,10 +46,6 @@
         "title": "Cut Intercept"
       },
       {
-        "command": "extension.pasteIntercept",
-        "title": "Paste Intercept"
-      },
-      {
         "command": "extension.acceptFirstLine",
         "title": "Accept First Line"
       },
@@ -86,11 +82,6 @@
       {
         "command": "extension.cutIntercept",
         "key": "ctrl+x",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "extension.pasteIntercept",
-        "key": "ctrl+v",
         "when": "editorTextFocus"
       },
       {

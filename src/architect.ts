@@ -248,7 +248,7 @@ export class Architect {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 // Delegate to the built-in paste action
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
                 return;
             }
             const selection = editor.selection;
@@ -259,17 +259,18 @@ export class Architect {
              // Run async to not affect copy action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in command to complete the actual copy
             await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
         });
+        context.subscriptions.push(copyCmd);
 
         const cutCmd = vscode.commands.registerCommand('extension.cutIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 // Delegate to the built-in paste action
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                await vscode.commands.executeCommand('editor.action.clipboardCutAction');
                 return;
             }
             const selection = editor.selection;
@@ -279,32 +280,12 @@ export class Architect {
             // Run async to not affect cut action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in cut
             await vscode.commands.executeCommand('editor.action.clipboardCutAction');
         });
-
-        const pasteCmd = vscode.commands.registerCommand('extension.pasteIntercept', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) {
-                // Delegate to the built-in paste action
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-                return;
-            }
-
-            // Read the system clipboard using VS Code's API
-            const clipboardText = await vscode.env.clipboard.readText();
-            let selectedLines = clipboardText.split(/\r?\n/);
-            // Run async to not affect paste action
-            setTimeout(async () => {
-                this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
-
-            // Delegate to the built-in paste action
-            await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-        });
-        context.subscriptions.push(copyCmd, cutCmd, pasteCmd);
+        context.subscriptions.push(cutCmd);
     }
 
     handleDocumentSave = (document: vscode.TextDocument) => {
