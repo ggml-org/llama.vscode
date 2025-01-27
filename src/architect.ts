@@ -241,36 +241,11 @@ export class Architect {
                 return;
             }
 
-            if (!this.extConfig.chatendpoint || this.extConfig.chatendpoint == "") return;
+            if (!this.extConfig.chatendpoint) return;
 
-            if (!this.askAiPanel) {
-                this.askAiPanel = vscode.window.createWebviewPanel(
-                    'htmlAskAiViewer', // Identifier for the Webview
-                    'Ask AI', // Title of the Webview
-                    vscode.ViewColumn.Three, // Editor column to show the Webview
-                    {
-                        enableScripts: true, // Allow JavaScript execution
-                        retainContextWhenHidden: true,
-                    },
-                );
-                context.subscriptions.push(this.askAiPanel)
-                const targetUrl = this.extConfig.chatendpoint + "/"
-                this.askAiPanel.webview.html = this.getWebviewContent(targetUrl);
-                // this.askAiPanel.webview.html = this.getWebviewContent();
-                this.askAiPanel.onDidDispose(() => {
-                    this.askAiPanel = undefined;
-                });
-                this.askAiPanel.webview.onDidReceiveMessage((message) => {
-                    if (message.command === 'escapePressed') {
-                        this.focusEditor();
-                    } else if (message.command === 'jsAction') {
-                        console.log(message.text); 
-                    }
-                });
-                this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' }); 
-            } else {
-                this.askAiPanel.reveal();
-                this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' }); 
+            this.showAskAi();
+            if (this.askAiPanel) {
+                context.subscriptions.push(this.askAiPanel);
             }
         });
         context.subscriptions.push(triggerAskAiDisposable);
@@ -570,6 +545,37 @@ export class Architect {
     }
 
 
+    private showAskAi() {
+        if (!this.askAiPanel) {
+            this.askAiPanel = vscode.window.createWebviewPanel(
+                'htmlAskAiViewer', // Identifier for the Webview
+                'Ask AI', // Title of the Webview
+                vscode.ViewColumn.Three, // Editor column to show the Webview
+                {
+                    enableScripts: true, // Allow JavaScript execution
+                    retainContextWhenHidden: true,
+                }
+            );
+            const targetUrl = this.extConfig.chatendpoint + "/";
+            this.askAiPanel.webview.html = this.getWebviewContent(targetUrl);
+            // this.askAiPanel.webview.html = this.getWebviewContent();
+            this.askAiPanel.onDidDispose(() => {
+                this.askAiPanel = undefined;
+            });
+            this.askAiPanel.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'escapePressed') {
+                    this.focusEditor();
+                } else if (message.command === 'jsAction') {
+                    console.log(message.text);
+                }
+            });
+            this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' });
+        } else {
+            this.askAiPanel.reveal();
+            this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' });
+        }
+    }
+
     private initializeStatusBar() {
         this.myStatusBarItem = vscode.window.createStatusBarItem(
             vscode.StatusBarAlignment.Right,
@@ -604,6 +610,10 @@ export class Architect {
                 label: `${isLanguageEnabled ? 'Disable' : 'Enable'} Completions for ${currentLanguage}`,
                 description: `Currently ${isLanguageEnabled ? 'enabled' : 'disabled'}`
             } : null,
+            this.extConfig.chatendpoint ? {
+                label: `Show AI Chat`,
+                description: `Shows AI chat window inside Visual Studio Code`
+            } : null,
             {
                 label: "$(gear) Edit Settings...",
             },
@@ -620,6 +630,9 @@ export class Architect {
                 break;
             case "$(book) View Documentation...":
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
+                break;
+            case "Show AI Chat":
+                this.showAskAi();
                 break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
