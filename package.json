@@ -207,6 +207,9 @@
         }
     }
   },
+  "scripts": {
+    "watch": "tsc -watch -p ./"
+  },
   "dependencies": {
     "axios": "^1.1.2",
     "openai": "^4.80.1"
