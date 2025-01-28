@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import OpenAI from "openai";
 
 export class Configuration {
+<<<<<<< HEAD
     // extension configs
     enabled = true;
     endpoint = "http=//127.0.0.1:8012";
@@ -33,6 +34,38 @@ export class Configuration {
     MAX_QUEUED_CHUNKS = 16;
     DELAY_BEFORE_COMPL_REQUEST = 150;
     MAX_EVENTS_IN_LOG = 250;
+=======
+  // extension configs
+  enabled = true;
+  endpoint = "http=//127.0.0.1:8012";
+  is_openai_compatible = false;
+  openAiClient: OpenAI | null = null;
+  openAiClientModel: string | null = null;
+  opeanAiPromptTemplate: string = "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>";
+  auto = true;
+  api_key = "";
+  n_prefix = 256;
+  n_suffix = 64;
+  n_predict = 128;
+  t_max_prompt_ms = 500;
+  t_max_predict_ms = 2500;
+  show_info = true;
+  max_line_suffix = 8;
+  max_cache_keys = 250;
+  ring_n_chunks = 16;
+  ring_chunk_size = 64;
+  ring_scope = 1024;
+  ring_update_ms = 1000;
+  language = "en";
+  // additional configs
+  axiosRequestConfig = {};
+  disabledLanguages: string[] = [];
+  RING_UPDATE_MIN_TIME_LAST_COMPL = 3000;
+  MIN_TIME_BETWEEN_COMPL = 600;
+  MAX_LAST_PICK_LINE_DISTANCE = 32;
+  MAX_QUEUED_CHUNKS = 16;
+  DELAY_BEFORE_COMPL_REQUEST = 150;
+>>>>>>> 52135f7 (fixed config and completions to work with FIM models by default)
 
     private languageBg = new Map<string, string>([
         ["no suggestion", "нямам предложение"],
@@ -90,6 +123,7 @@ export class Configuration {
     this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
     this.is_openai_compatible = Boolean(config.get<boolean>("is_openai_compatible"));
     this.openAiClientModel = String(config.get<string>("openAiClientModel"));
+    this.opeanAiPromptTemplate = String(config.get<string>("opeanAiPromptTemplate"));
     this.auto = Boolean(config.get<boolean>("auto"));
     this.api_key = String(config.get<string>("api_key"));
     this.n_prefix = Number(config.get<number>("n_prefix"));
