@@ -55,34 +55,30 @@ export class LlamaServer {
       inputSuffix: inputSuffix.slice(0, this.extConfig.n_suffix),
     };
 
-    try {
-      const rsp = await client.completions.create({
-        model: this.extConfig.openAiClientModel || "",
-        prompt: additional_context + this.replacePlaceholders(this.extConfig.opeanAiPromptTemplate, replacements),
-        max_tokens: this.extConfig.n_predict,
-        temperature: 0.1,
-        top_p: this.defaultRequestParams.top_p,
-        stream: this.defaultRequestParams.stream,
-      });
+    const rsp = await client.completions.create({
+      model: this.extConfig.openAiClientModel || "",
+      prompt: additional_context + this.replacePlaceholders(this.extConfig.opeanAiPromptTemplate, replacements),
+      max_tokens: this.extConfig.n_predict,
+      temperature: 0.1,
+      top_p: this.defaultRequestParams.top_p,
+      stream: this.defaultRequestParams.stream,
+    });
 
-      if (isPreparation) return;
+    if (isPreparation) return;
 
-      return {
-        content: rsp.choices[0].text,
-        generation_settings: {
-          finish_reason: rsp.choices[0].finish_reason,
-          model: rsp.model,
-          created: rsp.created,
-        },
-        timings: {
-          prompt_ms: rsp.usage?.prompt_tokens,
-          predicted_ms: rsp.usage?.completion_tokens,
-          predicted_n: rsp.usage?.total_tokens,
-        },
-      };
-    } catch (error) {
-      return;
-    }
+    return {
+      content: rsp.choices[0].text,
+      generation_settings: {
+        finish_reason: rsp.choices[0].finish_reason,
+        model: rsp.model,
+        created: rsp.created,
+      },
+      timings: {
+        prompt_ms: rsp.usage?.prompt_tokens,
+        predicted_ms: rsp.usage?.completion_tokens,
+        predicted_n: rsp.usage?.total_tokens,
+      },
+    };
   }
 
   private createRequestPayload(inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, nindent?: number) {
