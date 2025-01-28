@@ -1,5 +1,6 @@
 import axios from "axios";
 import { Configuration } from "./configuration";
+import { PassThrough } from "stream";
 
 const STATUS_OK = 200;
 
@@ -32,26 +33,8 @@ export class LlamaServer {
     this.extConfig = config;
   }
 
-  private createOpenAIPrompt(chunks: any[], inputPrefix = "", inputSuffix = "", previousPrompt = "") {
-    const contextChunks = chunks.map((chunk: any) => `Related code:\n${chunk}`).join("\n\n");
-    const systemPrompt =
-      "You are a code completion assistant. Complete the code between <PRE> and <SUF> markers. Only return the completion without any explanation.";
-
-    return {
-      systemMessage: { role: "system" as const, content: systemPrompt },
-      userMessage: {
-        role: "user" as const,
-        content: [
-          contextChunks,
-          `<PRE>${inputPrefix.trim()}`,
-          `<SUF>${inputSuffix.trim()}`,
-          previousPrompt && `Previous completion attempt: ${previousPrompt.trim()}`,
-          "Complete the code between <PRE> and <SUF>. Return ONLY the completion.",
-        ]
-          .filter(Boolean)
-          .join("\n\n"),
-      },
-    };
+  private replacePlaceholders(template: string, replacements: { [key: string]: string }): string {
+    return template.replace(/{(\w+)}/g, (_, key) => replacements[key] || "");
   }
 
   private async handleOpenAICompletion(
@@ -61,34 +44,45 @@ export class LlamaServer {
     prompt: string,
     isPreparation = false
   ): Promise<LlamaResponse | void> {
-    const openai = this.extConfig.openAiClient;
-    if (!openai) return;
+    const client = this.extConfig.openAiClient;
+    if (!client) return;
 
-    const { systemMessage, userMessage } = this.createOpenAIPrompt(chunks, inputPrefix, inputSuffix, prompt);
+    const additional_context = chunks.length > 0 ? "Context:\n\n" + chunks.join("\n") : "";
 
-    const completion = await openai.chat.completions.create({
-      model: this.extConfig.openAiClientModel || "gpt-4",
-      messages: [systemMessage, userMessage],
-      temperature: 0.1,
-      top_p: this.defaultRequestParams.top_p,
-      stream: false,
-    });
-
-    if (isPreparation) return;
-
-    return {
-      content: completion.choices[0].message.content || "",
-      generation_settings: {
-        finish_reason: completion.choices[0].finish_reason,
-        model: completion.model,
-        created: completion.created,
-      },
-      timings: {
-        prompt_ms: completion.usage?.prompt_tokens,
-        predicted_ms: completion.usage?.completion_tokens,
-        predicted_n: completion.usage?.total_tokens,
-      },
+    const replacements = {
+      inputPrefix: inputPrefix.slice(-this.extConfig.n_prefix),
+      prompt: prompt,
+      inputSuffix: inputSuffix.slice(0, this.extConfig.n_suffix),
     };
+
+    try {
+      const rsp = await client.completions.create({
+        model: this.extConfig.openAiClientModel || "",
+        prompt: additional_context + this.replacePlaceholders(this.extConfig.opeanAiPromptTemplate, replacements),
+        max_tokens: this.extConfig.n_predict,
+        temperature: 0.1,
+        top_p: this.defaultRequestParams.top_p,
+        stream: this.defaultRequestParams.stream,
+      });
+
+      if (isPreparation) return;
+
+      return {
+        content: rsp.choices[0].text,
+        generation_settings: {
+          finish_reason: rsp.choices[0].finish_reason,
+          model: rsp.model,
+          created: rsp.created,
+        },
+        timings: {
+          prompt_ms: rsp.usage?.prompt_tokens,
+          predicted_ms: rsp.usage?.completion_tokens,
+          predicted_n: rsp.usage?.total_tokens,
+        },
+      };
+    } catch (error) {
+      return;
+    }
   }
 
   private createRequestPayload(inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, nindent?: number) {

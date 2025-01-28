@@ -8,6 +8,7 @@ export class Configuration {
   is_openai_compatible = false;
   openAiClient: OpenAI | null = null;
   openAiClientModel: string | null = null;
+  opeanAiPromptTemplate: string = "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>";
   auto = true;
   api_key = "";
   n_prefix = 256;
@@ -82,6 +83,7 @@ export class Configuration {
     this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
     this.is_openai_compatible = Boolean(config.get<boolean>("is_openai_compatible"));
     this.openAiClientModel = String(config.get<string>("openAiClientModel"));
+    this.opeanAiPromptTemplate = String(config.get<string>("opeanAiPromptTemplate"));
     this.auto = Boolean(config.get<boolean>("auto"));
     this.api_key = String(config.get<string>("api_key"));
     this.n_prefix = Number(config.get<number>("n_prefix"));
