@@ -27,6 +27,7 @@ export class Configuration {
     MAX_LAST_PICK_LINE_DISTANCE = 32
     MAX_QUEUED_CHUNKS = 16
     DELAY_BEFORE_COMPL_REQUEST = 150
+    MAX_EVENTS_IN_LOG = 250
 
     private languageBg = new Map<string, string>([
         ["no suggestion", "нямам предложение"],
