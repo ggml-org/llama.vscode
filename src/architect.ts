@@ -391,7 +391,6 @@ export class Architect {
 
             let suggestionLines = completion.split(/\r?\n/)
             this.removeTrailingNewLines(suggestionLines);
-            completion = suggestionLines.join('\n')
 
             if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)) {
                 this.showInfo(undefined);
@@ -399,6 +398,7 @@ export class Architect {
                 this.addEventLog(group, "DISCARD_SUGGESTION_RETURN", "")
                 return [];
             }
+            completion = this.updateSuggestion( suggestionLines, document, position, linePrefix, lineSuffix);
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
             this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);
 
@@ -506,11 +506,11 @@ export class Architect {
         const isLanguageEnabled = currentLanguage ? this.isCompletionEnabled(editor.document) : true;
         
         if (!isEnabled) {
-            this.myStatusBarItem.text = "$(x) Llama";
+            this.myStatusBarItem.text = "$(x) llama.vscode";
         } else if (currentLanguage && !isLanguageEnabled) {
-            this.myStatusBarItem.text = `$(x) Llama (${currentLanguage})`;
+            this.myStatusBarItem.text = `$(x) llama.vscode (${currentLanguage})`;
         } else {
-            this.myStatusBarItem.text = "$(check) Llama";
+            this.myStatusBarItem.text = "$(check) llama.vscode";
         }
     }
 
@@ -660,6 +660,33 @@ export class Architect {
                 return true;
         }
         return discardSuggestion;
+    }
+
+    // returns suggestion with removed trailing part, which is the same as the existing code
+    updateSuggestion = (suggestionLines: string[], document: vscode.TextDocument, position: vscode.Position, linePrefix: string, lineSuffix: string) => {
+        let updatedSuggestion = suggestionLines.join("\n");
+        if (suggestionLines.length == 1 && lineSuffix.trim() === "") return updatedSuggestion
+        // if suggestion is one line and the line suffix is a suffix of the line - remove the line suffix
+        if (suggestionLines.length == 1 && suggestionLines[0].endsWith(lineSuffix)) return suggestionLines[0].slice(0, -lineSuffix.length);
+
+        // if cursor on the last line just return the suggestion
+        if (position.line == document.lineCount - 1) return updatedSuggestion;
+
+        // if the following lines repeat the suggestion and the line suffix is empty - update suggestion
+        if (suggestionLines.length > 1
+            && (lineSuffix.trim() === "")
+            && suggestionLines.slice(1).every((value, index) => value === document.lineAt((position.line + 1) + index).text)){
+            return suggestionLines[0];
+        }
+        
+        // if the following lines repeat the suggestion and the first line ends with the line suffix update suggestion
+        if (suggestionLines.length > 1
+            && (suggestionLines[0].endsWith(lineSuffix))
+            && suggestionLines.slice(1).every((value, index) => value === document.lineAt((position.line + 1) + index).text)){
+            return suggestionLines[0].slice(0, -lineSuffix.length);
+        }
+
+        return updatedSuggestion;
     }
 
     private getCompletionDetails = (completion: string, position: vscode.Position, inputPrefix: string, inputSuffix: string, prompt: string) => {
