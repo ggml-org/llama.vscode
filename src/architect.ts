@@ -30,6 +30,7 @@ export class Architect {
     private isRequestInProgress = false
     private isForcedNewRequest = false
     private askAiPanel: vscode.WebviewPanel | undefined
+    private lastActiveEditor: vscode.TextEditor | undefined;
 
     constructor() {
         const config = vscode.workspace.getConfiguration("llama-vscode");
@@ -252,9 +253,9 @@ export class Architect {
     }
 
     focusEditor = () => {
-        const activeEditor = vscode.window.activeTextEditor;
-        if (activeEditor) {
-            vscode.window.showTextDocument(activeEditor.document, activeEditor.viewColumn, false);
+        if (this.lastActiveEditor) {
+            // vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
+            vscode.window.showTextDocument(this.lastActiveEditor.document, this.lastActiveEditor.viewColumn, false);
         }
     }
 
@@ -266,27 +267,41 @@ export class Architect {
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>External Website</title>
-                  <script>
+            <script>
                 // Initialize the VS Code API
                 const vscode = acquireVsCodeApi();
+                vscode.postMessage({ command: 'jsAction', text: 'vscode javascript object created' });
+    
                 // Listen for messages from the extension
                 window.addEventListener('message', (event) => {
-                    const message = event.data; // The message from the extension
-                    if (message.command === 'setText') {
-                        vscode.postMessage({ command: 'jsAction', text: 'command setText recieved' });
+                    vscode.postMessage({ command: 'jsAction', text: 'message received' });
+    
+                    const { command, text } = event.data; // Extract the command and text from the event
+                    if (command === 'setText') {
+                        vscode.postMessage({ command: 'jsAction', text: 'command setText received' });
+    
                         const iframe = document.getElementById('askAiIframe');
                         if (iframe) {
-                            vscode.postMessage({ command: 'jsAction', text: 'askAiIFrame obtained' });
-                            iframe.contentWindow.postMessage({ command: 'setText', text: message.text }, '*');
-                            vscode.postMessage({ command: 'jsAction', text: message.text });
+                            vscode.postMessage({ command: 'jsAction', text: 'askAiIframe obtained' });
+                            iframe.contentWindow.postMessage({ command: 'setText', text: text }, '*');
+                            vscode.postMessage({ command: 'jsAction', text: text });
                         }
                     }
+                    if (command === 'escapePressed') {
+                        vscode.postMessage({ command: 'jsAction', text: 'command escape pressed' });
+                        vscode.postMessage({ command: 'escapePressed' });
+                    }
                 });
-                if (message.command === 'escapePressed') {
-                    // Forward the message from the iframe to the VS Code extension
-                    vscode.postMessage({ command: 'escapePressed' });
-                }
-            })
+    
+                // Listen for key events in the iframe
+                window.addEventListener('keydown', (event) => {
+                    vscode.postMessage({ command: 'jsAction', text: 'keydown event received' });
+                    if (event.key === 'Escape') {
+                        // Send a message to the extension when Escape is pressed
+                        vscode.postMessage({ command: 'escapePressed', text: "" });
+                        vscode.postMessage({ command: 'jsAction', text: "Escabe key pressed..." });
+                    }
+                });
             </script>
             <style>
                 body, html {
@@ -305,25 +320,6 @@ export class Architect {
         </head>
         <body>
             <iframe src="${url}" id="askAiIframe"></iframe>
-            // TODO add it in the llama.cpp server UI (i.e. in the iframe)
-            // Listen for keydown events inside the iframe
-            // window.addEventListener('keydown', (event) => {
-            // if (event.key === 'Escape') {
-            //     // Send a message to the parent window
-            //     window.parent.postMessage({ command: 'escapePressed' }, '*');
-            // }
-            // });
-            // Listen for messages from the parent
-            // window.addEventListener('message', (event) => {
-            //     const { command, text } = event.data;
-            //     if (command === 'setText') {
-            //         const inputField = document.getElementById('msg-input');
-            //         if (inputField) {
-            //             inputField.value = text;
-            //             inputField.focus();
-            //         }
-            //     }
-            // });
         </body>
         </html>
         `;
@@ -545,7 +541,7 @@ export class Architect {
     }
 
 
-    private showAskAi() {
+    private showAskAi = () => {
         if (!this.askAiPanel) {
             this.askAiPanel = vscode.window.createWebviewPanel(
                 'htmlAskAiViewer', // Identifier for the Webview
@@ -566,13 +562,22 @@ export class Architect {
                 if (message.command === 'escapePressed') {
                     this.focusEditor();
                 } else if (message.command === 'jsAction') {
-                    console.log(message.text);
+                    console.log("onDidReceiveMessage: " + message.text);
                 }
             });
             this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' });
+            console.log("command setText sent to webview");
         } else {
             this.askAiPanel.reveal();
-            this.askAiPanel.webview.postMessage({ command: 'setText', text: 'Test' });
+            this.lastActiveEditor = vscode.window.activeTextEditor;
+            let selectedText = ""
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                selectedText = editor.document.getText(editor.selection);
+                if (selectedText.length > 0) selectedText = "Explain the following source code: " + selectedText
+            }
+            this.askAiPanel.webview.postMessage({ command: 'setText', text: selectedText });
+            console.log("command setText sent to webview");
         }
     }
 
