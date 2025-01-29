@@ -24,6 +24,7 @@ export class Architect {
     private extraContext: ExtraContext;
     private llamaServer: LlamaServer
     private lruResultCache: LRUCache
+    private eventlogs: string[] = []
     private fileSaveTimeout: NodeJS.Timeout | undefined;
     private lastCompletion: SuggestionDetails = {suggestion: "", position: new vscode.Position(0, 0), inputPrefix: "", inputSuffix: "", prompt: ""};
     private myStatusBarItem:vscode.StatusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Left, 100);
@@ -215,6 +216,10 @@ export class Architect {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
+            let eventLogsCombined = ""
+            if (this.eventlogs.length > 0){
+                eventLogsCombined = this.eventlogs.reverse().reduce((accumulator, currentValue) => accumulator + currentValue + "\n" , "");
+            }
             let extraContext = ""
             if (this.extraContext.chunks.length > 0){
                 extraContext = this.extraContext.chunks.reduce((accumulator, currentValue) => accumulator + "Time: " + currentValue.time + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
@@ -223,7 +228,7 @@ export class Architect {
             if (this.lruResultCache.size() > 0){
                 completionCache = Array.from(this.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
             }
-            vscode.env.clipboard.writeText("Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
+            vscode.env.clipboard.writeText("Events:\n" + eventLogsCombined + "\n\n------------------------------\n" + "Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
         });
         context.subscriptions.push(triggerCopyChunksDisposable);
     }
@@ -248,7 +253,7 @@ export class Architect {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 // Delegate to the built-in paste action
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
                 return;
             }
             const selection = editor.selection;
@@ -259,17 +264,19 @@ export class Architect {
              // Run async to not affect copy action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in command to complete the actual copy
             await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
+            this.addEventLog("", "COPY_INTERCEPT", selectedLines[0])
         });
+        context.subscriptions.push(copyCmd);
 
         const cutCmd = vscode.commands.registerCommand('extension.cutIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
             if (!editor) {
                 // Delegate to the built-in paste action
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
+                await vscode.commands.executeCommand('editor.action.clipboardCutAction');
                 return;
             }
             const selection = editor.selection;
@@ -279,32 +286,13 @@ export class Architect {
             // Run async to not affect cut action
             setTimeout(async () => {
                 this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
+            }, 1000);
 
             // Delegate to the built-in cut
             await vscode.commands.executeCommand('editor.action.clipboardCutAction');
+            this.addEventLog("", "CUT_INTERCEPT", selectedLines[0])
         });
-
-        const pasteCmd = vscode.commands.registerCommand('extension.pasteIntercept', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) {
-                // Delegate to the built-in paste action
-                await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-                return;
-            }
-
-            // Read the system clipboard using VS Code's API
-            const clipboardText = await vscode.env.clipboard.readText();
-            let selectedLines = clipboardText.split(/\r?\n/);
-            // Run async to not affect paste action
-            setTimeout(async () => {
-                this.extraContext.pickChunk(selectedLines, false, true, editor.document);
-            }, 0);
-
-            // Delegate to the built-in paste action
-            await vscode.commands.executeCommand('editor.action.clipboardPasteAction');
-        });
-        context.subscriptions.push(copyCmd, cutCmd, pasteCmd);
+        context.subscriptions.push(cutCmd);
     }
 
     handleDocumentSave = (document: vscode.TextDocument) => {
@@ -325,15 +313,25 @@ export class Architect {
                 this.extraContext.pickChunk(chunkLines, true, true, document);
             }
         }, 1000); // Adjust the delay as needed
+        this.addEventLog("", "SAVE", "")
     }
 
     delay = (ms: number) => {
         return new Promise<void>(resolve => setTimeout(resolve, ms));
       }
+    
+      addEventLog = (group: string, event: string, details: string) => {
+        this.eventlogs.push(Date.now() + ", " + group + ", " + event + ", " + details.replace(",", " "));
+        if (this.eventlogs.length > this.extConfig.MAX_EVENTS_IN_LOG) {
+            this.eventlogs.shift();
+        }
+    }
 
     // Class field is used instead of a function to make "this" available
     getCompletionItems = async (document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> => {
+        let group = "GET_COMPLETION_" + Date.now();
         if (!this.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
+            this.addEventLog(group, "MANUAL_MODE_AUTOMATIC_TRIGGERING_RETURN", "")
             return null;
         }
 
@@ -341,6 +339,7 @@ export class Architect {
         while (this.isRequestInProgress) {
             await this.delay(this.extConfig.DELAY_BEFORE_COMPL_REQUEST);
             if (token.isCancellationRequested) {
+                this.addEventLog(group, "CANCELLATION_TOKEN_RETURN", "waiting")
                 return null;
             }
         }
@@ -357,6 +356,7 @@ export class Architect {
         const nindent = lineText.length - lineText.trimStart().length
         if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && lineSuffix.length > this.extConfig.max_line_suffix) {
             this.isRequestInProgress = false
+            this.addEventLog(group, "TOO_LONG_SUFFIX_RETURN", "")
             return null
         }
         const prompt = linePrefix;
@@ -373,6 +373,7 @@ export class Architect {
                 this.isForcedNewRequest = false
                 if (token.isCancellationRequested){
                     this.isRequestInProgress = false
+                    this.addEventLog(group, "CANCELLATION_TOKEN_RETURN", "just before server request")
                     return null;
                 }
                 this.showThinkingInfo();
@@ -384,6 +385,7 @@ export class Architect {
             if (completion == undefined || completion.trim() == ""){
                 this.showInfo(undefined);
                 this.isRequestInProgress = false
+                this.addEventLog(group, "NO_SUGGESTION_RETURN", "")
                 return [];
             }
 
@@ -394,6 +396,7 @@ export class Architect {
             if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)) {
                 this.showInfo(undefined);
                 this.isRequestInProgress = false
+                this.addEventLog(group, "DISCARD_SUGGESTION_RETURN", "")
                 return [];
             }
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
@@ -410,12 +413,18 @@ export class Architect {
                 }
             }, 0);
             this.isRequestInProgress = false
+            this.addEventLog(group, "NORMAL_RETURN", suggestionLines[0])
             return [this.getSuggestion(completion, position)];
         } catch (err) {
             console.error("Error fetching llama completion:", err);
             vscode.window.showInformationMessage(`Error getting response. Please check if llama.cpp server is running. `);
-            if (err instanceof Error) vscode.window.showInformationMessage(err.message);
+            let errorMessage = "Error fetching completion"
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage(err.message);
+                errorMessage = err.message
+            }
             this.isRequestInProgress = false
+            this.addEventLog(group, "ERROR_RETURN", errorMessage)
             return [];
         }
     }

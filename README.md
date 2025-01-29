@@ -29,7 +29,9 @@ Install the [llama-vscode](https://marketplace.visualstudio.com/items?itemName=g
 
 ![image](https://github.com/user-attachments/assets/a5998b49-49c5-4623-b3a8-7100b72af27e)
 
-### llama.cpp setup
+Note: also available at [Open VSX](https://open-vsx.org/extension/ggml-org/llama-vscode)
+
+### `llama.cpp` setup
 
 The plugin requires a [llama.cpp](https://github.com/ggerganov/llama.cpp) server instance to be running at the configured endpoint:
 
