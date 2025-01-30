@@ -537,6 +537,10 @@ export class Architect {
         if (suggestionLines.length > 1) {
             futureInputPrefix = inputPrefix + prompt + suggestionLines.slice(0, -1).join('\n') + '\n';
             futurePrompt = suggestionLines[suggestionLines.length - 1];
+            let futureInputPrefixLines = futureInputPrefix.slice(0,-1).split(/\r?\n/)
+            if (futureInputPrefixLines.length > this.extConfig.n_prefix){
+                futureInputPrefix = futureInputPrefixLines.slice(futureInputPrefixLines.length - this.extConfig.n_prefix).join('\n')+ '\n';
+            }
         }
         let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
         let cached_completion = this.lruResultCache.get(futureHashKey)
@@ -679,6 +683,8 @@ export class Architect {
         if (suggestionLines.length > 1
             && (lineSuffix.trim() === "")) {
             let linesToCompareCount = suggestionLines.length - 1
+            // if cursor on the last line don't discard
+            if (position.line + linesToCompareCount > document.lineCount - 1) return updatedSuggestion;
             let indLastSuggestionLine =  suggestionLines.slice(1).reverse().findIndex((value, index) => value != document.lineAt((position.line + linesToCompareCount) - index).text)
             return suggestionLines.slice(0, indLastSuggestionLine + 2).join("\n"); // if indLastSuggestionLine is -1 then all following lines are the same as the suggestion
         }
