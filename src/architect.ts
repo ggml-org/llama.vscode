@@ -1,9 +1,10 @@
 // TODO
-// По подразбиране порта по подразбиране да е друг (сървера и екстеншъна) - примерно 8012 (за да няма конфликти)
-// Да не премигва при избор само на ред или дума (върни частично проверката за съвпадение с последния рекуест?)
+// Ако има linesuffix да се остави от suggestion само първия ред (намаляване на дължината на отговора при заявката?)
+// При кеширане на следваща заявка да се отрязват от префикса първите няколко реда ако е необходимо
 // Profiling - провери кое колко време отнема, за да оптимизираш (примерно пускай паралелно информацията в статус бара..., по-малко търсене в кеша...)
 // - Търсенето в кеша при 250 елемента и 49 символа отнема 1/5 милисекунда => може по-голям кеш, може търсене до началото на реда
 // - ShowInfo < 1/10 мс
+// Да не премигва при избор само на ред или дума (върни частично проверката за съвпадение с последния рекуест?)
 // (Нисък приоритет) Прозорец на майкософт интелисенс - да не се показва или нещо друго по-красиво
 import * as vscode from 'vscode';
 import { LRUCache } from './lru-cache';
@@ -406,9 +407,11 @@ export class Architect {
             setTimeout(async () => {
                 if (isCachedResponse) this.showCachedInfo()
                 else this.showInfo(data);
-                if (!(token.isCancellationRequested)){
+                if (!token.isCancellationRequested && lineSuffix.trim() === ""){
                     await this.cacheFutureSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
                     await this.cacheFutureAcceptLineSuggestion(inputPrefix, inputSuffix, prompt, suggestionLines);
+                }
+                if (!token.isCancellationRequested){
                     this.extraContext.addFimContextChunks(position, context, document);
                 }
             }, 0);
@@ -682,9 +685,15 @@ export class Architect {
         
         // if the following lines repeat the suggestion and the first line ends with the line suffix update suggestion
         if (suggestionLines.length > 1
-            && (suggestionLines[0].endsWith(lineSuffix))
+            && suggestionLines[0].endsWith(lineSuffix)
             && suggestionLines.slice(1).every((value, index) => value === document.lineAt((position.line + 1) + index).text)){
             return suggestionLines[0].slice(0, -lineSuffix.length);
+        }
+
+        // if there is a line suffix suggest only one line
+        if (suggestionLines.length > 1
+            && lineSuffix.trim() != ""){
+            return suggestionLines[0];
         }
 
         return updatedSuggestion;
