@@ -674,9 +674,10 @@ export class Architect {
 
         // if the following lines repeat the suggestion and the line suffix is empty - update suggestion
         if (suggestionLines.length > 1
-            && (lineSuffix.trim() === "")
-            && suggestionLines.slice(1).every((value, index) => value === document.lineAt((position.line + 1) + index).text)){
-            return suggestionLines[0];
+            && (lineSuffix.trim() === "")) {
+            let linesToCompareCount = suggestionLines.length - 1
+            let indLastSuggestionLine =  suggestionLines.slice(1).reverse().findIndex((value, index) => value != document.lineAt((position.line + linesToCompareCount) - index).text)
+            return suggestionLines.slice(0, indLastSuggestionLine + 2).join("\n"); // if indLastSuggestionLine is -1 then all following lines are the same as the suggestion
         }
         
         // if the following lines repeat the suggestion and the first line ends with the line suffix update suggestion
