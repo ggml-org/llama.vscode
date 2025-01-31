@@ -7,7 +7,7 @@ export class Configuration {
     endpoint = "http=//127.0.0.1:8012";
     is_openai_compatible = false;
     openai_client: OpenAI | null = null;
-    openai_client_model: string | null = null;
+    openai_client_model: string = "";
     openai_prompt_template: string = "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>";
     auto = true;
     api_key = "";

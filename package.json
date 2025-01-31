@@ -112,7 +112,22 @@
         "llama-vscode.api_key": {
           "type": "string",
           "default": "",
-          "description": "llama.cpp server api key (optional)"
+          "description": "llama.cpp server api key (optional) or OpenAI endpoint API key (required if using OpenAI compatible endpoint)"
+        },
+        "llama-vscode.is_openai_compatible": {
+          "type": "boolean",
+          "default": false,
+          "description": "If the server exposes an OpenAI API compatible endpoint."
+        },
+        "llama-vscode.openai_client_model": {
+          "type": "string",
+          "default": "",
+          "description": "The FIM friendly model supported by your OpenAI compatible endpoint to be used (e.g., Qwen2.5-Coder-14B-4-bit)"
+        },
+        "llama-vscode.openai_prompt_template": {
+          "type": "string",
+          "default": "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>",
+          "description": "The prompt template to be used for the OpenAI compatible endpoint."
         },
         "llama-vscode.n_prefix": {
           "type": "number",
