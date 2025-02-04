@@ -400,8 +400,7 @@ export class Architect {
                 return [];
             }
 
-            // TODO: this is disabled because it removes many useful suggestions
-            //completion = this.updateSuggestion(suggestionLines, document, position, linePrefix, lineSuffix);
+            completion = this.updateSuggestion(suggestionLines, document, position, linePrefix, lineSuffix);
 
             if (!isCachedResponse) this.lruResultCache.put(hashKey, completion)
             this.lastCompletion = this.getCompletionDetails(completion, position, inputPrefix, inputSuffix, prompt);
@@ -689,7 +688,8 @@ export class Architect {
             // if cursor on the last line don't discard
             if (position.line + linesToCompareCount > document.lineCount - 1) return updatedSuggestion;
             let indLastSuggestionLine =  suggestionLines.slice(1).reverse().findIndex((value, index) => value != document.lineAt((position.line + linesToCompareCount) - index).text)
-            return suggestionLines.slice(0, indLastSuggestionLine + 2).join("\n"); // if indLastSuggestionLine is -1 then all following lines are the same as the suggestion
+            if (indLastSuggestionLine == -1) return suggestionLines[0]; // all following lines are the same as the suggestion
+            else return suggestionLines.slice(0, suggestionLines.length - indLastSuggestionLine).join("\n"); 
         }
 
         // if the following lines repeat the suggestion and the first line ends with the line suffix update suggestion
