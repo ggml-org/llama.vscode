@@ -60,6 +60,11 @@
     ],
     "keybindings": [
       {
+        "key": "tab",
+        "command": "editor.action.inlineSuggest.commit",
+        "when": "inlineSuggestionVisible"
+      },
+      {
         "command": "extension.triggerInlineCompletion",
         "key": "ctrl+l",
         "when": "editorTextFocus"
