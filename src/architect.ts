@@ -205,6 +205,10 @@ export class Architect {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
+            // Hide the current suggestion to force VS Code to call the completion provider instead of using cache
+            await vscode.commands.executeCommand('editor.action.inlineSuggest.hide');
+            // Wait a tiny bit to ensure VS Code processes the command
+            await new Promise(resolve => setTimeout(resolve, 50));
             this.isForcedNewRequest = true;
             vscode.commands.executeCommand('editor.action.inlineSuggest.trigger');
         });
