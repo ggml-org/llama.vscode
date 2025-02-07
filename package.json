@@ -117,7 +117,7 @@
        "llama-vscode.api_key": {
           "type": "string",
           "default": "",
-          "description": "llama.cpp server api key (optional) or OpenAI endpoint API key (required if using OpenAI compatible endpoint)"
+          "description": "llama.cpp server api key or OpenAI endpoint API key (optional)"
         },
         "llama-vscode.is_openai_compatible": {
           "type": "boolean",

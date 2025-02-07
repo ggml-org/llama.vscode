@@ -139,9 +139,9 @@ export class Configuration {
 
     setOpenAiClient = () => {
         this.openai_client = null;
-        if (this.is_openai_compatible && this.api_key != undefined && this.api_key != "") {
+        if (this.is_openai_compatible) {
             const openai = new OpenAI({
-                apiKey: this.api_key,
+                apiKey: this.api_key || undefined,
                 baseURL: this.endpoint,
             });
 
