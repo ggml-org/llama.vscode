@@ -141,7 +141,7 @@ export class Configuration {
         this.openai_client = null;
         if (this.is_openai_compatible) {
             const openai = new OpenAI({
-                apiKey: this.api_key || undefined,
+                apiKey: this.api_key || "empty",
                 baseURL: this.endpoint,
             });
 
