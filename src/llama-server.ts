@@ -121,7 +121,8 @@ export class LlamaServer {
     prepareLlamaForNextCompletion = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
         if (this.extConfig.is_openai_compatible) {
-            this.handleOpenAICompletion(chunks, "", "", "", true);
+            // wtg 20250207 - per @igardev ... "This makes sense only if there is a server cache"
+            // this.handleOpenAICompletion(chunks, "", "", "", true);
             return;
         }
 
