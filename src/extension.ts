@@ -3,7 +3,7 @@ import { Architect } from './architect';
 
 export function activate(context: vscode.ExtensionContext) {
     let architect = new Architect();
-
+    architect.launchCmd(context)
     architect.setStatusBar(context)
     architect.setOnChangeConfiguration(context);
     architect.setCompletionProvider(context);
