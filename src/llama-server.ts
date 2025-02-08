@@ -1,6 +1,5 @@
 import axios from "axios";
 import { Configuration } from "./configuration";
-import { PassThrough } from "stream";
 
 const STATUS_OK = 200;
 
@@ -21,13 +20,13 @@ export interface LlamaResponse {
 
 export class LlamaServer {
     private extConfig: Configuration;
-    private readonly defaultRequestParams = {
+    private defaultRequestParams = {
         top_k: 40,
         top_p: 0.99,
         stream: false,
         samplers: ["top_k", "top_p", "infill"],
         cache_prompt: true,
-    } as const;
+    };
 
     constructor(config: Configuration) {
         this.extConfig = config;
@@ -61,7 +60,7 @@ export class LlamaServer {
             max_tokens: this.extConfig.n_predict,
             temperature: 0.1,
             top_p: this.defaultRequestParams.top_p,
-            stream: this.defaultRequestParams.stream,
+            stream: false,
         });
 
         if (isPreparation) return;
@@ -121,15 +120,18 @@ export class LlamaServer {
     prepareLlamaForNextCompletion = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
         if (this.extConfig.use_openai_endpoint) {
-            // wtg 20250207 - per @igardev ... "This makes sense only if there is a server cache"
-            // this.handleOpenAICompletion(chunks, "", "", "", true);
             return;
         }
 
         // else, make a request to the API to prepare for the next FIM
+        let payload =  this.createRequestPayload("", "", chunks, "", undefined)
+        payload.n_predict = 0;
+        payload.samplers = [];
+        payload.t_max_predict_ms = 1
+        payload.t_max_prompt_ms = 1
         axios.post<LlamaResponse>(
             `${this.extConfig.endpoint}/infill`,
-            this.createRequestPayload("", "", chunks, "", undefined),
+            payload,
             this.extConfig.axiosRequestConfig
         );
     };
