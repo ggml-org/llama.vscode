@@ -35,7 +35,7 @@ export class ExtraContext {
             }
         }
 
-        this.llamaServer.prepareLlamaForNextCompletion(this.chunks)
+        this.llamaServer.updateExtraContext(this.chunks)
     };
 
     // Class field is used instead of a function to make "this" available

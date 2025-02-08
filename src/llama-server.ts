@@ -81,7 +81,21 @@ export class LlamaServer {
         };
     }
 
-    private createRequestPayload(inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, nindent?: number) {
+    private createRequestPayload(noPredict: boolean, inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, nindent?: number) {
+        if (noPredict) {
+            return {
+                input_prefix: inputPrefix,
+                input_suffix: inputSuffix,
+                input_extra: chunks,
+                prompt,
+                n_predict: 0,
+                samplers: [],
+                cache_prompt: true,
+                t_max_prompt_ms: this.extConfig.t_max_prompt_ms,
+                t_max_predict_ms: 1,
+            };
+        }
+
         return {
             input_prefix: inputPrefix,
             input_suffix: inputSuffix,
@@ -95,7 +109,7 @@ export class LlamaServer {
         };
     }
 
-    getLlamaCompletion = async (
+    getFIMCompletion = async (
         inputPrefix: string,
         inputSuffix: string,
         prompt: string,
@@ -111,14 +125,14 @@ export class LlamaServer {
         // else, default to llama.cpp
         const response = await axios.post<LlamaResponse>(
             `${this.extConfig.endpoint}/infill`,
-            this.createRequestPayload(inputPrefix, inputSuffix, chunks, prompt, nindent),
+            this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, nindent),
             this.extConfig.axiosRequestConfig
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
     };
 
-    prepareLlamaForNextCompletion = (chunks: any[]): void => {
+    updateExtraContext = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
         if (this.extConfig.use_openai_endpoint) {
             // wtg 20250207 - per @igardev ... "This makes sense only if there is a server cache"
@@ -129,7 +143,7 @@ export class LlamaServer {
         // else, make a request to the API to prepare for the next FIM
         axios.post<LlamaResponse>(
             `${this.extConfig.endpoint}/infill`,
-            this.createRequestPayload("", "", chunks, "", undefined),
+            this.createRequestPayload(true, "", "", chunks, "", undefined),
             this.extConfig.axiosRequestConfig
         );
     };

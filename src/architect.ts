@@ -383,7 +383,7 @@ export class Architect {
                 }
                 this.showThinkingInfo();
 
-                data = await this.llamaServer.getLlamaCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
+                data = await this.llamaServer.getFIMCompletion(inputPrefix, inputSuffix, prompt, this.extraContext.chunks, nindent)
                 if (data != undefined) completion = data.content;
                 else completion = undefined
             }
@@ -551,7 +551,7 @@ export class Architect {
         let futureHashKey = this.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)
         let cached_completion = this.lruResultCache.get(futureHashKey)
         if (cached_completion != undefined) return;
-        let futureData = await this.llamaServer.getLlamaCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks, prompt.length - prompt.trimStart().length);
+        let futureData = await this.llamaServer.getFIMCompletion(futureInputPrefix, futureInputSuffix, futurePrompt, this.extraContext.chunks, prompt.length - prompt.trimStart().length);
         let futureSuggestion = "";
         if (futureData != undefined && futureData.content != undefined && futureData.content.trim() != "") {
             futureSuggestion = futureData.content;
