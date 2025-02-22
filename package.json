@@ -152,12 +152,12 @@
         "llama-vscode.t_max_prompt_ms": {
           "type": "number",
           "default": 500,
-          "description": "max alloted time for the prompt processing (TODO: not yet supported)"
+          "description": "max allowed time for the prompt processing (TODO: not yet supported)"
         },
         "llama-vscode.t_max_predict_ms": {
           "type": "number",
           "default": 500,
-          "description": "max alloted time for the prediction"
+          "description": "max allowed time for the prediction"
         },
         "llama-vscode.show_info": {
           "type": "boolean",
