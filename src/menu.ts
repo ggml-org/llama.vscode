@@ -24,6 +24,18 @@ export class Menu {
                 label: "$(book) View Documentation...",
             }]
 
+        if (this.app.extConfig.chatendpoint && this.app.extConfig.chatendpoint.trim() != "")
+            menuItems.push(
+                {
+                    label: "Chat with AI",
+                    description: `Opens a chat with AI window inside VS Code using server from property chatendpoint`
+                },
+                {
+                    label: "Chat with AI with project context",
+                    description: `Opens a chat with AI window with project context inside VS Code using server from property chatendpoint`
+                })
+
+
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
                 {
@@ -89,7 +101,7 @@ export class Menu {
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
 
-    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) => {
+    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {
         const DEFAULT_PORT_FIM_MODEL = "8012"
         const PRESET_PLACEHOLDER = "[preset]";
         const MODEL_PLACEHOLDER = "[model]"
@@ -164,6 +176,12 @@ export class Menu {
             case "$(book) View Documentation...":
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
                 break;
+            case "Chat with AI":
+                this.app.askAi.showAskAi(false, context)
+                break;
+            case "Chat with AI with project context":
+                this.app.askAi.showAskAi(true, context)
+                break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
                 break;
@@ -182,7 +200,7 @@ export class Menu {
     }
 
 
-    showMenu = async () => {
+    showMenu = async (context: vscode.ExtensionContext) => {
         const currentLanguage = vscode.window.activeTextEditor?.document.languageId;
         const isLanguageEnabled = currentLanguage ? this.app.extConfig.isCompletionEnabled(undefined, currentLanguage) : true;
 
@@ -190,7 +208,7 @@ export class Menu {
         const selected = await vscode.window.showQuickPick(items, { title: "Llama Menu" });
 
         if (selected) {
-            await this.handleMenuSelection(selected, currentLanguage, this.app.extConfig.languageSettings);
+            await this.handleMenuSelection(selected, currentLanguage, this.app.extConfig.languageSettings, context);
         }
     }
 }

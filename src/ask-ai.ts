@@ -56,7 +56,7 @@ export class AskAi {
                 if (message.command === 'escapePressed') {
                     this.focusEditor();
                 } else if (message.command === 'jsAction') {
-                    console.log("onDidReceiveMessage: " + message.text);
+                    // console.log("onDidReceiveMessage: " + message.text);
                 }
             });
             // Wait for the page to load before sending message
@@ -66,18 +66,15 @@ export class AskAi {
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
-            // aiPanel.webview.postMessage({ command: 'setText', text: selectedText, context: extraCont });
             // Wait for the page to load before sending message
             setTimeout(async () => {             
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: selectedText, context: extraCont });
             }, 500);
-            console.log("command setText sent to webview");
         }
     }
 
     focusEditor = () => {
         if (this.lastActiveEditor) {
-            // vscode.commands.executeCommand('workbench.action.focusActiveEditorGroup');
             vscode.window.showTextDocument(this.lastActiveEditor.document, this.lastActiveEditor.viewColumn, false);
         }
     }

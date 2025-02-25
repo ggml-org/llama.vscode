@@ -80,7 +80,7 @@ export class Architect {
         const showMenuCommand = vscode.commands.registerCommand(
             'extension.showMenu',
             async () => {
-                await this.app.menu.showMenu();
+                await this.app.menu.showMenu(context);
             }
         );
         context.subscriptions.push(showMenuCommand);
@@ -204,8 +204,9 @@ export class Architect {
         this.app.statusbar.initializeStatusBar();
         this.app.statusbar.registerEventListeners(context);
 
-        context.subscriptions.push(
-            vscode.commands.registerCommand('llama-vscode.showMenu', this.app.menu.showMenu)
+        context.subscriptions.push(vscode.commands.registerCommand('llama-vscode.showMenu', async () => {
+                await this.app.menu.showMenu(context);
+            })
         );
     }
 
