@@ -9,6 +9,8 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.setCompletionProvider(context);
     app.architect.registerCommandManualCompletion(context);
     app.architect.registerCommandCopyChunks(context);
+    app.architect.registerCommandAskAi(context);
+    app.architect.registerCommandAskAiWithContext(context);
     app.architect.registerCommandNoCacheCompletion(context);
     app.architect.setOnSaveFile(context);
     app.architect.setPeriodicRingBufferUpdate(context);
@@ -21,5 +23,6 @@ export function activate(context: vscode.ExtensionContext) {
 
 export function deactivate() {
     // VS Code will dispose all registerd disposables
-    app.llamaServer.killCmd();
+    app.llamaServer.killFimCmd();
+    app.llamaServer.killChatCmd();
 }

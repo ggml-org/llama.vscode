@@ -21,10 +21,9 @@ export interface LlamaResponse {
 }
 
 export class LlamaServer {
-    // private extConfig: Configuration;
     private app: Application
-    private vsCodeTerminal: Terminal | undefined;
-    private eventEmitter: EventEmitter;
+    private vsCodeFimTerminal: Terminal | undefined;
+    private vsCodeChatTerminal: Terminal | undefined;
     private readonly defaultRequestParams = {
         top_k: 40,
         top_p: 0.99,
@@ -35,8 +34,7 @@ export class LlamaServer {
 
     constructor(application: Application) {
         this.app = application;
-        this.eventEmitter = new EventEmitter();
-        this.vsCodeTerminal = undefined;
+        this.vsCodeFimTerminal = undefined;
     }
 
     private replacePlaceholders(template: string, replacements: { [key: string]: string }): string {
@@ -152,22 +150,47 @@ export class LlamaServer {
         );
     };
 
-    onlaunchCmdClose = (callback: (data: { code: number, stderr: string }) => void): void => {
-        this.eventEmitter.on('processClosed', callback);
-    }
-
-    shellCmd = (launchCmd: string): void => {
+    shellFimCmd = (launchCmd: string): void => {
         if (!launchCmd) {
+            vscode.window.showInformationMessage("There is no command to execute.");
             return;
         }
-        this.vsCodeTerminal = vscode.window.createTerminal({
-            name: 'llama.cpp Command Terminal'
-        });
-        this.vsCodeTerminal.show(true);
-        this.vsCodeTerminal.sendText(launchCmd);
+        try {
+            this.vsCodeFimTerminal = vscode.window.createTerminal({
+                name: 'llama.cpp Completion Terminal'
+            });
+            this.vsCodeFimTerminal.show(true);
+            this.vsCodeFimTerminal.sendText(launchCmd);
+        } catch(err){
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage("Error executind command " + launchCmd +" : " + err.message);
+            }
+        }
     }
 
-    killCmd = (): void => {       
-        if (this.vsCodeTerminal) this.vsCodeTerminal.dispose();
-    }        
+    shellChatCmd = (launchCmd: string): void => {
+        if (!launchCmd) {
+            vscode.window.showInformationMessage("There is no command to execute.");
+            return;
+        }
+        try {
+            this.vsCodeChatTerminal = vscode.window.createTerminal({
+                name: 'llama.cpp Completion Terminal'
+            });
+            this.vsCodeChatTerminal.show(true);
+            this.vsCodeChatTerminal.sendText(launchCmd);
+        } catch(err){
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage("Error executind command " + launchCmd +" : " + err.message);
+            }
+        }
+    }
+
+    killFimCmd = (): void => {       
+        if (this.vsCodeFimTerminal) this.vsCodeFimTerminal.dispose();
+    } 
+    
+    killChatCmd = (): void => {       
+        if (this.vsCodeChatTerminal) this.vsCodeChatTerminal.dispose();
+    }
 }

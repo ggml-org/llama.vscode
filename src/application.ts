@@ -7,6 +7,7 @@ import {Statusbar} from "./statusbar";
 import {Menu} from "./menu";
 import {Completion} from "./completion";
 import {Logger} from "./logger";
+import { AskAi } from "./ask-ai";
 
 export class Application {
     private static instance: Application;
@@ -19,6 +20,7 @@ export class Application {
     public menu: Menu
     public completion: Completion
     public logger: Logger
+    public askAi: AskAi
 
     private constructor() {
         this.extConfig = new Configuration()
@@ -30,6 +32,7 @@ export class Application {
         this.menu = new Menu(this)
         this.completion = new Completion(this)
         this.logger = new Logger(this)
+        this.askAi = new AskAi(this)
     }
 
     public static getInstance(): Application {

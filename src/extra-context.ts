@@ -5,6 +5,7 @@ export class ExtraContext {
     private app: Application
     chunks: any[] = [];
     chunksLines: string[][] = []; //lines of each chunk are needed for measuring the distance
+    cnunksHash: string[] = []
     queuedChunks: any[] = [];
     queuedChunksLines: string[][] = [];
     lastComplStartTime = Date.now();
@@ -26,10 +27,13 @@ export class ExtraContext {
         let queueChunkLns = this.queuedChunksLines.shift()
         if (queueChunkLns != undefined) {
             this.chunksLines.push(queueChunkLns);
-            this.chunks.push(this.queuedChunks.shift());
+            let newChunk = this.queuedChunks.shift()
+            this.cnunksHash.push(this.app.lruResultCache.getHash(newChunk.text))
+            this.chunks.push(newChunk);
             while (this.chunks.length > this.app.extConfig.ring_n_chunks) {
                 this.chunks.shift();
                 this.chunksLines.shift()
+                this.cnunksHash.shift()
             }
         }
 
@@ -43,9 +47,7 @@ export class ExtraContext {
         // gather some extra context nearby and process it in the background
         // only gather chunks if the cursor has moved a lot
         // TODO: something more clever? reranking?
-        // TODO Clarify if only on automatic trigerring the context chunks is needed
-        // if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && deltaLines > this.extConfig.MAX_LAST_PICK_LINE_DISTANCE) {
-            if (deltaLines > this.app.extConfig.MAX_LAST_PICK_LINE_DISTANCE) {
+        if (deltaLines > this.app.extConfig.MAX_LAST_PICK_LINE_DISTANCE) {
             // expand the prefix even further
             let prefixChunkLines = this.getDocumentLines(Math.max(0, position.line - this.app.extConfig.ring_scope), Math.max(0, position.line - this.app.extConfig.n_prefix), document);
             this.pickChunk(prefixChunkLines, false, false, document);
@@ -78,7 +80,6 @@ export class ExtraContext {
         if (lines.length + 1 < this.app.extConfig.ring_chunk_size)
             newChunkLines = lines
         else {
-            // TODO Clarify why only half sized chunk
             let startLine = Math.floor(Math.random() * (Math.max(0, lines.length - this.app.extConfig.ring_chunk_size / 2 + 1)))
             let endline = Math.min(startLine + this.app.extConfig.ring_chunk_size / 2, lines.length)
             newChunkLines = lines.slice(startLine, endline)
@@ -97,6 +98,7 @@ export class ExtraContext {
                 if (this.jaccardSimilarity(this.chunksLines[i], newChunkLines) > 0.9) {
                     this.chunks.splice(i, 1)
                     this.chunksLines.splice(i, 1)
+                    this.cnunksHash.splice(i, 1)
                     this.ringNEvict++;
                 }
             }

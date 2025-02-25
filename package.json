@@ -60,6 +60,14 @@
       {
         "command": "extension.showMenu",
         "title": "Show Menu"
+      },
+      {
+        "command": "extension.askAi",
+        "title": "Ask AI"
+      },
+      {
+        "command": "extension.askAiWithContext",
+        "title": "Ask AI With Context"
       }
     ],
     "keybindings": [
@@ -108,21 +116,41 @@
         "command": "extension.showMenu",
         "key": "ctrl+shift+m",
         "when": "true"
+      },
+      {
+        "command": "extension.askAi",
+        "key": "ctrl+;",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.askAiWithContext",
+        "key": "ctrl+Shift+;",
+        "when": "editorTextFocus"
       }
     ],
     "configuration": {
       "type": "object",
       "title": "llama.vscode Configuration",
       "properties": {
-        "llama-vscode.launch_cmd": {
+        "llama-vscode.launch_completion": {
           "type": "string",
           "default": "",
-          "description": "Shell command executed from menu"
+          "description": "Shell command for starting fim llama.cpp server, executed from the menu"
+        },
+        "llama-vscode.launch_chat": {
+          "type": "string",
+          "default": "",
+          "description": "Shell command for starting chat llama.cpp server, executed from the menu"
         },
         "llama-vscode.endpoint": {
           "type": "string",
           "default": "http://127.0.0.1:8012",
-          "description": "The URL to be used by the extension."
+          "description": "The URL to be used by the extension for code completion."
+        },
+        "llama-vscode.chatendpoint": {
+          "type": "string",
+          "default": "http://127.0.0.1:8011",
+          "description": "The URL to be used by the extension for chat with ai."
         },
         "llama-vscode.auto": {
           "type": "boolean",
