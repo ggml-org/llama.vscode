@@ -111,7 +111,7 @@ export class LlamaServer {
             t_max_predict_ms: this.app.extConfig.t_max_predict_ms,
         };
     }
-    
+
 
     getFIMCompletion = async (
         inputPrefix: string,
@@ -186,11 +186,11 @@ export class LlamaServer {
         }
     }
 
-    killFimCmd = (): void => {       
+    killFimCmd = (): void => {
         if (this.vsCodeFimTerminal) this.vsCodeFimTerminal.dispose();
-    } 
-    
-    killChatCmd = (): void => {       
+    }
+
+    killChatCmd = (): void => {
         if (this.vsCodeChatTerminal) this.vsCodeChatTerminal.dispose();
     }
 }

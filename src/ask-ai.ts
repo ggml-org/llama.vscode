@@ -21,21 +21,21 @@ export class AskAi {
         if (withContext){
              aiPanel = this.askAiWithContextPanel
              webviewIdentifier = 'htmlAskAiWithContextViewer'
-             let chunksToSend = this.app.extraContext.chunks.filter((_, index) => !this.sentContextChunks.includes(this.app.extraContext.cnunksHash[index])); 
-             let chunksToSendHashe = this.app.extraContext.cnunksHash.filter((item) => !this.sentContextChunks.includes(item)); 
+             let chunksToSend = this.app.extraContext.chunks.filter((_, index) => !this.sentContextChunks.includes(this.app.extraContext.chunksHash[index]));
+             let chunksToSendHash = this.app.extraContext.chunksHash.filter((item) => !this.sentContextChunks.includes(item));
              if (chunksToSend.length > 0) extraCont = "Here are pieces of code from different files of the project: \n" + chunksToSend.reduce((accumulator, currentValue) => accumulator + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
-             this.sentContextChunks.push(...chunksToSendHashe)
+             this.sentContextChunks.push(...chunksToSendHash)
              panelTitle = "Ask AI With Project Context"
         }
         let selectedText = ""
         if (editor) {
             selectedText = editor.document.getText(editor.selection);
             if (selectedText.length > 0) selectedText = "Explain the following source code: " + selectedText
-        } 
-        if (!aiPanel) {        
+        }
+        if (!aiPanel) {
             aiPanel = vscode.window.createWebviewPanel(
-                webviewIdentifier, 
-                panelTitle, 
+                webviewIdentifier,
+                panelTitle,
                 vscode.ViewColumn.Three, // Editor column to show the Webview
                 {
                     enableScripts: true, // Allow JavaScript execution
@@ -60,14 +60,14 @@ export class AskAi {
                 }
             });
             // Wait for the page to load before sending message
-            setTimeout(async () => {             
+            setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: selectedText, context: extraCont });
             }, 1000);
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
             // Wait for the page to load before sending message
-            setTimeout(async () => {             
+            setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: selectedText, context: extraCont });
             }, 500);
         }
@@ -91,15 +91,15 @@ export class AskAi {
                 // Initialize the VS Code API
                 const vscode = acquireVsCodeApi();
                 vscode.postMessage({ command: 'jsAction', text: 'vscode javascript object created' });
-    
+
                 // Listen for messages from the extension
                 window.addEventListener('message', (event) => {
                     vscode.postMessage({ command: 'jsAction', text: 'message received' });
-    
+
                     const { command, text, context } = event.data; // Extract the command and text from the event
                     if (command === 'setText') {
                         vscode.postMessage({ command: 'jsAction', text: 'command setText received' });
-    
+
                         const iframe = document.getElementById('askAiIframe');
                         if (iframe) {
                             vscode.postMessage({ command: 'jsAction', text: 'askAiIframe obtained' });
@@ -115,7 +115,7 @@ export class AskAi {
                         vscode.postMessage({ command: 'jsAction', text: text });
                     }
                 });
-    
+
                 // Listen for key events in the iframe
                 window.addEventListener('keydown', (event) => {
                     vscode.postMessage({ command: 'jsAction', text: 'keydown event received' });
@@ -147,5 +147,5 @@ export class AskAi {
         </html>
         `;
     }
-       
+
 }

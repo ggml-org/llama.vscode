@@ -5,7 +5,7 @@ export class ExtraContext {
     private app: Application
     chunks: any[] = [];
     chunksLines: string[][] = []; //lines of each chunk are needed for measuring the distance
-    cnunksHash: string[] = []
+    chunksHash: string[] = []
     queuedChunks: any[] = [];
     queuedChunksLines: string[][] = [];
     lastComplStartTime = Date.now();
@@ -28,12 +28,12 @@ export class ExtraContext {
         if (queueChunkLns != undefined) {
             this.chunksLines.push(queueChunkLns);
             let newChunk = this.queuedChunks.shift()
-            this.cnunksHash.push(this.app.lruResultCache.getHash(newChunk.text))
+            this.chunksHash.push(this.app.lruResultCache.getHash(newChunk.text))
             this.chunks.push(newChunk);
             while (this.chunks.length > this.app.extConfig.ring_n_chunks) {
                 this.chunks.shift();
                 this.chunksLines.shift()
-                this.cnunksHash.shift()
+                this.chunksHash.shift()
             }
         }
 
@@ -98,7 +98,7 @@ export class ExtraContext {
                 if (this.jaccardSimilarity(this.chunksLines[i], newChunkLines) > 0.9) {
                     this.chunks.splice(i, 1)
                     this.chunksLines.splice(i, 1)
-                    this.cnunksHash.splice(i, 1)
+                    this.chunksHash.splice(i, 1)
                     this.ringNEvict++;
                 }
             }

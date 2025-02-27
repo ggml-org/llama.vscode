@@ -24,7 +24,7 @@ export class Menu {
                 label: "$(book) View Documentation...",
             }]
 
-        if (this.app.extConfig.chatendpoint && this.app.extConfig.chatendpoint.trim() != "")
+        if (this.app.extConfig.chatendpoint && this.app.extConfig.chatendpoint.trim() != "") {
             menuItems.push(
                 {
                     label: "Chat with AI",
@@ -34,7 +34,7 @@ export class Menu {
                     label: "Chat with AI with project context",
                     description: `Opens a chat with AI window with project context inside VS Code using server from property chatendpoint`
                 })
-
+        }
 
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
@@ -53,7 +53,7 @@ export class Menu {
                 {
                     label: "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
                     description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
-                }, 
+                },
                 {
                     label: "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
                     description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
@@ -88,7 +88,7 @@ export class Menu {
             {
                 label: "Stop chat llama.cpp server",
                 description: `Stops chat llama.cpp server if it was started from llama.vscode menu."`
-            })     
+            })
 
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
@@ -100,13 +100,13 @@ export class Menu {
         let endpointParts = this.app.extConfig.endpoint.split(":");
         let port = endpointParts[endpointParts.length -1]
         let endpointChatParts = this.app.extConfig.chatendpoint.split(":");
-        let portChat = endpointParts[endpointChatParts.length -1]
+        let portChat = endpointChatParts[endpointChatParts.length -1]
         if (!Number.isInteger(Number(port))) port =  DEFAULT_PORT_FIM_MODEL
-        let llmMacVramTemplate = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port 
+        let llmMacVramTemplate = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port
         let llmMacCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacChatVramTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 " 
+        let llmMacChatVramTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
         let llmMacChatCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        
+
         switch (selected.label) {
             case "$(gear) Edit Settings...":
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
@@ -122,26 +122,26 @@ export class Menu {
             case "Start completion model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)":
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
-                break;  
+                break;
             case "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)":
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-Q8_0-GGUF"));
                 break;
             case "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)":
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-GGUF"));
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
             case "Start chat model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)":
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-GGUF"));
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF"));
                 break;
             case "Start chat model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)":
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-GGUF"));
-                break;  
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
+                break;
             case "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)":
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-GGUF"));
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
             case "Start completion llama.cpp server with custom command from launch_completion property":
                 await this.app.llamaServer.killFimCmd();
@@ -150,7 +150,7 @@ export class Menu {
             case "Start chat llama.cpp server with custom command from launch_chat property":
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(this.app.extConfig.launch_chat);
-                break;       
+                break;
             case "Stop completion llama.cpp server":
                 await this.app.llamaServer.killFimCmd();
                 break;
@@ -172,6 +172,7 @@ export class Menu {
         }
         this.app.statusbar.updateStatusBarText();
     }
+
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
         const config = this.app.extConfig.config;
         if (label.includes('All Completions')) {
@@ -182,7 +183,6 @@ export class Menu {
             await config.update('languageSettings', languageSettings, true);
         }
     }
-
 
     showMenu = async (context: vscode.ExtensionContext) => {
         const currentLanguage = vscode.window.activeTextEditor?.document.languageId;

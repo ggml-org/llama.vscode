@@ -136,7 +136,7 @@ export class Configuration {
         if (event.affectsConfiguration("llama-vscode.api_key") || event.affectsConfiguration("llama-vscode.self_signed_certificate")) {
             this.setLlamaRequestConfig();
             this.setOpenAiClient();
-        } 
+        }
     };
 
     trimTrailingSlash = (s: string): string => {
@@ -164,7 +164,7 @@ export class Configuration {
                 ...this.axiosRequestConfig,
                 httpsAgent,
             };
-        }           
+        }
     };
 
     setOpenAiClient = () => {
