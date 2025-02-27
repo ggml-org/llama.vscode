@@ -1,6 +1,5 @@
 import axios from "axios";
 import {Application} from "./application";
-import { EventEmitter } from 'events';
 import vscode, { Terminal } from "vscode";
 
 const STATUS_OK = 200;
@@ -112,6 +111,7 @@ export class LlamaServer {
             t_max_predict_ms: this.app.extConfig.t_max_predict_ms,
         };
     }
+    
 
     getFIMCompletion = async (
         inputPrefix: string,

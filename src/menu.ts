@@ -55,10 +55,6 @@ export class Menu {
                     description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
                 }, 
                 {
-                    label: "Start completion model Qwen2.5-Coder-0.5B-Q8_0-GGUF (CPU Only)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
-                }, 
-                {
                     label: "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
                     description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
                 },
@@ -72,10 +68,6 @@ export class Menu {
                 },
                 {
                     label: "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
-                }, 
-                {
-                    label: "Start chat model Qwen2.5-Coder-0.5B-Q8_0-GGUF (CPU Only)",
                     description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
                 })
         }
@@ -133,31 +125,23 @@ export class Menu {
                 break;  
             case "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)":
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF"));
-                break;
-            case "Start completion model Qwen2.5-Coder-0.5B-Q8_0-GGUF (CPU Only)":
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Q8_0-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-GGUF"));
                 break;
             case "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)":
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-GGUF"));
                 break;
             case "Start chat model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)":
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "Qwen/Qwen2.5-Coder-3B-Instruct-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-GGUF"));
                 break;
             case "Start chat model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)":
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "Qwen/Qwen2.5-Coder-7B-Instruct-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-GGUF"));
                 break;  
             case "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)":
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF"));
-                break;
-            case "Start chat model Qwen2.5-Coder-0.5B-Q8_0-GGUF (CPU Only)":
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "Qwen/Qwen2.5-Coder-0.5B-Instruct-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-GGUF"));
                 break;
             case "Start completion llama.cpp server with custom command from launch_completion property":
                 await this.app.llamaServer.killFimCmd();

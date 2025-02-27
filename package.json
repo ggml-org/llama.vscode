@@ -162,6 +162,11 @@
           "default": "",
           "description": "llama.cpp server api key or OpenAI endpoint API key (optional)"
         },
+        "llama-vscode.self_signed_certificate": {
+          "type": "string",
+          "default": "C:/AI/test.pem",
+          "description": "self-signed certificate file - path/to/cert.pem"
+        },
         "llama-vscode.n_prefix": {
           "type": "number",
           "default": 256,

@@ -1,5 +1,7 @@
 import * as vscode from "vscode";
 import OpenAI from "openai";
+import https from "https";
+import fs from "fs";
 
 export class Configuration {
     // extension configs
@@ -10,6 +12,7 @@ export class Configuration {
     chatendpoint = "http=//127.0.0.1:8011";
     auto = true;
     api_key = "";
+    self_signed_certificate = "";
     n_prefix = 256;
     n_suffix = 64;
     n_predict = 128;
@@ -103,6 +106,7 @@ export class Configuration {
         this.openai_prompt_template = String(config.get<string>("openai_prompt_template"));
         this.auto = Boolean(config.get<boolean>("auto"));
         this.api_key = String(config.get<string>("api_key"));
+        this.self_signed_certificate = String(config.get<string>("self_signed_certificate"));
         this.n_prefix = Number(config.get<number>("n_prefix"));
         this.n_suffix = Number(config.get<number>("n_suffix"));
         this.n_predict = Number(config.get<number>("n_predict"));
@@ -129,10 +133,10 @@ export class Configuration {
 
     updateOnEvent = (event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) => {
         this.updateConfigs(config);
-        if (event.affectsConfiguration("llama-vscode.api_key")) {
+        if (event.affectsConfiguration("llama-vscode.api_key") || event.affectsConfiguration("llama-vscode.self_signed_certificate")) {
             this.setLlamaRequestConfig();
             this.setOpenAiClient();
-        }
+        } 
     };
 
     trimTrailingSlash = (s: string): string => {
@@ -144,14 +148,23 @@ export class Configuration {
 
     setLlamaRequestConfig = () => {
         this.axiosRequestConfig = {};
-        if (this.api_key != undefined && this.api_key != "") {
+        if (this.api_key != undefined && this.api_key.trim() != "") {
             this.axiosRequestConfig = {
                 headers: {
-                    Authorization: `Bearer ${this.api_key}`,
+                    Authorization: `Bearer ${this.api_key.trim()}`,
                     "Content-Type": "application/json",
                 },
             };
         }
+        if (this.self_signed_certificate != undefined && this.self_signed_certificate.trim() != "") {
+            const httpsAgent = new https.Agent({
+                ca: fs.readFileSync(this.self_signed_certificate.trim()),
+            });
+            this.axiosRequestConfig = {
+                ...this.axiosRequestConfig,
+                httpsAgent,
+            };
+        }           
     };
 
     setOpenAiClient = () => {
