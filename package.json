@@ -147,7 +147,7 @@
           "default": "http://127.0.0.1:8012",
           "description": "The URL to be used by the extension for code completion."
         },
-        "llama-vscode.chatendpoint": {
+        "llama-vscode.endpoint_chat": {
           "type": "string",
           "default": "http://127.0.0.1:8011",
           "description": "The URL to be used by the extension for chat with ai."

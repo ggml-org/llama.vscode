@@ -9,7 +9,7 @@ export class Configuration {
     launch_completion = ""
     launch_chat = ""
     endpoint = "http=//127.0.0.1:8012";
-    chatendpoint = "http=//127.0.0.1:8011";
+    endpoint_chat = "http=//127.0.0.1:8011";
     auto = true;
     api_key = "";
     self_signed_certificate = "";
@@ -98,7 +98,7 @@ export class Configuration {
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
         // TODO Handle the case of wrong types for the configuration values
         this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
-        this.chatendpoint = this.trimTrailingSlash(String(config.get<string>("chatendpoint")));
+        this.endpoint_chat = this.trimTrailingSlash(String(config.get<string>("endpoint_chat")));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));
         this.use_openai_endpoint = Boolean(config.get<boolean>("use_openai_endpoint"));

@@ -1,7 +1,7 @@
 import {Application} from "./application";
 import * as vscode from 'vscode';
 
-export class AskAi {
+export class ChatWithAi {
     private app: Application
     private askAiPanel: vscode.WebviewPanel | undefined
     private askAiWithContextPanel: vscode.WebviewPanel | undefined
@@ -12,20 +12,21 @@ export class AskAi {
         this.app = application;
     }
 
-    showAskAi = (withContext: boolean, context: vscode.ExtensionContext) => {
+    showChatWithAi = (withContext: boolean, context: vscode.ExtensionContext) => {
         const editor = vscode.window.activeTextEditor;
-        let webviewIdentifier = 'htmlAskAiViewer'
-        let panelTitle = 'Ask AI'
+        let webviewIdentifier = 'htmlChatWithAiViewer'
+        let panelTitle = 'Chat With AI'
         let aiPanel  = this.askAiPanel
         let extraCont = "";
         if (withContext){
              aiPanel = this.askAiWithContextPanel
-             webviewIdentifier = 'htmlAskAiWithContextViewer'
+             if (!aiPanel) this.sentContextChunks =  []
+             webviewIdentifier = 'htmlChatWithAiWithContextViewer'
              let chunksToSend = this.app.extraContext.chunks.filter((_, index) => !this.sentContextChunks.includes(this.app.extraContext.chunksHash[index]));
              let chunksToSendHash = this.app.extraContext.chunksHash.filter((item) => !this.sentContextChunks.includes(item));
              if (chunksToSend.length > 0) extraCont = "Here are pieces of code from different files of the project: \n" + chunksToSend.reduce((accumulator, currentValue) => accumulator + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
              this.sentContextChunks.push(...chunksToSendHash)
-             panelTitle = "Ask AI With Project Context"
+             panelTitle = "Chat With AI With Project Context"
         }
         let selectedText = ""
         if (editor) {
@@ -46,7 +47,7 @@ export class AskAi {
             else this.askAiPanel = aiPanel;
 
             if (aiPanel) context.subscriptions.push(aiPanel);
-            const targetUrl = this.app.extConfig.chatendpoint + "/";
+            const targetUrl = this.app.extConfig.endpoint_chat + "/";
             aiPanel.webview.html = this.getWebviewContent(targetUrl);
             aiPanel.onDidDispose(() => {
                 if (withContext) this.askAiWithContextPanel = undefined

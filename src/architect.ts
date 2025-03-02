@@ -217,9 +217,9 @@ export class Architect {
                 return;
             }
 
-            if (!this.app.extConfig.chatendpoint) return;
+            if (!this.app.extConfig.endpoint_chat) return;
 
-            this.app.askAi.showAskAi(false, context);
+            this.app.askAi.showChatWithAi(false, context);
         });
         context.subscriptions.push(triggerAskAiDisposable);
     }
@@ -231,7 +231,7 @@ export class Architect {
                 return;
             }
 
-            if (!this.app.extConfig.chatendpoint) return;
+            if (!this.app.extConfig.endpoint_chat) return;
 
             const editor = vscode.window.activeTextEditor;
             if (editor) {
@@ -246,7 +246,7 @@ export class Architect {
                 this.app.extraContext.lastComplStartTime = Date.now() - this.app.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL - 1
                 this.app.extraContext.periodicRingBufferUpdate()
             }
-            this.app.askAi.showAskAi(true, context);
+            this.app.askAi.showChatWithAi(true, context);
         });
         context.subscriptions.push(triggerAskAiDisposable);
     }
