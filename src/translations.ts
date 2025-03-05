@@ -12,7 +12,7 @@ I will give you several expressions in English, separated by "|".  I'd like you 
 
 # Example output
 
-Please show each translation in a separate row. Start each row with "[" and finish it with "],". Start with the English expression. Here is a concrete example to illustrate how I want you to format the output if you give as input "no suggestion|thinking..."
+Please show each translation in a separate row. Start each row with "[" and finish it with "],". Start with the English expression. Here is a concrete example to illustrate how I want you to format the output if you get as input "no suggestion|thinking..."
 
 ["no suggestion", "нямам предложение", "kein Vorschlag", "нет предложения", "ninguna propuesta", "无建议", "pas de suggestion"], 
 ["thinking...", "мисля...", "Ich denke...", "думаю...", "pensando...", "思考...", "pense..."],
