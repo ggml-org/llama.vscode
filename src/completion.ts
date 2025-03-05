@@ -115,7 +115,7 @@ export class Completion {
             return [this.getCompletion(completion, position)];
         } catch (err) {
             console.error("Error fetching llama completion:", err);
-            vscode.window.showInformationMessage(`Error getting response. Please check if llama.cpp server is running. `);
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText(`Error getting response. Please check if llama.cpp server is running.`)??"");
             let errorMessage = "Error fetching completion"
             if (err instanceof Error) {
                 vscode.window.showInformationMessage(err.message);

@@ -15,7 +15,7 @@ export class ChatWithAi {
     showChatWithAi = (withContext: boolean, context: vscode.ExtensionContext) => {
         const editor = vscode.window.activeTextEditor;
         let webviewIdentifier = 'htmlChatWithAiViewer'
-        let panelTitle = 'Chat With AI'
+        let panelTitle = this.app.extConfig.getUiText("Chat with AI")??""
         let aiPanel  = this.askAiPanel
         let extraCont = "";
         if (withContext){
@@ -26,7 +26,7 @@ export class ChatWithAi {
              let chunksToSendHash = this.app.extraContext.chunksHash.filter((item) => !this.sentContextChunks.includes(item));
              if (chunksToSend.length > 0) extraCont = "Here are pieces of code from different files of the project: \n" + chunksToSend.reduce((accumulator, currentValue) => accumulator + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
              this.sentContextChunks.push(...chunksToSendHash)
-             panelTitle = "Chat With AI With Project Context"
+             panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
         }
         let selectedText = ""
         if (editor) {

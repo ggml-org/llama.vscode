@@ -152,7 +152,7 @@ export class LlamaServer {
 
     shellFimCmd = (launchCmd: string): void => {
         if (!launchCmd) {
-            vscode.window.showInformationMessage("There is no command to execute.");
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -163,14 +163,14 @@ export class LlamaServer {
             this.vsCodeFimTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage("Error executind command " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executind command") + " " + launchCmd +" : " + err.message);
             }
         }
     }
 
     shellChatCmd = (launchCmd: string): void => {
         if (!launchCmd) {
-            vscode.window.showInformationMessage("There is no command to execute.");
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -181,7 +181,7 @@ export class LlamaServer {
             this.vsCodeChatTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage("Error executind command " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executind command") + " " + launchCmd +" : " + err.message);
             }
         }
     }

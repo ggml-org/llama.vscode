@@ -2,6 +2,7 @@ import * as vscode from "vscode";
 import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
+import {translations} from "./translations"
 
 export class Configuration {
     // extension configs
@@ -49,50 +50,32 @@ export class Configuration {
 
     config: vscode.WorkspaceConfiguration;
 
-    private languageBg = new Map<string, string>([
-        ["no suggestion", "нямам предложение"],
-        ["thinking...", "мисля..."],
-    ]);
-    private languageEn = new Map<string, string>([
-        ["no suggestion", "no suggestion"],
-        ["thinking...", "thinking..."],
-    ]);
-    private languageDe = new Map<string, string>([
-        ["no suggestion", "kein Vorschlag"],
-        ["thinking...", "Ich denke..."],
-    ]);
-    private languageRu = new Map<string, string>([
-        ["no suggestion", "нет предложения"],
-        ["thinking...", "думаю..."],
-    ]);
-    private languageEs = new Map<string, string>([
-        ["no suggestion", "ninguna propuesta"],
-        ["thinking...", "pensando..."],
-    ]);
-    private languageCn = new Map<string, string>([
-        ["no suggestion", "无建议"],
-        ["thinking...", "思考..."],
-    ]);
-    private languageFr = new Map<string, string>([
-        ["no suggestion", "pas de suggestion"],
-        ["thinking...", "pense..."],
-    ]);
-
-    languages = new Map<string, Map<string, string>>([
-        ["bg", this.languageBg],
-        ["en", this.languageEn],
-        ["de", this.languageDe],
-        ["ru", this.languageRu],
-        ["es", this.languageEs],
-        ["cn", this.languageCn],
-        ["fr", this.languageFr],
+    private uiLanguages = new Map<string, Map<string, string>>([])
+    private langIndexes = new Map<number, string>([
+        [0, "en"],
+        [1, "bg"],
+        [2, "de"],
+        [3, "ru"],
+        [4, "es"],
+        [5, "cn"],
+        [6, "fr"],
     ]);
 
     constructor() {
         this.config = vscode.workspace.getConfiguration("llama-vscode");
+        this.initUiLanguages()
         this.updateConfigs(this.config);
         this.setLlamaRequestConfig();
         this.setOpenAiClient();
+    }
+
+    private initUiLanguages(){
+        let totalLanguages = 0;
+        if (translations.length > 0) totalLanguages = translations[0].length
+        for (let langInd = 0; langInd < totalLanguages; langInd++){
+            let lang =  new Map(translations.map(transl => [transl[0], transl[langInd]]));
+            this.uiLanguages.set(this.langIndexes.get(langInd) ?? "", lang);
+        }
     }
 
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
@@ -126,8 +109,8 @@ export class Configuration {
     };
 
     getUiText = (uiText: string): string | undefined => {
-        let langTexts = this.languages.get(this.language);
-        if (langTexts == undefined) langTexts = this.languages.get("en");
+        let langTexts = this.uiLanguages.get(this.language);
+        if (langTexts == undefined) langTexts = this.uiLanguages.get("en");
         return langTexts?.get(uiText);
     };
 
