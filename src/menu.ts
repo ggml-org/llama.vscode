@@ -10,84 +10,84 @@ export class Menu {
     createMenuItems = (currentLanguage: string | undefined, isLanguageEnabled: boolean): vscode.QuickPickItem[] => {
         let menuItems = [
             {
-                label: `${this.app.extConfig.enabled ? 'Disable' : 'Enable'} All Completions`,
-                description: `Turn ${this.app.extConfig.enabled ? 'off' : 'on'} completions globally`
+                label: `${this.app.extConfig.enabled ?  this.app.extConfig.getUiText('Disable') :  this.app.extConfig.getUiText('Enable')} ${this.app.extConfig.getUiText("All Completions")}`,
+                description: `${this.app.extConfig.enabled ? this.app.extConfig.getUiText('Turn off completions globally') : this.app.extConfig.getUiText('Turn on completions globally')}`
             },
             currentLanguage ? {
-                label: `${isLanguageEnabled ? 'Disable' : 'Enable'} Completions for ${currentLanguage}`,
-                description: `Currently ${isLanguageEnabled ? 'enabled' : 'disabled'}`
+                label: `${isLanguageEnabled ?  this.app.extConfig.getUiText('Disable') :  this.app.extConfig.getUiText('Enable')} ${ this.app.extConfig.getUiText("Completions for")} ${currentLanguage}`,
+                description: `${ this.app.extConfig.getUiText("Currently")} ${isLanguageEnabled ?  this.app.extConfig.getUiText('enabled') :  this.app.extConfig.getUiText('disabled')}`
             } : null,
             {
-                label: "$(gear) Edit Settings...",
+                label: "$(gear) " + this.app.extConfig.getUiText("Edit Settings..."),
             },
             {
-                label: "$(book) View Documentation...",
+                label: "$(book) " + this.app.extConfig.getUiText("View Documentation..."),
             }]
 
         if (this.app.extConfig.endpoint_chat && this.app.extConfig.endpoint_chat.trim() != "")
             menuItems.push(
                 {
-                    label: "Chat with AI",
-                    description: `Opens a chat with AI window inside VS Code using server from property chatendpoint`
+                    label: this.app.extConfig.getUiText("Chat with AI") ?? "",
+                    description: this.app.extConfig.getUiText(`Opens a chat with AI window inside VS Code using server from property endpoint_chat`)
                 },
                 {
-                    label: "Chat with AI with project context",
-                    description: `Opens a chat with AI window with project context inside VS Code using server from property chatendpoint`
+                    label: this.app.extConfig.getUiText("Chat with AI with project context") ?? "",
+                    description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
                 })
 
 
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
                 {
-                    label: "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: "Start completion model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: "Start completion model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 }, 
                 {
-                    label: "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: "Start chat model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: "Start chat model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
-                    description: `Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`
+                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 })
         }
 
         menuItems.push(
             {
-                label: "Start completion llama.cpp server with custom command from launch_completion property",
-                description: `Runs the command from property launch_fim`
+                label: this.app.extConfig.getUiText("Start completion llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_completion`)
             },
             {
-                label: "Start chat llama.cpp server with custom command from launch_chat property",
-                description: `Runs the command from property launch_chat`
+                label: this.app.extConfig.getUiText("Start chat llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_chat`)
             },
             {
-                label: "Stop completion llama.cpp server",
-                description: `Stops completion llama.cpp server if it was started from llama.vscode menu."`
+                label: this.app.extConfig.getUiText("Stop completion llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Stops completion llama.cpp server if it was started from llama.vscode menu`)
             },
             {
-                label: "Stop chat llama.cpp server",
-                description: `Stops chat llama.cpp server if it was started from llama.vscode menu."`
+                label: this.app.extConfig.getUiText("Stop chat llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Stops chat llama.cpp server if it was started from llama.vscode menu`)
             })     
 
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
@@ -108,62 +108,62 @@ export class Menu {
         let llmMacChatCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
         
         switch (selected.label) {
-            case "$(gear) Edit Settings...":
+            case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
-            case "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)":
+            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-1.5b-default"));
                 break;
-            case "Start completion model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)":
+            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-3b-default"));
                 break;
-            case "Start completion model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)":
+            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
                 break;  
-            case "Start completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)":
+            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-Q8_0-GGUF"));
                 break;
-            case "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)":
+            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
-            case "Start chat model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)":
+            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF"));
                 break;
-            case "Start chat model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)":
+            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
                 break;  
-            case "Start chat model Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)":
+            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
-            case "Start completion llama.cpp server with custom command from launch_completion property":
+            case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(this.app.extConfig.launch_completion);
                 break;
-            case "Start chat llama.cpp server with custom command from launch_chat property":
+            case this.app.extConfig.getUiText('Start chat llama.cpp server'):
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(this.app.extConfig.launch_chat);
                 break;       
-            case "Stop completion llama.cpp server":
+            case this.app.extConfig.getUiText("Stop completion llama.cpp server"):
                 await this.app.llamaServer.killFimCmd();
                 break;
-            case "Stop chat llama.cpp server":
+            case this.app.extConfig.getUiText("Stop chat llama.cpp server"):
                 await this.app.llamaServer.killChatCmd();
                 break;
-            case "$(book) View Documentation...":
+            case "$(book) " + this.app.extConfig.getUiText("View Documentation..."):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
                 break;
-            case "Chat with AI":
+            case this.app.extConfig.getUiText("Chat with AI"):
                 this.app.askAi.showChatWithAi(false, context)
                 break;
-            case "Chat with AI with project context":
+            case this.app.extConfig.getUiText("Chat with AI with project context"):
                 this.app.askAi.showChatWithAi(true, context)
                 break;
             default:
@@ -174,7 +174,7 @@ export class Menu {
     }
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
         const config = this.app.extConfig.config;
-        if (label.includes('All Completions')) {
+        if (label.includes(this.app.extConfig.getUiText('All Completions')??"")) {
             await config.update('enabled', !this.app.extConfig.enabled, true);
         } else if (currentLanguage && label.includes(currentLanguage)) {
             const isLanguageEnabled = languageSettings[currentLanguage] ?? true;

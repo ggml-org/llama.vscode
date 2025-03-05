@@ -1,5 +1,4 @@
 // TODO
-// Превод на меню и попъп съобщения на поддържаните езици + улесни превеждането - с ИИ.
 // Да не премигва при избор само на ред или дума (върни частично проверката за съвпадение с последния рекуест?)
 // Идеи
 // - Използване на агенти (?)
@@ -19,7 +18,7 @@ export class Architect {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
             this.app.extConfig.updateOnEvent(event, config);
-            vscode.window.showInformationMessage(`llama-vscode extension is updated.`);
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText(`llama-vscode extension is updated.`)??"");
         });
         context.subscriptions.push(configurationChangeDisp);
     }
