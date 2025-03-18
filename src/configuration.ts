@@ -9,6 +9,10 @@ export class Configuration {
     enabled = true;
     launch_completion = ""
     launch_chat = ""
+    launch_training_completion = ""
+    launch_training_chat = ""
+    lora_completion = ""
+    lora_chat = ""
     endpoint = "http=//127.0.0.1:8012";
     endpoint_chat = "http=//127.0.0.1:8011";
     auto = true;
@@ -84,6 +88,10 @@ export class Configuration {
         this.endpoint_chat = this.trimTrailingSlash(String(config.get<string>("endpoint_chat")));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));
+        this.launch_training_completion = String(config.get<string>("launch_training_completion"));
+        this.launch_training_chat = String(config.get<string>("launch_training_chat"));
+        this.lora_completion = String(config.get<string>("lora_completion"));
+        this.lora_chat = String(config.get<string>("lora_chat"));
         this.use_openai_endpoint = Boolean(config.get<boolean>("use_openai_endpoint"));
         this.openai_client_model = String(config.get<string>("openai_client_model"));
         this.openai_prompt_template = String(config.get<string>("openai_prompt_template"));

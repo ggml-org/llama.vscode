@@ -23,6 +23,7 @@ export class LlamaServer {
     private app: Application
     private vsCodeFimTerminal: Terminal | undefined;
     private vsCodeChatTerminal: Terminal | undefined;
+    private vsCodeTrainTerminal: Terminal | undefined;
     private readonly defaultRequestParams = {
         top_k: 40,
         top_p: 0.99,
@@ -96,6 +97,7 @@ export class LlamaServer {
                 cache_prompt: true,
                 t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
                 t_max_predict_ms: 1,
+                ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
             };
         }
 
@@ -109,6 +111,7 @@ export class LlamaServer {
             ...(nindent && { n_indent: nindent }),
             t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
             t_max_predict_ms: this.app.extConfig.t_max_predict_ms,
+            ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
         };
     }
 
@@ -186,11 +189,33 @@ export class LlamaServer {
         }
     }
 
+    shellTrainCmd = (trainCmd: string): void => {
+        if (!trainCmd) {
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            return;
+        }
+        try {
+            this.vsCodeTrainTerminal = vscode.window.createTerminal({
+                name: 'llama.cpp Train Terminal'
+            });
+            this.vsCodeTrainTerminal.show(true);
+            this.vsCodeTrainTerminal.sendText(trainCmd);
+        } catch(err){
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executind command") + " " + trainCmd +" : " + err.message);
+            }
+        }
+    }
+
     killFimCmd = (): void => {
         if (this.vsCodeFimTerminal) this.vsCodeFimTerminal.dispose();
     }
 
     killChatCmd = (): void => {
         if (this.vsCodeChatTerminal) this.vsCodeChatTerminal.dispose();
+    }
+
+    killTrainCmd = (): void => {
+        if (this.vsCodeTrainTerminal) this.vsCodeTrainTerminal.dispose();
     }
 }

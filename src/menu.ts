@@ -80,7 +80,22 @@ export class Menu {
             {
                 label: this.app.extConfig.getUiText("Start chat llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Runs the command from property launch_chat`)
-            },
+            })
+        if (this.app.extConfig.launch_training_completion.trim() != "") { 
+            menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Start training completion model")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_training_completion`)
+            })
+        }
+        if (this.app.extConfig.launch_training_chat.trim() != "") { 
+                menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Start training chat model")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_training_chat`)
+            })
+        }
+        menuItems.push(
             {
                 label: this.app.extConfig.getUiText("Stop completion llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Stops completion llama.cpp server if it was started from llama.vscode menu`)
@@ -88,7 +103,14 @@ export class Menu {
             {
                 label: this.app.extConfig.getUiText("Stop chat llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Stops chat llama.cpp server if it was started from llama.vscode menu`)
+            })
+        if (this.app.extConfig.launch_training_completion.trim() != "" || this.app.extConfig.launch_training_chat.trim() != "") { 
+            menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Stop training")??"",
+                description: this.app.extConfig.getUiText(`Stops training if it was started from llama.vscode menu`)
             })     
+        }
 
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
@@ -145,17 +167,32 @@ export class Menu {
                 break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(this.app.extConfig.launch_completion);
+                let commandCompletion = this.app.extConfig.launch_completion
+                if (this.app.extConfig.lora_completion.trim() != "") commandCompletion += " --lora " + this.app.extConfig.lora_completion
+                await this.app.llamaServer.shellFimCmd(commandCompletion);
                 break;
             case this.app.extConfig.getUiText('Start chat llama.cpp server'):
                 await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(this.app.extConfig.launch_chat);
+                let commandChat = this.app.extConfig.launch_chat
+                if (this.app.extConfig.lora_chat.trim() != "") commandChat += " --lora " + this.app.extConfig.lora_chat
+                await this.app.llamaServer.shellChatCmd(commandChat);
+                break; 
+            case this.app.extConfig.getUiText('Start training completion model'):
+                await this.app.llamaServer.killTrainCmd();
+                await this.app.llamaServer.shellTrainCmd(this.app.extConfig.launch_training_completion);
+                break;
+            case this.app.extConfig.getUiText('Start training chat model'):
+                await this.app.llamaServer.killTrainCmd();
+                await this.app.llamaServer.shellTrainCmd(this.app.extConfig.launch_training_chat);
                 break;       
             case this.app.extConfig.getUiText("Stop completion llama.cpp server"):
                 await this.app.llamaServer.killFimCmd();
                 break;
             case this.app.extConfig.getUiText("Stop chat llama.cpp server"):
                 await this.app.llamaServer.killChatCmd();
+                break;
+            case this.app.extConfig.getUiText("Stop training"):
+                await this.app.llamaServer.killTrainCmd();
                 break;
             case "$(book) " + this.app.extConfig.getUiText("View Documentation..."):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
