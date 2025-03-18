@@ -134,13 +134,33 @@
       "properties": {
         "llama-vscode.launch_completion": {
           "type": "string",
-          "default": "",
+          "default": "cd c:/ai ; ./llama-server.exe -m Qwen2.5-Coder-1.5B.Q8_0.gguf --host 0.0.0.0 --port 8012 -c 2048 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256",
           "description": "Shell command for starting fim llama.cpp server, executed from the menu"
         },
         "llama-vscode.launch_chat": {
           "type": "string",
-          "default": "",
+          "default": "cd c:/ai ; ./llama-server.exe -m qwen2.5-coder-3b-instruct-q6_k.gguf -ngl 99 --port 8011 --path C:/llama.cpp/llama.cpp/examples/server/webui/dist",
           "description": "Shell command for starting chat llama.cpp server, executed from the menu"
+        },
+        "llama-vscode.launch_training_completion": {
+          "type": "string",
+          "default": "",
+          "description": "Shell command for starting training a completion (fim) model from the menu"
+        },
+        "llama-vscode.launch_training_chat": {
+          "type": "string",
+          "default": "",
+          "description": "Shell command for starting training a chat model from the menu"
+        },
+        "llama-vscode.lora_completion": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the lora adapter file for the completion model. If not empty it will be used (appends --lora lora_completion) on starting the completion server with launch_completion"
+        },
+        "llama-vscode.lora_chat": {
+          "type": "string",
+          "default": "",
+          "description": "Path to the lora adapter file for the chat model. If not empty it will be used (appends --lora lora_chat) on starting the completion server with launch_chat"
         },
         "llama-vscode.endpoint": {
           "type": "string",
