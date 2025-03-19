@@ -19,6 +19,11 @@ export interface LlamaResponse {
     };
 }
 
+export interface LlamaChatResponse {
+    choices: [{message:{content?: string}}];
+}
+
+
 export class LlamaServer {
     private app: Application
     private vsCodeFimTerminal: Terminal | undefined;
@@ -115,6 +120,43 @@ export class LlamaServer {
         };
     }
 
+    private createChatRequestPayload(noPredict: boolean, instructions: string, originalText: string, chunks: any[], prompt: string, nindent?: number) {
+        return {
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are a helpful assistant."
+              },
+              {
+                "role": "user",
+                "content": "Please modify the following text according to these instructions:\n" + instructions + "\nAnswer only with source code, nothing else. Do not include the name of the programming language or any other prefix or suffix to the source code.\n\nOriginal text:\n" + originalText  +"\nModified text:"
+              }
+            ],
+            "stream": false,
+            "cache_prompt": true,
+            "samplers": "edkypmxt",
+            "temperature": 0.8,
+            "dynatemp_range": 0,
+            "dynatemp_exponent": 1,
+            "top_k": 40,
+            "top_p": 0.95,
+            "min_p": 0.05,
+            "typical_p": 1,
+            "xtc_probability": 0,
+            "xtc_threshold": 0.1,
+            "repeat_last_n": 64,
+            "repeat_penalty": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "dry_multiplier": 0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": -1,
+            "max_tokens": -1,
+            "timings_per_token": false
+          };
+    }
+
 
     getFIMCompletion = async (
         inputPrefix: string,
@@ -133,6 +175,22 @@ export class LlamaServer {
         const response = await axios.post<LlamaResponse>(
             `${this.app.extConfig.endpoint}/infill`,
             this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, nindent),
+            this.app.extConfig.axiosRequestConfig
+        );
+
+        return response.status === STATUS_OK ? response.data : undefined;
+    };
+
+    getChatCompletion = async (
+        instructions: string,
+        originalText: string,
+        prompt: string,
+        chunks: any,
+        nindent: number
+    ): Promise<LlamaChatResponse | undefined> => {
+        const response = await axios.post<LlamaChatResponse>(
+            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            this.createChatRequestPayload(false, instructions, originalText, chunks, prompt, nindent),
             this.app.extConfig.axiosRequestConfig
         );
 

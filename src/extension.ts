@@ -19,6 +19,8 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandAcceptFirstLine(context);
     app.architect.registerCommandAcceptFirstWord(context);
     app.architect.registerCommandShowMenu(context);
+    app.architect.registerCommandEditSelectedText(context);
+    app.architect.registerCommandAcceptTextEdit(context);
 }
 
 export function deactivate() {

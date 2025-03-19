@@ -249,4 +249,23 @@ export class Architect {
         });
         context.subscriptions.push(triggerAskAiDisposable);
     }
+
+    registerCommandEditSelectedText = (context: vscode.ExtensionContext) => {
+        const editSelectedTextDisposable = vscode.commands.registerCommand('extension.editSelectedText', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.showEditPrompt(editor);
+        });
+        context.subscriptions.push(editSelectedTextDisposable);
+    }
+
+    registerCommandAcceptTextEdit = (context: vscode.ExtensionContext) => {
+        const acceptTextEditDisposable = vscode.commands.registerCommand('extension.acceptTextEdit', async () => {
+            await this.app.textEditor.acceptSuggestion();
+        });
+        context.subscriptions.push(acceptTextEditDisposable);
+    }
 }
