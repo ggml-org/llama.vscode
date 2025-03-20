@@ -113,6 +113,17 @@ export class TextEditor {
         await this.cleanup();
     }
 
+    async rejectSuggestion() {
+        if (!this.currentSuggestion || !this.currentEditor || !this.selection) {
+            return;
+        }
+
+        this.setSuggestionVisible(false);
+        
+        // Clean up without applying the change
+        await this.cleanup();
+    }
+
     private async applyChange(editor: vscode.TextEditor, suggestion: string) {
         const edit = new vscode.WorkspaceEdit();
         edit.replace(editor.document.uri, this.selection!, suggestion);

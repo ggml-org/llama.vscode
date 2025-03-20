@@ -268,4 +268,12 @@ export class Architect {
         });
         context.subscriptions.push(acceptTextEditDisposable);
     }
+
+    registerCommandRejectTextEdit = (context: vscode.ExtensionContext) => {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('extension.rejectTextEdit', () => {
+                this.app.textEditor.rejectSuggestion();
+            })
+        );
+    }
 }

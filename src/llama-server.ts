@@ -129,7 +129,7 @@ export class LlamaServer {
               },
               {
                 "role": "user",
-                "content": "Please modify the following text according to these instructions:\n" + instructions + "\nAnswer only with source code, nothing else. Do not include the name of the programming language or any other prefix or suffix to the source code.\n\nOriginal text:\n" + originalText  +"\nModified text:"
+                "content": "Please modify the following text according to these instructions:\n" + instructions + "\Output strictly the code. No explanations, no comments, no Markdown.\n\nOriginal text:\n" + originalText  +"\nModified text:"
               }
             ],
             "stream": false,
@@ -153,7 +153,8 @@ export class LlamaServer {
             "dry_allowed_length": 2,
             "dry_penalty_last_n": -1,
             "max_tokens": -1,
-            "timings_per_token": false
+            "timings_per_token": false,
+            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
           };
     }
 

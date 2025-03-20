@@ -21,6 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandShowMenu(context);
     app.architect.registerCommandEditSelectedText(context);
     app.architect.registerCommandAcceptTextEdit(context);
+    app.architect.registerCommandRejectTextEdit(context);
 }
 
 export function deactivate() {

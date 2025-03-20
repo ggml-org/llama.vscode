@@ -76,6 +76,10 @@
       {
         "command": "extension.acceptTextEdit",
         "title": "Accept Text Edit Suggestion"
+      },
+      {
+        "command": "extension.rejectTextEdit",
+        "title": "Reject Text Edit Suggestion"
       }
     ],
     "keybindings": [
@@ -143,6 +147,11 @@
       {
         "command": "extension.acceptTextEdit",
         "key": "tab",
+        "when": "editorTextFocus && textEditSuggestionVisible"
+      },
+      {
+        "command": "extension.rejectTextEdit",
+        "key": "escape",
         "when": "editorTextFocus && textEditSuggestionVisible"
       }
     ],
