@@ -166,7 +166,7 @@ export class LlamaServer {
             this.vsCodeFimTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executind command") + " " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
             }
         }
     }
@@ -184,7 +184,7 @@ export class LlamaServer {
             this.vsCodeChatTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executind command") + " " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
             }
         }
     }
@@ -202,7 +202,7 @@ export class LlamaServer {
             this.vsCodeTrainTerminal.sendText(trainCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executind command") + " " + trainCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + trainCmd +" : " + err.message);
             }
         }
     }
