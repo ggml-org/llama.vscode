@@ -53,7 +53,12 @@ export class Completion {
             this.app.logger.addEventLog(group, "TOO_LONG_SUFFIX_RETURN", "")
             return null
         }
-        const prompt = linePrefix;
+        let prompt = linePrefix;
+        let spacesToRemove = 0;
+        if (this.isOnlySpacesOrTabs(prompt)) {
+            prompt = "";
+            spacesToRemove = linePrefix.length //in case of tabs probably less spaces will be removed, but better to keep it simple
+        }
         const inputPrefix = prefixLines.join('\n') + '\n';
         const inputSuffix = lineSuffix + '\n' + suffixLines.join('\n') + '\n';
 
@@ -112,7 +117,7 @@ export class Completion {
             }, 0);
             this.isRequestInProgress = false
             this.app.logger.addEventLog(group, "NORMAL_RETURN", suggestionLines[0])
-            return [this.getCompletion(completion, position)];
+            return [this.getCompletion(this.removeLeadingSpaces(completion, spacesToRemove), position)];
         } catch (err) {
             console.error("Error fetching llama completion:", err);
             vscode.window.showInformationMessage(this.app.extConfig.getUiText(`Error getting response. Please check if llama.cpp server is running.`)??"");
@@ -125,6 +130,21 @@ export class Completion {
             this.app.logger.addEventLog(group, "ERROR_RETURN", errorMessage)
             return [];
         }
+    }
+
+    private isOnlySpacesOrTabs = (str: string): boolean => {
+        // Regular expression to match only spaces and tabs
+        return /^[ \t]*$/.test(str);
+    }
+
+    private removeLeadingSpaces = (str: string, n: number): string => {
+        let i = 0;
+        // Count up to 'n' leading spaces
+        while (i < str.length && i < n && str[i] === ' ') {
+            i++;
+        }
+
+        return str.slice(i);
     }
 
     private getCachedCompletion = (hashKey: string, inputPrefix: string, inputSuffix: string, prompt: string) => {
