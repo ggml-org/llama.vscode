@@ -68,6 +68,18 @@
       {
         "command": "extension.askAiWithContext",
         "title": "Ask AI With Context"
+      },
+      {
+        "command": "extension.editSelectedText",
+        "title": "Edit Selected Text with AI"
+      },
+      {
+        "command": "extension.acceptTextEdit",
+        "title": "Accept Text Edit Suggestion"
+      },
+      {
+        "command": "extension.rejectTextEdit",
+        "title": "Reject Text Edit Suggestion"
       }
     ],
     "keybindings": [
@@ -126,6 +138,21 @@
         "command": "extension.askAiWithContext",
         "key": "ctrl+Shift+;",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "extension.editSelectedText",
+        "key": "ctrl+shift+e",
+        "when": "editorHasSelection"
+      },
+      {
+        "command": "extension.acceptTextEdit",
+        "key": "tab",
+        "when": "editorTextFocus && textEditSuggestionVisible"
+      },
+      {
+        "command": "extension.rejectTextEdit",
+        "key": "escape",
+        "when": "editorTextFocus && textEditSuggestionVisible"
       }
     ],
     "configuration": {
@@ -283,6 +310,15 @@
           "description": "The prompt template to be used for the OpenAI compatible endpoint."
         }
       }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "extension.editSelectedText",
+          "when": "editorHasSelection",
+          "group": "llama@1"
+        }
+      ]
     }
   },
   "scripts": {

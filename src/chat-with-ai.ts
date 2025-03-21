@@ -1,5 +1,6 @@
 import {Application} from "./application";
 import * as vscode from 'vscode';
+import {Utils} from "./utils";
 
 export class ChatWithAi {
     private app: Application
@@ -24,7 +25,7 @@ export class ChatWithAi {
              webviewIdentifier = 'htmlChatWithAiWithContextViewer'
              let chunksToSend = this.app.extraContext.chunks.filter((_, index) => !this.sentContextChunks.includes(this.app.extraContext.chunksHash[index]));
              let chunksToSendHash = this.app.extraContext.chunksHash.filter((item) => !this.sentContextChunks.includes(item));
-             if (chunksToSend.length > 0) extraCont = "Here are pieces of code from different files of the project: \n" + chunksToSend.reduce((accumulator, currentValue) => accumulator + "\nFile Name: " + currentValue.filename + "\nText:\n" +  currentValue.text + "\n\n" , "");
+             if (chunksToSend.length > 0) extraCont = Utils.getChunksInPlainText(chunksToSend);
              this.sentContextChunks.push(...chunksToSendHash)
              panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
         }
@@ -148,5 +149,7 @@ export class ChatWithAi {
         </html>
         `;
     }
+
+
 
 }

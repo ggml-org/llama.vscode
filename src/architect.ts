@@ -31,7 +31,7 @@ export class Architect {
                     this.app.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
                 }, 0);
             }
-            // Clarify if this should be executed if the above was executed
+            
             if (editor) {
                 // Editor is now active in the UI, pick a chunk
                 let activeDocument = editor.document;
@@ -238,9 +238,7 @@ export class Architect {
                 let activeDocument = editor.document;
                 const selection = editor.selection;
                 const cursorPosition = selection.active;
-                // setTimeout(async () => {
                 this.app.extraContext.pickChunkAroundCursor(cursorPosition.line, activeDocument);
-                // }, 0);
                 // Ensure ring chunks buffer will be updated
                 this.app.extraContext.lastComplStartTime = Date.now() - this.app.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL - 1
                 this.app.extraContext.periodicRingBufferUpdate()
@@ -248,5 +246,32 @@ export class Architect {
             this.app.askAi.showChatWithAi(true, context);
         });
         context.subscriptions.push(triggerAskAiDisposable);
+    }
+
+    registerCommandEditSelectedText = (context: vscode.ExtensionContext) => {
+        const editSelectedTextDisposable = vscode.commands.registerCommand('extension.editSelectedText', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.showEditPrompt(editor);
+        });
+        context.subscriptions.push(editSelectedTextDisposable);
+    }
+
+    registerCommandAcceptTextEdit = (context: vscode.ExtensionContext) => {
+        const acceptTextEditDisposable = vscode.commands.registerCommand('extension.acceptTextEdit', async () => {
+            await this.app.textEditor.acceptSuggestion();
+        });
+        context.subscriptions.push(acceptTextEditDisposable);
+    }
+
+    registerCommandRejectTextEdit = (context: vscode.ExtensionContext) => {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('extension.rejectTextEdit', () => {
+                this.app.textEditor.rejectSuggestion();
+            })
+        );
     }
 }
