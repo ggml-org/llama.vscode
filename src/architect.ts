@@ -31,7 +31,7 @@ export class Architect {
                     this.app.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
                 }, 0);
             }
-            // Clarify if this should be executed if the above was executed
+            
             if (editor) {
                 // Editor is now active in the UI, pick a chunk
                 let activeDocument = editor.document;
@@ -238,9 +238,7 @@ export class Architect {
                 let activeDocument = editor.document;
                 const selection = editor.selection;
                 const cursorPosition = selection.active;
-                // setTimeout(async () => {
                 this.app.extraContext.pickChunkAroundCursor(cursorPosition.line, activeDocument);
-                // }, 0);
                 // Ensure ring chunks buffer will be updated
                 this.app.extraContext.lastComplStartTime = Date.now() - this.app.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL - 1
                 this.app.extraContext.periodicRingBufferUpdate()

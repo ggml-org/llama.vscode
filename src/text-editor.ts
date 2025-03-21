@@ -32,6 +32,12 @@ export class TextEditor {
         this.selection = selection;
         this.currentEditor = editor;
 
+        // Get context from surrounding code (10 lines before and after)
+        const startLine = Math.max(0, selection.start.line - 10);
+        const endLine = Math.min(editor.document.lineCount - 1, selection.end.line + 10);
+        const contextRange = new vscode.Range(startLine, 0, endLine, editor.document.lineAt(endLine).text.length);
+        const context = editor.document.getText(contextRange);
+
         // Create and show input box
         const prompt = await vscode.window.showInputBox({
             placeHolder: 'Enter your instructions for editing the text...',
@@ -51,7 +57,7 @@ export class TextEditor {
             const data = await this.app.llamaServer.getChatCompletion(
                 prompt, 
                 this.selectedText,
-                "",
+                context,
                 this.app.extraContext.chunks,
                 0
             );
@@ -60,10 +66,8 @@ export class TextEditor {
                 vscode.window.showInformationMessage('No suggestions available');
                 return;
             }
-
-            // Show the suggestion in a diff view
-            this.currentSuggestion = data.choices[0].message.content.trim();
-
+            this.currentSuggestion = this.removeFirstAndLastLinesIfBackticks(data.choices[0].message.content.trim());
+            
             // Show the suggestion in a diff view
             await this.showDiffView(editor, this.currentSuggestion);
             this.setSuggestionVisible(true);
@@ -76,6 +80,22 @@ export class TextEditor {
         } finally {
             this.app.statusbar.showInfo(undefined);
         }
+    }
+
+    private removeFirstAndLastLinesIfBackticks(input: string): string {
+        const lines = input.split('\n'); // Split the string into lines
+    
+        // Remove the first line if it starts with ```
+        if (lines[0]?.trim().startsWith('```')) {
+            lines.shift(); // Remove the first line
+        }
+    
+        // Remove the last line if it starts with ```
+        if (lines[lines.length - 1]?.trim().startsWith('```')) {
+            lines.pop(); // Remove the last line
+        }
+    
+        return lines.join('\n'); // Join the remaining lines back into a string
     }
 
     private async showDiffView(editor: vscode.TextEditor, suggestion: string) {

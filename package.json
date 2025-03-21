@@ -310,6 +310,15 @@
           "description": "The prompt template to be used for the OpenAI compatible endpoint."
         }
       }
+    },
+    "menus": {
+      "editor/context": [
+        {
+          "command": "extension.editSelectedText",
+          "when": "editorHasSelection",
+          "group": "llama@1"
+        }
+      ]
     }
   },
   "scripts": {

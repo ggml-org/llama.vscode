@@ -1,6 +1,7 @@
 import axios from "axios";
 import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
+import {Utils} from "./utils";
 
 const STATUS_OK = 200;
 
@@ -120,16 +121,45 @@ export class LlamaServer {
         };
     }
 
-    private createChatRequestPayload(noPredict: boolean, instructions: string, originalText: string, chunks: any[], prompt: string, nindent?: number) {
+    private createChatRequestPayload(noPredict: boolean, instructions: string, originalText: string, chunks: any[], context: string, nindent?: number) {
+        const CHUNKS_PLACEHOLDER = "[chunks]";
+        const INSTRUCTIONS_PLACEHOLDER = "[instructions]";
+        const ORIGINAL_TEXT_PLACEHOLDER = "[originalText]";
+        const CONTEXTT_PLACEHOLDER = "[context]";
+        let editTextTemplate = `${CHUNKS_PLACEHOLDER}\n\ncontext:\n${CONTEXTT_PLACEHOLDER}\n\nPlease modify the following text (part of the context) according to these instructions:\n${INSTRUCTIONS_PLACEHOLDER}\nOutput only the code. No explanations. In the modified text, keep the indent of the original text.\n\nOriginal text:\n${ORIGINAL_TEXT_PLACEHOLDER}\n\nModified text:`
+        if (noPredict) {
+            return {
+                // input_extra: chunks,
+                "messages": [
+              {
+                "role": "system",
+                "content": "You are an expert coder."
+              },
+              {
+                "role": "user",
+                "content": Utils.getChunksInPlainText(chunks)
+              }
+            ],
+                n_predict: 0,
+                samplers: [],
+                cache_prompt: true,
+                t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
+                t_max_predict_ms: 1,
+                ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            };
+        }
+        
         return {
             "messages": [
               {
                 "role": "system",
-                "content": "You are a helpful assistant."
+                "content": "You are an expert coder."
               },
               {
                 "role": "user",
-                "content": "Please modify the following text according to these instructions:\n" + instructions + "\Output strictly the code. No explanations, no comments, no Markdown.\n\nOriginal text:\n" + originalText  +"\nModified text:"
+                "content": editTextTemplate.replace(CHUNKS_PLACEHOLDER, Utils.getChunksInPlainText(chunks))
+                            .replace(INSTRUCTIONS_PLACEHOLDER, instructions).replace(ORIGINAL_TEXT_PLACEHOLDER, originalText)
+                            .replace(CONTEXTT_PLACEHOLDER, context)
               }
             ],
             "stream": false,
@@ -185,13 +215,13 @@ export class LlamaServer {
     getChatCompletion = async (
         instructions: string,
         originalText: string,
-        prompt: string,
+        context: string,
         chunks: any,
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
             `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
-            this.createChatRequestPayload(false, instructions, originalText, chunks, prompt, nindent),
+            this.createChatRequestPayload(false, instructions, originalText, chunks, context, nindent),
             this.app.extConfig.axiosRequestConfig
         );
 
@@ -208,6 +238,13 @@ export class LlamaServer {
         axios.post<LlamaResponse>(
             `${this.app.extConfig.endpoint}/infill`,
             this.createRequestPayload(true, "", "", chunks, "", undefined),
+            this.app.extConfig.axiosRequestConfig
+        );
+
+        // make a request to the API to prepare for the next chat request
+        axios.post<LlamaResponse>(
+            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            this.createChatRequestPayload(true, "", "", chunks, "", undefined),
             this.app.extConfig.axiosRequestConfig
         );
     };
