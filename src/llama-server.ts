@@ -1,6 +1,7 @@
 import axios from "axios";
 import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
+import {Utils} from "./utils";
 
 const STATUS_OK = 200;
 
@@ -18,6 +19,11 @@ export interface LlamaResponse {
         predicted_per_second?: number;
     };
 }
+
+export interface LlamaChatResponse {
+    choices: [{message:{content?: string}}];
+}
+
 
 export class LlamaServer {
     private app: Application
@@ -115,6 +121,73 @@ export class LlamaServer {
         };
     }
 
+    private createChatRequestPayload(noPredict: boolean, instructions: string, originalText: string, chunks: any[], context: string, nindent?: number) {
+        const CHUNKS_PLACEHOLDER = "[chunks]";
+        const INSTRUCTIONS_PLACEHOLDER = "[instructions]";
+        const ORIGINAL_TEXT_PLACEHOLDER = "[originalText]";
+        const CONTEXT_PLACEHOLDER = "[context]";
+        let editTextTemplate = `${CHUNKS_PLACEHOLDER}\n\nModify the following original code according to the instructions. Output only the modified code. No explanations.\n\ninstructions:\n${INSTRUCTIONS_PLACEHOLDER}\n\noriginal code:\n${ORIGINAL_TEXT_PLACEHOLDER}\n\nmodified code:`
+        if (noPredict) {
+            return {
+                // input_extra: chunks,
+                "messages": [
+              {
+                "role": "system",
+                "content": "You are an expert coder."
+              },
+              {
+                "role": "user",
+                "content": Utils.getChunksInPlainText(chunks)
+              }
+            ],
+                n_predict: 0,
+                samplers: [],
+                cache_prompt: true,
+                t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
+                t_max_predict_ms: 1,
+                ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            };
+        }
+        
+        return {
+            "messages": [
+              {
+                "role": "system",
+                "content": "You are an expert coder."
+              },
+              {
+                "role": "user",
+                "content": editTextTemplate.replace(CHUNKS_PLACEHOLDER, Utils.getChunksInPlainText(chunks))
+                            .replace(INSTRUCTIONS_PLACEHOLDER, instructions).replace(ORIGINAL_TEXT_PLACEHOLDER, originalText)
+                            .replace(CONTEXT_PLACEHOLDER, context)
+              }
+            ],
+            "stream": false,
+            "cache_prompt": true,
+            "samplers": "edkypmxt",
+            "temperature": 0.8,
+            "dynatemp_range": 0,
+            "dynatemp_exponent": 1,
+            "top_k": 40,
+            "top_p": 0.95,
+            "min_p": 0.05,
+            "typical_p": 1,
+            "xtc_probability": 0,
+            "xtc_threshold": 0.1,
+            "repeat_last_n": 64,
+            "repeat_penalty": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "dry_multiplier": 0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": -1,
+            "max_tokens": -1,
+            "timings_per_token": false,
+            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+          };
+    }
+
 
     getFIMCompletion = async (
         inputPrefix: string,
@@ -139,6 +212,22 @@ export class LlamaServer {
         return response.status === STATUS_OK ? response.data : undefined;
     };
 
+    getChatCompletion = async (
+        instructions: string,
+        originalText: string,
+        context: string,
+        chunks: any,
+        nindent: number
+    ): Promise<LlamaChatResponse | undefined> => {
+        const response = await axios.post<LlamaChatResponse>(
+            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            this.createChatRequestPayload(false, instructions, originalText, chunks, context, nindent),
+            this.app.extConfig.axiosRequestConfig
+        );
+
+        return response.status === STATUS_OK ? response.data : undefined;
+    };
+
     updateExtraContext = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
         if (this.app.extConfig.use_openai_endpoint) {
@@ -149,6 +238,13 @@ export class LlamaServer {
         axios.post<LlamaResponse>(
             `${this.app.extConfig.endpoint}/infill`,
             this.createRequestPayload(true, "", "", chunks, "", undefined),
+            this.app.extConfig.axiosRequestConfig
+        );
+
+        // make a request to the API to prepare for the next chat request
+        axios.post<LlamaResponse>(
+            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            this.createChatRequestPayload(true, "", "", chunks, "", undefined),
             this.app.extConfig.axiosRequestConfig
         );
     };

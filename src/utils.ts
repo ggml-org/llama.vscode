@@ -26,4 +26,11 @@ export class Utils {
             suggestionLines.pop();
         }
     }
+
+    static getChunksInPlainText = (chunksToSend: any[]) => {
+        let extraCont = "Here are pieces of code from different files of the project: \n" 
+        + chunksToSend.reduce((accumulator, currentValue) => accumulator + "\nFile Name: " 
+        + currentValue.filename + "\nText:\n" + currentValue.text + "\n\n", "");
+        return extraCont;
+    }
 }
