@@ -125,8 +125,8 @@ export class LlamaServer {
         const CHUNKS_PLACEHOLDER = "[chunks]";
         const INSTRUCTIONS_PLACEHOLDER = "[instructions]";
         const ORIGINAL_TEXT_PLACEHOLDER = "[originalText]";
-        const CONTEXTT_PLACEHOLDER = "[context]";
-        let editTextTemplate = `${CHUNKS_PLACEHOLDER}\n\ncontext:\n${CONTEXTT_PLACEHOLDER}\n\nPlease modify the following text (part of the context) according to these instructions:\n${INSTRUCTIONS_PLACEHOLDER}\nOutput only the code. No explanations. In the modified text, keep the indent of the original text.\n\nOriginal text:\n${ORIGINAL_TEXT_PLACEHOLDER}\n\nModified text:`
+        const CONTEXT_PLACEHOLDER = "[context]";
+        let editTextTemplate = `${CHUNKS_PLACEHOLDER}\n\nModify the following original code according to the instructions. Output only the modified code. No explanations.\n\ninstructions:\n${INSTRUCTIONS_PLACEHOLDER}\n\noriginal code:\n${ORIGINAL_TEXT_PLACEHOLDER}\n\nmodified code:`
         if (noPredict) {
             return {
                 // input_extra: chunks,
@@ -159,7 +159,7 @@ export class LlamaServer {
                 "role": "user",
                 "content": editTextTemplate.replace(CHUNKS_PLACEHOLDER, Utils.getChunksInPlainText(chunks))
                             .replace(INSTRUCTIONS_PLACEHOLDER, instructions).replace(ORIGINAL_TEXT_PLACEHOLDER, originalText)
-                            .replace(CONTEXTT_PLACEHOLDER, context)
+                            .replace(CONTEXT_PLACEHOLDER, context)
               }
             ],
             "stream": false,

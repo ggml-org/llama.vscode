@@ -99,6 +99,22 @@ export class TextEditor {
     }
 
     private async showDiffView(editor: vscode.TextEditor, suggestion: string) {
+        // Get context before and after the selection
+        const contextLines = 25;
+        const startLine = Math.max(0, this.selection!.start.line - contextLines);
+        const endLine = Math.min(editor.document.lineCount - 1, this.selection!.end.line + contextLines);
+        
+        // Get the text before the selection
+        const beforeRange = new vscode.Range(startLine, 0, this.selection!.start.line, 0);
+        const beforeText = editor.document.getText(beforeRange);
+        
+        // Get the text after the selection
+        const afterRange = new vscode.Range(this.selection!.end.line, editor.document.lineAt(this.selection!.end.line).text.length, endLine, editor.document.lineAt(endLine).text.length);
+        const afterText = editor.document.getText(afterRange);
+        
+        // Combine the context with the suggestion
+        const fullSuggestion = beforeText + suggestion + afterText;
+        
         // Create a temporary document for the suggestion using a custom scheme
         const uri = vscode.Uri.parse('llama-suggestion:suggestion.txt');
         
@@ -106,7 +122,7 @@ export class TextEditor {
         const provider = new class implements vscode.TextDocumentContentProvider {
             onDidChange?: vscode.Event<vscode.Uri>;
             provideTextDocumentContent(uri: vscode.Uri): string {
-                return suggestion;
+                return fullSuggestion;
             }
         };
         
