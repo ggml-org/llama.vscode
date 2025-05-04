@@ -19,8 +19,6 @@ export class ChatContext {
     private nextEntryId: number = 0;
     public entries: Map<number, ChunkEntry>;
     private filesHashes: Map<string, string>;
-    private dimension: number = 384; // Default dimension for all-MiniLM-L6-v2 model
-    private maxElements: number = 10000;
 
     constructor(application: Application) {
         this.app = application;
@@ -46,13 +44,6 @@ export class ChatContext {
 
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant
         //      Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
-        // query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_SYNONYMS, "keywords", keywords)
-        // data = await this.app.llamaServer.getChatCompletion(query);
-        //             if (!data || !data.choices[0].message.content) {
-        //                 vscode.window.showInformationMessage('No suggestions available');
-        //                 return "";
-        //             }
-        // keywords += "|" + data.choices[0].message.content.trim();
         
 
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 1..."))

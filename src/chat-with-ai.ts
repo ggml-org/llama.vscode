@@ -34,8 +34,7 @@ export class ChatWithAi {
             aiPanel = this.askAiWithContextPanel
             if (!aiPanel) this.sentContextChunks =  []
             webviewIdentifier = 'htmlChatWithAiWithContextViewer'
-            panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
-            extraCont = await this.prepareRelChunksContext(query);   
+            panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??"" 
         }
         let queryToSend = ""
         if (editor) {
@@ -82,11 +81,11 @@ export class ChatWithAi {
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
-            // Wait for the page to load before sending message
             if (query) extraCont = await this.prepareRelChunksContext(query);
+            // Wait for the page to load before sending message
             setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
-            }, 100);
+            }, 500);
         }
     }
 
@@ -168,7 +167,7 @@ export class ChatWithAi {
 
 
 
-    private async prepareRelChunksContext(query: string) {
+    private prepareRelChunksContext = async (query: string) => {
         let extraCont: string = ""
         const contextChunks = await this.app.chatContext.getChatContext(query);
         let chunksToSend = contextChunks.filter((_, index) => !this.sentContextChunks.includes(contextChunks[index].hash));
