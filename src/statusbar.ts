@@ -9,6 +9,11 @@ export class Statusbar {
         this.app = application;
     }
 
+    showTextInfo = (text: string | undefined) =>{
+        if (text == undefined ) this.llamaVscodeStatusBarItem.text = "llama-vscode";
+        else this.llamaVscodeStatusBarItem.text = "llama-vscode | " + text;
+    }
+
     showInfo = (data: LlamaResponse | undefined) => {
         if (data == undefined || data.content == undefined || data.content.trim() == "" ) {
             if (this.app.extConfig.show_info) {

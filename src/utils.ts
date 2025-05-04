@@ -1,5 +1,13 @@
 import vscode from "vscode";
 
+interface BM25Stats {
+    avgDocLength: number;
+    docFreq: Record<string, number>;
+    docLengths: number[];
+    termFreq: Record<string, number[]>;
+    totalDocs: number;
+}
+
 export class Utils {
     static getLeadingSpaces = (input: string): string => {
         // Match the leading spaces using a regular expression
@@ -33,4 +41,64 @@ export class Utils {
         + currentValue.filename + "\nText:\n" + currentValue.text + "\n\n", "");
         return extraCont;
     }
+
+
+   
+    
+    
+    static computeBM25Stats = (docs: string[][]): BM25Stats => {
+        const docFreq: Record<string, number> = {};
+        const termFreq: Record<string, number[]> = {};
+        const docLengths: number[] = [];
+        let totalDocs = 0;
+    
+        for (const doc of docs) {
+            const terms = new Set<string>();
+            docLengths.push(doc.length);
+    
+            for (const term of doc) {
+                if (!termFreq[term]) termFreq[term] = new Array(docs.length).fill(0);
+                termFreq[term][totalDocs]++;
+                terms.add(term);
+            }
+    
+            for (const term of terms) {
+                docFreq[term] = (docFreq[term] || 0) + 1;
+            }
+    
+            totalDocs++;
+        }
+    
+        const avgDocLength = docLengths.reduce((a, b) => a + b, 0) / totalDocs;
+    
+        return { avgDocLength, docFreq, docLengths, termFreq, totalDocs };
+    }
+    
+    static bm25Score = (
+        queryTerms: string[],
+        docIndex: number,
+        stats: BM25Stats,
+        k1 = 1.5,
+        b = 0.75
+    ): number => {
+        let score = 0;
+    
+        for (const term of queryTerms) {
+            if (!stats.termFreq[term]) continue;
+    
+            const tf = stats.termFreq[term][docIndex] || 0;
+            const idf = Math.log(
+                (stats.totalDocs - stats.docFreq[term] + 0.5) / (stats.docFreq[term] + 0.5) + 1
+            );
+    
+            const numerator = tf * (k1 + 1);
+            const denominator = tf + k1 * (1 - b + b * stats.docLengths[docIndex] / stats.avgDocLength);
+    
+            score += idf * numerator / denominator;
+        }
+    
+        return score;
+    }
+    
+
 }

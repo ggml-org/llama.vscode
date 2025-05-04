@@ -54,7 +54,7 @@ export class TextEditor {
 
         try {
             // Get completion from llama server
-            const data = await this.app.llamaServer.getChatCompletion(
+            const data = await this.app.llamaServer.getChatEditCompletion(
                 prompt, 
                 this.selectedText,
                 context,
@@ -100,7 +100,7 @@ export class TextEditor {
 
     private async showDiffView(editor: vscode.TextEditor, suggestion: string) {
         // Get context before and after the selection
-        const contextLines = 25;
+        const contextLines = this.app.extConfig.EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX;
         const startLine = Math.max(0, this.selection!.start.line - contextLines);
         const endLine = Math.min(editor.document.lineCount - 1, this.selection!.end.line + contextLines);
         

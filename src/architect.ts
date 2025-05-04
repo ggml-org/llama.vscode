@@ -14,6 +14,40 @@ export class Architect {
         this.app = application;
     }
 
+    init = () => {
+        // Start indexing workspace files
+        if (this.app.extConfig.endpoint_embeddings.trim() != "") {
+            setTimeout(() => {
+                this.app.chatContext.indexWorkspaceFiles().catch(error => {
+                    console.error('Failed to index workspace files:', error);
+                });
+            }, 0);
+        }
+    }
+
+    setOnSaveDeleteFileForDb = (context: vscode.ExtensionContext) => {
+        const saveListener = vscode.workspace.onDidSaveTextDocument(async (document) => {
+            try {
+                await this.app.chatContext.addDocument(document.uri.toString(), document.getText());
+            } catch (error) {
+                console.error('Failed to add document to RAG:', error);
+            }
+        });
+        context.subscriptions.push(saveListener);
+
+        // Add file delete listener for vector RAG
+        const deleteListener = vscode.workspace.onDidDeleteFiles(async (event) => {
+            for (const file of event.files) {
+                try {
+                    await this.app.chatContext.removeDocument(file.toString());
+                } catch (error) {
+                    console.error('Failed to remove document from RAG:', error);
+                }
+            }
+        });
+        context.subscriptions.push(deleteListener);
+    }
+
     setOnChangeConfiguration = (context: vscode.ExtensionContext) => {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
@@ -100,6 +134,17 @@ export class Architect {
         context.subscriptions.push(onSaveDocDisposable);
     }
 
+    setOnChangeWorkspaceFolders = (context: vscode.ExtensionContext) => {
+        // Listen for new workspace folders being added
+        context.subscriptions.push(
+            vscode.workspace.onDidChangeWorkspaceFolders(event => {
+                event.added.forEach(folder => {
+                    this.init();
+                });
+            })
+        );
+    }
+
     registerCommandManualCompletion = (context: vscode.ExtensionContext) => {
         const triggerManualCompletionDisposable = vscode.commands.registerCommand('extension.triggerInlineCompletion', async () => {
             // Manual triggering of the completion with a shortcut
@@ -147,7 +192,18 @@ export class Architect {
             if (this.app.lruResultCache.size() > 0){
                 completionCache = Array.from(this.app.lruResultCache.getMap().entries()).reduce((accumulator, [key, value]) => accumulator + "Key: " + key + "\nCompletion:\n" +  value + "\n\n" , "");
             }
-            vscode.env.clipboard.writeText("Events:\n" + eventLogsCombined + "\n\n------------------------------\n" + "Extra context: \n" + extraContext + "\n\n------------------------------\nCompletion cache: \n" + completionCache)
+            let firstChunks = ""
+            if (this.app.chatContext.entries.size > 0){
+                firstChunks = Array.from(this.app.chatContext.entries.entries()).slice(0,5).reduce((accumulator, [key, value]) => accumulator + "ID: " + key + "\nFile:\n" +  value.uri +
+                "\nfirst line:\n" +  value.firstLine +
+                "\nlast line:\n" +  value.lastLine +
+                "\nChunk:\n" +  value.content + "\n\n" , "");
+            }
+            vscode.env.clipboard.writeText("Events:\n" + eventLogsCombined +
+                 "\n\n------------------------------\n" +
+                 "Extra context: \n" + extraContext + 
+                 "\n\n------------------------------\nCompletion cache: \n" + completionCache +
+                 "\n\n------------------------------\nChunks: \n" + firstChunks)
         });
         context.subscriptions.push(triggerCopyChunksDisposable);
     }

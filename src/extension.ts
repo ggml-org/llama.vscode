@@ -22,6 +22,9 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandEditSelectedText(context);
     app.architect.registerCommandAcceptTextEdit(context);
     app.architect.registerCommandRejectTextEdit(context);
+    app.architect.setOnSaveDeleteFileForDb(context);
+    app.architect.setOnChangeWorkspaceFolders(context)
+    app.architect.init()
 }
 
 export function deactivate() {

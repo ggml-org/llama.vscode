@@ -1,6 +1,6 @@
 /*
 
-Here a the prompt to get the transation from LLM (update the last row with the strings, whcih should be translated; first check if the string already exists):
+Here is a the prompt to get the transation from LLM (update the last row with the strings, whcih should be translated; first check if the string already exists):
 
 # Background information
 
@@ -61,4 +61,13 @@ export const translations: string[][] = [
     ["Runs the command from property launch_training_chat", "Изпълнява командата от свойството launch_training_chat", "Führt den Befehl aus der Eigenschaft launch_training_chat aus", "Выполняет команду из свойства launch_training_chat", "Ejecuta el comando desde la propiedad launch_training_chat", "从属性 launch_training_chat 运行命令", "Exécute la commande depuis la propriété launch_training_chat"],
     ["Stop training", "Спиране на обучението", "Training beenden", "Остановить обучение", "Detener entrenamiento", "停止训练", "Arrêter l'entraînement"],
     ["Stops training if it was started from llama.vscode menu", "Спира обучението, ако е стартирано от менюто llama.vscode", "Stoppt das Training, wenn es über das Menü llama.vscode gestartet wurde", "Останавливает обучение, если оно было запущено из меню llama.vscode", "Detiene el entrenamiento si se inició desde el menú llama.vscode", "如果从 llama.vscode 菜单启动，则停止训练", "Arrête l'entraînement s'il a été lancé depuis le menu llama.vscode"],
+    ["Extracting keywords from query...", "Извличане на ключови думи от заявката...", "Schlüsselwörter aus der Abfrage extrahieren...", "Извлечение ключевых слов из запроса...", "Extrayendo palabras clave de la consulta...", "从查询中提取关键词...", "Extraction des mots-clés de la requête..."],
+    ["Filtering chunks step 1...", "Филтриране на части стъпка 1...", "Filterung der Datenblöcke Schritt 1...", "Фильтрация фрагментов шаг 1...", "Filtrado de fragmentos paso 1...", "过滤数据块步骤1...", "Filtrage des segments étape 1..."],
+    ["Filtering chunks step 2...", "Филтриране на части стъпка 2...", "Filterung der Datenblöcke Schritt 2...", "Фильтрация фрагментов шаг 2...", "Filtrado de fragmentos paso 2...", "过滤数据块步骤2...", "Filtrage des segments étape 2..."],
+    ["Context chunks ready.", "Контекстните части са готови.", "Kontextblöcke bereit.", "Контекстные фрагменты готовы.", "Fragmentos de contexto listos.", "上下文块已准备就绪。", "Segments de contexte prêts."],
+    ["Indexing files...", "Индексиране на файлове...", "Dateien werden indiziert...", "Индексация файлов...", "Indexando archivos...", "正在索引文件...", "Indexation des fichiers..."],
+    ["Indexed", "Индексирани", "Indiziert", "Проиндексировано", "Indexado", "已索引", "Indexé"],
+    ["files for RAG search", "файлове за RAG търсене", "Dateien für RAG-Suche", "файлы для RAG-поиска", "archivos para búsqueda RAG", "用于RAG搜索的文件", "fichiers pour la recherche RAG"],
+    ["Enter your question...", "Въведете въпроса си...", "Geben Sie Ihre Frage ein...", "Введите ваш вопрос...", "Ingresa tu pregunta...", "输入您的问题...", "Entrez votre question..."],
+    ["What would you like to ask AI?", "Какво бихте искали да попитате ИИ?", "Was möchten Sie die KI fragen?", "Что вы хотите спросить у ИИ?", "¿Qué te gustaría preguntarle a la IA?", "您想向AI提问什么？", "Que souhaitez-vous demander à l'IA ?"],
   ];
