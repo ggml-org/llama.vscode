@@ -74,14 +74,14 @@ export class ChatWithAi {
                 }
             });
             // Wait for the page to load before sending message
-            if (query) extraCont = await this.prepareRelChunksContext(query);
+            if (query) extraCont = await this.prepareRagContext(query);
             setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
             }, Math.max(0, 3000 - (Date.now() - createWebviewTimeInMs)));
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
-            if (query) extraCont = await this.prepareRelChunksContext(query);
+            if (query) extraCont = await this.prepareRagContext(query);
             // Wait for the page to load before sending message
             setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
@@ -167,13 +167,17 @@ export class ChatWithAi {
 
 
 
-    private prepareRelChunksContext = async (query: string) => {
+    private prepareRagContext = async (query: string) => {
         let extraCont: string = ""
-        const contextChunks = await this.app.chatContext.getChatContext(query);
+        const contextChunks = await this.app.chatContext.getRagContextChunks(query);
         let chunksToSend = contextChunks.filter((_, index) => !this.sentContextChunks.includes(contextChunks[index].hash));
         let chunksToSendHash = chunksToSend.map(chunk => chunk.hash);
         if (chunksToSend.length > 0) extraCont = this.app.chatContext.getContextChunksInPlainText(chunksToSend);
         this.sentContextChunks.push(...chunksToSendHash);
-        return extraCont;
+
+        const contextFiles = await this.app.chatContext.getRagFilesContext(query);
+        if (contextFiles && contextFiles.length > 0) extraCont += "\n" + contextFiles;
+
+        return extraCont
     }
 }

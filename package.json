@@ -168,6 +168,11 @@
           "default": "cd c:/ai ; ./llama-server.exe -m qwen2.5-coder-3b-instruct-q6_k.gguf -ngl 99 --port 8011 --path C:/llama.cpp/llama.cpp/examples/server/webui/dist",
           "description": "Shell command for starting chat llama.cpp server, executed from the menu"
         },
+        "llama-vscode.launch_embeddings": {
+          "type": "string",
+          "default": "cd c:/ai ; ./llama-server.exe -m all-MiniLM-L6-v2-Q8_0.gguf --port 8010",
+          "description": "Shell command for starting chat llama.cpp server, executed from the menu"
+        },
         "llama-vscode.launch_training_completion": {
           "type": "string",
           "default": "",
@@ -202,16 +207,6 @@
           "type": "string",
           "default": "http://127.0.0.1:8010",
           "description": "The URL to be used by the extension for creating embeddings."
-        },
-        "llama-vscode.rag_chunk_max_chars": {
-          "type": "number",
-          "default": 800,
-          "description": "Max number of chars per RAG chunk"
-        },
-        "llama-vscode.rag_max_lines_per_chunk": {
-          "type": "number",
-          "default": 40,
-          "description": "Max number of lines per RAG chunk"
         },
         "llama-vscode.auto": {
           "type": "boolean",
@@ -288,6 +283,16 @@
           "default": 1000,
           "description": "how often to process queued chunks in normal mode"
         },
+        "llama-vscode.rag_chunk_max_chars": {
+          "type": "number",
+          "default": 800,
+          "description": "Max number of chars per RAG chunk"
+        },
+        "llama-vscode.rag_max_lines_per_chunk": {
+          "type": "number",
+          "default": 40,
+          "description": "Max number of lines per RAG chunk"
+        },
         "llama-vscode.rag_max_chars_per_chunk_line": {
           "type": "number",
           "default": 300,
@@ -307,6 +312,16 @@
           "type": "number",
           "default": 5,
           "description": "max RAG chunks to provide as context to the LLM"
+        },
+        "llama-vscode.rag_max_context_files": {
+          "type": "number",
+          "default": 3,
+          "description": "max number of complete files to send as context to the LLM"
+        },
+        "llama-vscode.rag_max_context_file_chars": {
+          "type": "number",
+          "default": 10000,
+          "description": "max chars for a context file. If the file is bigger it will be ignored to avoid too big context."
         },
         "llama-vscode.language": {
           "type": "string",

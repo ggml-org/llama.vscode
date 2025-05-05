@@ -12,27 +12,30 @@ interface ChunkEntry {
     hash: string;
 }
 
+interface FileProperties {
+    totalChars: number;
+    hash: string;
+}
+
 const filename = 'ghost.dat';
 
 export class ChatContext {
     private app: Application;
     private nextEntryId: number = 0;
     public entries: Map<number, ChunkEntry>;
-    private filesHashes: Map<string, string>;
+    private filesProperties: Map<string, FileProperties>;
 
     constructor(application: Application) {
         this.app = application;
         this.entries = new Map();
-        this.filesHashes = new Map();
+        this.filesProperties = new Map();
     }
     
     public async init() {
         vscode.window.showInformationMessage('Vector index initialized!');
-    }
+    }  
 
-    public getChatContext = async (prompt: string): Promise<ChunkEntry[]> => {
-        let context = "";
-        
+    public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {        
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
@@ -51,8 +54,22 @@ export class ChatContext {
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
         let topChunksCosSim = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);    
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Context chunks ready."))
-
+        
         return topChunksCosSim;
+    }
+
+    public getRagFilesContext = async (prompt: string): Promise<string> => {
+        let contextFiles = this.getFilesFromQuery(prompt)
+        let filesContext = ""
+        for (const fileName of contextFiles.slice(0, this.app.extConfig.rag_max_context_files)) {
+             let contextFile = Array.from(this.filesProperties).find(([key]) => key.toLocaleLowerCase().endsWith(fileName.toLocaleLowerCase()))
+             if (contextFile){
+                const [fileUrl, fileProperties] = contextFile;
+                const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(fileUrl));
+                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)       
+             }
+        }; 
+        return filesContext;
     }
 
     public getContextChunksInPlainText = (chunksToSend: ChunkEntry[]) => {
@@ -167,10 +184,10 @@ export class ChatContext {
         try {
             if (this.isImageOrVideoFile(uri)) return;
             const hash = this.app.lruResultCache.getHash(content);
-            if (this.filesHashes.get(uri) === hash) {
+            if (this.filesProperties.get(uri)?.hash === hash) {
                 return;
             }
-            this.filesHashes.set(uri, hash);
+            this.filesProperties.set(uri, {hash: hash, totalChars: content.length});
             
             try {
                 this.removeChunkEntries(uri);
@@ -223,7 +240,7 @@ export class ChatContext {
 
     async removeDocument(uri: string) {
         this.removeChunkEntries(uri);
-        this.filesHashes.delete(uri);
+        this.filesProperties.delete(uri);
     }
 
 
@@ -330,5 +347,11 @@ export class ChatContext {
         }
     
         return patterns;
+    }
+
+    private getFilesFromQuery = (text: string): string[] => {
+        // Only allows letters, numbers, underscores, dots, and hyphens in filenames
+        const regex = /@([a-zA-Z0-9_.-]+)(?=[,.?!\s]|$)/g;
+        return [...text.matchAll(regex)].map(match => match[1]);
     }
 } 

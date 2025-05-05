@@ -44,6 +44,7 @@ export class LlamaServer {
     private app: Application
     private vsCodeFimTerminal: Terminal | undefined;
     private vsCodeChatTerminal: Terminal | undefined;
+    private vsCodeEmbeddingsTerminal: Terminal | undefined;
     private vsCodeTrainTerminal: Terminal | undefined;
     private readonly defaultRequestParams = {
         top_k: 40,
@@ -137,6 +138,7 @@ export class LlamaServer {
         const INSTRUCTIONS_PLACEHOLDER = "[instructions]";
         const ORIGINAL_TEXT_PLACEHOLDER = "[originalText]";
         const CONTEXT_PLACEHOLDER = "[context]";
+        // let editTextTemplate = `${CHUNKS_PLACEHOLDER}\n\nModify the following original code according to the instructions. Output only the modified code. No explanations.\n\ninstructions:\n${INSTRUCTIONS_PLACEHOLDER}\n\noriginal code:\n${ORIGINAL_TEXT_PLACEHOLDER}\n\nmodified code:`
         if (noPredict) {
             return {
                 // input_extra: chunks,
@@ -368,6 +370,24 @@ export class LlamaServer {
         }
     }
 
+    shellEmbeddingsCmd = (launchCmd: string): void => {
+        if (!launchCmd) {
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            return;
+        }
+        try {
+            this.vsCodeEmbeddingsTerminal = vscode.window.createTerminal({
+                name: 'llama.cpp Embeddings Terminal'
+            });
+            this.vsCodeEmbeddingsTerminal.show(true);
+            this.vsCodeEmbeddingsTerminal.sendText(launchCmd);
+        } catch(err){
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
+            }
+        }
+    }
+
     shellTrainCmd = (trainCmd: string): void => {
         if (!trainCmd) {
             vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
@@ -392,6 +412,10 @@ export class LlamaServer {
 
     killChatCmd = (): void => {
         if (this.vsCodeChatTerminal) this.vsCodeChatTerminal.dispose();
+    }
+
+    killEmbeddingsCmd = (): void => {
+        if (this.vsCodeEmbeddingsTerminal) this.vsCodeEmbeddingsTerminal.dispose();
     }
 
     killTrainCmd = (): void => {

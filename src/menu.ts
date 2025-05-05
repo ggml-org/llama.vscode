@@ -80,6 +80,10 @@ export class Menu {
             {
                 label: this.app.extConfig.getUiText("Start chat llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Runs the command from property launch_chat`)
+            },
+            {
+                label: this.app.extConfig.getUiText("Start embeddings llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_embeddings`)
             })
         if (this.app.extConfig.launch_training_completion.trim() != "") { 
             menuItems.push(
@@ -103,6 +107,10 @@ export class Menu {
             {
                 label: this.app.extConfig.getUiText("Stop chat llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Stops chat llama.cpp server if it was started from llama.vscode menu`)
+            },
+            {
+                label: this.app.extConfig.getUiText("Stop embeddings llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Stops embeddings llama.cpp server if it was started from llama.vscode menu`)
             })
         if (this.app.extConfig.launch_training_completion.trim() != "" || this.app.extConfig.launch_training_chat.trim() != "") { 
             menuItems.push(
@@ -177,6 +185,11 @@ export class Menu {
                 if (this.app.extConfig.lora_chat.trim() != "") commandChat += " --lora " + this.app.extConfig.lora_chat
                 await this.app.llamaServer.shellChatCmd(commandChat);
                 break; 
+            case this.app.extConfig.getUiText('Start embeddings llama.cpp server'):
+                await this.app.llamaServer.killEmbeddingsCmd();
+                let commandEmbeddings = this.app.extConfig.launch_embeddings
+                await this.app.llamaServer.shellEmbeddingsCmd(commandEmbeddings);
+                break;
             case this.app.extConfig.getUiText('Start training completion model'):
                 await this.app.llamaServer.killTrainCmd();
                 await this.app.llamaServer.shellTrainCmd(this.app.extConfig.launch_training_completion);
@@ -187,6 +200,9 @@ export class Menu {
                 break;       
             case this.app.extConfig.getUiText("Stop completion llama.cpp server"):
                 await this.app.llamaServer.killFimCmd();
+                break;
+            case this.app.extConfig.getUiText("Stop embeddings llama.cpp server"):
+                await this.app.llamaServer.killEmbeddingsCmd();
                 break;
             case this.app.extConfig.getUiText("Stop chat llama.cpp server"):
                 await this.app.llamaServer.killChatCmd();

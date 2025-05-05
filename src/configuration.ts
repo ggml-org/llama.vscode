@@ -9,6 +9,7 @@ export class Configuration {
     enabled = true;
     launch_completion = ""
     launch_chat = ""
+    launch_embeddings = ""
     launch_training_completion = ""
     launch_training_chat = ""
     lora_completion = ""
@@ -45,6 +46,8 @@ export class Configuration {
     rag_max_files = 10000
     rag_max_bm25_filter_chunks = 47
     rag_max_embedding_filter_chunks = 5
+    rag_max_context_files = 3
+    rag_max_context_file_chars = 10000
 
     // additional configs
     // TODO: change to snake_case for consistency
@@ -98,6 +101,7 @@ export class Configuration {
         this.endpoint_embeddings = this.trimTrailingSlash(String(config.get<string>("endpoint_embeddings")));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));
+        this.launch_embeddings = String(config.get<string>("launch_embeddings"));
         this.launch_training_completion = String(config.get<string>("launch_training_completion"));
         this.launch_training_chat = String(config.get<string>("launch_training_chat"));
         this.lora_completion = String(config.get<string>("lora_completion"));
@@ -126,6 +130,8 @@ export class Configuration {
         this.rag_max_files = Number(config.get<number>("rag_max_files"));
         this.rag_max_bm25_filter_chunks = Number(config.get<number>("rag_max_bm25_filter_chunks"));
         this.rag_max_embedding_filter_chunks = Number(config.get<number>("rag_max_embedding_filter_chunks"));
+        this.rag_max_context_files = Number(config.get<number>("rag_max_context_files"));
+        this.rag_max_context_file_chars = Number(config.get<number>("rag_max_context_file_chars"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));
