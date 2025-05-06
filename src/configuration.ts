@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
 import {translations} from "./translations"
+import {AxiosHeaders, AxiosRequestConfig} from "axios";
 
 export class Configuration {
     // extension configs
@@ -40,9 +41,10 @@ export class Configuration {
 
     // additional configs
     // TODO: change to snake_case for consistency
-    axiosRequestConfig = {};
+    axiosRequestConfig: AxiosRequestConfig = {};
     disabledLanguages: string[] = [];
-    languageSettings:Record<string, boolean> = {}
+    languageSettings: Record<string, boolean> = {}
+    extra_request_headers = ""
 
     // TODO: change to snake_case for consistency
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000;
@@ -73,11 +75,11 @@ export class Configuration {
         this.setOpenAiClient();
     }
 
-    private initUiLanguages(){
+    private initUiLanguages() {
         let totalLanguages = 0;
         if (translations.length > 0) totalLanguages = translations[0].length
-        for (let langInd = 0; langInd < totalLanguages; langInd++){
-            let lang =  new Map(translations.map(transl => [transl[0], transl[langInd]]));
+        for (let langInd = 0; langInd < totalLanguages; langInd++) {
+            let lang = new Map(translations.map(transl => [transl[0], transl[langInd]]));
             this.uiLanguages.set(this.langIndexes.get(langInd) ?? "", lang);
         }
     }
@@ -114,6 +116,7 @@ export class Configuration {
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));
         this.languageSettings = config.get<Record<string, boolean>>('languageSettings') || {};
+        this.extra_request_headers = String(config.get<string>('extra_request_headers'));
     };
 
     getUiText = (uiText: string): string | undefined => {
@@ -147,6 +150,13 @@ export class Configuration {
                 },
             };
         }
+        if (this.extra_request_headers != undefined && this.extra_request_headers != "") {
+            const headers = AxiosHeaders.from(this.extra_request_headers)
+            this.axiosRequestConfig = {
+                ...this.axiosRequestConfig,
+                headers
+            }
+        }
         if (this.self_signed_certificate != undefined && this.self_signed_certificate.trim() != "") {
             const httpsAgent = new https.Agent({
                 ca: fs.readFileSync(this.self_signed_certificate.trim()),
@@ -168,7 +178,7 @@ export class Configuration {
         }
     };
 
-    isCompletionEnabled = (document?: vscode.TextDocument, language?: string): boolean =>  {
+    isCompletionEnabled = (document?: vscode.TextDocument, language?: string): boolean => {
         if (!this.enabled) return false;
 
         const languageToCheck = language ?? document?.languageId;

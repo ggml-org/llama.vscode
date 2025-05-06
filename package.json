@@ -122,8 +122,7 @@
         "command": "extension.acceptFirstWord",
         "key": "ctrl+right",
         "when": "editorTextFocus && inlineSuggestionVisible"
-      }
-      ,
+      },
       {
         "command": "extension.showMenu",
         "key": "ctrl+shift+m",
@@ -285,14 +284,14 @@
           "description": "Enable/disable completions"
         },
         "llama-vscode.languageSettings": {
-            "type": "object",
-            "default": {
-              "*": true
-            },
-            "additionalProperties": {
-              "type": "boolean"
-            },
-            "description": "Enable/disable suggestions for specific languages"
+          "type": "object",
+          "default": {
+            "*": true
+          },
+          "additionalProperties": {
+            "type": "boolean"
+          },
+          "description": "Enable/disable suggestions for specific languages"
         },
         "llama-vscode.use_openai_endpoint": {
           "type": "boolean",
@@ -308,6 +307,11 @@
           "type": "string",
           "default": "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>",
           "description": "The prompt template to be used for the OpenAI compatible endpoint."
+        },
+        "llama-vscode.extra_request_headers": {
+          "type": "string",
+          "default": "",
+          "description": "extra_request_headers will send to llama.cpp server, not work if use openai_client_model"
         }
       }
     },
