@@ -4,7 +4,7 @@ interface BM25Stats {
     avgDocLength: number;
     docFreq: Record<string, number>;
     docLengths: number[];
-    termFreq: Record<string, number[]>;
+    termFreq: Record<string, Record<number, number>>
     totalDocs: number;
 }
 
@@ -42,37 +42,47 @@ export class Utils {
         return extraCont;
     }
 
-
-   
-    
-    
     static computeBM25Stats = (docs: string[][]): BM25Stats => {
-        const docFreq: Record<string, number> = {};
-        const termFreq: Record<string, number[]> = {};
+        const docFreq: Map<string, number> = new Map();
+        const termFreq: Map<string, Map<number, number>> = new Map();
         const docLengths: number[] = [];
         let totalDocs = 0;
     
-        for (const doc of docs) {
-            const terms = new Set<string>();
+        for (let docId = 0; docId < docs.length; docId++) {
+            const doc = docs[docId];
             docLengths.push(doc.length);
+            const termsInDoc = new Set<string>();
     
             for (const term of doc) {
-                if (!termFreq[term]) termFreq[term] = new Array(docs.length).fill(0);
-                termFreq[term][totalDocs]++;
-                terms.add(term);
+                // Update term frequency (per-doc)
+                if (!termFreq.has(term)) {
+                    termFreq.set(term, new Map());
+                }
+                const termDocMap = termFreq.get(term)!;
+                termDocMap.set(docId, (termDocMap.get(docId) || 0) + 1);
+                
+                termsInDoc.add(term);
             }
     
-            for (const term of terms) {
-                docFreq[term] = (docFreq[term] || 0) + 1;
+            // Update document frequency (global)
+            for (const term of termsInDoc) {
+                docFreq.set(term, (docFreq.get(term) || 0) + 1);
             }
     
             totalDocs++;
         }
     
         const avgDocLength = docLengths.reduce((a, b) => a + b, 0) / totalDocs;
-    
-        return { avgDocLength, docFreq, docLengths, termFreq, totalDocs };
-    }
+        return { 
+            avgDocLength, 
+            docFreq: Object.fromEntries(docFreq),  // Convert to Record if needed
+            docLengths, 
+            termFreq: Object.fromEntries(
+                Array.from(termFreq).map(([k, v]) => [k, Object.fromEntries(v)])
+            ),
+            totalDocs 
+        };
+    };
     
     static bm25Score = (
         queryTerms: string[],

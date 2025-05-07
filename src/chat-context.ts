@@ -3,6 +3,7 @@ import { Application } from './application';
 import { Utils } from './utils';
 import * as fs from 'fs';
 import * as path from 'path';
+import ignore from 'ignore';
 
 interface ChunkEntry {
     uri: string;
@@ -218,6 +219,7 @@ export class ChatContext {
                 let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk 
                 const chunkHash = this.app.lruResultCache.getHash(chunkContent)
                 this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash});
+                if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
                 this.nextEntryId++;
             }
         } catch (error) {
@@ -278,75 +280,90 @@ export class ChatContext {
                     } catch (error) {
                         console.error(`Failed to index file ${file.toString()}:`, error);
                     }
+                    if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
                 }
                 this.app.logger.addEventLog("RAG", "END_RAG_INDEXING", "Files: " + processed + " Chunks: " + this.entries.size)
-            });
-
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + files.length +" " 
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + processed +"/" + files.length +" " 
                 + this.app.extConfig.getUiText("files for RAG search"));
+            });
+            
         } catch (error) {
             console.error('Failed to index workspace files:', error);
             vscode.window.showErrorMessage('Failed to index workspace files');
         }
     }
 
-    private getFilesRespectingGitignore = async () => {
+    getFilesRespectingGitignore = async (): Promise<vscode.Uri[]> => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
+        if (!workspaceFolders || workspaceFolders.length === 0) {
             return [];
         }
     
-        // Get all .gitignore files in the workspace
-        const gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', null);
+        const rootUri = workspaceFolders[0].uri;
+        const result: vscode.Uri[] = [];
+        const igMap = new Map<string, ignore.Ignore>();
     
-        // Read and parse all .gitignore files
-        let excludePatterns: string[] = [];
-        for (const uri of gitignoreUris) {
-            const gitignorePath = uri.fsPath;
-            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
-            const folderPath = path.dirname(gitignorePath);
-            
-            const patterns = this.parseGitignore(gitignoreContent, folderPath);
-            excludePatterns = excludePatterns.concat(patterns);
-        }
+        // First pass: Collect all .gitignore files and their rules
+        const gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', '');
+        await Promise.all(gitignoreUris.map(async uri => {
+            try {
+                const content = await vscode.workspace.fs.readFile(uri);
+                const dir = path.dirname(uri.fsPath);
+                igMap.set(dir, ignore().add(content.toString()));
+            } catch (error) {
+                console.error(`Error reading .gitignore at ${uri.fsPath}:`, error);
+            }
+        }));
     
-        // Add common VSCode and Git directories to exclude
-        excludePatterns.push('**/.git/**', '**/.vscode/**', '**/node_modules/**');
+        // Second pass: Traverse directory tree while respecting ignore rules
+        async function traverse(dirUri: vscode.Uri) {
+            const dirPath = dirUri.fsPath;
     
-        // Find all files excluding those in .gitignore
-        const files = await vscode.workspace.findFiles(
-            '**/*', // include all files
-            `{${excludePatterns.join(',')}}`, // exclude patterns
-            this.app.extConfig.rag_max_files
-        );
-    
-        return files;
-    }
-    
-    parseGitignore = (content: string, gitignoreFolder: string): string[] => {
-        const lines = content.split('\n');
-        const patterns: string[] = [];
-    
-        for (let line of lines) {
-            line = line.trim();
-            
-            // Skip empty lines and comments
-            if (!line || line.startsWith('#')) {
-                continue;
+            if (isIgnored(dirPath)) {
+                return;
+            }
+
+            let entries: [string, vscode.FileType][];
+            try {
+                entries = await vscode.workspace.fs.readDirectory(dirUri);
+            } catch {
+                return; // Skip directories we can't read
             }
     
-            // Handle directory patterns
-            if (line.endsWith('/')) {
-                line = line.slice(0, -1);
-                patterns.push(`**/${line}/**`);
-            } 
-            // Handle specific file patterns
-            else {
-                patterns.push(`**/${line}`);
+            for (const [name, type] of entries) {
+                const entryUri = vscode.Uri.file(path.join(dirPath, name));
+                
+                if (type === vscode.FileType.Directory) {
+                    await traverse(entryUri);
+                } else if (!isIgnored(entryUri.fsPath)) {
+                    result.push(entryUri);
+                }
             }
         }
     
-        return patterns;
+        function isIgnored(fsPath: string): boolean {
+            let currentDir = path.dirname(fsPath);
+            const target = path.basename(fsPath);
+    
+            // Check ignore rules from closest to farthest
+            while (true) {
+                if (igMap.has(currentDir)) {
+                    const relative = path.relative(currentDir, fsPath);
+                    if (igMap.get(currentDir)!.ignores(relative)) {
+                        return true;
+                    }
+                }
+    
+                const parentDir = path.dirname(currentDir);
+                if (parentDir === currentDir) break; // Reached root
+                currentDir = parentDir;
+            }
+    
+            return false;
+        }
+    
+        await traverse(rootUri);
+        return result;
     }
 
     private getFilesFromQuery = (text: string): string[] => {

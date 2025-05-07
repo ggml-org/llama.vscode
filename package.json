@@ -298,10 +298,10 @@
           "default": 300,
           "description": "max chars for a chunk line, the rest of the line is cut"
         },
-        "llama-vscode.rag_max_files": {
+        "llama-vscode.rag_max_chunks": {
           "type": "number",
-          "default": 10000,
-          "description": "max files to index for the RAG search"
+          "default": 50000,
+          "description": "max cunks for the RAG search"
         },
         "llama-vscode.rag_max_bm25_filter_chunks": {
           "type": "number",
@@ -375,6 +375,7 @@
   },
   "dependencies": {
     "axios": "^1.1.2",
+    "ignore": "^7.0.4",
     "openai": "^4.80.1"
   },
   "devDependencies": {
