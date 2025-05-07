@@ -52,6 +52,7 @@ export class Architect {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
             this.app.extConfig.updateOnEvent(event, config);
+            if (this.app.extConfig.isRagConfigChanged(event)) this.init()
             vscode.window.showInformationMessage(this.app.extConfig.getUiText(`llama-vscode extension is updated.`)??"");
         });
         context.subscriptions.push(configurationChangeDisp);

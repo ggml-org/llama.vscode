@@ -152,6 +152,13 @@ export class Configuration {
         }
     };
 
+    isRagConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
+        return event.affectsConfiguration("llama-vscode.rag_chunk_max_chars") 
+        || event.affectsConfiguration("llama-vscode.rag_max_lines_per_chunk")
+        || event.affectsConfiguration("llama-vscode.rag_max_files")
+        || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line");
+    }
+
     trimTrailingSlash = (s: string): string => {
         if (s.length > 0 && s[s.length - 1] === "/") {
             return s.slice(0, -1);

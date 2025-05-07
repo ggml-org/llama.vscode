@@ -321,7 +321,7 @@
         "llama-vscode.rag_max_context_file_chars": {
           "type": "number",
           "default": 10000,
-          "description": "max chars for a context file. If the file is bigger it will be ignored to avoid too big context."
+          "description": "max chars for a context file. If the file is bigger it will be cut to avoid too big context."
         },
         "llama-vscode.language": {
           "type": "string",
