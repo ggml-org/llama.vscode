@@ -293,42 +293,6 @@ export class LlamaServer {
         return response.status === STATUS_OK ? response.data : undefined;
     };
 
-    asyncGetChatCompletion = async (prompt: string): Promise<LlamaChatResponse | undefined> => {
-        const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
-            {
-                "messages": [
-                    { "role": "system", "content": "You are a helpful assistant." },
-                    { "role": "user", "content": prompt }
-                ],
-                "stream": false,
-                "cache_prompt": true,
-                "samplers": "edkypmxt",
-                "temperature": 0.8,
-                "dynatemp_range": 0,
-                "dynatemp_exponent": 1,
-                "top_k": 40,
-                "top_p": 0.95,
-                "min_p": 0.05,
-                "typical_p": 1,
-                "xtc_probability": 0,
-                "xtc_threshold": 0.1,
-                "repeat_last_n": 64,
-                "repeat_penalty": 1,
-                "presence_penalty": 0,
-                "frequency_penalty": 0,
-                "dry_multiplier": 0,
-                "dry_base": 1.75,
-                "dry_allowed_length": 2,
-                "dry_penalty_last_n": -1,
-                "max_tokens": -1,
-                "timings_per_token": true
-            },
-            this.app.extConfig.axiosRequestConfig
-        );
-        return response.status === STATUS_OK ? response.data : undefined;
-    };
-
     updateExtraContext = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
         if (this.app.extConfig.use_openai_endpoint) {
@@ -473,13 +437,11 @@ export class LlamaServer {
             return;
         }
         const repo = git.repositories[0];
-        const logOutputChannel = vscode.window.createOutputChannel('llama.vscode');
 
         try {
             let diff = await repo.diff(true);
 
             if (!diff || diff.trim() === '') {
-                logOutputChannel.appendLine('git diff is empty')
                 vscode.window.showWarningMessage('git diff is empty');
                 return;
             }
@@ -491,7 +453,7 @@ export class LlamaServer {
                 cancellable: false
             }, async (progress) => {
                 // stream output
-                const completion = await this.asyncGetChatCompletion(prompt)
+                const completion = await this.getChatCompletion(prompt)
                 const commitMessage = completion?.choices[0]?.message.content
 
                 if (commitMessage) {
