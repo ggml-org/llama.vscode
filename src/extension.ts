@@ -24,6 +24,7 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandRejectTextEdit(context);
     app.architect.setOnSaveDeleteFileForDb(context);
     app.architect.setOnChangeWorkspaceFolders(context)
+    app.architect.registerGenarateCommitMsg(context)
     app.architect.init()
 }
 

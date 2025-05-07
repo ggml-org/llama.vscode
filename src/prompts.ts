@@ -8,6 +8,30 @@ export class Prompts {
 
     CHAT_EDIT_TEXT = `{chunks}\n\nModify the following original code according to the instructions. Output only the modified code. No explanations.\n\ninstructions:\n{instructions}\n\noriginal code:\n{originalText}\n\nmodified code:`
 
+    CREATE_GIT_DIFF_COMMIT = `Please generate a readable and concise git commit message based on the file changes.
+
+Requirements:
+1. **Type** (feat, fix, docs, style, refactor, perf, test, chore)
+2. **Short description** (no more than 50 characters)
+3. **Detailed description** (optional, up to 72 characters)
+4. **Output format** must follow the below format:
+
+[Type]: [Short description]
+[Detailed description]
+
+**Example OUTPUT:**
+feat: add user authentication feature
+
+- Implemented JWT-based authentication
+- Added login and registration endpoints
+
+**INPUT:**
+
+{diff}
+
+**OUTPUT:**:
+`
+
     constructor(application: Application) {
         this.app = application;
     }
