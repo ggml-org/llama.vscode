@@ -69,6 +69,10 @@ export class Menu {
                 {
                     label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)',
                     description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
+                },
+                {
+                    label: this.app.extConfig.getUiText('Start embeddings model') + ' all-MiniLM-L6-v2-Q8_0-GGUF',
+                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 })
         }
 
@@ -172,6 +176,10 @@ export class Menu {
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
+                break;
+            case this.app.extConfig.getUiText('Start embeddings model') + ' all-MiniLM-L6-v2-Q8_0-GGUF (CPU Only)':
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/all-MiniLM-L6-v2-Q8_0-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
