@@ -177,9 +177,9 @@ export class Menu {
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
-            case this.app.extConfig.getUiText('Start embeddings model') + ' all-MiniLM-L6-v2-Q8_0-GGUF (CPU Only)':
+            case this.app.extConfig.getUiText('Start embeddings model') + ' ggml-org/bge-m3-q8_0.gguf ':
                 await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/all-MiniLM-L6-v2-Q8_0-GGUF"));
+                await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/bge-m3-q8_0.gguf"));
                 break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
