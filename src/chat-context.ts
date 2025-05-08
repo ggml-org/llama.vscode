@@ -47,16 +47,23 @@ export class ChatContext {
         let keywords = data.choices[0].message.content.trim().split("|");
 
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant
-        //      Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
+        // Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
         
 
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 1..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.extConfig.rag_max_bm25_filter_chunks)
-        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
-        let topChunksCosSim = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);    
+        let topContextChunks: ChunkEntry[];
+        if (this.app.extConfig.endpoint_embeddings.trim() != ""){
+            topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);
+        } else {
+            vscode.window.showInformationMessage('No embeddings server. Filtering chunks step 2 will be skipped.');
+            this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
+            topContextChunks = topChunksBm25.slice(0, 5);
+        }
+            
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Context chunks ready."))
         
-        return topChunksCosSim;
+        return topContextChunks;
     }
 
     public getRagFilesContext = async (prompt: string): Promise<string> => {
@@ -114,9 +121,11 @@ export class ChatContext {
 
     private cosineSimilarity = async (a: number[], text: string): Promise<number> => {
         let b = await this.getEmbedding(text)
-        
-        if (a.length !== b.length) {
-          throw new Error("Vectors must have the same length");
+        if (!b || b.length == 0 || !a || a.length == 0) {
+            throw new Error("Error getting embeddings.");
+          }
+        if (!b || b.length == 0 || a.length !== b.length) {
+          throw new Error("Error - vectors must have the same length.");
         }
       
         let dotProduct = 0;
@@ -269,7 +278,6 @@ export class ChatContext {
 
     async indexWorkspaceFiles() {
         try {
-            // const files = await vscode.workspace.findFiles('**/*', undefined, this.app.extConfig.MAX_FILES_RAG);
             const files = await this.getFilesRespectingGitignore()
             
             // Show progress
@@ -278,7 +286,6 @@ export class ChatContext {
                 title: this.app.extConfig.getUiText("Indexing files..."),
                 cancellable: true
             };
-
             await vscode.window.withProgress(progressOptions, async (progress, token) => {
                 const total = files.length;
                 let processed = 0;

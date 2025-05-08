@@ -304,13 +304,6 @@ export class LlamaServer {
             this.createRequestPayload(true, "", "", chunks, "", undefined),
             this.app.extConfig.axiosRequestConfig
         );
-
-        // make a request to the API to prepare for the next chat request
-        axios.post<LlamaResponse>(
-            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
-            this.createChatEditRequestPayload(true, "", "", chunks, "", undefined),
-            this.app.extConfig.axiosRequestConfig
-        );
     };
 
     getEmbeddings = async (text: string): Promise<LlamaEmbeddingsResponse | undefined> => {
