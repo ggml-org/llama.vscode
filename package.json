@@ -285,12 +285,12 @@
         },
         "llama-vscode.rag_chunk_max_chars": {
           "type": "number",
-          "default": 800,
+          "default": 2500,
           "description": "Max number of chars per RAG chunk"
         },
         "llama-vscode.rag_max_lines_per_chunk": {
           "type": "number",
-          "default": 40,
+          "default": 60,
           "description": "Max number of lines per RAG chunk"
         },
         "llama-vscode.rag_max_chars_per_chunk_line": {

@@ -14,8 +14,8 @@ interface ChunkEntry {
 }
 
 interface FileProperties {
-    totalChars: number;
     hash: string;
+    updated: number;
 }
 
 const filename = 'ghost.dat';
@@ -86,9 +86,27 @@ export class ChatContext {
             entry: chunkEntry,
             score: 0,
         }));
-        for (const entry of chunksWithScore) {
-            entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry.content);
-        }
+        const progressOptions = {
+            location: vscode.ProgressLocation.Notification,
+            title: this.app.extConfig.getUiText("Filtering chunks step 2..."),
+            cancellable: true
+        };
+        await vscode.window.withProgress(progressOptions, async (progress, token) => {
+            let processed = 0;
+            const total = chunksWithScore.length;
+            for (const entry of chunksWithScore) {
+                if (token.isCancellationRequested) {
+                    break;
+                }
+                processed++;
+                progress.report({
+                    // message: `Indexing ${vscode.workspace.asRelativePath(file)}`,
+                    increment: (1 / total) * 100
+                });
+                entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry.content);
+            }
+        });
+       
         return chunksWithScore.sort((a, b) => b.score - a.score)
         .slice(0, topN)
         .map(({ entry: chunkEntry }) => chunkEntry);
@@ -179,16 +197,19 @@ export class ChatContext {
         ];
         const lowerCaseFilename = filename.toLowerCase();
         return imageExtensions.some(ext => lowerCaseFilename.endsWith(ext));
-      }
+    }
+
+    getFileProperties = (uri: string): FileProperties | undefined => {
+        return this.filesProperties.get(uri);
+    }
 
     async addDocument(uri: string, content: string) {
         try {
-            if (this.isImageOrVideoFile(uri)) return;
             const hash = this.app.lruResultCache.getHash(content);
             if (this.filesProperties.get(uri)?.hash === hash) {
                 return;
             }
-            this.filesProperties.set(uri, {hash: hash, totalChars: content.length});
+            this.filesProperties.set(uri, {hash: hash, updated: Date.now()});
             
             try {
                 this.removeChunkEntries(uri);
@@ -267,6 +288,7 @@ export class ChatContext {
                     if (token.isCancellationRequested) {
                         break;
                     }
+                    if (this.isImageOrVideoFile(file.toString())) continue;
 
                     try {
                         const document = await vscode.workspace.openTextDocument(file);
@@ -334,6 +356,7 @@ export class ChatContext {
                 const entryUri = vscode.Uri.file(path.join(dirPath, name));
                 
                 if (type === vscode.FileType.Directory) {
+                    if (entryUri.toString().toLowerCase().endsWith(".git")) continue
                     await traverse(entryUri);
                 } else if (!isIgnored(entryUri.fsPath)) {
                     result.push(entryUri);
