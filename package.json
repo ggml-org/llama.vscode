@@ -83,7 +83,7 @@
       },
       {
         "command": "extension.generateGitCommitMessage",
-        "title": "llama.vscode: generate commit message",
+        "title": "llama-vscode: Generate Commit Message",
         "icon": "$(sparkle)"
       }
     ],
