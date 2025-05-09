@@ -2,7 +2,6 @@ import axios from "axios";
 import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
 import {Utils} from "./utils";
-import { GitExtension } from "./git";
 
 const STATUS_OK = 200;
 
@@ -421,53 +420,5 @@ export class LlamaServer {
 
     killTrainCmd = (): void => {
         if (this.vsCodeTrainTerminal) this.vsCodeTrainTerminal.dispose();
-    }
-
-    generateCommitMessage = async (): Promise<void> => {
-        const gitExtension = vscode.extensions.getExtension<GitExtension>('vscode.git')?.exports;
-        gitExtension
-        const git = gitExtension?.getAPI(1);
-        if (!git) {
-            vscode.window.showErrorMessage('extension vscode.git not found');
-            return;
-        }
-
-        if (git.repositories.length === 0) {
-            vscode.window.showErrorMessage('can`t use on non git dir');
-            return;
-        }
-        const repo = git.repositories[0];
-
-        try {
-            let diff = await repo.diff(true);
-
-            if (!diff || diff.trim() === '') {
-                vscode.window.showWarningMessage('git diff is empty');
-                return;
-            }
-
-            const prompt = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CREATE_GIT_DIFF_COMMIT, "diff", diff);
-            vscode.window.withProgress({
-                location: vscode.ProgressLocation.SourceControl,
-                title: 'llama.vscode is generating a commit message...',
-                cancellable: false
-            }, async (progress) => {
-                // stream output
-                const completion = await this.getChatCompletion(prompt)
-                const commitMessage = completion?.choices[0]?.message.content
-
-                if (commitMessage) {
-                    repo.inputBox.value = commitMessage;
-                } else {
-                    vscode.window.showErrorMessage('unexpected error for generating commit message is empty');
-                }
-
-                progress.report({ increment: 100 });
-            });
-
-        } catch (error) {
-            console.error('errors in generateCommitMessage: ', error);
-            vscode.window.showErrorMessage(`errors in generateCommitMessage: ${error instanceof Error ? error.message : String(error)}`);
-        }
     }
 }

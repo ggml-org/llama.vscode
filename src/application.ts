@@ -11,6 +11,7 @@ import { ChatWithAi } from "./chat-with-ai";
 import { TextEditor } from "./text-editor";
 import { ChatContext } from "./chat-context";
 import { Prompts } from "./prompts";
+import { Git } from "./git";
 
 export class Application {
     private static instance: Application;
@@ -27,6 +28,7 @@ export class Application {
     public textEditor: TextEditor
     public chatContext: ChatContext
     public prompts: Prompts
+    public git: Git
 
     private constructor() {
         this.extConfig = new Configuration()
@@ -42,6 +44,7 @@ export class Application {
         this.textEditor = new TextEditor(this)
         this.chatContext = new ChatContext(this)
         this.prompts = new Prompts(this)
+        this.git = new Git(this)
     }
 
     public static getInstance(): Application {

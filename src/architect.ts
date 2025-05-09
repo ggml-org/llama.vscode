@@ -149,7 +149,7 @@ export class Architect {
         const generateCommitCommand = vscode.commands.registerCommand(
             'extension.generateGitCommitMessage',
             async () => {
-                await this.app.llamaServer.generateCommitMessage();
+                await this.app.git.generateCommitMessage();
             }
         );
         context.subscriptions.push(generateCommitCommand);
