@@ -186,14 +186,16 @@ export class Menu {
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
                 let commandCompletion = this.app.extConfig.launch_completion
-                if ( this.app.extConfig.lora_completion != undefined 
+                if ( this.app.extConfig.lora_completion != undefined
+                    && this.app.extConfig.lora_completion.trim() != "undefined" 
                     && this.app.extConfig.lora_completion.trim() != "") commandCompletion += " --lora " + this.app.extConfig.lora_completion
                 await this.app.llamaServer.shellFimCmd(commandCompletion);
                 break;
             case this.app.extConfig.getUiText('Start chat llama.cpp server'):
                 await this.app.llamaServer.killChatCmd();
                 let commandChat = this.app.extConfig.launch_chat
-                if (this.app.extConfig.lora_chat != undefined 
+                if (this.app.extConfig.lora_chat != undefined
+                    && this.app.extConfig.lora_chat.trim() != "undefined" 
                     && this.app.extConfig.lora_chat.trim() != "") commandChat += " --lora " + this.app.extConfig.lora_chat
                 await this.app.llamaServer.shellChatCmd(commandChat);
                 break;
