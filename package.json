@@ -79,7 +79,7 @@
       },
       {
         "command": "extension.rejectTextEdit",
-        "title": "Reject Text Edit Suggestion"
+        "title": "llama-vscode: Reject Text Edit Suggestion"
       },
       {
         "command": "extension.generateGitCommitMessage",
