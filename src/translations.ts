@@ -1,6 +1,6 @@
 /*
 
-Here is a the prompt to get the transation from LLM (update the last row with the strings, whcih should be translated; first check if the string already exists):
+Here is a prompt to get the transation from LLM (update the last row with the strings, whcih should be translated; first check if the string already exists):
 
 # Background information
 
