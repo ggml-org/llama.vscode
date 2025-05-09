@@ -43,7 +43,7 @@ export class Configuration {
     rag_chunk_max_chars = 800
     rag_max_lines_per_chunk = 40
     rag_max_chars_per_chunk_line = 300
-    rag_max_files = 10000
+    rag_max_chunks = 50000
     rag_max_bm25_filter_chunks = 47
     rag_max_embedding_filter_chunks = 5
     rag_max_context_files = 3
@@ -62,7 +62,7 @@ export class Configuration {
     MAX_QUEUED_CHUNKS = 16;
     DELAY_BEFORE_COMPL_REQUEST = 150;
     MAX_EVENTS_IN_LOG = 250;
-    EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX = 15;
+    EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX = 20;
 
     config: vscode.WorkspaceConfiguration;
 
@@ -127,7 +127,7 @@ export class Configuration {
         this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
         this.rag_max_lines_per_chunk = Number(config.get<number>("rag_max_lines_per_chunk"));
         this.rag_max_chars_per_chunk_line = Number(config.get<number>("rag_max_chars_per_chunk_line"));
-        this.rag_max_files = Number(config.get<number>("rag_max_files"));
+        this.rag_max_chunks = Number(config.get<number>("rag_max_chunks"));
         this.rag_max_bm25_filter_chunks = Number(config.get<number>("rag_max_bm25_filter_chunks"));
         this.rag_max_embedding_filter_chunks = Number(config.get<number>("rag_max_embedding_filter_chunks"));
         this.rag_max_context_files = Number(config.get<number>("rag_max_context_files"));
@@ -151,6 +151,13 @@ export class Configuration {
             this.setOpenAiClient();
         }
     };
+
+    isRagConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
+        return event.affectsConfiguration("llama-vscode.rag_chunk_max_chars")
+        || event.affectsConfiguration("llama-vscode.rag_max_lines_per_chunk")
+        || event.affectsConfiguration("llama-vscode.rag_max_files")
+        || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line");
+    }
 
     trimTrailingSlash = (s: string): string => {
         if (s.length > 0 && s[s.length - 1] === "/") {

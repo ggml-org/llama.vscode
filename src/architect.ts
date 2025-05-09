@@ -1,4 +1,6 @@
 // TODO
+// При липсащ ембеддинг сървер да дава грешка, за да се разбира, че има проблем
+//
 // Ако се използва лора за чат сървера - да се подава в заявката от webui
 // Идеи
 // - Използване на агенти (?)
@@ -28,7 +30,18 @@ export class Architect {
     setOnSaveDeleteFileForDb = (context: vscode.ExtensionContext) => {
         const saveListener = vscode.workspace.onDidSaveTextDocument(async (document) => {
             try {
-                await this.app.chatContext.addDocument(document.uri.toString(), document.getText());
+                if (!this.app.chatContext.isImageOrVideoFile(document.uri.toString())){
+                    // Update after a delay and only if the file is not changed in the meantime to avoid too often updates
+                    let updateTime = Date.now()
+                    let fileProperties = this.app.chatContext.getFileProperties(document.uri.toString())
+                    if (fileProperties) fileProperties.updated = updateTime;
+                    setTimeout(async () => {
+                        if (fileProperties && fileProperties.updated > updateTime ) {
+                            return;
+                        }
+                        this.app.chatContext.addDocument(document.uri.toString(), document.getText());
+                    }, 5000);
+                }
             } catch (error) {
                 console.error('Failed to add document to RAG:', error);
             }
@@ -52,6 +65,7 @@ export class Architect {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
             this.app.extConfig.updateOnEvent(event, config);
+            if (this.app.extConfig.isRagConfigChanged(event)) this.init()
             vscode.window.showInformationMessage(this.app.extConfig.getUiText(`llama-vscode extension is updated.`)??"");
         });
         context.subscriptions.push(configurationChangeDisp);
@@ -65,7 +79,7 @@ export class Architect {
                     this.app.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
                 }, 0);
             }
-            
+
             if (editor) {
                 // Editor is now active in the UI, pick a chunk
                 let activeDocument = editor.document;
@@ -212,7 +226,7 @@ export class Architect {
             }
             vscode.env.clipboard.writeText("Events:\n" + eventLogsCombined +
                  "\n\n------------------------------\n" +
-                 "Extra context: \n" + extraContext + 
+                 "Extra context: \n" + extraContext +
                  "\n\n------------------------------\nCompletion cache: \n" + completionCache +
                  "\n\n------------------------------\nChunks: \n" + firstChunks)
         });

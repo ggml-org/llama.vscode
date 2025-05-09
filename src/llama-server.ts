@@ -143,15 +143,15 @@ export class LlamaServer {
             return {
                 // input_extra: chunks,
                 "messages": [
-              {
-                "role": "system",
-                "content": "You are an expert coder."
-              },
-              {
-                "role": "user",
-                "content": Utils.getChunksInPlainText(chunks)
-              }
-            ],
+                    {
+                        "role": "system",
+                        "content": "You are an expert coder."
+                    },
+                    {
+                        "role": "user",
+                        "content": context
+                    }
+                ],
                 n_predict: 0,
                 samplers: [],
                 cache_prompt: true,
@@ -202,7 +202,7 @@ export class LlamaServer {
           };
     }
 
-    private createChatRequestPayload(content: string) {        
+    private createChatRequestPayload(content: string) {
         return {
             "messages": [
               {
@@ -239,7 +239,6 @@ export class LlamaServer {
             ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
           };
     }
-
 
     getFIMCompletion = async (
         inputPrefix: string,
@@ -304,13 +303,6 @@ export class LlamaServer {
             this.createRequestPayload(true, "", "", chunks, "", undefined),
             this.app.extConfig.axiosRequestConfig
         );
-
-        // make a request to the API to prepare for the next chat request
-        axios.post<LlamaResponse>(
-            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
-            this.createChatEditRequestPayload(true, "", "", chunks, "", undefined),
-            this.app.extConfig.axiosRequestConfig
-        );
     };
 
     getEmbeddings = async (text: string): Promise<LlamaEmbeddingsResponse | undefined> => {
@@ -331,7 +323,7 @@ export class LlamaServer {
             return undefined;
         }
 
-        
+
     };
 
     shellFimCmd = (launchCmd: string): void => {

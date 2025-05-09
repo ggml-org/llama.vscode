@@ -2,7 +2,7 @@
   "name": "llama-vscode",
   "displayName": "llama-vscode",
   "description": "Local LLM-assisted text completion using llama.cpp",
-  "version": "0.0.9-beta-3",
+  "version": "0.0.10",
   "publisher": "ggml-org",
   "repository": "https://github.com/ggml-org/llama.vscode",
   "engines": {
@@ -31,51 +31,51 @@
     "commands": [
       {
         "command": "extension.triggerInlineCompletion",
-        "title": "Trigger Inline Completion"
+        "title": "llama-vscode: Trigger Inline Completion"
       },
       {
         "command": "extension.triggerNoCacheCompletion",
-        "title": "Trigger No Cache Completion"
+        "title": "llama-vscode: Trigger No Cache Completion"
       },
       {
         "command": "extension.copyIntercept",
-        "title": "Copy Intercept"
+        "title": "llama-vscode: Copy Intercept"
       },
       {
         "command": "extension.cutIntercept",
-        "title": "Cut Intercept"
+        "title": "llama-vscode: Cut Intercept"
       },
       {
         "command": "extension.acceptFirstLine",
-        "title": "Accept First Line"
+        "title": "llama-vscode: Accept First Line"
       },
       {
         "command": "extension.acceptFirstWord",
-        "title": "Accept First Word"
+        "title": "llama-vscode: Accept First Word"
       },
       {
         "command": "extension.copyChunks",
-        "title": "Copy Chunks"
+        "title": "llama-vscode: Copy Chunks"
       },
       {
         "command": "extension.showMenu",
-        "title": "Show Menu"
+        "title": "llama-vscode: Show Menu"
       },
       {
         "command": "extension.askAi",
-        "title": "Ask AI"
+        "title": "llama-vscode: Ask AI"
       },
       {
         "command": "extension.askAiWithContext",
-        "title": "Ask AI With Context"
+        "title": "llama-vscode: Ask AI With Context"
       },
       {
         "command": "extension.editSelectedText",
-        "title": "Edit Selected Text with AI"
+        "title": "llama-vscode: Edit Selected Text with AI"
       },
       {
         "command": "extension.acceptTextEdit",
-        "title": "Accept Text Edit Suggestion"
+        "title": "llama-vscode: Accept Text Edit Suggestion"
       },
       {
         "command": "extension.rejectTextEdit",
@@ -387,6 +387,7 @@
   },
   "dependencies": {
     "axios": "^1.1.2",
+    "ignore": "^7.0.4",
     "openai": "^4.80.1"
   },
   "devDependencies": {

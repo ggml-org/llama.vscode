@@ -3,6 +3,7 @@ import { Application } from './application';
 import { Utils } from './utils';
 import * as fs from 'fs';
 import * as path from 'path';
+import ignore from 'ignore';
 
 interface ChunkEntry {
     uri: string;
@@ -13,8 +14,8 @@ interface ChunkEntry {
 }
 
 interface FileProperties {
-    totalChars: number;
     hash: string;
+    updated: number;
 }
 
 const filename = 'ghost.dat';
@@ -30,12 +31,12 @@ export class ChatContext {
         this.entries = new Map();
         this.filesProperties = new Map();
     }
-    
+
     public async init() {
         vscode.window.showInformationMessage('Vector index initialized!');
-    }  
+    }
 
-    public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {        
+    public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
@@ -46,16 +47,23 @@ export class ChatContext {
         let keywords = data.choices[0].message.content.trim().split("|");
 
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant
-        //      Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
-        
+        // Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
+
 
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 1..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.extConfig.rag_max_bm25_filter_chunks)
-        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
-        let topChunksCosSim = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);    
+        let topContextChunks: ChunkEntry[];
+        if (this.app.extConfig.endpoint_embeddings.trim() != ""){
+            topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);
+        } else {
+            vscode.window.showInformationMessage('No embeddings server. Filtering chunks step 2 will be skipped.');
+            this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
+            topContextChunks = topChunksBm25.slice(0, 5);
+        }
+
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Context chunks ready."))
-        
-        return topChunksCosSim;
+
+        return topContextChunks;
     }
 
     public getRagFilesContext = async (prompt: string): Promise<string> => {
@@ -66,14 +74,14 @@ export class ChatContext {
              if (contextFile){
                 const [fileUrl, fileProperties] = contextFile;
                 const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(fileUrl));
-                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)       
+                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)
              }
-        }; 
+        };
         return filesContext;
     }
 
     public getContextChunksInPlainText = (chunksToSend: ChunkEntry[]) => {
-        let extraCont = "Here are pieces of code from different files of the project: \n" + 
+        let extraCont = "Here are pieces of code from different files of the project: \n" +
         chunksToSend.reduce((accumulator, currentValue) => accumulator + currentValue.content + "\n\n", "");
         return extraCont;
     }
@@ -85,9 +93,27 @@ export class ChatContext {
             entry: chunkEntry,
             score: 0,
         }));
-        for (const entry of chunksWithScore) {
-            entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry.content);
-        }
+        const progressOptions = {
+            location: vscode.ProgressLocation.Notification,
+            title: this.app.extConfig.getUiText("Filtering chunks step 2..."),
+            cancellable: true
+        };
+        await vscode.window.withProgress(progressOptions, async (progress, token) => {
+            let processed = 0;
+            const total = chunksWithScore.length;
+            for (const entry of chunksWithScore) {
+                if (token.isCancellationRequested) {
+                    break;
+                }
+                processed++;
+                progress.report({
+                    // message: `Indexing ${vscode.workspace.asRelativePath(file)}`,
+                    increment: (1 / total) * 100
+                });
+                entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry.content);
+            }
+        });
+
         return chunksWithScore.sort((a, b) => b.score - a.score)
         .slice(0, topN)
         .map(({ entry: chunkEntry }) => chunkEntry);
@@ -95,41 +121,43 @@ export class ChatContext {
 
     private cosineSimilarity = async (a: number[], text: string): Promise<number> => {
         let b = await this.getEmbedding(text)
-        
-        if (a.length !== b.length) {
-          throw new Error("Vectors must have the same length");
+        if (!b || b.length == 0 || !a || a.length == 0) {
+            throw new Error("Error getting embeddings.");
+          }
+        if (!b || b.length == 0 || a.length !== b.length) {
+          throw new Error("Error - vectors must have the same length.");
         }
-      
+
         let dotProduct = 0;
         for (let i = 0; i < a.length; i++) {
           dotProduct += a[i] * b[i];
         }
-      
+
         const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
         const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-      
+
         if (magnitudeA === 0 || magnitudeB === 0) {
           return 0;
         }
-      
+
         // Calculate cosine similarity
         return dotProduct / (magnitudeA * magnitudeB);
       }
-    
+
     private rankTexts = (keywords: string[], chunkEntries: ChunkEntry[], topN: number): ChunkEntry[] => {
         if (!keywords.length || !chunkEntries.length) return [];
-    
+
         const tokenizedDocs = chunkEntries.map(this.tokenizeChunkEntry);
         const stats = Utils.computeBM25Stats(tokenizedDocs);
         const queryTerms = Array.from(new Set(keywords.flatMap(this.tokenize)));
-    
+
         const sortedChunks = Array.from(chunkEntries)
             .map((chunkEntry, index) => ({
                 entry: chunkEntry,
                 score: Utils.bm25Score(queryTerms, index, stats),
             }))
             .sort((a, b) => b.score - a.score)
-        
+
         const topChunks = sortedChunks.slice(0, topN)
         return topChunks.map(({ entry: chunkEntry }) => chunkEntry);
     }
@@ -154,7 +182,7 @@ export class ChatContext {
             } else {
                 console.error('Failed to generate embedding:');
                 return [];
-            } 
+            }
         } catch (error) {
             console.error('Failed to generate embedding:', error);
             return [];
@@ -178,17 +206,20 @@ export class ChatContext {
         ];
         const lowerCaseFilename = filename.toLowerCase();
         return imageExtensions.some(ext => lowerCaseFilename.endsWith(ext));
-      }
+    }
+
+    getFileProperties = (uri: string): FileProperties | undefined => {
+        return this.filesProperties.get(uri);
+    }
 
     async addDocument(uri: string, content: string) {
         try {
-            if (this.isImageOrVideoFile(uri)) return;
             const hash = this.app.lruResultCache.getHash(content);
             if (this.filesProperties.get(uri)?.hash === hash) {
                 return;
             }
-            this.filesProperties.set(uri, {hash: hash, totalChars: content.length});
-            
+            this.filesProperties.set(uri, {hash: hash, updated: Date.now()});
+
             try {
                 this.removeChunkEntries(uri);
             } catch (error) {
@@ -215,9 +246,10 @@ export class ChatContext {
                     i = startLine + j - this.app.extConfig.rag_max_lines_per_chunk
                 }
                 // const embedding = await this.getEmbedding(chunk);
-                let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk 
+                let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk
                 const chunkHash = this.app.lruResultCache.getHash(chunkContent)
                 this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash});
+                if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
                 this.nextEntryId++;
             }
         } catch (error) {
@@ -243,19 +275,16 @@ export class ChatContext {
         this.filesProperties.delete(uri);
     }
 
-
     async indexWorkspaceFiles() {
         try {
-            // const files = await vscode.workspace.findFiles('**/*', undefined, this.app.extConfig.MAX_FILES_RAG);
             const files = await this.getFilesRespectingGitignore()
-            
+
             // Show progress
             const progressOptions = {
                 location: vscode.ProgressLocation.Notification,
                 title: this.app.extConfig.getUiText("Indexing files..."),
                 cancellable: true
             };
-
             await vscode.window.withProgress(progressOptions, async (progress, token) => {
                 const total = files.length;
                 let processed = 0;
@@ -265,11 +294,12 @@ export class ChatContext {
                     if (token.isCancellationRequested) {
                         break;
                     }
+                    if (this.isImageOrVideoFile(file.toString())) continue;
 
                     try {
                         const document = await vscode.workspace.openTextDocument(file);
                         await this.addDocument(file.toString(), document.getText());
-                        
+
                         processed++;
                         progress.report({
                             message: `Indexing ${vscode.workspace.asRelativePath(file)}`,
@@ -278,75 +308,91 @@ export class ChatContext {
                     } catch (error) {
                         console.error(`Failed to index file ${file.toString()}:`, error);
                     }
+                    if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
                 }
                 this.app.logger.addEventLog("RAG", "END_RAG_INDEXING", "Files: " + processed + " Chunks: " + this.entries.size)
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + processed +"/" + files.length +" "
+                + this.app.extConfig.getUiText("files for RAG search"));
             });
 
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + files.length +" " 
-                + this.app.extConfig.getUiText("files for RAG search"));
         } catch (error) {
             console.error('Failed to index workspace files:', error);
             vscode.window.showErrorMessage('Failed to index workspace files');
         }
     }
 
-    private getFilesRespectingGitignore = async () => {
+    getFilesRespectingGitignore = async (): Promise<vscode.Uri[]> => {
         const workspaceFolders = vscode.workspace.workspaceFolders;
-        if (!workspaceFolders) {
+        if (!workspaceFolders || workspaceFolders.length === 0) {
             return [];
         }
-    
-        // Get all .gitignore files in the workspace
-        const gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', null);
-    
-        // Read and parse all .gitignore files
-        let excludePatterns: string[] = [];
-        for (const uri of gitignoreUris) {
-            const gitignorePath = uri.fsPath;
-            const gitignoreContent = fs.readFileSync(gitignorePath, 'utf-8');
-            const folderPath = path.dirname(gitignorePath);
-            
-            const patterns = this.parseGitignore(gitignoreContent, folderPath);
-            excludePatterns = excludePatterns.concat(patterns);
-        }
-    
-        // Add common VSCode and Git directories to exclude
-        excludePatterns.push('**/.git/**', '**/.vscode/**', '**/node_modules/**');
-    
-        // Find all files excluding those in .gitignore
-        const files = await vscode.workspace.findFiles(
-            '**/*', // include all files
-            `{${excludePatterns.join(',')}}`, // exclude patterns
-            this.app.extConfig.rag_max_files
-        );
-    
-        return files;
-    }
-    
-    parseGitignore = (content: string, gitignoreFolder: string): string[] => {
-        const lines = content.split('\n');
-        const patterns: string[] = [];
-    
-        for (let line of lines) {
-            line = line.trim();
-            
-            // Skip empty lines and comments
-            if (!line || line.startsWith('#')) {
-                continue;
+
+        const rootUri = workspaceFolders[0].uri;
+        const result: vscode.Uri[] = [];
+        const igMap = new Map<string, ignore.Ignore>();
+
+        // First pass: Collect all .gitignore files and their rules
+        const gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', '');
+        await Promise.all(gitignoreUris.map(async uri => {
+            try {
+                const content = await vscode.workspace.fs.readFile(uri);
+                const dir = path.dirname(uri.fsPath);
+                igMap.set(dir, ignore().add(content.toString()));
+            } catch (error) {
+                console.error(`Error reading .gitignore at ${uri.fsPath}:`, error);
             }
-    
-            // Handle directory patterns
-            if (line.endsWith('/')) {
-                line = line.slice(0, -1);
-                patterns.push(`**/${line}/**`);
-            } 
-            // Handle specific file patterns
-            else {
-                patterns.push(`**/${line}`);
+        }));
+
+        // Second pass: Traverse directory tree while respecting ignore rules
+        async function traverse(dirUri: vscode.Uri) {
+            const dirPath = dirUri.fsPath;
+
+            if (isIgnored(dirPath)) {
+                return;
+            }
+
+            let entries: [string, vscode.FileType][];
+            try {
+                entries = await vscode.workspace.fs.readDirectory(dirUri);
+            } catch {
+                return; // Skip directories we can't read
+            }
+
+            for (const [name, type] of entries) {
+                const entryUri = vscode.Uri.file(path.join(dirPath, name));
+
+                if (type === vscode.FileType.Directory) {
+                    if (entryUri.toString().toLowerCase().endsWith(".git")) continue
+                    await traverse(entryUri);
+                } else if (!isIgnored(entryUri.fsPath)) {
+                    result.push(entryUri);
+                }
             }
         }
-    
-        return patterns;
+
+        function isIgnored(fsPath: string): boolean {
+            let currentDir = path.dirname(fsPath);
+            const target = path.basename(fsPath);
+
+            // Check ignore rules from closest to farthest
+            while (true) {
+                if (igMap.has(currentDir)) {
+                    const relative = path.relative(currentDir, fsPath);
+                    if (igMap.get(currentDir)!.ignores(relative)) {
+                        return true;
+                    }
+                }
+
+                const parentDir = path.dirname(currentDir);
+                if (parentDir === currentDir) break; // Reached root
+                currentDir = parentDir;
+            }
+
+            return false;
+        }
+
+        await traverse(rootUri);
+        return result;
     }
 
     private getFilesFromQuery = (text: string): string[] => {
@@ -354,4 +400,4 @@ export class ChatContext {
         const regex = /@([a-zA-Z0-9_.-]+)(?=[,.?!\s]|$)/g;
         return [...text.matchAll(regex)].map(match => match[1]);
     }
-} 
+}
