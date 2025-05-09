@@ -70,7 +70,7 @@ export class Menu {
                     description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
                 {
-                    label: this.app.extConfig.getUiText('Start embeddings model') + ' all-MiniLM-L6-v2-Q8_0-GGUF',
+                    label: this.app.extConfig.getUiText('Start embeddings model') + ' Nomic-Embed-Text-V2-GGUF',
                     description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 })
         }
@@ -133,12 +133,15 @@ export class Menu {
         let endpointParts = this.app.extConfig.endpoint.split(":");
         let port = endpointParts[endpointParts.length -1]
         let endpointChatParts = this.app.extConfig.endpoint_chat.split(":");
+        let endpointEmbeddingParts = this.app.extConfig.endpoint_embeddings.split(":");
         let portChat = endpointChatParts[endpointChatParts.length -1]
+        let portEmbedding = endpointEmbeddingParts[endpointEmbeddingParts.length -1]
         if (!Number.isInteger(Number(port))) port =  DEFAULT_PORT_FIM_MODEL
         let llmMacVramTemplate = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port
         let llmMacCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
         let llmMacChatVramTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
         let llmMacChatCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
+        let llmMacEmbeddingCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
 
         switch (selected.label) {
             case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
@@ -176,9 +179,9 @@ export class Menu {
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
-            case this.app.extConfig.getUiText('Start embeddings model') + ' ggml-org/bge-m3-q8_0.gguf ':
-                await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/bge-m3-q8_0.gguf"));
+            case this.app.extConfig.getUiText('Start embeddings model') + ' Nomic-Embed-Text-V2-GGUF':
+                await this.app.llamaServer.killEmbeddingsCmd();
+                await this.app.llamaServer.shellEmbeddingsCmd(llmMacEmbeddingCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
