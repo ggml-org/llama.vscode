@@ -35,7 +35,6 @@ export class Menu {
                     description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
                 })
 
-
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
                 {
@@ -53,7 +52,7 @@ export class Menu {
                 {
                     label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)',
                     description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                }, 
+                },
                 {
                     label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)',
                     description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
@@ -89,14 +88,14 @@ export class Menu {
                 label: this.app.extConfig.getUiText("Start embeddings llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Runs the command from property launch_embeddings`)
             })
-        if (this.app.extConfig.launch_training_completion.trim() != "") { 
+        if (this.app.extConfig.launch_training_completion.trim() != "") {
             menuItems.push(
             {
                 label: this.app.extConfig.getUiText("Start training completion model")??"",
                 description: this.app.extConfig.getUiText(`Runs the command from property launch_training_completion`)
             })
         }
-        if (this.app.extConfig.launch_training_chat.trim() != "") { 
+        if (this.app.extConfig.launch_training_chat.trim() != "") {
                 menuItems.push(
             {
                 label: this.app.extConfig.getUiText("Start training chat model")??"",
@@ -116,12 +115,12 @@ export class Menu {
                 label: this.app.extConfig.getUiText("Stop embeddings llama.cpp server")??"",
                 description: this.app.extConfig.getUiText(`Stops embeddings llama.cpp server if it was started from llama.vscode menu`)
             })
-        if (this.app.extConfig.launch_training_completion.trim() != "" || this.app.extConfig.launch_training_chat.trim() != "") { 
+        if (this.app.extConfig.launch_training_completion.trim() != "" || this.app.extConfig.launch_training_chat.trim() != "") {
             menuItems.push(
             {
                 label: this.app.extConfig.getUiText("Stop training")??"",
                 description: this.app.extConfig.getUiText(`Stops training if it was started from llama.vscode menu`)
-            })     
+            })
         }
 
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
@@ -136,11 +135,11 @@ export class Menu {
         let endpointChatParts = this.app.extConfig.endpoint_chat.split(":");
         let portChat = endpointChatParts[endpointChatParts.length -1]
         if (!Number.isInteger(Number(port))) port =  DEFAULT_PORT_FIM_MODEL
-        let llmMacVramTemplate = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port 
+        let llmMacVramTemplate = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port
         let llmMacCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacChatVramTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 " 
+        let llmMacChatVramTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
         let llmMacChatCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        
+
         switch (selected.label) {
             case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
@@ -156,7 +155,7 @@ export class Menu {
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
-                break;  
+                break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-Q8_0-GGUF"));
@@ -172,7 +171,7 @@ export class Menu {
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
-                break;  
+                break;
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
@@ -192,7 +191,7 @@ export class Menu {
                 let commandChat = this.app.extConfig.launch_chat
                 if (this.app.extConfig.lora_chat.trim() != "") commandChat += " --lora " + this.app.extConfig.lora_chat
                 await this.app.llamaServer.shellChatCmd(commandChat);
-                break; 
+                break;
             case this.app.extConfig.getUiText('Start embeddings llama.cpp server'):
                 await this.app.llamaServer.killEmbeddingsCmd();
                 let commandEmbeddings = this.app.extConfig.launch_embeddings
@@ -205,7 +204,7 @@ export class Menu {
             case this.app.extConfig.getUiText('Start training chat model'):
                 await this.app.llamaServer.killTrainCmd();
                 await this.app.llamaServer.shellTrainCmd(this.app.extConfig.launch_training_chat);
-                break;       
+                break;
             case this.app.extConfig.getUiText("Stop completion llama.cpp server"):
                 await this.app.llamaServer.killFimCmd();
                 break;
@@ -233,6 +232,7 @@ export class Menu {
         }
         this.app.statusbar.updateStatusBarText();
     }
+
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
         const config = this.app.extConfig.config;
         if (label.includes(this.app.extConfig.getUiText('All Completions')??"")) {
@@ -243,7 +243,6 @@ export class Menu {
             await config.update('languageSettings', languageSettings, true);
         }
     }
-
 
     showMenu = async (context: vscode.ExtensionContext) => {
         const currentLanguage = vscode.window.activeTextEditor?.document.languageId;

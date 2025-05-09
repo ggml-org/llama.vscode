@@ -31,12 +31,12 @@ export class ChatContext {
         this.entries = new Map();
         this.filesProperties = new Map();
     }
-    
+
     public async init() {
         vscode.window.showInformationMessage('Vector index initialized!');
-    }  
+    }
 
-    public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {        
+    public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
@@ -48,7 +48,7 @@ export class ChatContext {
 
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant
         // Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
-        
+
 
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 1..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.extConfig.rag_max_bm25_filter_chunks)
@@ -60,9 +60,9 @@ export class ChatContext {
             this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
             topContextChunks = topChunksBm25.slice(0, 5);
         }
-            
+
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Context chunks ready."))
-        
+
         return topContextChunks;
     }
 
@@ -74,14 +74,14 @@ export class ChatContext {
              if (contextFile){
                 const [fileUrl, fileProperties] = contextFile;
                 const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(fileUrl));
-                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)       
+                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)
              }
-        }; 
+        };
         return filesContext;
     }
 
     public getContextChunksInPlainText = (chunksToSend: ChunkEntry[]) => {
-        let extraCont = "Here are pieces of code from different files of the project: \n" + 
+        let extraCont = "Here are pieces of code from different files of the project: \n" +
         chunksToSend.reduce((accumulator, currentValue) => accumulator + currentValue.content + "\n\n", "");
         return extraCont;
     }
@@ -113,7 +113,7 @@ export class ChatContext {
                 entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry.content);
             }
         });
-       
+
         return chunksWithScore.sort((a, b) => b.score - a.score)
         .slice(0, topN)
         .map(({ entry: chunkEntry }) => chunkEntry);
@@ -127,37 +127,37 @@ export class ChatContext {
         if (!b || b.length == 0 || a.length !== b.length) {
           throw new Error("Error - vectors must have the same length.");
         }
-      
+
         let dotProduct = 0;
         for (let i = 0; i < a.length; i++) {
           dotProduct += a[i] * b[i];
         }
-      
+
         const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
         const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
-      
+
         if (magnitudeA === 0 || magnitudeB === 0) {
           return 0;
         }
-      
+
         // Calculate cosine similarity
         return dotProduct / (magnitudeA * magnitudeB);
       }
-    
+
     private rankTexts = (keywords: string[], chunkEntries: ChunkEntry[], topN: number): ChunkEntry[] => {
         if (!keywords.length || !chunkEntries.length) return [];
-    
+
         const tokenizedDocs = chunkEntries.map(this.tokenizeChunkEntry);
         const stats = Utils.computeBM25Stats(tokenizedDocs);
         const queryTerms = Array.from(new Set(keywords.flatMap(this.tokenize)));
-    
+
         const sortedChunks = Array.from(chunkEntries)
             .map((chunkEntry, index) => ({
                 entry: chunkEntry,
                 score: Utils.bm25Score(queryTerms, index, stats),
             }))
             .sort((a, b) => b.score - a.score)
-        
+
         const topChunks = sortedChunks.slice(0, topN)
         return topChunks.map(({ entry: chunkEntry }) => chunkEntry);
     }
@@ -182,7 +182,7 @@ export class ChatContext {
             } else {
                 console.error('Failed to generate embedding:');
                 return [];
-            } 
+            }
         } catch (error) {
             console.error('Failed to generate embedding:', error);
             return [];
@@ -219,7 +219,7 @@ export class ChatContext {
                 return;
             }
             this.filesProperties.set(uri, {hash: hash, updated: Date.now()});
-            
+
             try {
                 this.removeChunkEntries(uri);
             } catch (error) {
@@ -246,7 +246,7 @@ export class ChatContext {
                     i = startLine + j - this.app.extConfig.rag_max_lines_per_chunk
                 }
                 // const embedding = await this.getEmbedding(chunk);
-                let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk 
+                let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk
                 const chunkHash = this.app.lruResultCache.getHash(chunkContent)
                 this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash});
                 if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
@@ -275,11 +275,10 @@ export class ChatContext {
         this.filesProperties.delete(uri);
     }
 
-
     async indexWorkspaceFiles() {
         try {
             const files = await this.getFilesRespectingGitignore()
-            
+
             // Show progress
             const progressOptions = {
                 location: vscode.ProgressLocation.Notification,
@@ -300,7 +299,7 @@ export class ChatContext {
                     try {
                         const document = await vscode.workspace.openTextDocument(file);
                         await this.addDocument(file.toString(), document.getText());
-                        
+
                         processed++;
                         progress.report({
                             message: `Indexing ${vscode.workspace.asRelativePath(file)}`,
@@ -312,10 +311,10 @@ export class ChatContext {
                     if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
                 }
                 this.app.logger.addEventLog("RAG", "END_RAG_INDEXING", "Files: " + processed + " Chunks: " + this.entries.size)
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + processed +"/" + files.length +" " 
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + processed +"/" + files.length +" "
                 + this.app.extConfig.getUiText("files for RAG search"));
             });
-            
+
         } catch (error) {
             console.error('Failed to index workspace files:', error);
             vscode.window.showErrorMessage('Failed to index workspace files');
@@ -327,11 +326,11 @@ export class ChatContext {
         if (!workspaceFolders || workspaceFolders.length === 0) {
             return [];
         }
-    
+
         const rootUri = workspaceFolders[0].uri;
         const result: vscode.Uri[] = [];
         const igMap = new Map<string, ignore.Ignore>();
-    
+
         // First pass: Collect all .gitignore files and their rules
         const gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', '');
         await Promise.all(gitignoreUris.map(async uri => {
@@ -343,11 +342,11 @@ export class ChatContext {
                 console.error(`Error reading .gitignore at ${uri.fsPath}:`, error);
             }
         }));
-    
+
         // Second pass: Traverse directory tree while respecting ignore rules
         async function traverse(dirUri: vscode.Uri) {
             const dirPath = dirUri.fsPath;
-    
+
             if (isIgnored(dirPath)) {
                 return;
             }
@@ -358,10 +357,10 @@ export class ChatContext {
             } catch {
                 return; // Skip directories we can't read
             }
-    
+
             for (const [name, type] of entries) {
                 const entryUri = vscode.Uri.file(path.join(dirPath, name));
-                
+
                 if (type === vscode.FileType.Directory) {
                     if (entryUri.toString().toLowerCase().endsWith(".git")) continue
                     await traverse(entryUri);
@@ -370,11 +369,11 @@ export class ChatContext {
                 }
             }
         }
-    
+
         function isIgnored(fsPath: string): boolean {
             let currentDir = path.dirname(fsPath);
             const target = path.basename(fsPath);
-    
+
             // Check ignore rules from closest to farthest
             while (true) {
                 if (igMap.has(currentDir)) {
@@ -383,15 +382,15 @@ export class ChatContext {
                         return true;
                     }
                 }
-    
+
                 const parentDir = path.dirname(currentDir);
                 if (parentDir === currentDir) break; // Reached root
                 currentDir = parentDir;
             }
-    
+
             return false;
         }
-    
+
         await traverse(rootUri);
         return result;
     }
@@ -401,4 +400,4 @@ export class ChatContext {
         const regex = /@([a-zA-Z0-9_.-]+)(?=[,.?!\s]|$)/g;
         return [...text.matchAll(regex)].map(match => match[1]);
     }
-} 
+}

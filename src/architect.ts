@@ -1,6 +1,6 @@
 // TODO
 // При липсащ ембеддинг сървер да дава грешка, за да се разбира, че има проблем
-// 
+//
 // Ако се използва лора за чат сървера - да се подава в заявката от webui
 // Идеи
 // - Използване на агенти (?)
@@ -41,7 +41,6 @@ export class Architect {
                         }
                         this.app.chatContext.addDocument(document.uri.toString(), document.getText());
                     }, 5000);
-                    
                 }
             } catch (error) {
                 console.error('Failed to add document to RAG:', error);
@@ -80,7 +79,7 @@ export class Architect {
                     this.app.extraContext.pickChunkAroundCursor(previousEditor.selection.active.line, previousEditor.document);
                 }, 0);
             }
-            
+
             if (editor) {
                 // Editor is now active in the UI, pick a chunk
                 let activeDocument = editor.document;
@@ -216,7 +215,7 @@ export class Architect {
             }
             vscode.env.clipboard.writeText("Events:\n" + eventLogsCombined +
                  "\n\n------------------------------\n" +
-                 "Extra context: \n" + extraContext + 
+                 "Extra context: \n" + extraContext +
                  "\n\n------------------------------\nCompletion cache: \n" + completionCache +
                  "\n\n------------------------------\nChunks: \n" + firstChunks)
         });

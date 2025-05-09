@@ -62,7 +62,7 @@ export class Configuration {
     MAX_QUEUED_CHUNKS = 16;
     DELAY_BEFORE_COMPL_REQUEST = 150;
     MAX_EVENTS_IN_LOG = 250;
-    EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX = 15;
+    EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX = 20;
 
     config: vscode.WorkspaceConfiguration;
 
@@ -153,7 +153,7 @@ export class Configuration {
     };
 
     isRagConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
-        return event.affectsConfiguration("llama-vscode.rag_chunk_max_chars") 
+        return event.affectsConfiguration("llama-vscode.rag_chunk_max_chars")
         || event.affectsConfiguration("llama-vscode.rag_max_lines_per_chunk")
         || event.affectsConfiguration("llama-vscode.rag_max_files")
         || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line");

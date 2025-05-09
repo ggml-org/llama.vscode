@@ -29,12 +29,12 @@ export class ChatWithAi {
 
             if (!query) {
                 return
-            }  
-            
+            }
+
             aiPanel = this.askAiWithContextPanel
             if (!aiPanel) this.sentContextChunks =  []
             webviewIdentifier = 'htmlChatWithAiWithContextViewer'
-            panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??"" 
+            panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
         }
         let queryToSend = ""
         if (editor) {
@@ -163,9 +163,6 @@ export class ChatWithAi {
         </html>
         `;
     }
-
-
-
 
     private prepareRagContext = async (query: string) => {
         let extraCont: string = ""
