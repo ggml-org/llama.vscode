@@ -290,12 +290,12 @@
         },
         "llama-vscode.rag_chunk_max_chars": {
           "type": "number",
-          "default": 800,
+          "default": 2000,
           "description": "Max number of chars per RAG chunk"
         },
         "llama-vscode.rag_max_lines_per_chunk": {
           "type": "number",
-          "default": 40,
+          "default": 60,
           "description": "Max number of lines per RAG chunk"
         },
         "llama-vscode.rag_max_chars_per_chunk_line": {
@@ -303,10 +303,10 @@
           "default": 300,
           "description": "max chars for a chunk line, the rest of the line is cut"
         },
-        "llama-vscode.rag_max_files": {
+        "llama-vscode.rag_max_chunks": {
           "type": "number",
-          "default": 10000,
-          "description": "max files to index for the RAG search"
+          "default": 30000,
+          "description": "max cunks for the RAG search"
         },
         "llama-vscode.rag_max_bm25_filter_chunks": {
           "type": "number",
@@ -325,8 +325,8 @@
         },
         "llama-vscode.rag_max_context_file_chars": {
           "type": "number",
-          "default": 10000,
-          "description": "max chars for a context file. If the file is bigger it will be ignored to avoid too big context."
+          "default": 5000,
+          "description": "max chars for a context file. If the file is bigger it will be cut to avoid too big context."
         },
         "llama-vscode.language": {
           "type": "string",
