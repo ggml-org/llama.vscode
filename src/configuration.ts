@@ -19,6 +19,8 @@ export class Configuration {
     endpoint_embeddings = "http=//127.0.0.1:8010";
     auto = true;
     api_key = "";
+    api_key_chat = "";
+    api_key_embeddings = ""
     self_signed_certificate = "";
     n_prefix = 256;
     n_suffix = 64;
@@ -49,9 +51,11 @@ export class Configuration {
     rag_max_context_files = 3
     rag_max_context_file_chars = 10000
 
-    // additional configs
+    // additional configs`
     // TODO: change to snake_case for consistency
-    axiosRequestConfig = {};
+    axiosRequestConfigCompl = {};
+    axiosRequestConfigChat = {};
+    axiosRequestConfigEmbeddings = {};
     disabledLanguages: string[] = [];
     languageSettings:Record<string, boolean> = {}
 
@@ -111,6 +115,8 @@ export class Configuration {
         this.openai_prompt_template = String(config.get<string>("openai_prompt_template"));
         this.auto = Boolean(config.get<boolean>("auto"));
         this.api_key = String(config.get<string>("api_key"));
+        this.api_key_chat = String(config.get<string>("api_key_chat"));
+        this.api_key_embeddings = String(config.get<string>("api_key_embeddings"));
         this.self_signed_certificate = String(config.get<string>("self_signed_certificate"));
         this.n_prefix = Number(config.get<number>("n_prefix"));
         this.n_suffix = Number(config.get<number>("n_suffix"));
@@ -167,9 +173,9 @@ export class Configuration {
     };
 
     setLlamaRequestConfig = () => {
-        this.axiosRequestConfig = {};
+        this.axiosRequestConfigCompl = {};
         if (this.api_key != undefined && this.api_key.trim() != "") {
-            this.axiosRequestConfig = {
+            this.axiosRequestConfigCompl = {
                 headers: {
                     Authorization: `Bearer ${this.api_key.trim()}`,
                     "Content-Type": "application/json",
@@ -180,9 +186,29 @@ export class Configuration {
             const httpsAgent = new https.Agent({
                 ca: fs.readFileSync(this.self_signed_certificate.trim()),
             });
-            this.axiosRequestConfig = {
-                ...this.axiosRequestConfig,
+            this.axiosRequestConfigCompl = {
+                ...this.axiosRequestConfigCompl,
                 httpsAgent,
+            };
+        }
+
+        this.axiosRequestConfigChat = {};
+        if (this.api_key_chat != undefined && this.api_key_chat.trim() != "") {
+            this.axiosRequestConfigCompl = {
+                headers: {
+                    Authorization: `Bearer ${this.api_key_chat.trim()}`,
+                    "Content-Type": "application/json",
+                },
+            };
+        }
+
+        this.axiosRequestConfigEmbeddings = {};
+        if (this.api_key_embeddings != undefined && this.api_key_embeddings.trim() != "") {
+            this.axiosRequestConfigCompl = {
+                headers: {
+                    Authorization: `Bearer ${this.api_key_embeddings.trim()}`,
+                    "Content-Type": "application/json",
+                },
             };
         }
     };

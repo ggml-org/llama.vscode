@@ -221,7 +221,17 @@
         "llama-vscode.api_key": {
           "type": "string",
           "default": "",
-          "description": "llama.cpp server api key or OpenAI endpoint API key (optional)"
+          "description": "llama.cpp completion server api key or OpenAI endpoint API key (optional)"
+        },
+        "llama-vscode.api_key_chat": {
+          "type": "string",
+          "default": "",
+          "description": "llama.cpp chat server api key"
+        },
+        "llama-vscode.api_key_embeddings": {
+          "type": "string",
+          "default": "",
+          "description": "llama.cpp embeddings server api key"
         },
         "llama-vscode.self_signed_certificate": {
           "type": "string",
