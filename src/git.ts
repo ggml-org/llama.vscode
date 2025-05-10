@@ -27,8 +27,13 @@ export class Git {
             let diff = await repo.diff(true);
 
             if (!diff || diff.trim() === '') {
-                vscode.window.showWarningMessage('git staged change is empty');
-                return;
+                // use unstaged change
+                diff = await repo.diff(false);
+                if (!diff || diff.trim() === '') {
+                    vscode.window.showWarningMessage('git diff is empty');
+                    return;
+                }
+                vscode.window.showWarningMessage('git staged change is empty, using unstaged change');
             }
 
             const prompt = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CREATE_GIT_DIFF_COMMIT, "diff", diff);
