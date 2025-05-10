@@ -161,7 +161,6 @@ export class LlamaServer {
             };
         }
         const replacements = {
-            chunks: Utils.getChunksInPlainText(chunks),
             instructions: instructions,
             originalText: originalText,
         }
@@ -257,7 +256,7 @@ export class LlamaServer {
         const response = await axios.post<LlamaResponse>(
             `${this.app.extConfig.endpoint}/infill`,
             this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, nindent),
-            this.app.extConfig.axiosRequestConfig
+            this.app.extConfig.axiosRequestConfigCompl
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -273,7 +272,7 @@ export class LlamaServer {
         const response = await axios.post<LlamaChatResponse>(
             `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
             this.createChatEditRequestPayload(false, instructions, originalText, chunks, context, nindent),
-            this.app.extConfig.axiosRequestConfig
+            this.app.extConfig.axiosRequestConfigChat
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -285,7 +284,7 @@ export class LlamaServer {
         const response = await axios.post<LlamaChatResponse>(
             `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
             this.createChatRequestPayload(prompt),
-            this.app.extConfig.axiosRequestConfig
+            this.app.extConfig.axiosRequestConfigChat
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -301,7 +300,7 @@ export class LlamaServer {
         axios.post<LlamaResponse>(
             `${this.app.extConfig.endpoint}/infill`,
             this.createRequestPayload(true, "", "", chunks, "", undefined),
-            this.app.extConfig.axiosRequestConfig
+            this.app.extConfig.axiosRequestConfigCompl
         );
     };
 
@@ -314,7 +313,7 @@ export class LlamaServer {
                     "model": "GPT-4",
                     "encoding_format": "float"
                 },
-                this.app.extConfig.axiosRequestConfig
+                this.app.extConfig.axiosRequestConfigEmbeddings
             );
             return response.data;
         } catch (error: any) {

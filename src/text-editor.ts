@@ -132,6 +132,14 @@ export class TextEditor {
         // Create a diff editor with read-only content
         const diffTitle = 'Text Edit Suggestion';
         await vscode.commands.executeCommand('vscode.diff', editor.document.uri, uri, diffTitle);
+        setTimeout(async () => {
+            try {
+                // Navigate to the first difference
+                await vscode.commands.executeCommand('workbench.action.compareEditor.nextChange');
+            } catch (error) {
+                console.error('Failed to navigate to first difference:', error);
+            }
+        }, 300);
 
         // Store the registration to dispose later
         this.registration = registration;
