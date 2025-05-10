@@ -161,7 +161,6 @@ export class LlamaServer {
             };
         }
         const replacements = {
-            chunks: Utils.getChunksInPlainText(chunks),
             instructions: instructions,
             originalText: originalText,
         }
