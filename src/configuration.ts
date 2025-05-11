@@ -194,7 +194,7 @@ export class Configuration {
 
         this.axiosRequestConfigChat = {};
         if (this.api_key_chat != undefined && this.api_key_chat.trim() != "") {
-            this.axiosRequestConfigCompl = {
+            this.axiosRequestConfigChat = {
                 headers: {
                     Authorization: `Bearer ${this.api_key_chat.trim()}`,
                     "Content-Type": "application/json",
@@ -204,7 +204,7 @@ export class Configuration {
 
         this.axiosRequestConfigEmbeddings = {};
         if (this.api_key_embeddings != undefined && this.api_key_embeddings.trim() != "") {
-            this.axiosRequestConfigCompl = {
+            this.axiosRequestConfigEmbeddings = {
                 headers: {
                     Authorization: `Bearer ${this.api_key_embeddings.trim()}`,
                     "Content-Type": "application/json",
