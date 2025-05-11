@@ -54,8 +54,8 @@ export class TextEditor {
 
         try {
             // Get completion from llama server
-            const data = await this.app.llamaServer.getChatCompletion(
-                prompt, 
+            const data = await this.app.llamaServer.getChatEditCompletion(
+                prompt,
                 this.selectedText,
                 context,
                 this.app.extraContext.chunks,
@@ -67,7 +67,7 @@ export class TextEditor {
                 return;
             }
             this.currentSuggestion = this.removeFirstAndLastLinesIfBackticks(data.choices[0].message.content.trim());
-            
+
             // Show the suggestion in a diff view
             await this.showDiffView(editor, this.currentSuggestion);
             this.setSuggestionVisible(true);
@@ -84,40 +84,40 @@ export class TextEditor {
 
     private removeFirstAndLastLinesIfBackticks(input: string): string {
         const lines = input.split('\n'); // Split the string into lines
-    
+
         // Remove the first line if it starts with ```
         if (lines[0]?.trim().startsWith('```')) {
             lines.shift(); // Remove the first line
         }
-    
+
         // Remove the last line if it starts with ```
         if (lines[lines.length - 1]?.trim().startsWith('```')) {
             lines.pop(); // Remove the last line
         }
-    
+
         return lines.join('\n'); // Join the remaining lines back into a string
     }
 
     private async showDiffView(editor: vscode.TextEditor, suggestion: string) {
         // Get context before and after the selection
-        const contextLines = 25;
+        const contextLines = this.app.extConfig.EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX;
         const startLine = Math.max(0, this.selection!.start.line - contextLines);
         const endLine = Math.min(editor.document.lineCount - 1, this.selection!.end.line + contextLines);
-        
+
         // Get the text before the selection
         const beforeRange = new vscode.Range(startLine, 0, this.selection!.start.line, 0);
         const beforeText = editor.document.getText(beforeRange);
-        
+
         // Get the text after the selection
         const afterRange = new vscode.Range(this.selection!.end.line, editor.document.lineAt(this.selection!.end.line).text.length, endLine, editor.document.lineAt(endLine).text.length);
         const afterText = editor.document.getText(afterRange);
-        
+
         // Combine the context with the suggestion
         const fullSuggestion = beforeText + suggestion + afterText;
-        
+
         // Create a temporary document for the suggestion using a custom scheme
         const uri = vscode.Uri.parse('llama-suggestion:suggestion.txt');
-        
+
         // Register a content provider for our custom scheme
         const provider = new class implements vscode.TextDocumentContentProvider {
             onDidChange?: vscode.Event<vscode.Uri>;
@@ -125,14 +125,22 @@ export class TextEditor {
                 return fullSuggestion;
             }
         };
-        
+
         // Register the provider
         const registration = vscode.workspace.registerTextDocumentContentProvider('llama-suggestion', provider);
-        
+
         // Create a diff editor with read-only content
         const diffTitle = 'Text Edit Suggestion';
         await vscode.commands.executeCommand('vscode.diff', editor.document.uri, uri, diffTitle);
-        
+        setTimeout(async () => {
+            try {
+                // Navigate to the first difference
+                await vscode.commands.executeCommand('workbench.action.compareEditor.nextChange');
+            } catch (error) {
+                console.error('Failed to navigate to first difference:', error);
+            }
+        }, 300);
+
         // Store the registration to dispose later
         this.registration = registration;
     }
@@ -144,7 +152,7 @@ export class TextEditor {
 
         await this.applyChange(this.currentEditor, this.currentSuggestion);
         this.setSuggestionVisible(false);
-        
+
         // Clean up after applying the change
         await this.cleanup();
     }
@@ -155,7 +163,7 @@ export class TextEditor {
         }
 
         this.setSuggestionVisible(false);
-        
+
         // Clean up without applying the change
         await this.cleanup();
     }
@@ -169,16 +177,16 @@ export class TextEditor {
     private async cleanup() {
         // Close the diff editor
         await vscode.commands.executeCommand('workbench.action.closeActiveEditor');
-        
+
         // Dispose of the content provider registration
         if (this.registration) {
             this.registration.dispose();
             this.registration = undefined;
         }
-        
+
         this.currentSuggestion = undefined;
         this.currentEditor = undefined;
         this.selection = undefined;
         this.setSuggestionVisible(false);
     }
-} 
+}

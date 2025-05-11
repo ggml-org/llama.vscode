@@ -70,5 +70,4 @@ export class LRUCache {
     getMap = () => {
         return this.map;
     }
-
 }

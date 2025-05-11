@@ -13,28 +13,39 @@ export class ChatWithAi {
         this.app = application;
     }
 
-    showChatWithAi = (withContext: boolean, context: vscode.ExtensionContext) => {
+    showChatWithAi = async (withContext: boolean, context: vscode.ExtensionContext) => {
         const editor = vscode.window.activeTextEditor;
         let webviewIdentifier = 'htmlChatWithAiViewer'
         let panelTitle = this.app.extConfig.getUiText("Chat with AI")??""
         let aiPanel  = this.askAiPanel
         let extraCont = "";
+        let query: string|undefined = undefined
         if (withContext){
-             aiPanel = this.askAiWithContextPanel
-             if (!aiPanel) this.sentContextChunks =  []
-             webviewIdentifier = 'htmlChatWithAiWithContextViewer'
-             let chunksToSend = this.app.extraContext.chunks.filter((_, index) => !this.sentContextChunks.includes(this.app.extraContext.chunksHash[index]));
-             let chunksToSendHash = this.app.extraContext.chunksHash.filter((item) => !this.sentContextChunks.includes(item));
-             if (chunksToSend.length > 0) extraCont = Utils.getChunksInPlainText(chunksToSend);
-             this.sentContextChunks.push(...chunksToSendHash)
-             panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
+            query = await vscode.window.showInputBox({
+                placeHolder: this.app.extConfig.getUiText('Enter your question...'),
+                prompt: this.app.extConfig.getUiText('What would you like to ask AI?'),
+                ignoreFocusOut: true
+            });
+
+            if (!query) {
+                return
+            }
+
+            aiPanel = this.askAiWithContextPanel
+            if (!aiPanel) this.sentContextChunks =  []
+            webviewIdentifier = 'htmlChatWithAiWithContextViewer'
+            panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
         }
-        let selectedText = ""
+        let queryToSend = ""
         if (editor) {
-            selectedText = editor.document.getText(editor.selection);
-            if (selectedText.length > 0) selectedText = "Explain the following source code: " + selectedText
+            queryToSend = editor.document.getText(editor.selection);
+            if (queryToSend.length > 0) queryToSend = "Explain the following source code: " + queryToSend
+        }
+        if (query) {
+            queryToSend = query
         }
         if (!aiPanel) {
+            const createWebviewTimeInMs = Date.now()
             aiPanel = vscode.window.createWebviewPanel(
                 webviewIdentifier,
                 panelTitle,
@@ -44,6 +55,7 @@ export class ChatWithAi {
                     retainContextWhenHidden: true,
                 }
             );
+            this.lastActiveEditor = editor;
             if (withContext) this.askAiWithContextPanel = aiPanel;
             else this.askAiPanel = aiPanel;
 
@@ -62,15 +74,17 @@ export class ChatWithAi {
                 }
             });
             // Wait for the page to load before sending message
+            if (query) extraCont = await this.prepareRagContext(query);
             setTimeout(async () => {
-                if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: selectedText, context: extraCont });
-            }, 1000);
+                if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
+            }, Math.max(0, 3000 - (Date.now() - createWebviewTimeInMs)));
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
+            if (query) extraCont = await this.prepareRagContext(query);
             // Wait for the page to load before sending message
             setTimeout(async () => {
-                if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: selectedText, context: extraCont });
+                if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
             }, 500);
         }
     }
@@ -150,6 +164,17 @@ export class ChatWithAi {
         `;
     }
 
+    private prepareRagContext = async (query: string) => {
+        let extraCont: string = ""
+        const contextChunks = await this.app.chatContext.getRagContextChunks(query);
+        let chunksToSend = contextChunks.filter((_, index) => !this.sentContextChunks.includes(contextChunks[index].hash));
+        let chunksToSendHash = chunksToSend.map(chunk => chunk.hash);
+        if (chunksToSend.length > 0) extraCont = this.app.chatContext.getContextChunksInPlainText(chunksToSend);
+        this.sentContextChunks.push(...chunksToSendHash);
 
+        const contextFiles = await this.app.chatContext.getRagFilesContext(query);
+        if (contextFiles && contextFiles.length > 0) extraCont += "\n" + contextFiles;
 
+        return extraCont
+    }
 }

@@ -2,7 +2,7 @@
   "name": "llama-vscode",
   "displayName": "llama-vscode",
   "description": "Local LLM-assisted text completion using llama.cpp",
-  "version": "0.0.9-beta-3",
+  "version": "0.0.10",
   "publisher": "ggml-org",
   "repository": "https://github.com/ggml-org/llama.vscode",
   "engines": {
@@ -31,55 +31,60 @@
     "commands": [
       {
         "command": "extension.triggerInlineCompletion",
-        "title": "Trigger Inline Completion"
+        "title": "llama-vscode: Trigger Inline Completion"
       },
       {
         "command": "extension.triggerNoCacheCompletion",
-        "title": "Trigger No Cache Completion"
+        "title": "llama-vscode: Trigger No Cache Completion"
       },
       {
         "command": "extension.copyIntercept",
-        "title": "Copy Intercept"
+        "title": "llama-vscode: Copy Intercept"
       },
       {
         "command": "extension.cutIntercept",
-        "title": "Cut Intercept"
+        "title": "llama-vscode: Cut Intercept"
       },
       {
         "command": "extension.acceptFirstLine",
-        "title": "Accept First Line"
+        "title": "llama-vscode: Accept First Line"
       },
       {
         "command": "extension.acceptFirstWord",
-        "title": "Accept First Word"
+        "title": "llama-vscode: Accept First Word"
       },
       {
         "command": "extension.copyChunks",
-        "title": "Copy Chunks"
+        "title": "llama-vscode: Copy Chunks"
       },
       {
         "command": "extension.showMenu",
-        "title": "Show Menu"
+        "title": "llama-vscode: Show Menu"
       },
       {
         "command": "extension.askAi",
-        "title": "Ask AI"
+        "title": "llama-vscode: Ask AI"
       },
       {
         "command": "extension.askAiWithContext",
-        "title": "Ask AI With Context"
+        "title": "llama-vscode: Ask AI With Context"
       },
       {
         "command": "extension.editSelectedText",
-        "title": "Edit Selected Text with AI"
+        "title": "llama-vscode: Edit Selected Text with AI"
       },
       {
         "command": "extension.acceptTextEdit",
-        "title": "Accept Text Edit Suggestion"
+        "title": "llama-vscode: Accept Text Edit Suggestion"
       },
       {
         "command": "extension.rejectTextEdit",
-        "title": "Reject Text Edit Suggestion"
+        "title": "llama-vscode: Reject Text Edit Suggestion"
+      },
+      {
+        "command": "extension.generateGitCommitMessage",
+        "title": "llama-vscode: Generate Commit Message",
+        "icon": "$(sparkle)"
       }
     ],
     "keybindings": [
@@ -168,6 +173,11 @@
           "default": "cd c:/ai ; ./llama-server.exe -m qwen2.5-coder-3b-instruct-q6_k.gguf -ngl 99 --port 8011 --path C:/llama.cpp/llama.cpp/examples/server/webui/dist",
           "description": "Shell command for starting chat llama.cpp server, executed from the menu"
         },
+        "llama-vscode.launch_embeddings": {
+          "type": "string",
+          "default": "cd c:/ai ; ./llama-server.exe -m all-MiniLM-L6-v2-Q8_0.gguf --port 8010",
+          "description": "Shell command for starting chat llama.cpp server, executed from the menu"
+        },
         "llama-vscode.launch_training_completion": {
           "type": "string",
           "default": "",
@@ -198,6 +208,11 @@
           "default": "http://127.0.0.1:8011",
           "description": "The URL to be used by the extension for chat with ai."
         },
+        "llama-vscode.endpoint_embeddings": {
+          "type": "string",
+          "default": "http://127.0.0.1:8010",
+          "description": "The URL to be used by the extension for creating embeddings."
+        },
         "llama-vscode.auto": {
           "type": "boolean",
           "default": true,
@@ -206,7 +221,17 @@
         "llama-vscode.api_key": {
           "type": "string",
           "default": "",
-          "description": "llama.cpp server api key or OpenAI endpoint API key (optional)"
+          "description": "llama.cpp completion server api key or OpenAI endpoint API key (optional)"
+        },
+        "llama-vscode.api_key_chat": {
+          "type": "string",
+          "default": "",
+          "description": "llama.cpp chat server api key"
+        },
+        "llama-vscode.api_key_embeddings": {
+          "type": "string",
+          "default": "",
+          "description": "llama.cpp embeddings server api key"
         },
         "llama-vscode.self_signed_certificate": {
           "type": "string",
@@ -273,6 +298,46 @@
           "default": 1000,
           "description": "how often to process queued chunks in normal mode"
         },
+        "llama-vscode.rag_chunk_max_chars": {
+          "type": "number",
+          "default": 2000,
+          "description": "Max number of chars per RAG chunk"
+        },
+        "llama-vscode.rag_max_lines_per_chunk": {
+          "type": "number",
+          "default": 60,
+          "description": "Max number of lines per RAG chunk"
+        },
+        "llama-vscode.rag_max_chars_per_chunk_line": {
+          "type": "number",
+          "default": 300,
+          "description": "max chars for a chunk line, the rest of the line is cut"
+        },
+        "llama-vscode.rag_max_chunks": {
+          "type": "number",
+          "default": 30000,
+          "description": "max cunks for the RAG search"
+        },
+        "llama-vscode.rag_max_bm25_filter_chunks": {
+          "type": "number",
+          "default": 47,
+          "description": "max RAG chunks to filter with BM25 algorithm"
+        },
+        "llama-vscode.rag_max_embedding_filter_chunks": {
+          "type": "number",
+          "default": 5,
+          "description": "max RAG chunks to provide as context to the LLM"
+        },
+        "llama-vscode.rag_max_context_files": {
+          "type": "number",
+          "default": 3,
+          "description": "max number of complete files to send as context to the LLM"
+        },
+        "llama-vscode.rag_max_context_file_chars": {
+          "type": "number",
+          "default": 5000,
+          "description": "max chars for a context file. If the file is bigger it will be cut to avoid too big context."
+        },
         "llama-vscode.language": {
           "type": "string",
           "default": "en",
@@ -316,6 +381,13 @@
       }
     },
     "menus": {
+      "scm/title": [
+        {
+          "command": "extension.generateGitCommitMessage",
+          "when": "scmProvider == git",
+          "group": "navigation"
+        }
+      ],
       "editor/context": [
         {
           "command": "extension.editSelectedText",
@@ -330,6 +402,7 @@
   },
   "dependencies": {
     "axios": "^1.1.2",
+    "ignore": "^7.0.4",
     "openai": "^4.80.1"
   },
   "devDependencies": {
@@ -339,5 +412,8 @@
     "typescript": "^4.8.0",
     "webpack": "^5.0.0",
     "webpack-cli": "^4.0.0"
-  }
+  },
+  "extensionDependencies": [
+    "vscode.git"
+  ]
 }

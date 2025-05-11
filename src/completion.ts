@@ -262,7 +262,7 @@ export class Completion {
             let futureSuggestion = suggestionLines.slice(1).join('\n')
             let cached_completion = this.app.lruResultCache.get(futureHashKey)
             if (cached_completion != undefined) return;
-            else this.app.lruResultCache.put(futureHashKey, futureSuggestion);
+            else this.app.lruResultCache.put(futureHashKey, futureSuggestion)
         }
     }
 
