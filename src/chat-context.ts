@@ -11,6 +11,7 @@ interface ChunkEntry {
     firstLine: number;
     lastLine: number;
     hash: string;
+    embedding: number[]
 }
 
 interface FileProperties {
@@ -110,7 +111,7 @@ export class ChatContext {
                     // message: `Indexing ${vscode.workspace.asRelativePath(file)}`,
                     increment: (1 / total) * 100
                 });
-                entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry.content);
+                entry.score = await this.cosineSimilarity(queryEmbedding, entry.entry);
             }
         });
 
@@ -119,8 +120,12 @@ export class ChatContext {
         .map(({ entry: chunkEntry }) => chunkEntry);
     }
 
-    private cosineSimilarity = async (a: number[], text: string): Promise<number> => {
-        let b = await this.getEmbedding(text)
+    private cosineSimilarity = async (a: number[], chunk: ChunkEntry): Promise<number> => {
+        let b = chunk.embedding;
+        if(b.length == 0){
+            b = await this.getEmbedding(chunk.content)
+            chunk.embedding = b;
+        }
         if (!b || b.length == 0 || !a || a.length == 0) {
             throw new Error("Error getting embeddings.");
           }
@@ -248,7 +253,7 @@ export class ChatContext {
                 // const embedding = await this.getEmbedding(chunk);
                 let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk
                 const chunkHash = this.app.lruResultCache.getHash(chunkContent)
-                this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash});
+                this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash, embedding: []});
                 if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
                 this.nextEntryId++;
             }
