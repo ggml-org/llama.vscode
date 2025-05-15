@@ -122,7 +122,7 @@ export class ChatContext {
 
     private cosineSimilarity = async (a: number[], chunk: ChunkEntry): Promise<number> => {
         let b = chunk.embedding;
-        if(b.length == 0){
+        if (b.length == 0){
             b = await this.getEmbedding(chunk.content)
             chunk.embedding = b;
         }

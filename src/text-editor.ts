@@ -24,7 +24,7 @@ export class TextEditor {
         // Get the selected text
         const selection = editor.selection;
         if (selection.isEmpty) {
-            vscode.window.showInformationMessage('Please select some text to edit');
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText("Please select some text to edit")??"");
             return;
         }
 

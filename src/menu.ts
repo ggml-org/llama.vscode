@@ -38,6 +38,10 @@ export class Menu {
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
                 {
+                    label: this.app.extConfig.getUiText('Start all models') + ' (>= 32GB VRAM)',
+                    description: this.app.extConfig.getUiText(`Requires brew, starts completion, chat and embeddings models`)
+                },
+                {
                     label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)',
                     description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
                 },
@@ -126,62 +130,65 @@ export class Menu {
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
 
-    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {
-        const DEFAULT_PORT_FIM_MODEL = "8012"
+    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {       
         const PRESET_PLACEHOLDER = "[preset]";
-        const MODEL_PLACEHOLDER = "[model]"
-        let endpointParts = this.app.extConfig.endpoint.split(":");
-        let port = endpointParts[endpointParts.length -1]
-        let endpointChatParts = this.app.extConfig.endpoint_chat.split(":");
-        let endpointEmbeddingParts = this.app.extConfig.endpoint_embeddings.split(":");
-        let portChat = endpointChatParts[endpointChatParts.length -1]
-        let portEmbedding = endpointEmbeddingParts[endpointEmbeddingParts.length -1]
-        if (!Number.isInteger(Number(port))) port =  DEFAULT_PORT_FIM_MODEL
-        let llmMacVramTemplate = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port
-        let llmMacCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacChatVramTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
-        let llmMacChatCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacEmbeddingCpuTemplate = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
+        const MODEL_PLACEHOLDER = "[model]";
+
+        let { port, portChat, portEmbedding } = this.getPorts();
+
+        let llmMacTemplateVram = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port
+        let llmMacTemplateCpu = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
+        let llmMacTemplateChatVram = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
+        let llmMacTemplateChatCpu = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
+        let llmMacTemplateEmbedding = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
 
         switch (selected.label) {
             case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
+            case this.app.extConfig.getUiText('Start all models') + ' (>= 32GB VRAM)':
+                await this.app.llamaServer.killFimCmd();
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.killEmbeddingsCmd();
+                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
+                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen3-8B-GGUF"));
+                await this.app.llamaServer.shellEmbeddingsCmd(llmMacTemplateEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
+                break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-1.5b-default"));
+                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-1.5b-default"));
                 break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-3b-default"));
+                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-3b-default"));
                 break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacVramTemplate.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
+                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
                 break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-Q8_0-GGUF"));
+                await this.app.llamaServer.shellFimCmd(llmMacTemplateCpu.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-0.5B-Instruct-Q8_0-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
+                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF"));
+                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
                 await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacChatVramTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
+                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
                 await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacChatCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
+                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatCpu.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start embeddings model') + ' Nomic-Embed-Text-V2-GGUF':
                 await this.app.llamaServer.killEmbeddingsCmd();
-                await this.app.llamaServer.shellEmbeddingsCmd(llmMacEmbeddingCpuTemplate.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
+                await this.app.llamaServer.shellEmbeddingsCmd(llmMacTemplateEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
@@ -238,6 +245,26 @@ export class Menu {
                 break;
         }
         this.app.statusbar.updateStatusBarText();
+    }
+
+    getPorts = () => {
+        const DEFAULT_PORT_FIM_MODEL = "8012"
+        const DEFAULT_PORT_CHAT_MODEL = "8011"
+        const DEFAULT_PORT_EMBEDDINGS_MODEL = "8010"
+
+        let endpointParts = this.app.extConfig.endpoint.split(":");
+        let endpointChatParts = this.app.extConfig.endpoint_chat.split(":");
+        let endpointEmbeddingParts = this.app.extConfig.endpoint_embeddings.split(":");
+
+        let port = endpointParts[endpointParts.length - 1];
+        let portChat = endpointChatParts[endpointChatParts.length - 1];
+        let portEmbedding = endpointEmbeddingParts[endpointEmbeddingParts.length - 1];
+
+        if (!Number.isInteger(Number(port))) port = DEFAULT_PORT_FIM_MODEL;
+        if (!Number.isInteger(Number(portChat))) portChat = DEFAULT_PORT_CHAT_MODEL;
+        if (!Number.isInteger(Number(portEmbedding))) portEmbedding = DEFAULT_PORT_EMBEDDINGS_MODEL;
+
+        return { port, portChat, portEmbedding };
     }
 
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
