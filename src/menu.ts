@@ -142,10 +142,8 @@ export class Menu {
         let llmMacTemplateChatVram = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
         let llmMacTemplateChatCpu = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
         let llmMacTemplateEmbedding = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
-        let llmMacAllModels = " brew install llama.cpp " + 
-            " && llama-server --fim-qwen-7b-default --port " + port + 
-            " && llama-server -hf ggml-org/Qwen3-8B-GGUF:Q8_0 --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 " + 
-            " &&  llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings ";
+        let llmMacAllChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
+        let llmMacAllmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
         switch (selected.label) {
             case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
@@ -154,7 +152,9 @@ export class Menu {
                 await this.app.llamaServer.killFimCmd();
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.killEmbeddingsCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacAllModels);
+                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
+                await this.app.llamaServer.shellChatCmd(llmMacAllChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen3-8B-GGUF:Q8_0"));
+                await this.app.llamaServer.shellEmbeddingsCmd(llmMacAllmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
                 break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
                 await this.app.llamaServer.killFimCmd();
