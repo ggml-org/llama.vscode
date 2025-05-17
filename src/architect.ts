@@ -313,17 +313,6 @@ export class Architect {
 
             if (!this.app.extConfig.endpoint_chat) return;
 
-            const editor = vscode.window.activeTextEditor;
-            if (editor) {
-                // if editor is active in the UI, pick a chunk before sending extra context to the ai
-                let activeDocument = editor.document;
-                const selection = editor.selection;
-                const cursorPosition = selection.active;
-                this.app.extraContext.pickChunkAroundCursor(cursorPosition.line, activeDocument);
-                // Ensure ring chunks buffer will be updated
-                this.app.extraContext.lastComplStartTime = Date.now() - this.app.extConfig.RING_UPDATE_MIN_TIME_LAST_COMPL - 1
-                this.app.extraContext.periodicRingBufferUpdate()
-            }
             this.app.askAi.showChatWithAi(true, context);
         });
         context.subscriptions.push(triggerAskAiDisposable);

@@ -18,6 +18,9 @@ export class ExtraContext {
     }
 
     periodicRingBufferUpdate = () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor || !editor.document) return;
+        if (!this.app.extConfig.isCompletionEnabled(editor.document)) return;
         if (this.queuedChunks === undefined
             || this.queuedChunks === null
             || this.queuedChunks.length == 0
