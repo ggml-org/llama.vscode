@@ -1,11 +1,13 @@
 import * as vscode from 'vscode';
 import { Application } from './application';
+import { Utils } from './utils';
 
 export class TextEditor {
     private app: Application;
     private decorationTypes: vscode.TextEditorDecorationType[] = [];
     private inputBox: vscode.TextEditor | undefined;
     private selectedText: string = '';
+    private removedSpaces: number = 0;
     private selection: vscode.Selection | undefined;
     private currentSuggestion: string | undefined;
     private currentEditor: vscode.TextEditor | undefined;
@@ -21,14 +23,17 @@ export class TextEditor {
     }
 
     async showEditPrompt(editor: vscode.TextEditor) {
-        // Get the selected text
-        const selection = editor.selection;
-        if (selection.isEmpty) {
+        
+        if (editor.selection.isEmpty) {
             vscode.window.showInformationMessage(this.app.extConfig.getUiText("Please select some text to edit")??"");
             return;
         }
 
-        this.selectedText = editor.document.getText(selection);
+        Utils.expandSelectionToFullLines(editor);
+        const selection = editor.selection;
+        let result = Utils.removeLeadingSpaces(editor.document.getText(selection));
+        this.selectedText = result.updatedText;
+        this.removedSpaces = result.removedSpaces
         this.selection = selection;
         this.currentEditor = editor;
 
@@ -37,7 +42,7 @@ export class TextEditor {
         const endLine = Math.min(editor.document.lineCount - 1, selection.end.line + 10);
         const contextRange = new vscode.Range(startLine, 0, endLine, editor.document.lineAt(endLine).text.length);
         const context = editor.document.getText(contextRange);
-
+        
         // Create and show input box
         const prompt = await vscode.window.showInputBox({
             placeHolder: 'Enter your instructions for editing the text...',
@@ -49,11 +54,9 @@ export class TextEditor {
             return;
         }
 
-        // Show thinking status
         this.app.statusbar.showThinkingInfo();
 
         try {
-            // Get completion from llama server
             const data = await this.app.llamaServer.getChatEditCompletion(
                 prompt,
                 this.selectedText,
@@ -67,7 +70,7 @@ export class TextEditor {
                 return;
             }
             this.currentSuggestion = this.removeFirstAndLastLinesIfBackticks(data.choices[0].message.content.trim());
-
+            this.currentSuggestion = Utils.addLeadingSpaces(this.currentSuggestion, this.removedSpaces)
             // Show the suggestion in a diff view
             await this.showDiffView(editor, this.currentSuggestion);
             this.setSuggestionVisible(true);
@@ -100,9 +103,8 @@ export class TextEditor {
 
     private async showDiffView(editor: vscode.TextEditor, suggestion: string) {
         // Get context before and after the selection
-        const contextLines = this.app.extConfig.EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX;
-        const startLine = Math.max(0, this.selection!.start.line - contextLines);
-        const endLine = Math.min(editor.document.lineCount - 1, this.selection!.end.line + contextLines);
+        const startLine = 0; 
+        const endLine = editor.document.lineCount - 1;
 
         // Get the text before the selection
         const beforeRange = new vscode.Range(startLine, 0, this.selection!.start.line, 0);

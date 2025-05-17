@@ -109,4 +109,71 @@ export class Utils {
 
         return score;
     }
+
+    static expandSelectionToFullLines(editor: vscode.TextEditor) {
+        if (!editor) {
+            return;
+        }
+
+        const document = editor.document;
+        const selections = editor.selections;
+
+        const newSelections = selections.map(selection => {
+            const startLine = selection.start.line;
+            const endLine = selection.end.line;
+
+            const newStart = new vscode.Position(startLine, 0);
+
+            const endLineText = document.lineAt(endLine).text;
+            const newEnd = new vscode.Position(endLine, endLineText.length);
+
+            return new vscode.Selection(newStart, newEnd);
+        });
+
+        editor.selections = newSelections;
+    }
+
+    static  removeLeadingSpaces = (textToUpdate: string): { removedSpaces: number, updatedText: string } => {
+        const lines = textToUpdate.split(/\r?\n/);
+        
+        // Find the length of the shortest leading space
+        let nSpacesToRemove = Infinity;
+        
+        for (const line of lines) {
+            if (line.trim().length === 0) continue;
+            
+            const leadingSpaces = line.match(/^\s*/)?.[0].length || 0;
+            if (leadingSpaces < nSpacesToRemove) {
+                nSpacesToRemove = leadingSpaces;
+            }
+        }
+        
+        if (nSpacesToRemove === Infinity || nSpacesToRemove === 0) {
+            return {
+                removedSpaces: 0,
+                updatedText: textToUpdate
+            };
+        }
+        
+        // Remove nSpacesToRemove leading characters from each line
+        const updatedLines = lines.map(line => 
+            line.length >= nSpacesToRemove 
+                ? line.substring(nSpacesToRemove) 
+                : line
+        );
+        
+        return {
+            removedSpaces: nSpacesToRemove,
+            updatedText: updatedLines.join('\n')
+        };
+    }
+
+    static addLeadingSpaces = (textToUpdate: string, spacesToAdd: number): string =>{
+        const spaces = ' '.repeat(spacesToAdd);
+        
+        return textToUpdate
+            .split('\n')
+            .map(line => spaces + line)
+            .join('\n');
+    }
 }

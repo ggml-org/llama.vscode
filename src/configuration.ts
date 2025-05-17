@@ -66,7 +66,6 @@ export class Configuration {
     MAX_QUEUED_CHUNKS = 16;
     DELAY_BEFORE_COMPL_REQUEST = 150;
     MAX_EVENTS_IN_LOG = 250;
-    EDIT_TEXT_DIFF_WINDOW_CONTEXT_LINEX = 20;
 
     config: vscode.WorkspaceConfiguration;
 
