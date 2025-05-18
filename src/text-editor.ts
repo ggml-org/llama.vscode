@@ -118,7 +118,8 @@ export class TextEditor {
         const fullSuggestion = beforeText + suggestion + afterText;
 
         // Create a temporary document for the suggestion using a custom scheme
-        const uri = vscode.Uri.parse('llama-suggestion:suggestion.txt');
+        const extension = editor.document.uri.toString().split('.').pop();
+        const uri = vscode.Uri.parse('llama-suggestion:suggestion.' + extension);
 
         // Register a content provider for our custom scheme
         const provider = new class implements vscode.TextDocumentContentProvider {

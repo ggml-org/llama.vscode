@@ -158,6 +158,8 @@ export class ExtraContext {
         }
 
         this.fileSaveTimeout = setTimeout(() => {
+            if (!this.app.extConfig.isCompletionEnabled(document)) return;
+
             let chunkLines: string[] = []
             const editor = vscode.window.activeTextEditor;
             // If there's an active editor and it's editing the saved document
@@ -170,7 +172,6 @@ export class ExtraContext {
                 this.app.extraContext.pickChunk(chunkLines, true, true, document);
             }
         }, 1000); // Adjust the delay as needed
-        this.app.logger.addEventLog("", "SAVE", "")
     }
 
     addChunkFromSelection = (editor:  vscode.TextEditor) => {

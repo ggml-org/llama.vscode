@@ -130,8 +130,7 @@ export class Menu {
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
 
-    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {
-
+    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {       
         const PRESET_PLACEHOLDER = "[preset]";
         const MODEL_PLACEHOLDER = "[model]";
 
@@ -153,8 +152,11 @@ export class Menu {
                 await this.app.llamaServer.killChatCmd();
                 await this.app.llamaServer.killEmbeddingsCmd();
                 await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
-                await this.app.llamaServer.shellChatCmd(llmMacAllChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
-                await this.app.llamaServer.shellEmbeddingsCmd(llmMacAllEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
+                // Wait some time to finish the installation of llama.cpp (if not available)
+                setTimeout(async () => {
+                    await this.app.llamaServer.shellChatCmd(llmMacAllChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
+                    await this.app.llamaServer.shellEmbeddingsCmd(llmMacAllEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
+                }, 5000);
                 break;
             case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
                 await this.app.llamaServer.killFimCmd();

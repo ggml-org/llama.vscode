@@ -73,6 +73,7 @@ export class Architect {
 
     setOnChangeActiveFile = (context: vscode.ExtensionContext) => {
         let changeActiveTextEditorDisp = vscode.window.onDidChangeActiveTextEditor((editor) => {
+            if(!editor || !editor.document || !this.app.extConfig.isCompletionEnabled(editor.document)) return;
             const previousEditor = vscode.window.activeTextEditor;
             if (previousEditor) {
                 setTimeout(async () => {
@@ -251,7 +252,7 @@ export class Architect {
     setClipboardEvents = (context: vscode.ExtensionContext) => {
         const copyCmd = vscode.commands.registerCommand('extension.copyIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
-            if (!editor) {
+            if (!editor || !editor.document || !this.app.extConfig.isCompletionEnabled(editor.document)) {
                 // Delegate to the built-in paste action
                 await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
                 return;
@@ -260,13 +261,12 @@ export class Architect {
 
             // Delegate to the built-in command to complete the actual copy
             await vscode.commands.executeCommand('editor.action.clipboardCopyAction');
-            this.app.logger.addEventLog("", "COPY_INTERCEPT", selectedLines[0])
         });
         context.subscriptions.push(copyCmd);
 
         const cutCmd = vscode.commands.registerCommand('extension.cutIntercept', async () => {
             const editor = vscode.window.activeTextEditor;
-            if (!editor) {
+            if (!editor || !editor.document || !this.app.extConfig.isCompletionEnabled(editor.document)) {
                 // Delegate to the built-in paste action
                 await vscode.commands.executeCommand('editor.action.clipboardCutAction');
                 return;
@@ -275,7 +275,6 @@ export class Architect {
 
             // Delegate to the built-in cut
             await vscode.commands.executeCommand('editor.action.clipboardCutAction');
-            this.app.logger.addEventLog("", "CUT_INTERCEPT", selectedLines[0])
         });
         context.subscriptions.push(cutCmd);
     }
