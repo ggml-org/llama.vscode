@@ -282,7 +282,8 @@ export class ChatContext {
 
     async indexWorkspaceFiles() {
         try {
-            const files = await this.getFilesRespectingGitignore()
+            if (this.app.extConfig.rag_max_files <= 0) return;
+            const files = (await this.getFilesRespectingGitignore()).slice(0,this.app.extConfig.rag_max_files)
 
             // Show progress
             const progressOptions = {

@@ -45,6 +45,7 @@ export class Configuration {
     rag_chunk_max_chars = 800
     rag_max_lines_per_chunk = 40
     rag_max_chars_per_chunk_line = 300
+    rag_max_files = 10000
     rag_max_chunks = 50000
     rag_max_bm25_filter_chunks = 47
     rag_max_embedding_filter_chunks = 5
@@ -132,6 +133,7 @@ export class Configuration {
         this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
         this.rag_max_lines_per_chunk = Number(config.get<number>("rag_max_lines_per_chunk"));
         this.rag_max_chars_per_chunk_line = Number(config.get<number>("rag_max_chars_per_chunk_line"));
+        this.rag_max_files = Number(config.get<number>("rag_max_files"));
         this.rag_max_chunks = Number(config.get<number>("rag_max_chunks"));
         this.rag_max_bm25_filter_chunks = Number(config.get<number>("rag_max_bm25_filter_chunks"));
         this.rag_max_embedding_filter_chunks = Number(config.get<number>("rag_max_embedding_filter_chunks"));

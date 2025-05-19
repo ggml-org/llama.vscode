@@ -313,6 +313,11 @@
           "default": 300,
           "description": "max chars for a chunk line, the rest of the line is cut"
         },
+        "llama-vscode.rag_max_files": {
+          "type": "number",
+          "default": 10000,
+          "description": "max files to index for RAG search, 0 to switch off indexing"
+        },
         "llama-vscode.rag_max_chunks": {
           "type": "number",
           "default": 30000,
