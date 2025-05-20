@@ -18,6 +18,10 @@ export class Menu {
                 description: `${ this.app.extConfig.getUiText("Currently")} ${isLanguageEnabled ?  this.app.extConfig.getUiText('enabled') :  this.app.extConfig.getUiText('disabled')}`
             } : null,
             {
+                label: `${this.app.extConfig.rag_enabled ?  this.app.extConfig.getUiText('Disable') :  this.app.extConfig.getUiText('Enable')} RAG`,
+                description: `${this.app.extConfig.rag_enabled ? this.app.extConfig.getUiText('Turn off RAG related features like Chat with AI with project context') : this.app.extConfig.getUiText('Turn on RAG related features like Chat with AI with project context')}`
+            },
+            {
                 label: "$(gear) " + this.app.extConfig.getUiText("Edit Settings..."),
             },
             {
@@ -29,11 +33,13 @@ export class Menu {
                 {
                     label: this.app.extConfig.getUiText("Chat with AI") ?? "",
                     description: this.app.extConfig.getUiText(`Opens a chat with AI window inside VS Code using server from property endpoint_chat`)
-                },
-                {
+                })
+            if (this.app.extConfig.rag_enabled){
+                menuItems.push({
                     label: this.app.extConfig.getUiText("Chat with AI with project context") ?? "",
                     description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
                 })
+            }
 
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
@@ -246,6 +252,7 @@ export class Menu {
                 break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
+                await this.handleRagToggle(selected.label, currentLanguage, languageSettings);
                 break;
         }
         this.app.statusbar.updateStatusBarText();
@@ -280,6 +287,13 @@ export class Menu {
             languageSettings[currentLanguage] = !isLanguageEnabled;
             await config.update('languageSettings', languageSettings, true);
         }
+    }
+
+    private async handleRagToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
+        const config = this.app.extConfig.config;
+        if (label.includes("RAG")) {
+            await config.update('rag_enabled', !this.app.extConfig.rag_enabled, true);
+        } 
     }
 
     showMenu = async (context: vscode.ExtensionContext) => {

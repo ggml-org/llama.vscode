@@ -21,6 +21,10 @@ export class ChatWithAi {
         let extraCont = "";
         let query: string|undefined = undefined
         if (withContext){
+            if (!this.app.extConfig.rag_enabled){
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("RAG is disabled. You could enable it from VS Code menu or setting rag_enabled.")??"")
+                return;
+            }
             query = await vscode.window.showInputBox({
                 placeHolder: this.app.extConfig.getUiText('Enter your question...'),
                 prompt: this.app.extConfig.getUiText('What would you like to ask AI?'),

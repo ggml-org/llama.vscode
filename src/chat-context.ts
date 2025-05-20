@@ -51,14 +51,14 @@ export class ChatContext {
         // Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
 
 
-        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 1..."))
+        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks with BM25..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.extConfig.rag_max_bm25_filter_chunks)
         let topContextChunks: ChunkEntry[];
         if (this.app.extConfig.endpoint_embeddings.trim() != ""){
+            this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks with embeddings..."))
             topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);
         } else {
-            vscode.window.showInformationMessage('No embeddings server. Filtering chunks step 2 will be skipped.');
-            this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks step 2..."))
+            vscode.window.showInformationMessage('No embeddings server. Filtering chunks with embeddings will be skipped.');
             topContextChunks = topChunksBm25.slice(0, 5);
         }
 
@@ -96,7 +96,7 @@ export class ChatContext {
         }));
         const progressOptions = {
             location: vscode.ProgressLocation.Notification,
-            title: this.app.extConfig.getUiText("Filtering chunks step 2..."),
+            title: this.app.extConfig.getUiText("Filtering chunks with embeddings..."),
             cancellable: true
         };
         await vscode.window.withProgress(progressOptions, async (progress, token) => {
@@ -282,7 +282,7 @@ export class ChatContext {
 
     async indexWorkspaceFiles() {
         try {
-            if (this.app.extConfig.rag_max_files <= 0) return;
+            if (!this.app.extConfig.rag_enabled || this.app.extConfig.rag_max_files <= 0) return;
             const files = (await this.getFilesRespectingGitignore()).slice(0,this.app.extConfig.rag_max_files)
 
             // Show progress

@@ -30,7 +30,7 @@ export class Architect {
     setOnSaveDeleteFileForDb = (context: vscode.ExtensionContext) => {
         const saveListener = vscode.workspace.onDidSaveTextDocument(async (document) => {
             try {
-                if (this.app.extConfig.rag_max_files <= 0) return;
+                if (!this.app.extConfig.rag_enabled || this.app.extConfig.rag_max_files <= 0) return;
                 if (!this.app.chatContext.isImageOrVideoFile(document.uri.toString())){
                     // Update after a delay and only if the file is not changed in the meantime to avoid too often updates
                     let updateTime = Date.now()
@@ -51,7 +51,7 @@ export class Architect {
 
         // Add file delete listener for RAG
         const deleteListener = vscode.workspace.onDidDeleteFiles(async (event) => {
-            if (this.app.extConfig.rag_max_files <= 0) return;
+            if (!this.app.extConfig.rag_enabled || this.app.extConfig.rag_max_files <= 0) return;
             for (const file of event.files) {
                 try {
                     await this.app.chatContext.removeDocument(file.toString());

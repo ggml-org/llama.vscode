@@ -298,6 +298,11 @@
           "default": 1000,
           "description": "how often to process queued chunks in normal mode"
         },
+        "llama-vscode.rag_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable rag features - i.e. chat with AI with project context"
+        },
         "llama-vscode.rag_chunk_max_chars": {
           "type": "number",
           "default": 2000,

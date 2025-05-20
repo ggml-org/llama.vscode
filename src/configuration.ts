@@ -42,6 +42,7 @@ export class Configuration {
     openai_client_model: string = "";
     openai_prompt_template: string = "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>";
 
+    rag_enabled = true;
     rag_chunk_max_chars = 800
     rag_max_lines_per_chunk = 40
     rag_max_chars_per_chunk_line = 300
@@ -131,6 +132,7 @@ export class Configuration {
         this.ring_chunk_size = Number(config.get<number>("ring_chunk_size"));
         this.ring_scope = Number(config.get<number>("ring_scope"));
         this.ring_update_ms = Number(config.get<number>("ring_update_ms"));
+        this.rag_enabled = Boolean(config.get<boolean>("rag_enabled"));
         this.rag_max_lines_per_chunk = Number(config.get<number>("rag_max_lines_per_chunk"));
         this.rag_max_chars_per_chunk_line = Number(config.get<number>("rag_max_chars_per_chunk_line"));
         this.rag_max_files = Number(config.get<number>("rag_max_files"));
@@ -163,7 +165,8 @@ export class Configuration {
         return event.affectsConfiguration("llama-vscode.rag_chunk_max_chars")
         || event.affectsConfiguration("llama-vscode.rag_max_lines_per_chunk")
         || event.affectsConfiguration("llama-vscode.rag_max_files")
-        || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line");
+        || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line")
+        || event.affectsConfiguration("llama-vscode.rag_enabled");
     }
 
     trimTrailingSlash = (s: string): string => {
