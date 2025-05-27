@@ -140,7 +140,7 @@ export class Completion {
     private removeLeadingSpaces = (str: string, n: number): string => {
         let i = 0;
         // Count up to 'n' leading spaces
-        while (i < str.length && i < n && str[i] === ' ') {
+        while (i < str.length && i < n && str[i] === ' ' || str[i] === '\t') {
             i++;
         }
 
