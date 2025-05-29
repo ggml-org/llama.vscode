@@ -12,6 +12,8 @@ import { TextEditor } from "./text-editor";
 import { ChatContext } from "./chat-context";
 import { Prompts } from "./prompts";
 import { Git } from "./git";
+import { Tools } from "./tools";
+import { LlamaAgent } from "./llama-agent";
 
 export class Application {
     private static instance: Application;
@@ -29,6 +31,8 @@ export class Application {
     public chatContext: ChatContext
     public prompts: Prompts
     public git: Git
+    public tools: Tools
+    public agent: LlamaAgent
 
     private constructor() {
         this.extConfig = new Configuration()
@@ -45,6 +49,8 @@ export class Application {
         this.chatContext = new ChatContext(this)
         this.prompts = new Prompts(this)
         this.git = new Git(this)
+        this.tools = new Tools(this)
+        this.agent = new LlamaAgent(this)
     }
 
     public static getInstance(): Application {

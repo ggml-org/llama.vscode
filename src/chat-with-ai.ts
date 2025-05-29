@@ -1,16 +1,32 @@
 import {Application} from "./application";
 import * as vscode from 'vscode';
-import {Utils} from "./utils";
+
 
 export class ChatWithAi {
     private app: Application
     private askAiPanel: vscode.WebviewPanel | undefined
     private askAiWithContextPanel: vscode.WebviewPanel | undefined
     private lastActiveEditor: vscode.TextEditor | undefined;
-    private sentContextChunks: string[] = []
+    private sentContextChunks: string[] = [];   
 
     constructor(application: Application) {
         this.app = application;
+        
+    }
+
+    showChatWithTools = async (context: vscode.ExtensionContext) => {
+        let query: string|undefined = undefined
+        query = await vscode.window.showInputBox({
+            placeHolder: this.app.extConfig.getUiText('Enter your question...'),
+            prompt: this.app.extConfig.getUiText('What would you like to ask AI?'),
+            ignoreFocusOut: true
+        });
+
+        if (!query) {
+            return
+        } else {        
+            this.app.agent.run(query)
+        }
     }
 
     showChatWithAi = async (withContext: boolean, context: vscode.ExtensionContext) => {

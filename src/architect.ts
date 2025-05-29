@@ -319,6 +319,20 @@ export class Architect {
         context.subscriptions.push(triggerAskAiDisposable);
     }
 
+    registerCommandAskAiWithTools = (context: vscode.ExtensionContext) => {
+        const triggerAskAiDisposable = vscode.commands.registerCommand('extension.askAiWithTools', async () => {
+            if (!vscode.window.activeTextEditor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+
+            if (!this.app.extConfig.endpoint_chat) return;
+
+            this.app.askAi.showChatWithTools(context);
+        });
+        context.subscriptions.push(triggerAskAiDisposable);
+    }
+
     registerCommandEditSelectedText = (context: vscode.ExtensionContext) => {
         const editSelectedTextDisposable = vscode.commands.registerCommand('extension.editSelectedText', async () => {
             const editor = vscode.window.activeTextEditor;

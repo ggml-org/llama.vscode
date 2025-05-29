@@ -20,8 +20,22 @@ export interface LlamaResponse {
     };
 }
 
+export interface ChatMessage {
+  role: string; // or just 'string' if you need more roles
+  content: string;
+  tool_call_id?: string
+}
+
 export interface LlamaChatResponse {
     choices: [{message:{content?: string}}];
+}
+
+export interface LlamaToolsResponse {
+    choices: [{
+        message:{content?: string, tool_calls:[{id:string, function: {name:string, arguments: string}}]},
+        finish_reason?: string,
+        
+    }];
 }
 
 export interface LlamaEmbeddingsResponse {
@@ -239,6 +253,36 @@ export class LlamaServer {
           };
     }
 
+        private createToolsRequestPayload(messages: ChatMessage[]) {
+        return {
+            "messages": messages,
+            "stream": false,
+            "cache_prompt": true,
+            "samplers": "edkypmxt",
+            "temperature": 0.8,
+            "dynatemp_range": 0,
+            "dynatemp_exponent": 1,
+            "top_k": 40,
+            "top_p": 0.95,
+            "min_p": 0.05,
+            "typical_p": 1,
+            "xtc_probability": 0,
+            "xtc_threshold": 0.1,
+            "repeat_last_n": 64,
+            "repeat_penalty": 1,
+            "presence_penalty": 0,
+            "frequency_penalty": 0,
+            "dry_multiplier": 0,
+            "dry_base": 1.75,
+            "dry_allowed_length": 2,
+            "dry_penalty_last_n": -1,
+            "max_tokens": -1,
+            "timings_per_token": false,
+            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+            "tools": this.app.tools.tools
+          };
+    }
+
     getFIMCompletion = async (
         inputPrefix: string,
         inputSuffix: string,
@@ -289,6 +333,20 @@ export class LlamaServer {
 
         return response.status === STATUS_OK ? response.data : undefined;
     };
+
+    getToolsCompletion = async (
+        messages: ChatMessage[]
+    ): Promise<LlamaToolsResponse | undefined> => {
+        const response = await axios.post<LlamaToolsResponse>(
+            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            this.createToolsRequestPayload(messages),
+            this.app.extConfig.axiosRequestConfigChat
+        );
+
+        return response.status === STATUS_OK ? response.data : undefined;
+    };
+
+    
 
     updateExtraContext = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM

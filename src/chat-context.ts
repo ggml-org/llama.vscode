@@ -50,7 +50,6 @@ export class ChatContext {
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant
         // Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
 
-
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks with BM25..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.extConfig.rag_max_bm25_filter_chunks)
         let topContextChunks: ChunkEntry[];
@@ -74,7 +73,7 @@ export class ChatContext {
              let contextFile = Array.from(this.filesProperties).find(([key]) => key.toLocaleLowerCase().endsWith(fileName.toLocaleLowerCase()))
              if (contextFile){
                 const [fileUrl, fileProperties] = contextFile;
-                const document = await vscode.workspace.openTextDocument(vscode.Uri.parse(fileUrl));
+                const document = await vscode.workspace.openTextDocument(vscode.Uri.file(fileUrl));
                 filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)
              }
         };
@@ -304,7 +303,7 @@ export class ChatContext {
 
                     try {
                         const document = await vscode.workspace.openTextDocument(file);
-                        await this.addDocument(file.toString(), document.getText());
+                        await this.addDocument(file.fsPath, document.getText());
 
                         processed++;
                         progress.report({
@@ -401,7 +400,7 @@ export class ChatContext {
         return result;
     }
 
-    private getFilesFromQuery = (text: string): string[] => {
+    public getFilesFromQuery = (text: string): string[] => {
         // Only allows letters, numbers, underscores, dots, and hyphens in filenames
         const regex = /@([a-zA-Z0-9_.-]+)(?=[,.?!\s]|$)/g;
         return [...text.matchAll(regex)].map(match => match[1]);

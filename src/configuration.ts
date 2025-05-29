@@ -68,7 +68,9 @@ export class Configuration {
     MAX_QUEUED_CHUNKS = 16;
     DELAY_BEFORE_COMPL_REQUEST = 150;
     MAX_EVENTS_IN_LOG = 250;
-
+    MAX_TOOLS_ITERATIONS = 10;
+    MAX_CHARS_TOOL_RETURN = 500
+    
     config: vscode.WorkspaceConfiguration;
 
     private uiLanguages = new Map<string, Map<string, string>>([])

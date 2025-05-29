@@ -11,6 +11,7 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandCopyChunks(context);
     app.architect.registerCommandAskAi(context);
     app.architect.registerCommandAskAiWithContext(context);
+    app.architect.registerCommandAskAiWithTools(context);
     app.architect.registerCommandNoCacheCompletion(context);
     app.architect.setOnSaveFile(context);
     app.architect.setPeriodicRingBufferUpdate(context);

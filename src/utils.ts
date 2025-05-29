@@ -1,4 +1,5 @@
 import vscode from "vscode";
+import { exec } from 'child_process';
 
 interface BM25Stats {
     avgDocLength: number;
@@ -175,5 +176,151 @@ export class Utils {
             .split('\n')
             .map(line => spaces + line)
             .join('\n');
+    }
+
+    static  executeTerminalCommand = async (command: string, cwd?: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+            const options = cwd ? { cwd } : undefined;
+            
+            command = process.platform === 'win32' 
+                ? `powershell -Command "${command.replace(/"/g, '\\"')}"`
+                : command;
+            
+            exec(command, options, (error, stdout, stderr) => {
+                if (error) {
+                    resolve(error.message);
+                    return;
+                } else resolve(stdout.toString());
+            });
+        });
+    }
+
+    static isModifyingCommand = (command: string): boolean => {
+        if (!command || typeof command !== 'string') {
+            return false;
+        }
+
+        const normalizedCmd = command.trim().toLowerCase();
+
+        // List of modifying command patterns (both Windows and Unix)
+        const modifyingPatterns = [
+            // File operations
+            /^(rm|del|erase|remove)\b/,
+            /^rd\b/,
+            /^rmdir\b/,
+            /^(mv|move|ren|rename)\b/,
+            /^(cp|copy)\b/,
+            /^mkdir\b/,
+            /^ni\b/,          // New-Item (PowerShell)
+            /^out\-file\b/,
+            /^set\-content\b/,
+            /^add\-content\b/,
+            /^scp\b/,
+            /^rsync\b/,
+            
+            // System modifications
+            /^chmod\b/,
+            /^chown\b/,
+            /^attrib\b/,
+            /^icacls\b/,
+            /^cacls\b/,
+            /^reg\b/,         // regedit operations
+            /^netsh\b/,
+            /^net\b/,
+            /^diskpart\b/,
+            /^format\b/,
+            
+            // Package management
+            /^(apt|yum|dnf|pacman|brew|pip|npm|pnpm|yarn|dotnet|winget|choco)\b/,
+            
+            // Process management
+            /^(kill|taskkill|stop\-process)\b/,
+            /^start\b/,
+            
+            // Network operations
+            /^(ssh|ftp|sftp)\b/,
+            
+            // Installation/execution
+            /^\.\/\S+/,
+            /^\.\\\S+/,
+            /^\w+:\\\S+/,
+            /^\.\S+\b/,
+            /^install\b/,
+            /^uninstall\b/,
+            /^setup\b/,
+            /^msiexec\b/,
+            
+            // Dangerous patterns
+            /^>/,             // Output redirection (overwrite)
+            /^>>/,            // Output redirection (append)
+            /^\|/,            // Piping might modify if the receiving command does
+            /^&\S*/,          // Command chaining
+            /^;\S*/,          // Command sequencing
+            /^\$\w+\s*=/      // Variable assignment (might lead to modifications)
+        ];
+
+        if (modifyingPatterns.some(pattern => pattern.test(normalizedCmd))) {
+            return true;
+        }
+
+        const readOnlyPatterns = [
+            /^echo\b/,
+            /^dir\b/,
+            /^ls\b/,
+            /^cat\b/,
+            /^type\b/,
+            /^get\-content\b/,
+            /^get\-childitem\b/,
+            /^pwd\b/,
+            /^cd\b/,
+            /^chdir\b/,
+            /^where\b/,
+            /^which\b/,
+            /^find\b/,
+            /^grep\b/,
+            /^select\-string\b/,
+            /^help\b/,
+            /^man\b/,
+            /^--help\b/,
+            /^-h\b/,
+            /^\?/,
+            /^exit\b/,
+            /^clear\b/,
+            /^cls\b/
+        ];
+
+        if (readOnlyPatterns.some(pattern => pattern.test(normalizedCmd))) {
+            return false;
+        }
+
+        return true;
+    }
+
+    static showYesNoDialog = async (message: string): Promise<boolean> => {
+        const choice = await vscode.window.showInformationMessage(
+            message,
+            { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
+            'Yes',
+            'No'
+        );
+
+        return choice === 'Yes';
+    }
+
+    static getAbsolutePath = async (shortFileName: string): Promise<string | undefined> => {
+        try {
+            // Search for files matching the name (glob pattern requires **/)
+            const files = await vscode.workspace.findFiles(`**/${shortFileName}`, null, 1);
+            
+            if (files.length > 0) {
+                return files[0].fsPath;
+            }
+            
+            vscode.window.showWarningMessage(`File "${shortFileName}" not found in workspace`);
+            return undefined;
+        } catch (error) {
+            vscode.window.showErrorMessage(`Error searching for file: ${error instanceof Error ? error.message : String(error)}`);
+            return undefined;
+        }
     }
 }

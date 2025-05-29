@@ -144,6 +144,11 @@
         "when": "editorTextFocus"
       },
       {
+        "command": "extension.askAiWithTools",
+        "key": "ctrl+Shift+t",
+        "when": "editorTextFocus"
+      },
+      {
         "command": "extension.editSelectedText",
         "key": "ctrl+shift+e",
         "when": "editorHasSelection"
