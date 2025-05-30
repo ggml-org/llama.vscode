@@ -24,6 +24,7 @@ export class Architect {
                     console.error('Failed to index workspace files:', error);
                 });
             }, 0);
+            this.app.tools.init()
         }
     }
 
@@ -67,7 +68,8 @@ export class Architect {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
             this.app.extConfig.updateOnEvent(event, config);
-            if (this.app.extConfig.isRagConfigChanged(event)) this.init()
+            if (this.app.extConfig.isRagConfigChanged(event)) this.init();
+            if (this.app.extConfig.isToolChanged(event)) this.app.tools.init();
             vscode.window.showInformationMessage(this.app.extConfig.getUiText(`llama-vscode extension is updated.`)??"");
         });
         context.subscriptions.push(configurationChangeDisp);
@@ -359,4 +361,13 @@ export class Architect {
             })
         );
     }
+
+    registerCommandKillAgent = (context: vscode.ExtensionContext) => {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('extension.killAgent', () => {
+                this.app.agent.stopAgent();
+            })
+        );
+    }
+    
 }

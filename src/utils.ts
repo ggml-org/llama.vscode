@@ -1,5 +1,8 @@
 import vscode from "vscode";
 import { exec } from 'child_process';
+import fs from 'fs';
+import { ChunkEntry } from './types'
+import pm from 'picomatch'
 
 interface BM25Stats {
     avgDocLength: number;
@@ -323,4 +326,66 @@ export class Utils {
             return undefined;
         }
     }
+
+    static listDirectoryContents = (absolutePath: string): string => {
+        try {       
+            if (!fs.existsSync(absolutePath)) {
+                return `Error: Path does not exist - ${absolutePath}`;
+            }
+        
+            if (!fs.statSync(absolutePath).isDirectory()) {
+                return `Error: Path is not a directory - ${absolutePath}`;
+            }
+            
+            const contents = fs.readdirSync(absolutePath, { withFileTypes: true });
+            
+            let output = `Contents of ${absolutePath}:\n\n`;
+            
+            const directories = contents.filter(dirent => dirent.isDirectory()).map(dirent => `[DIR] ${dirent.name}`);
+            const files = contents.filter(dirent => dirent.isFile()).map(dirent => `[FILE] ${dirent.name}`);
+            
+            output += directories.join('\n');
+            if (directories.length && files.length) output += '\n';
+            output += files.join('\n');
+            
+            return output;
+        } catch (error) {
+            return `Error reading directory: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    }
+
+    static getRegexpMatches = (
+        includeGlob: string,
+        excludeGlobPtr: string,
+        searchPattern: string,
+        chunks: Map<number, ChunkEntry>
+        ): string => {
+
+        const MAX_REG_EXP_MATCHES = 50;        
+        let matches:string = "";
+        let totalMatches:number = 0;
+        const regexSearch = new RegExp(searchPattern);
+        const isMatchInclude = includeGlob.trim() == "" ? undefined : pm(includeGlob);
+        const isMatchExclude = excludeGlobPtr.trim() == "" ? undefined : pm(excludeGlobPtr);
+        let valuesIterator = chunks.values()
+        let chunkIter = valuesIterator.next();
+        while (!chunkIter.done){
+            let chunk = chunkIter.value;
+            if (chunk && (isMatchInclude == undefined || isMatchInclude(chunk.uri)) && (isMatchExclude == undefined || !isMatchExclude(chunk.uri))){
+                const lines = chunk.content.split('\n');
+                let index = 0;
+                for (const line of lines){
+                    if (regexSearch.test(line)) {
+                        matches += "\n"+ chunk.uri + ":" + (chunk.firstLine + index) + ": " + line;
+                        totalMatches++;
+                        if (totalMatches > MAX_REG_EXP_MATCHES) return matches;
+                    }
+                    index++;
+                }
+            }
+            chunkIter = valuesIterator.next()
+        }
+        if (matches.trim() == "") matches = "No matches found"
+        return matches;
+    } 
 }

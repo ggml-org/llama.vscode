@@ -132,6 +132,11 @@ export class Menu {
                 description: this.app.extConfig.getUiText(`Stops training if it was started from llama.vscode menu`)
             })
         }
+        menuItems.push(
+            {
+                label: "Stop Agent Session",
+                description: this.app.extConfig.getUiText(`Stops the current session of the agent.`)
+            })
 
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
@@ -249,6 +254,9 @@ export class Menu {
                 break;
             case this.app.extConfig.getUiText("Chat with AI with project context"):
                 this.app.askAi.showChatWithAi(true, context)
+                break;
+            case "Stop Agent Session":
+                this.app.agent.stopAgent();
                 break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);

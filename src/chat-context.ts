@@ -4,15 +4,7 @@ import { Utils } from './utils';
 import * as fs from 'fs';
 import * as path from 'path';
 import ignore from 'ignore';
-
-interface ChunkEntry {
-    uri: string;
-    content: string;
-    firstLine: number;
-    lastLine: number;
-    hash: string;
-    embedding: number[]
-}
+import { ChunkEntry } from './types'
 
 interface FileProperties {
     hash: string;

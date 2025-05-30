@@ -53,6 +53,12 @@ export class Configuration {
     rag_max_context_files = 3
     rag_max_context_file_chars = 10000
 
+    tool_run_terminal_command_enabled = true;
+    tool_search_source_enabled = true;
+    tool_read_file_enabled = true;
+    tool_list_directory_enabled = true;
+    tool_regex_search_enabled = true;
+    tool_permit_some_terminal_commands = false
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
@@ -143,6 +149,12 @@ export class Configuration {
         this.rag_max_embedding_filter_chunks = Number(config.get<number>("rag_max_embedding_filter_chunks"));
         this.rag_max_context_files = Number(config.get<number>("rag_max_context_files"));
         this.rag_max_context_file_chars = Number(config.get<number>("rag_max_context_file_chars"));
+        this.tool_run_terminal_command_enabled = Boolean(config.get<boolean>("tool_run_terminal_command_enabled"));
+        this.tool_search_source_enabled = Boolean(config.get<boolean>("tool_search_source_enabled"));
+        this.tool_read_file_enabled = Boolean(config.get<boolean>("tool_read_file_enabled"));
+        this.tool_list_directory_enabled = Boolean(config.get<boolean>("tool_list_directory_enabled"));
+        this.tool_regex_search_enabled = Boolean(config.get<boolean>("tool_regex_search_enabled"));
+        this.tool_permit_some_terminal_commands = Boolean(config.get<boolean>("tool_permit_some_terminal_commands"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));
@@ -169,6 +181,14 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.rag_max_files")
         || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line")
         || event.affectsConfiguration("llama-vscode.rag_enabled");
+    }
+
+    isToolChanged = (event: vscode.ConfigurationChangeEvent) => {
+        return event.affectsConfiguration("llama-vscode.tool_run_terminal_command_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_search_source_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_list_directory_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_read_file_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_regex_search_enabled");
     }
 
     trimTrailingSlash = (s: string): string => {

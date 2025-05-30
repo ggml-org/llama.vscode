@@ -6,6 +6,7 @@ import { Utils } from "./utils"
 export class LlamaAgent {
     private app: Application
     private outputChannel: vscode.OutputChannel;
+    private lastStopRequestTime = Date.now();
 
     constructor(application: Application) {
         this.app = application;
@@ -38,7 +39,12 @@ export class LlamaAgent {
             this.outputChannel.show();
             // this.app.statusbar.showThinkingInfo();
             // this.app.statusbar.showTextInfo("thinking with tools...");
+            let currentCycleStartTime = Date.now();
             while (iterationsCount < this.app.extConfig.MAX_TOOLS_ITERATIONS){
+                if (currentCycleStartTime < this.lastStopRequestTime) {
+                    this.app.statusbar.showTextInfo("agent stopped");
+                    return
+                }
                 iterationsCount++;
                 let data:any = await this.app.llamaServer.getToolsCompletion(messages);
                 if (!data) {
@@ -50,7 +56,10 @@ export class LlamaAgent {
                 finishReason = data.choices[0].finish_reason;
                 response = data.choices[0].message.content;
                 this.outputChannel.appendLine(response + "\n")
-                // vscode.window.showInformationMessage(response);
+                if (currentCycleStartTime < this.lastStopRequestTime) {
+                    this.app.statusbar.showTextInfo("agent stopped");
+                    return
+                }
                 if (finishReason != "tool_calls") break;
                 messages.push(data.choices[0].message);
                 let toolCalls:any = data.choices[0].message.tool_calls;
@@ -75,5 +84,9 @@ export class LlamaAgent {
                 }
             }
             this.app.statusbar.showTextInfo("answer ready");
-        }    
+        }  
+        
+        stopAgent = () => {
+            this.lastStopRequestTime = Date.now();
+        }
 }
