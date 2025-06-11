@@ -58,7 +58,10 @@ export class Configuration {
     tool_read_file_enabled = true;
     tool_list_directory_enabled = true;
     tool_regex_search_enabled = true;
-    tool_permit_some_terminal_commands = false
+    tool_delete_file_enabled = true;
+    tool_permit_some_terminal_commands = false;
+    tool_get_diff_enabled = false;
+    tool_edit_file_enabled = true;
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
@@ -154,7 +157,10 @@ export class Configuration {
         this.tool_read_file_enabled = Boolean(config.get<boolean>("tool_read_file_enabled"));
         this.tool_list_directory_enabled = Boolean(config.get<boolean>("tool_list_directory_enabled"));
         this.tool_regex_search_enabled = Boolean(config.get<boolean>("tool_regex_search_enabled"));
+        this.tool_delete_file_enabled = Boolean(config.get<boolean>("tool_delete_file_enabled"));
         this.tool_permit_some_terminal_commands = Boolean(config.get<boolean>("tool_permit_some_terminal_commands"));
+        this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
+        this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));

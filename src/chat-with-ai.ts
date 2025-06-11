@@ -18,7 +18,7 @@ export class ChatWithAi {
         let query: string|undefined = undefined
         query = await vscode.window.showInputBox({
             placeHolder: this.app.extConfig.getUiText('Enter your question...'),
-            prompt: this.app.extConfig.getUiText('What would you like to ask AI?'),
+            prompt: this.app.extConfig.getUiText('What would you like to ask an Agent (AI with tools)?'),
             ignoreFocusOut: true
         });
 

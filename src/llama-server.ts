@@ -60,6 +60,7 @@ export class LlamaServer {
     private vsCodeChatTerminal: Terminal | undefined;
     private vsCodeEmbeddingsTerminal: Terminal | undefined;
     private vsCodeTrainTerminal: Terminal | undefined;
+    private vsCodeCommandTerminal: Terminal | undefined;
     private readonly defaultRequestParams = {
         top_k: 40,
         top_p: 0.99,
@@ -71,6 +72,10 @@ export class LlamaServer {
     constructor(application: Application) {
         this.app = application;
         this.vsCodeFimTerminal = undefined;
+        this.vsCodeChatTerminal = undefined;
+        this.vsCodeEmbeddingsTerminal = undefined;
+        this.vsCodeTrainTerminal = undefined;
+        this.vsCodeCommandTerminal = undefined;
     }
 
     private async handleOpenAICompletion(
@@ -455,6 +460,24 @@ export class LlamaServer {
         }
     }
 
+    shellCommandCmd = (cmd: string): void => {
+        if (!cmd) {
+            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            return;
+        }
+        try {
+            this.vsCodeCommandTerminal = vscode.window.createTerminal({
+                name: 'Command Terminal'
+            });
+            this.vsCodeCommandTerminal.show(true);
+            this.vsCodeCommandTerminal.sendText(cmd);
+        } catch(err){
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + cmd +" : " + err.message);
+            }
+        }
+    }
+
     killFimCmd = (): void => {
         if (this.vsCodeFimTerminal) this.vsCodeFimTerminal.dispose();
     }
@@ -470,4 +493,9 @@ export class LlamaServer {
     killTrainCmd = (): void => {
         if (this.vsCodeTrainTerminal) this.vsCodeTrainTerminal.dispose();
     }
+
+    killCommandCmd = (): void => {
+        if (this.vsCodeCommandTerminal) this.vsCodeCommandTerminal.dispose();
+    }   
+
 }

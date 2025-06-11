@@ -48,8 +48,7 @@ export class LlamaAgent {
                 iterationsCount++;
                 let data:any = await this.app.llamaServer.getToolsCompletion(messages);
                 if (!data) {
-                    this.outputChannel.appendLine("No response from AI")
-                    vscode.window.showInformationMessage('No response from AI');
+                    this.outputChannel.appendLine(this.app.extConfig.getUiText("No response from AI")??"")
                     this.app.statusbar.showTextInfo("answer ready");
                     return [];
                 }

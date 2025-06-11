@@ -26,7 +26,11 @@ export class Menu {
             },
             {
                 label: "$(book) " + this.app.extConfig.getUiText("View Documentation..."),
-            }]
+            },
+            {
+                label: "Install/upgrade llama.cpp",
+                description: "Installs/updates llama.cpp server"
+            },]
 
         if (this.app.extConfig.endpoint_chat && this.app.extConfig.endpoint_chat.trim() != "")
             menuItems.push(
@@ -38,7 +42,28 @@ export class Menu {
                 menuItems.push({
                     label: this.app.extConfig.getUiText("Chat with AI with project context") ?? "",
                     description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
-                })
+                },
+                {
+                    label: this.app.extConfig.getUiText("Ask Agent (AI with tools)")??"",
+                    description: this.app.extConfig.getUiText("Ask a question and an agent (AI with tools) will try to answer or do the things.")
+                },
+                {
+                    label: this.app.extConfig.getUiText("Stop Agent Session")??"",
+                    description: this.app.extConfig.getUiText(`Stops the current session of the agent.`)
+                },
+                {
+                    label: "Save project state",
+                    description: "Saves the project state. Later this state could be restored"
+                },
+                {
+                    label: "Show changes...",
+                    description: "Show changes..."
+                },
+                {
+                    label: this.app.extConfig.getUiText("Agent History...")??"",
+                    description: this.app.extConfig.getUiText(`Show history of agent edits.`)
+                }
+                )
             }
 
         if (process.platform === 'darwin') { // if mac os
@@ -132,11 +157,6 @@ export class Menu {
                 description: this.app.extConfig.getUiText(`Stops training if it was started from llama.vscode menu`)
             })
         }
-        menuItems.push(
-            {
-                label: "Stop Agent Session",
-                description: this.app.extConfig.getUiText(`Stops the current session of the agent.`)
-            })
 
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
@@ -250,13 +270,56 @@ export class Menu {
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
                 break;
             case this.app.extConfig.getUiText("Chat with AI"):
-                this.app.askAi.showChatWithAi(false, context)
+                this.app.askAi.showChatWithAi(false, context);
+                break;
+            case "Save project state":
+                await this.app.shadowGit.addChanges();
+                this.app.shadowGit.git?.commit((new Date).toISOString());
+                vscode.window.showInformationMessage("Project state saved!")
+                break;
+            case "Show changes...":
+                const hist = await this.app.shadowGit.getHistory(5);
+                const itemsList = hist.map((commit: { message: any; hash: string; }) => ({
+                    label: commit.message,
+                    description: this.app.extConfig.getUiText("Restore to") + " " + commit.hash.substring(0, 8),
+                    commit
+                })); 
+                const selectedCommit = await vscode.window.showQuickPick(itemsList);
+                if (selectedCommit) {
+                    let diff = await this.app.shadowGit.getDiffSet(selectedCommit.commit.hash)
+                    vscode.window.showInformationMessage(`file: ${diff[0].absolutePath} \nbefore: ${diff[0].before} \nafter: ${diff[0].after}`);
+                }
+                break;
+            case "Install/upgrade llama.cpp":
+                if (process.platform != 'darwin' && process.platform != 'win32') {
+                    vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows for now. Visit github.com/ggml-org/llama.vscode/wiki for details.")
+                    return;
+                }
+                await this.app.llamaServer.killCommandCmd();
+                let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : ""
+                await this.app.llamaServer.shellCommandCmd(terminalCommand);
                 break;
             case this.app.extConfig.getUiText("Chat with AI with project context"):
                 this.app.askAi.showChatWithAi(true, context)
                 break;
-            case "Stop Agent Session":
+            case this.app.extConfig.getUiText("Ask Agent (AI with tools)"):
+                this.app.askAi.showChatWithTools(context);
+                break;
+            case this.app.extConfig.getUiText("Stop Agent Session"):
                 this.app.agent.stopAgent();
+                break;
+            case this.app.extConfig.getUiText("Agent History..."):
+                const history = await this.app.shadowGit.getHistory(5);
+                const items = history.map((commit: { message: any; hash: string; }) => ({
+                    label: commit.message,
+                    description: this.app.extConfig.getUiText("Restore to") + " " + commit.hash.substring(0, 8),
+                    commit
+                })); 
+                const selectedQp = await vscode.window.showQuickPick(items);
+                if (selectedQp) {
+                    this.app.shadowGit.restoreToCommit(selectedQp.commit.hash)
+                    vscode.window.showInformationMessage(`Project restored to commit: ${selectedQp.commit.message} (${selectedQp.commit.hash})`);
+                }
                 break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
@@ -315,4 +378,9 @@ export class Menu {
             await this.handleMenuSelection(selected, currentLanguage, this.app.extConfig.languageSettings, context);
         }
     }
+
+
+
+
+
 }

@@ -3,7 +3,7 @@ import {Application} from "./application";
 
 let app: Application
 export function activate(context: vscode.ExtensionContext) {
-    app = Application.getInstance();
+    app = Application.getInstance(context);
     app.architect.setStatusBar(context)
     app.architect.setOnChangeConfiguration(context);
     app.architect.setCompletionProvider(context);

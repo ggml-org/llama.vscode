@@ -1,6 +1,7 @@
-import vscode from "vscode";
+import vscode, { Uri } from "vscode";
 import { exec } from 'child_process';
 import fs from 'fs';
+import path from 'path';
 import { ChunkEntry } from './types'
 import pm from 'picomatch'
 
@@ -388,4 +389,118 @@ export class Utils {
         if (matches.trim() == "") matches = "No matches found"
         return matches;
     } 
+
+    static getAbsolutFilePath = (filePath:string): string => {        
+        if (path.isAbsolute(filePath)) {
+            return filePath;
+        } else {
+            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                return "";
+            }
+            
+            // Resolve against first workspace folder
+            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            const absolutePath = path.resolve(workspaceRoot, filePath);
+            return absolutePath;
+        }
+    }
+
+    static deleteFile = (filePath: string): string => {
+        try {
+            const absolutePath = this.getAbsolutFilePath(filePath);
+            if (!fs.existsSync(absolutePath)) {
+                return `File not found at ${filePath}`;
+            }
+            fs.unlinkSync(absolutePath);
+        } catch (error) {
+            if (error instanceof Error) {
+                return `Failed to delete file at ${filePath}: ${error.message}`;
+            }
+            return `Failed to delete file at ${filePath} due to an unknown error`;
+        }
+
+        return `Successfully deleted file ${filePath}`;
+    }
+
+    static fileOrDirExists = async (path: string): Promise<boolean> => {
+        try {
+            await fs.promises.access(path);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    static escapeRegExp = (string: string): string => {
+        return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    }
+
+    static editFile = (fileContent: string, edits: string): string => {
+        const existingCodeMarker = '// ... existing code ...';
+        const editParts = edits.split(existingCodeMarker).filter(part => part.trim() !== '');
+        let currentContent = fileContent;
+        
+        for (let i = 0; i < editParts.length; i++) {
+            const part = editParts[i];
+            const lines = part.split(/\r?\n/);
+            
+            let contextBefore = '';
+            let contextAfter = '';
+            
+            if (i === 0 && !edits.startsWith(existingCodeMarker)) {
+                // First edit part: use only contextAfter if available
+                if (lines.length >= 3) {
+                    contextAfter = lines.slice(-3).join('\n');
+                } else {
+                    contextAfter = lines.join('\n');
+                }
+            } else if (i === editParts.length - 1 && !edits.endsWith(existingCodeMarker)) {
+                // Last edit part: use only contextBefore if available
+                if (lines.length >= 3) {
+                    contextBefore = lines.slice(0, 3).join('\n');
+                } else {
+                    contextBefore = lines.join('\n');
+                }
+            } else {
+                // Middle edit parts: use both contextBefore and contextAfter
+                if (lines.length >= 6) {
+                    contextBefore = lines.slice(0, 3).join('\n');
+                    contextAfter = lines.slice(-3).join('\n');
+                } else {
+                    const half = Math.floor(lines.length / 2);
+                    contextBefore = lines.slice(0, half).join('\n');
+                    contextAfter = lines.slice(-half).join('\n');
+                }
+            }
+            
+            if (i === 0 && contextAfter && !edits.trim().startsWith(existingCodeMarker)) {
+                // First edit part: match from start to contextAfter
+                const afterPattern = Utils.escapeRegExp(contextAfter);
+                const regex = new RegExp(`([\\s\\S]*?)${afterPattern}`);
+                const match = currentContent.match(regex);
+                if (match) {
+                    const startPos = match.index! + match[1].length;
+                    currentContent = part + currentContent.substring(startPos + match[0].length - match[1].length);
+                }
+            } else if (i === editParts.length - 1 && contextBefore && !edits.trim().endsWith(existingCodeMarker)) {
+                // Last edit part: match from contextBefore to end
+                const beforePattern = Utils.escapeRegExp(contextBefore);
+                const regex = new RegExp(`${beforePattern}([\\s\\S]*)`);
+                const match = currentContent.match(regex);
+                // TODO - use the last match
+                if (match) {
+                    const startPos = match.index!;
+                    currentContent = currentContent.substring(0, startPos) + part;
+                }
+            } else if (contextBefore && contextAfter) {
+                // Middle edit parts: match between contextBefore and contextAfter
+                const beforePattern = Utils.escapeRegExp(contextBefore);
+                const afterPattern = Utils.escapeRegExp(contextAfter);
+                const regex = new RegExp(`${beforePattern}([\\s\\S]*?)${afterPattern}`);
+                currentContent = currentContent.replace(regex, part);
+            }
+        }
+        
+        return currentContent;
+    }
 }

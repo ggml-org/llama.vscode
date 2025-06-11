@@ -6,7 +6,7 @@
   "publisher": "ggml-org",
   "repository": "https://github.com/ggml-org/llama.vscode",
   "engines": {
-    "vscode": "^1.70.0"
+    "vscode": "^1.100.0"
   },
   "icon": "llama.png",
   "activationEvents": [
@@ -162,7 +162,6 @@
         "key": "tab",
         "when": "editorTextFocus && textEditSuggestionVisible"
       },
-      
       {
         "command": "extension.killAgent",
         "key": "ctrl+k ctrl+a",
@@ -393,6 +392,21 @@
           "default": true,
           "description": "Enable/disable tool regex_search"
         },
+        "llama-vscode.tool_delete_file_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool delete_file"
+        },
+        "llama-vscode.tool_get_diff_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool delete_file"
+        },
+        "llama-vscode.tool_edit_file_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool edit_file"
+        },
         "llama-vscode.language": {
           "type": "string",
           "default": "en",
@@ -452,16 +466,18 @@
   },
   "dependencies": {
     "axios": "^1.1.2",
+    "globby": "^14.1.0",
     "ignore": "^7.0.4",
     "openai": "^4.80.1",
-    "picomatch": "^4.0.2"
+    "picomatch": "^4.0.2",
+    "simple-git": "^3.28.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
     "@types/micromatch": "^4.0.9",
     "@types/node": "^18.0.0",
     "@types/picomatch": "^4.0.0",
-    "@types/vscode": "^1.70.0",
+    "@types/vscode": "^1.100.0",
     "typescript": "^4.8.0",
     "webpack": "^5.0.0",
     "webpack-cli": "^4.0.0"
