@@ -23,6 +23,7 @@ export class Tools {
         this.toolsFunc.set("delete_file", this.deleteFile)
         this.toolsFunc.set("get_diff", this.getDiff)
         this.toolsFunc.set("edit_file", this.editFile)
+        this.toolsFunc.set("ask_user", this.askUser)
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -140,7 +141,7 @@ export class Tools {
     public editFile = async (args: string) => {
         let params = JSON.parse(args);
         let filePath = params.file_path;
-        let codeEdits = params.code_edits;
+        let newContent = params.edited_content;
         let absolutePath = filePath;
         if (!path.isAbsolute(filePath)) {
             if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
@@ -151,14 +152,33 @@ export class Tools {
             absolutePath = path.join(workspaceRoot, filePath);
         }
         try {
-            let fileContent = await fs.promises.readFile(absolutePath, 'utf8');
-            fileContent = fileContent.split(/\r?\n/).join("\n")
-            let updatedFile = Utils.editFile(fileContent, codeEdits)
-            return updatedFile??"";
+            // let fileContent = await fs.promises.readFile(absolutePath, 'utf8');
+            // fileContent = fileContent.split(/\r?\n/).join("\n")
+            // let updatedFile = fs.promises. Utils.editFile(fileContent, codeEdits)
+            await fs.promises.writeFile(absolutePath, newContent);
+            return "The file is updated: " + newContent;
         } catch (error) {
             console.error('Error changes since last commit:', error);
             throw error;
         }        
+    }
+
+    public askUser = async (args: string) => {
+        let params = JSON.parse(args);
+        let question = params.question;
+        const answer = await vscode.window.showInputBox({
+            placeHolder: 'Answer',
+            prompt: question,
+            validateInput: text => {
+                return text.length === 0 ? 'Please enter a value' : null;
+            }
+        });
+        
+        if (answer !== undefined) {
+            return answer;
+        }
+
+        return "No answer from the user."
     }
     
     
@@ -333,7 +353,7 @@ export class Tools {
                     "type": "function",
                     "function": {
                         "name": "edit_file",
-                        "description": "Use this tool to propose edits to an existing file. Use this tool AFTER reading enough lines of the relevant file content with other tools.",
+                        "description": "Use this tool to replace the entire file content with the provided new content in parameter edited_content.",
                         "parameters": {
                             "type": "object",
                             "properties": {
@@ -341,39 +361,36 @@ export class Tools {
                                     "type": "string",
                                     "description": "The path to the relative the workspace or absolute."
                                 },
-                                "code_edits": {
-                                    "description": `Provide file edits (changes). 
-For each edit ALWAYS PROVIDE 3 or more unchanged lines from the original file before the changed lines and 3 or more unchanged lines from the original file after the changed lines. This context is very important for locating where to do the change in the original file!. 
-Specify each change in sequence, with the special comment '// ... existing code ...' to represent unchanged code outside the provided edits. 
-For example:
-// ... existing code ...
-hier unchanged line before 1
-hier unchanged line before 2
-hier unchanged line before 3
-hier changed line 1
-hier changed line 2
-hier unchanged line after 1
-hier unchanged line after 2
-hier unchanged line after 3
-// ... existing code ...
-hier unchanged line before 1
-hier unchanged line before 2
-hier unchanged line before 3
-hier changed line 1
-hier changed line 2
-hier changed line 3
-hier unchanged line after 1
-hier unchanged line after 2
-hier unchanged line after 3
-// ... existing code ...
-
-This was an example. Use the real lines from the original file when providing the parameter.
-DO NOT omit spans of pre-existing code (or comments) without using the '// ... existing code ...' comment to indicate its absence.`,
+                                "edited_content": {
+                                    "description": `Provide the entire edited file content.`,
                                     "type": "string",
                                 },
                             },
                             "required": [
-                                "file_path", "code_edits"
+                                "file_path", "edited_content"
+                            ],
+                            "additionalProperties": false
+                        },
+                        "strict": true
+                    }
+                }
+                ] : []),
+                ...(this.app.extConfig.tool_edit_file_enabled ? [
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "ask_user",
+                        "description": "Use this tool to ask the user for clarifications if something is unclear.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "question": {
+                                    "type": "string",
+                                    "description": "The question to the user."
+                                },
+                            },
+                            "required": [
+                                "question"
                             ],
                             "additionalProperties": false
                         },

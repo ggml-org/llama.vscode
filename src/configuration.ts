@@ -62,6 +62,7 @@ export class Configuration {
     tool_permit_some_terminal_commands = false;
     tool_get_diff_enabled = false;
     tool_edit_file_enabled = true;
+    tool_ask_user_enabled = true;
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
@@ -161,6 +162,7 @@ export class Configuration {
         this.tool_permit_some_terminal_commands = Boolean(config.get<boolean>("tool_permit_some_terminal_commands"));
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
+        this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));

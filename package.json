@@ -407,6 +407,11 @@
           "default": true,
           "description": "Enable/disable tool edit_file"
         },
+        "llama-vscode.tool_ask_user_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool ask_user"
+        },
         "llama-vscode.language": {
           "type": "string",
           "default": "en",
@@ -470,7 +475,8 @@
     "ignore": "^7.0.4",
     "openai": "^4.80.1",
     "picomatch": "^4.0.2",
-    "simple-git": "^3.28.0"
+    "simple-git": "^3.28.0",
+    "xmldom": "^0.6.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -478,6 +484,7 @@
     "@types/node": "^18.0.0",
     "@types/picomatch": "^4.0.0",
     "@types/vscode": "^1.100.0",
+    "@types/xmldom": "^0.1.34",
     "typescript": "^4.8.0",
     "webpack": "^5.0.0",
     "webpack-cli": "^4.0.0"
