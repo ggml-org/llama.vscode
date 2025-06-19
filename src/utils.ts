@@ -503,4 +503,73 @@ export class Utils {
         
         return currentContent;
     }
+
+    static  applyEdits = async (diffText: string) => {
+        // Extract edit blocks from the diff-fenced format
+        let editBlocks: string[][] = [];
+        const blocks = diffText.split("```diff")
+        for (const block of blocks.slice(1)){
+            editBlocks.push(Utils.extractConflictParts("```diff" + block))
+        }
+
+        if (editBlocks.length === 0) {
+            return "";
+        }
+
+        for (const block of editBlocks) {
+            if (block.length === 3) {
+                const filePath = block[0].trim();
+                const searchText = block[1].trim();
+                const replaceText = block[2].trim();
+                
+                let result = "";
+                let absolutePath = filePath;
+                if (!path.isAbsolute(filePath)) {
+                    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                        return "File not found: " + filePath;
+                    }
+                    const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+                    absolutePath = path.join(workspaceRoot, filePath);
+                }
+                result = await fs.promises.readFile(absolutePath, 'utf-8')
+                if (result.includes(searchText)) {
+                    result = result.split(searchText).join(replaceText);
+                } else {
+                    // Handle empty search text case
+                    if (searchText === '') {
+                        result += '\n' + replaceText;
+                    }
+                }
+            await fs.promises.writeFile(absolutePath, result);}
+        }        
+    }
+
+    static extractConflictParts = (input: string): [string, string, string] => {
+        const lines = input.split('\n');
+        const part1: string[] = [];
+        const part2: string[] = [];
+        const part3: string[] = [];
+        let i = 0;
+
+        while (i < lines.length && !lines[i].startsWith('<<<<<<< SEARCH')) {
+            part1.push(lines[i]);
+            i++;
+        }
+
+        while (i < lines.length && !lines[i].startsWith('=======')) {
+            part2.push(lines[i]);
+            i++;
+        }
+
+        while (i < lines.length && !lines[i].startsWith('>>>>>>> REPLACE')) {
+            part3.push(lines[i]);
+            i++;
+        }
+
+        return [
+            part1.slice(1).join('\n'),
+            part2.slice(1).join('\n'),
+            part3.slice(1).join('\n')
+        ];
+    }
 }

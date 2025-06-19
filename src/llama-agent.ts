@@ -24,67 +24,70 @@ export class LlamaAgent {
     }
 
     run = async (query:string) => {
-        let aiAnswer = "";
-        let goal = ""
-        const plan: Step[] = [];
-        // TODO
-        // Accept query as a goal and clarify it (new tool for asking the user is needed)
-        aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_ANALYSE_GOAL, "goal", query));
-        let xmlDoc:Document = this.parser.parseFromString(aiAnswer, "text/xml");
-        const goalElement = xmlDoc.getElementsByTagName('goal')[0];
-        if (goalElement) {
-            const goalText = goalElement.textContent?.trim();
-            goal = goalText??"";
-        } else {
-            goal = 'No <goal> element found in the XML';
+        let worspaceFolder = "";
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
+            worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
-        // Create a plan 
-        aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_CREATE_PLAN, "goal", goal));
-        xmlDoc = this.parser.parseFromString(aiAnswer, "text/xml");
-        const stepElements = xmlDoc.getElementsByTagName('step');
-        if (stepElements) {
-            for (let i = 0; i < stepElements.length; i++) {
-                const stepText = stepElements[i].textContent?.trim();
-                if (stepText) {
-                    let stepParts = stepText.split("::");
-                    plan.push({id: stepParts[0], description: stepParts[1], expectedResult: stepParts[2], state: ""});
-                }
-            }
-        }
+        let projectInfo = "The project is a VS Code extension for code completion."
+        let language = "The project language is typescript."
+        let context = worspaceFolder + "\n" + projectInfo + "\n" + language
+        await this.askAgent(context + " \n\n" + query + " /no_thinking");
+        // let aiAnswer = "";
+        // let goal = ""
+        // const plan: Step[] = [];
+        // // TODO
+        // // Accept query as a goal and clarify it (new tool for asking the user is needed)
+        // aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_ANALYSE_GOAL, "goal", query));
+        // let xmlDoc:Document = this.parser.parseFromString(aiAnswer, "text/xml");
+        // const goalElement = xmlDoc.getElementsByTagName('goal')[0];
+        // if (goalElement) {
+        //     const goalText = goalElement.textContent?.trim();
+        //     goal = goalText??"";
+        // } else {
+        //     goal = 'No <goal> element found in the XML';
+        // }
+        // // Create a plan 
+        // aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_CREATE_PLAN, "goal", goal));
+        // xmlDoc = this.parser.parseFromString(aiAnswer, "text/xml");
+        // const stepElements = xmlDoc.getElementsByTagName('step');
+        // if (stepElements) {
+        //     for (let i = 0; i < stepElements.length; i++) {
+        //         const stepText = stepElements[i].textContent?.trim();
+        //         if (stepText) {
+        //             let stepParts = stepText.split("::");
+        //             plan.push({id: stepParts[0], description: stepParts[1], expectedResult: stepParts[2], state: ""});
+        //         }
+        //     }
+        // }
 
-        let context = "";
-        for (let i = 0; i < plan.length; i++){
-            const step = plan[i];
-            if (step.result && step.state.toLowerCase() == "done"){
-                context = "Result from task - " + step.description + ":\n" + step.result + "\n\n"
-            }
-        }
-
-        for (let i = 0; i < plan.length; i++) {
-            const step = plan[i];
-            aiAnswer = await this.askAgent(this.app.prompts.replacePlaceholders(this.app.prompts.TOOLS_EXECUTE_STEP, {"context": context, "task": step.description, "expected_result": step.expectedResult}));
-            let xmlDoc:Document = this.parser.parseFromString(aiAnswer, "text/xml");
-            const taskState = xmlDoc.getElementsByTagName('state')[0];
-            if (taskState) {
-                const stateText = taskState.textContent?.trim();
-                step.state = stateText??"";
-            } else {
-                step.state = '';
-            }
-            const taskResult = xmlDoc.getElementsByTagName('result')[0];
-            if (taskResult) {
-                const resultText = taskResult.textContent?.trim();
-                step.result = resultText??"";
-            } else {
-                step.result = '';
-            }
-        }
-        // Save the plan in a structure
-        // Execute the plan step by step
-        // For each step:
-        //  Execute the step, save the result of the step in a structure
-        //  make it possible to get the results of the actions, which are done with a new tool
-        this.app.statusbar.showTextInfo("answer ready");
+        
+        // for (let i = 0; i < plan.length; i++) {
+        //     const step = plan[i];
+        //     let context = this.getStepContext(plan);
+        //     let progress = this.getProgress(plan);
+        //     aiAnswer = await this.askAgent(this.app.prompts.replacePlaceholders(this.app.prompts.TOOLS_EXECUTE_STEP, {"goal": goal,"progress": progress, "context": context, "task": step.description, "expected_result": step.expectedResult}));
+        //     let xmlDoc:Document = this.parser.parseFromString(aiAnswer, "text/xml");
+        //     const taskState = xmlDoc.getElementsByTagName('state')[0];
+        //     if (taskState) {
+        //         const stateText = taskState.textContent?.trim();
+        //         step.state = stateText??"";
+        //     } else {
+        //         step.state = '';
+        //     }
+        //     const taskResult = xmlDoc.getElementsByTagName('result')[0];
+        //     if (taskResult) {
+        //         const resultText = taskResult.textContent?.trim();
+        //         step.result = resultText??"";
+        //     } else {
+        //         step.result = '';
+        //     }
+        // }
+        // // Save the plan in a structure
+        // // Execute the plan step by step
+        // // For each step:
+        // //  Execute the step, save the result of the step in a structure
+        // //  make it possible to get the results of the actions, which are done with a new tool
+        // this.app.statusbar.showTextInfo("answer ready");
     }
 
     askAgent = async (query:string): Promise<string> => {
@@ -158,7 +161,27 @@ export class LlamaAgent {
             return response;
         }  
         
-        stopAgent = () => {
-            this.lastStopRequestTime = Date.now();
+    stopAgent = () => {
+        this.lastStopRequestTime = Date.now();
+    }
+
+    getStepContext = (plan: Step[]) => {
+        let context = "";
+        for (let i = 0; i < plan.length; i++) {
+            const step = plan[i];
+            if (step.result && step.state.toLowerCase() == "done") {
+                context = "Result from task - " + step.description + ":\n" + step.result + "\n\n";
+            }
         }
+        return context;
+    }
+
+    getProgress = (plan: Step[]) => {
+        let progress = "";
+        for (let i = 0; i < plan.length; i++) {
+            const step = plan[i];
+            progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "\n";
+        }
+        return progress;
+    }
 }

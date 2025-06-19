@@ -140,23 +140,25 @@ export class Tools {
     
     public editFile = async (args: string) => {
         let params = JSON.parse(args);
-        let filePath = params.file_path;
-        let newContent = params.edited_content;
-        let absolutePath = filePath;
-        if (!path.isAbsolute(filePath)) {
-            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                return "File not found: " + filePath;
-            }
+        // let filePath = params.file_path;
+        // let newContent = params.edited_content;
+        // let absolutePath = filePath;
+        let changes = params.input;
+        // if (!path.isAbsolute(filePath)) {
+        //     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+        //         return "File not found: " + filePath;
+        //     }
             
-            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            absolutePath = path.join(workspaceRoot, filePath);
-        }
+        //     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        //     absolutePath = path.join(workspaceRoot, filePath);
+        // }
         try {
             // let fileContent = await fs.promises.readFile(absolutePath, 'utf8');
             // fileContent = fileContent.split(/\r?\n/).join("\n")
             // let updatedFile = fs.promises. Utils.editFile(fileContent, codeEdits)
-            await fs.promises.writeFile(absolutePath, newContent);
-            return "The file is updated: " + newContent;
+            // await fs.promises.writeFile(absolutePath, newContent);
+            await Utils.applyEdits(changes)
+            return "The file is updated ";
         } catch (error) {
             console.error('Error changes since last commit:', error);
             throw error;
@@ -353,21 +355,27 @@ export class Tools {
                     "type": "function",
                     "function": {
                         "name": "edit_file",
-                        "description": "Use this tool to replace the entire file content with the provided new content in parameter edited_content.",
+                        // "name": "apply_patch",
+                        // "description": "Use this tool to replace the entire file content with the provided new content in parameter edited_content.",
+                        "description": this.app.prompts.TOOL_APPLY_EDITS ,
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "file_path": {
-                                    "type": "string",
-                                    "description": "The path to the relative the workspace or absolute."
-                                },
-                                "edited_content": {
-                                    "description": `Provide the entire edited file content.`,
+                                // "file_path": {
+                                //     "type": "string",
+                                //     "description": "The path to the relative the workspace or absolute."
+                                // },
+                                // "edited_content": {
+                                //     "description": `Provide the entire edited file content.`,
+                                //     "type": "string",
+                                // },
+                                "input": {
+                                    "description": `Files changes in SEARCH/REPLACE block format`,
                                     "type": "string",
                                 },
                             },
                             "required": [
-                                "file_path", "edited_content"
+                                "input"
                             ],
                             "additionalProperties": false
                         },
@@ -375,7 +383,7 @@ export class Tools {
                     }
                 }
                 ] : []),
-                ...(this.app.extConfig.tool_edit_file_enabled ? [
+                ...(this.app.extConfig.tool_ask_user_enabled ? [
                 {
                     "type": "function",
                     "function": {
