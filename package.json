@@ -222,6 +222,11 @@
           "default": "http://127.0.0.1:8011",
           "description": "The URL to be used by the extension for chat with ai."
         },
+        "llama-vscode.endpoint_tools": {
+          "type": "string",
+          "default": "http://127.0.0.1:8011",
+          "description": "The URL to be used by the extension for chat with ai with tools use."
+        },
         "llama-vscode.endpoint_embeddings": {
           "type": "string",
           "default": "http://127.0.0.1:8010",

@@ -332,20 +332,25 @@ export class Menu {
     getPorts = () => {
         const DEFAULT_PORT_FIM_MODEL = "8012"
         const DEFAULT_PORT_CHAT_MODEL = "8011"
+        const DEFAULT_PORT_TOOLS_MODEL = "8080"
         const DEFAULT_PORT_EMBEDDINGS_MODEL = "8010"
 
         let endpointParts = this.app.extConfig.endpoint.split(":");
         let endpointChatParts = this.app.extConfig.endpoint_chat.split(":");
+        let endpointToolsParts = this.app.extConfig.endpoint_tools.split(":");
         let endpointEmbeddingParts = this.app.extConfig.endpoint_embeddings.split(":");
 
         let port = endpointParts[endpointParts.length - 1];
         let portChat = endpointChatParts[endpointChatParts.length - 1];
+        let portTools = endpointChatParts[endpointToolsParts.length - 1];
         let portEmbedding = endpointEmbeddingParts[endpointEmbeddingParts.length - 1];
 
         if (!Number.isInteger(Number(port))) port = DEFAULT_PORT_FIM_MODEL;
         if (!Number.isInteger(Number(portChat))) portChat = DEFAULT_PORT_CHAT_MODEL;
+        if (!Number.isInteger(Number(portTools))) portTools = DEFAULT_PORT_TOOLS_MODEL;
         if (!Number.isInteger(Number(portEmbedding))) portEmbedding = DEFAULT_PORT_EMBEDDINGS_MODEL;
 
+        // TODO Return portTools if needed
         return { port, portChat, portEmbedding };
     }
 

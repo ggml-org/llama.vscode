@@ -28,15 +28,17 @@ export class LlamaAgent {
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
             worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
-        let projectInfo = "The project is a VS Code extension for code completion."
-        let language = "The project language is typescript."
-        let context = worspaceFolder + "\n" + projectInfo + "\n" + language
-        await this.askAgent(context + " \n\n" + query + " /no_thinking");
+        // let projectInfo = "The project is a VS Code extension for code completion."
+        // let language = "The project language is typescript."
+        let recommendation = "Obligatory read the file before editing it with a tool."
+        // let projectContext = worspaceFolder + "\n" + projectInfo + "\n" + language + "\n" + recommendation;
+        let projectContext = worspaceFolder + "\n" + recommendation;
+        await this.askAgent(projectContext + "\n\n" + query);
         // let aiAnswer = "";
-        // let goal = ""
+        // let goal = query
         // const plan: Step[] = [];
-        // // TODO
-        // // Accept query as a goal and clarify it (new tool for asking the user is needed)
+        // TODO
+        // Accept query as a goal and clarify it (new tool for asking the user is needed)
         // aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_ANALYSE_GOAL, "goal", query));
         // let xmlDoc:Document = this.parser.parseFromString(aiAnswer, "text/xml");
         // const goalElement = xmlDoc.getElementsByTagName('goal')[0];
@@ -46,9 +48,9 @@ export class LlamaAgent {
         // } else {
         //     goal = 'No <goal> element found in the XML';
         // }
-        // // Create a plan 
-        // aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_CREATE_PLAN, "goal", goal));
-        // xmlDoc = this.parser.parseFromString(aiAnswer, "text/xml");
+        // Create a plan 
+        // aiAnswer = await this.askAgent(this.app.prompts.replaceOnePlaceholders(this.app.prompts.TOOLS_CREATE_PLAN, "goal", goal + "\n\n" + projectContext));
+        // let xmlDoc = this.parser.parseFromString(aiAnswer, "text/xml");
         // const stepElements = xmlDoc.getElementsByTagName('step');
         // if (stepElements) {
         //     for (let i = 0; i < stepElements.length; i++) {

@@ -33,10 +33,10 @@ export class ChatContext {
         this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
-                    if (!data || !data.choices[0].message.content) {
-                        vscode.window.showInformationMessage('No suggestions available');
-                        return [];
-                    }
+        if (!data || !data.choices[0].message.content) {
+            vscode.window.showInformationMessage('No suggestions available');
+            return [];
+        }
         let keywords = data.choices[0].message.content.trim().split("|");
 
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant

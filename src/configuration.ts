@@ -16,6 +16,7 @@ export class Configuration {
     lora_chat = ""
     endpoint = "http=//127.0.0.1:8012";
     endpoint_chat = "http=//127.0.0.1:8011";
+    endpoint_tools = "http=//127.0.0.1:8011";
     endpoint_embeddings = "http=//127.0.0.1:8010";
     auto = true;
     api_key = "";
@@ -80,6 +81,10 @@ export class Configuration {
     MAX_EVENTS_IN_LOG = 250;
     MAX_TOOLS_ITERATIONS = 10;
     MAX_CHARS_TOOL_RETURN = 500
+    // AI_API_VERSION = "v1beta/openai";
+    AI_API_VERSION = "v1";
+    // AI_MODEL = "gemini-2.5-flash";
+    AI_MODEL = "google/gemini-2.5-flash"
     
     config: vscode.WorkspaceConfiguration;
 
@@ -115,6 +120,7 @@ export class Configuration {
         // TODO Handle the case of wrong types for the configuration values
         this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
         this.endpoint_chat = this.trimTrailingSlash(String(config.get<string>("endpoint_chat")));
+        this.endpoint_tools = this.trimTrailingSlash(String(config.get<string>("endpoint_tools")));
         this.endpoint_embeddings = this.trimTrailingSlash(String(config.get<string>("endpoint_embeddings")));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));

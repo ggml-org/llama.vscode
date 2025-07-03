@@ -233,28 +233,29 @@ export class LlamaServer {
               }
             ],
             "stream": false,
-            "cache_prompt": true,
-            "samplers": "edkypmxt",
+            // "cache_prompt": true,
+            // "samplers": "edkypmxt",
             "temperature": 0.8,
-            "dynatemp_range": 0,
-            "dynatemp_exponent": 1,
-            "top_k": 40,
-            "top_p": 0.95,
-            "min_p": 0.05,
-            "typical_p": 1,
-            "xtc_probability": 0,
-            "xtc_threshold": 0.1,
-            "repeat_last_n": 64,
-            "repeat_penalty": 1,
-            "presence_penalty": 0,
-            "frequency_penalty": 0,
-            "dry_multiplier": 0,
-            "dry_base": 1.75,
-            "dry_allowed_length": 2,
-            "dry_penalty_last_n": -1,
-            "max_tokens": -1,
-            "timings_per_token": false,
-            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            // "dynatemp_range": 0,
+            // "dynatemp_exponent": 1,
+            // "top_k": 40,
+            // "top_p": 0.95,
+            // "min_p": 0.05,
+            // "typical_p": 1,
+            // "xtc_probability": 0,
+            // "xtc_threshold": 0.1,
+            // "repeat_last_n": 64,
+            // "repeat_penalty": 1,
+            // "presence_penalty": 0,
+            // "frequency_penalty": 0,
+            // "dry_multiplier": 0,
+            // "dry_base": 1.75,
+            // "dry_allowed_length": 2,
+            // "dry_penalty_last_n": -1,
+            // "max_tokens": -1,
+            // "timings_per_token": false,
+            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+            ...(this.app.extConfig.AI_MODEL.trim() != "" && { model: this.app.extConfig.AI_MODEL}),
           };
     }
 
@@ -262,29 +263,31 @@ export class LlamaServer {
         return {
             "messages": messages,
             "stream": false,
-            "cache_prompt": true,
-            "samplers": "edkypmxt",
+            // "cache_prompt": true,
+            // "samplers": "edkypmxt",
             "temperature": 0.8,
-            "dynatemp_range": 0,
-            "dynatemp_exponent": 1,
-            "top_k": 40,
+            // "dynatemp_range": 0,
+            // "dynatemp_exponent": 1,
+            // "top_k": 40,
             "top_p": 0.95,
-            "min_p": 0.05,
-            "typical_p": 1,
-            "xtc_probability": 0,
-            "xtc_threshold": 0.1,
-            "repeat_last_n": 64,
-            "repeat_penalty": 1,
-            "presence_penalty": 0,
-            "frequency_penalty": 0,
-            "dry_multiplier": 0,
-            "dry_base": 1.75,
-            "dry_allowed_length": 2,
-            "dry_penalty_last_n": -1,
-            "max_tokens": -1,
-            "timings_per_token": false,
-            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            "tools": this.app.tools.tools
+            // "min_p": 0.05,
+            // "typical_p": 1,
+            // "xtc_probability": 0,
+            // "xtc_threshold": 0.1,
+            // "repeat_last_n": 64,
+            // "repeat_penalty": 1,
+            // "presence_penalty": 0,
+            // "frequency_penalty": 0,
+            // "dry_multiplier": 0,
+            // "dry_base": 1.75,
+            // "dry_allowed_length": 2,
+            // "dry_penalty_last_n": -1,
+            // "max_tokens": -1,
+            // "timings_per_token": false,
+            // ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+            ...(this.app.extConfig.AI_MODEL.trim() != "" && { model: this.app.extConfig.AI_MODEL}),
+            "tools": this.app.tools.tools,
+            "tool_choice": "auto"
           };
     }
 
@@ -319,7 +322,7 @@ export class LlamaServer {
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.AI_API_VERSION}/chat/completions`,
             this.createChatEditRequestPayload(false, instructions, originalText, chunks, context, nindent),
             this.app.extConfig.axiosRequestConfigChat
         );
@@ -331,7 +334,7 @@ export class LlamaServer {
         prompt: string,
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
+            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.AI_API_VERSION}/chat/completions`,
             this.createChatRequestPayload(prompt),
             this.app.extConfig.axiosRequestConfigChat
         );
@@ -342,9 +345,13 @@ export class LlamaServer {
     getToolsCompletion = async (
         messages: ChatMessage[]
     ): Promise<LlamaToolsResponse | undefined> => {
+        let uri = `${this.app.extConfig.endpoint_tools}/${this.app.extConfig.AI_API_VERSION}/chat/completions`;
+        let request = this.createToolsRequestPayload(messages);
+        console.log(uri);
+        console.log(request);
         const response = await axios.post<LlamaToolsResponse>(
-            `${this.app.extConfig.endpoint_chat}/v1/chat/completions`,
-            this.createToolsRequestPayload(messages),
+            uri,
+            request,
             this.app.extConfig.axiosRequestConfigChat
         );
 

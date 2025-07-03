@@ -519,7 +519,9 @@ export class Utils {
         for (const block of editBlocks) {
             if (block.length === 3) {
                 const filePath = block[0].trim();
-                const searchText = block[1].trim();
+                let searchText = block[1].trim();
+                // Make sure only \n is used for new line
+                searchText = searchText.split(/\r?\n/).join("\n");
                 const replaceText = block[2].trim();
                 
                 let result = "";
@@ -531,16 +533,22 @@ export class Utils {
                     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
                     absolutePath = path.join(workspaceRoot, filePath);
                 }
-                result = await fs.promises.readFile(absolutePath, 'utf-8')
-                if (result.includes(searchText)) {
-                    result = result.split(searchText).join(replaceText);
-                } else {
-                    // Handle empty search text case
-                    if (searchText === '') {
-                        result += '\n' + replaceText;
-                    }
+                // Ensure only \n is used for new line
+                const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
+                if (!fileExists){
+                    await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+                    await fs.promises.writeFile(absolutePath, result);
                 }
-            await fs.promises.writeFile(absolutePath, result);}
+                result = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
+                // Handle empty search text case
+                if (searchText.trim() === '') {
+                    result += '\n' + replaceText;
+                } else if (result.includes(searchText)) {
+                    result = result.split(searchText).join(replaceText);
+                }
+                 
+                await fs.promises.writeFile(absolutePath, result);
+            }
         }        
     }
 

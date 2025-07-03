@@ -185,7 +185,8 @@ export class Tools {
     
     
     public init = () => {
-        this.tools = [...(this.app.extConfig.tool_run_terminal_command_enabled ? [
+        this.tools = [
+                ...(this.app.extConfig.tool_run_terminal_command_enabled ? [
                 {
                     "type": "function",
                     "function": {
@@ -202,7 +203,7 @@ export class Tools {
                             "required": [
                                 "command"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -225,7 +226,7 @@ export class Tools {
                             "required": [
                                 "query"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -260,7 +261,7 @@ export class Tools {
                             "required": [
                                 "first_line", "last_line_inclusive", "file_path"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -283,7 +284,7 @@ export class Tools {
                             "required": [
                                 "directory_path"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -298,14 +299,23 @@ export class Tools {
                         "parameters": {
                             "type": "object",
                             "properties": {
-                                "include_pattern": {"description": "Glob pattern for files to include (e.g. '*.ts' for TypeScript files)", "type": "string"},
-                                "exclude_pattern": {"description": "Glob pattern for files to exclude", "type": "string"},
-                                "regex": {"description": "A string for constructing a typescript RegExp pattern to search for. Escape special regex characters when needed.", "type": "string"}
+                                "include_pattern": {
+                                    "type": "string",
+                                    "description": "Glob pattern for files to include (e.g. '*.ts' for TypeScript files)"
+                                },
+                                "exclude_pattern": {
+                                    "type": "string",
+                                    "description": "Glob pattern for files to exclude"
+                                },
+                                "regex": {
+                                    "type": "string",
+                                    "description": "A string for constructing a typescript RegExp pattern to search for. Escape special regex characters when needed."
+                                }
                             },
-                            "required": [
-                                "include_pattern, exclude_pattern, regex"
-                            ],
-                            "additionalProperties": false
+                            // "required": [
+                            //     "include_pattern, exclude_pattern, regex"
+                            // ],
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -328,7 +338,7 @@ export class Tools {
                             "required": [
                                 "file_path"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -344,7 +354,7 @@ export class Tools {
                             "type": "object",
                             "required": [
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -377,7 +387,7 @@ export class Tools {
                             "required": [
                                 "input"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }
@@ -400,7 +410,7 @@ export class Tools {
                             "required": [
                                 "question"
                             ],
-                            "additionalProperties": false
+                            // "additionalProperties": false
                         },
                         "strict": true
                     }

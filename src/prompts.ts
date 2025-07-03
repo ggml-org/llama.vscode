@@ -84,14 +84,13 @@ Carefully read the issue and think hard about a plan to solve it before coding.
 - Review your solution for logic correctness and robustness.
 - Iterate until you are extremely confident the fix is complete.
 
-## 7. Final Reflection and Additional Testing
+## 7. Final Reflection
 - Reflect carefully on the original intent of the user and the problem statement.
 - Think about potential edge cases or scenarios.
-- Be aware that there are additional hidden tests that must also pass for the solution to be successful.
 - Continue refining until you are confident the fix is robust and comprehensive.
 `
 
-TOOLS_SYSTEM_PROMPT_PLANNING = `You are a project manager of a software team and an expert in planning. You are in a planning mode. You just plan. You do not take actions.`
+TOOLS_SYSTEM_PROMPT_PLANNING = `You are an expert in planning. You are working in a planning mode and just plan. You do not take actions.`
 
 TOOLS_ANALYSE_GOAL = `
 Analyze the goal and make sure it could be implemented with the available tools. Ask the user for clarifications if something is unclear or can't be implemented. At the end formulate the goal clearly. Output only the goal, nothing else, and stop. Example:
@@ -146,7 +145,7 @@ Expected result:
 `
 
 TOOL_APPLY_EDITS = `
-Edits/creates files. Use this tool only if file content or at least  section of the file is read and there is a sufficient context. Provide here one or multiple files with user instruction to make changes to them using a diff-fenced format. 
+Edits/creates files. Use this tool only if file content or at least  section of the file is already read and there is a sufficient context. Provide here one or multiple files with user instruction to make changes to them using a diff-fenced format. 
 
 Files are presented with their relative path followed by code fence markers and the complete file content:
 
@@ -166,7 +165,7 @@ filename.py
 2. Format Rules: 
 - The first line must be a code fence opening marker (\`\`\`diff)  
 - The second line must contain ONLY the file path, exactly as shown to you  
-- The SEARCH block must contain the exact content to be replaced  
+- The SEARCH block must contain the EXACT content to be replaced from the file  
 - The REPLACE block contains the new content  
 - End with a code fence closing marker (\`\`\`)  
 - Include enough context in the SEARCH block to uniquely identify the section to change  
