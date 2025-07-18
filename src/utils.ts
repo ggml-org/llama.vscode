@@ -513,7 +513,8 @@ export class Utils {
         }
 
         if (editBlocks.length === 0) {
-            return "";
+            if (diffText.length > 0) editBlocks.push(Utils.extractConflictParts("```diff" + diffText))
+            else return "";
         }
 
         for (const block of editBlocks) {

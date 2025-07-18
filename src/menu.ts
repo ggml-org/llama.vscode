@@ -28,6 +28,10 @@ export class Menu {
                 label: "$(book) " + this.app.extConfig.getUiText("View Documentation..."),
             },
             {
+                label: "$(window) Open AI with tools",
+                description: "Opens the React webview interface"
+            },
+            {
                 label: "Install/upgrade llama.cpp",
                 description: "Installs/updates llama.cpp server"
             },]
@@ -269,6 +273,19 @@ export class Menu {
             case "$(book) " + this.app.extConfig.getUiText("View Documentation..."):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
                 break;
+            case "$(window) Open AI with tools":
+                // Open the webview and send a welcome message
+                await vscode.commands.executeCommand('extension.showLlamaWebview');
+                // Show a notification to help with debugging
+                vscode.window.showInformationMessage('Llama AI with tools opened. Check the Explorer panel for the Llama AI with tools view.');
+                // Send a message to the webview to display the welcome text
+                setTimeout(() => {
+                    vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+                        command: 'updateText',
+                        text: 'Welcome to the Llama AI with tools!'
+                    });
+                }, 2000); // Increased delay to ensure webview is fully loaded
+                break;
             case this.app.extConfig.getUiText("Chat with AI"):
                 this.app.askAi.showChatWithAi(false, context);
                 break;
@@ -281,7 +298,7 @@ export class Menu {
                 const hist = await this.app.shadowGit.getHistory(5);
                 const itemsList = hist.map((commit: { message: any; hash: string; }) => ({
                     label: commit.message,
-                    description: this.app.extConfig.getUiText("Restore to") + " " + commit.hash.substring(0, 8),
+                    description: commit.hash.substring(0, 8),
                     commit
                 })); 
                 const selectedCommit = await vscode.window.showQuickPick(itemsList);
@@ -311,8 +328,8 @@ export class Menu {
             case this.app.extConfig.getUiText("Agent History..."):
                 const history = await this.app.shadowGit.getHistory(5);
                 const items = history.map((commit: { message: any; hash: string; }) => ({
-                    label: commit.message,
-                    description: this.app.extConfig.getUiText("Restore to") + " " + commit.hash.substring(0, 8),
+                    label: commit.hash.substring(0, 8),
+                    description: this.app.extConfig.getUiText("Restore to") + " " + commit.message,
                     commit
                 })); 
                 const selectedQp = await vscode.window.showQuickPick(items);

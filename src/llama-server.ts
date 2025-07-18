@@ -255,7 +255,7 @@ export class LlamaServer {
             // "max_tokens": -1,
             // "timings_per_token": false,
             ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            ...(this.app.extConfig.AI_MODEL.trim() != "" && { model: this.app.extConfig.AI_MODEL}),
+            ...(this.app.extConfig.ai_model.trim() != "" && { model: this.app.extConfig.ai_model}),
           };
     }
 
@@ -285,7 +285,7 @@ export class LlamaServer {
             // "max_tokens": -1,
             // "timings_per_token": false,
             // ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            ...(this.app.extConfig.AI_MODEL.trim() != "" && { model: this.app.extConfig.AI_MODEL}),
+            ...(this.app.extConfig.ai_model.trim() != "" && { model: this.app.extConfig.ai_model}),
             "tools": this.app.tools.tools,
             "tool_choice": "auto"
           };
@@ -322,7 +322,7 @@ export class LlamaServer {
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.AI_API_VERSION}/chat/completions`,
+            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.ai_api_version}/chat/completions`,
             this.createChatEditRequestPayload(false, instructions, originalText, chunks, context, nindent),
             this.app.extConfig.axiosRequestConfigChat
         );
@@ -334,7 +334,7 @@ export class LlamaServer {
         prompt: string,
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.AI_API_VERSION}/chat/completions`,
+            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.ai_api_version}/chat/completions`,
             this.createChatRequestPayload(prompt),
             this.app.extConfig.axiosRequestConfigChat
         );
@@ -345,14 +345,14 @@ export class LlamaServer {
     getToolsCompletion = async (
         messages: ChatMessage[]
     ): Promise<LlamaToolsResponse | undefined> => {
-        let uri = `${this.app.extConfig.endpoint_tools}/${this.app.extConfig.AI_API_VERSION}/chat/completions`;
+        let uri = `${this.app.extConfig.endpoint_tools}/${this.app.extConfig.ai_api_version}/chat/completions`;
         let request = this.createToolsRequestPayload(messages);
         console.log(uri);
         console.log(request);
         const response = await axios.post<LlamaToolsResponse>(
             uri,
             request,
-            this.app.extConfig.axiosRequestConfigChat
+            this.app.extConfig.axiosRequestConfigTools
         );
 
         return response.status === STATUS_OK ? response.data : undefined;

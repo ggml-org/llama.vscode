@@ -369,5 +369,77 @@ export class Architect {
             })
         );
     }
+
+    registerWebviewProvider = (context: vscode.ExtensionContext) => {
+        const { LlamaWebviewProvider } = require('./webview-provider');
+        const provider = new LlamaWebviewProvider(context.extensionUri, this.app);
+        const webviewProvider = vscode.window.registerWebviewViewProvider(
+            LlamaWebviewProvider.viewType,
+            provider
+        );
+        context.subscriptions.push(webviewProvider);
+
+        // Register command to show the webview
+        const showWebviewCommand = vscode.commands.registerCommand(
+            'extension.showLlamaWebview',
+            () => {
+                // Focus the webview in the Explorer panel
+                vscode.commands.executeCommand('llama-vscode.webview.focus');
+            }
+        );
+        context.subscriptions.push(showWebviewCommand);
+
+        // Register command to show webview as a panel (alternative approach)
+        const showWebviewPanelCommand = vscode.commands.registerCommand(
+            'extension.showLlamaWebviewPanel',
+            () => {
+                const panel = vscode.window.createWebviewPanel(
+                    'llamaWebview',
+                    'Llama VS Code UI',
+                    vscode.ViewColumn.Two,
+                    {
+                        enableScripts: true,
+                        localResourceRoots: [context.extensionUri]
+                    }
+                );
+
+                // Get the HTML content from the webview provider
+                const { LlamaWebviewProvider } = require('./webview-provider');
+                const tempProvider = new LlamaWebviewProvider(context.extensionUri, this.app);
+                panel.webview.html = tempProvider._getHtmlForWebview(panel.webview);
+
+                // Handle messages from the webview
+                panel.webview.onDidReceiveMessage(
+                    message => {
+                        switch (message.command) {
+                            case 'sendText':
+                                vscode.window.showInformationMessage(`Received text: ${message.text}`);
+                                break;
+                            case 'clearText':
+                                vscode.window.showInformationMessage('Clear text requested');
+                                break;
+                        }
+                    }
+                );
+            }
+        );
+        context.subscriptions.push(showWebviewPanelCommand);
+
+        // Register command to send messages to the webview
+        const postMessageCommand = vscode.commands.registerCommand(
+            'llama-vscode.webview.postMessage',
+            (message: any) => {
+                console.log('PostMessage command called with:', message);
+                if (provider.webview) {
+                    console.log('Webview found, sending message');
+                    provider.webview.webview.postMessage(message);
+                } else {
+                    console.log('Webview not found');
+                    vscode.window.showWarningMessage('Webview not ready yet. Please try again.');
+                }
+            }
+        );
+        context.subscriptions.push(postMessageCommand);
+    }
     
 }

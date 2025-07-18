@@ -89,8 +89,22 @@
         "command": "extension.generateGitCommitMessage",
         "title": "llama-vscode: Generate Commit Message",
         "icon": "$(sparkle)"
+      },
+      {
+        "command": "extension.showLlamaWebview",
+        "title": "llama-vscode: Show Llama UI",
+        "icon": "$(window)"
       }
     ],
+    "views": {
+      "explorer": [
+        {
+          "id": "llama-vscode.webview",
+          "name": "Llama UI",
+          "type": "webview"
+        }
+      ]
+    },
     "keybindings": [
       {
         "key": "tab",
@@ -232,6 +246,16 @@
           "default": "http://127.0.0.1:8010",
           "description": "The URL to be used by the extension for creating embeddings."
         },
+        "llama-vscode.ai_api_version": {
+          "type": "string",
+          "default": "v1",
+          "description": "The version of the API of the model. It is appended to the endpoints for chat and tools"
+        },
+        "llama-vscode.ai_model": {
+          "type": "string",
+          "default": "google/gemini-2.5-flash",
+          "description": "The model name. This is used in the request to the API. It is important when OpenRouter is used (for example google/gemini-2.5-flash)."
+        },
         "llama-vscode.auto": {
           "type": "boolean",
           "default": true,
@@ -246,6 +270,11 @@
           "type": "string",
           "default": "",
           "description": "llama.cpp chat server api key"
+        },
+        "llama-vscode.api_key_tools": {
+          "type": "string",
+          "default": "",
+          "description": "llama.cpp AI with tools server api key"
         },
         "llama-vscode.api_key_embeddings": {
           "type": "string",
@@ -417,6 +446,17 @@
           "default": true,
           "description": "Enable/disable tool ask_user"
         },
+        "llama-vscode.tools_max_iterations": {
+          "type": "number",
+          "default": 20,
+          "description": "Max number of iterations with AI when working with tools. If you are working with paid AI providers, big number here could result in higher costs."
+        },
+        "llama-vscode.tools_log_calls": {
+          "type": "boolean",
+          "default": false,
+          "description": "Show the details about the tools calls in UI - arguments and results."
+        },
+        
         "llama-vscode.language": {
           "type": "string",
           "default": "en",
@@ -472,7 +512,10 @@
     }
   },
   "scripts": {
-    "watch": "tsc -watch -p ./"
+    "watch": "tsc -watch -p ./",
+    "build-ui": "cd ui && npm install && npm run build",
+    "dev-ui": "cd ui && npm install && npm run dev",
+    "postinstall": "npm run build-ui"
   },
   "dependencies": {
     "axios": "^1.1.2",

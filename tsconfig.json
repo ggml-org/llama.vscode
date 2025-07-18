@@ -9,6 +9,8 @@
 	  "sourceMap": true,
 	  "resolveJsonModule": true,
 	  "esModuleInterop": true
-	}
+	},
+	"include": ["src/**/*"],
+	"exclude": ["ui/**/*", "node_modules", "dist"]
   }
   

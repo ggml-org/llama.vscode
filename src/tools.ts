@@ -101,7 +101,7 @@ export class Tools {
 
     public getRegextMatches = async (args: string ) => {
         let params = JSON.parse(args);
-        return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern, params.regex, this.app.chatContext.entries)
+        return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern??"", params.regex, this.app.chatContext.entries)
     }   
 
     public deleteFile = async (args: string ) => {
@@ -250,8 +250,8 @@ export class Tools {
                                     "description": "The number of last line to read. Line numbers start with 1"
                                 },
                                 "should_read_entire_file": {
-                                    "description": "Whether to read the entire file. Defaults to false.",
                                     "type": "boolean",
+                                    "description": "Whether to read the entire file. Defaults to false.",
                                 },
                                 "file_path": {
                                     "type": "string",

@@ -20,6 +20,7 @@ Local LLM-assisted text completion extension for VS Code
 - Ring context with chunks from open and edited files and yanked text
 - [Supports very large contexts even on low-end hardware via smart context reuse](https://github.com/ggerganov/llama.cpp/pull/9787)
 - Display performance stats
+- **NEW**: React-based UI Llama AI with tools
 
 ## Installation
 
@@ -102,6 +103,30 @@ You can use any other FIM-compatible model that your system can handle. By defau
 ### Recommended LLMs
 
 The plugin requires FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
+
+## React Webview UI
+
+The extension includes a React-based webview interface that provides enhanced interaction capabilities:
+
+### Features
+- Text display area for showing content from the extension
+- Input field for sending text to the extension
+- VS Code theme integration
+- Real-time communication with the extension
+
+### Usage
+1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
+2. Run the command "llama-vscode: Show Llama UI"
+3. The webview will appear in the Explorer panel on the right side
+
+### Development
+To work on the UI:
+1. Navigate to the `ui` folder
+2. Run `npm install` to install dependencies
+3. Run `npm run dev` for development with hot reload
+4. Run `npm run build` to build for production
+
+The UI is automatically built when you install the extension dependencies.
 
 ## Examples
 

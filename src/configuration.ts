@@ -21,6 +21,7 @@ export class Configuration {
     auto = true;
     api_key = "";
     api_key_chat = "";
+    api_key_tools = "";
     api_key_embeddings = ""
     self_signed_certificate = "";
     n_prefix = 256;
@@ -64,10 +65,17 @@ export class Configuration {
     tool_get_diff_enabled = false;
     tool_edit_file_enabled = true;
     tool_ask_user_enabled = true;
+    tools_max_iterations = 50;
+    tools_log_calls = false;
+    // AI_API_VERSION = "v1beta/openai";
+    ai_api_version = "v1";
+    // AI_MODEL = "gemini-2.5-flash";
+    ai_model = "google/gemini-2.5-flash"
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
     axiosRequestConfigChat = {};
+    axiosRequestConfigTools = {};
     axiosRequestConfigEmbeddings = {};
     disabledLanguages: string[] = [];
     languageSettings:Record<string, boolean> = {}
@@ -79,12 +87,8 @@ export class Configuration {
     MAX_QUEUED_CHUNKS = 16;
     DELAY_BEFORE_COMPL_REQUEST = 150;
     MAX_EVENTS_IN_LOG = 250;
-    MAX_TOOLS_ITERATIONS = 10;
-    MAX_CHARS_TOOL_RETURN = 500
-    // AI_API_VERSION = "v1beta/openai";
-    AI_API_VERSION = "v1";
-    // AI_MODEL = "gemini-2.5-flash";
-    AI_MODEL = "google/gemini-2.5-flash"
+    MAX_CHARS_TOOL_RETURN = 5000
+    
     
     config: vscode.WorkspaceConfiguration;
 
@@ -127,6 +131,8 @@ export class Configuration {
         this.launch_embeddings = String(config.get<string>("launch_embeddings"));
         this.launch_training_completion = String(config.get<string>("launch_training_completion"));
         this.launch_training_chat = String(config.get<string>("launch_training_chat"));
+        this.ai_model = String(config.get<string>("ai_model"));
+        this.ai_api_version = String(config.get<string>("ai_api_version"));
         this.lora_completion = String(config.get<string>("lora_completion"));
         this.lora_chat = String(config.get<string>("lora_chat"));
         this.use_openai_endpoint = Boolean(config.get<boolean>("use_openai_endpoint"));
@@ -135,6 +141,7 @@ export class Configuration {
         this.auto = Boolean(config.get<boolean>("auto"));
         this.api_key = String(config.get<string>("api_key"));
         this.api_key_chat = String(config.get<string>("api_key_chat"));
+        this.api_key_tools = String(config.get<string>("api_key_tools"));
         this.api_key_embeddings = String(config.get<string>("api_key_embeddings"));
         this.self_signed_certificate = String(config.get<string>("self_signed_certificate"));
         this.n_prefix = Number(config.get<number>("n_prefix"));
@@ -169,6 +176,8 @@ export class Configuration {
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
+        this.tools_max_iterations = Number(config.get<number>("tools_max_iterations"));
+        this.tools_log_calls = Boolean(config.get<boolean>("tools_log_calls"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));
@@ -237,6 +246,16 @@ export class Configuration {
             this.axiosRequestConfigChat = {
                 headers: {
                     Authorization: `Bearer ${this.api_key_chat.trim()}`,
+                    "Content-Type": "application/json",
+                },
+            };
+        }
+
+        this.axiosRequestConfigTools = {};
+        if (this.api_key_tools != undefined && this.api_key_tools.trim() != "") {
+            this.axiosRequestConfigTools = {
+                headers: {
+                    Authorization: `Bearer ${this.api_key_tools.trim()}`,
                     "Content-Type": "application/json",
                 },
             };
