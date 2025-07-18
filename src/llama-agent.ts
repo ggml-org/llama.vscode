@@ -41,6 +41,7 @@ export class LlamaAgent {
     askAgent = async (query:string): Promise<string> => {
             let response = ""
             let toolCallsResult: ChatMessage;
+            let areFilesChanged = true;
             let finishReason:string|undefined = "tool_calls"
             let commitMessage = query;
             let logText = query + "\n\n";
@@ -112,7 +113,10 @@ export class LlamaAgent {
                             let commandOutput = "Tool not found";
                             if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
                                 const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
-                                if (toolFunc) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                if (toolFunc) {
+                                    commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                    if (oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "delete_file") areFilesChanged = true;
+                                }
                             }
                             this.outputChannel.appendLine("result: " + commandOutput)
                             if (this.app.extConfig.tools_log_calls) logText += "result: \n" + commandOutput + "\n"
@@ -128,10 +132,11 @@ export class LlamaAgent {
                 }
             }
             logText += "\n\n AI with tools session finished. \n\n"
-            //Commiting a checkpoint in shadow git
-            await this.app.shadowGit.addChanges();
-            this.app.shadowGit.git?.commit((new Date).toISOString() + " " + commitMessage);
-
+            if (areFilesChanged){
+                //Commiting a checkpoint in shadow git
+                await this.app.shadowGit.addChanges();
+                this.app.shadowGit.git?.commit((new Date).toISOString() + " " + commitMessage);
+            }
             this.logInUi(logText);
             return response;
         }  
