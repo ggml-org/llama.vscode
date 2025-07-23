@@ -418,6 +418,9 @@ export class Architect {
                             case 'clearText':
                                 vscode.window.showInformationMessage('Clear text requested');
                                 break;
+                            case 'configureTools':
+                                vscode.window.showInformationMessage('Configure tools requested');
+                                break;
                         }
                     }
                 );

@@ -50,6 +50,14 @@ const App: React.FC<AppProps> = () => {
     }
   };
 
+  const handleConfigureTools = () => {
+    // send command configure tools to extension
+    vscode.postMessage({
+      command: 'configureTools',
+      text: inputText
+    });
+  };
+
   const handleClearText = () => {
     vscode.postMessage({
       command: 'clearText'
@@ -87,7 +95,9 @@ const App: React.FC<AppProps> = () => {
               <button onClick={handleSendText} className="send-btn">
                 Send
               </button>
-              
+              <button onClick={handleConfigureTools} className="send-btn">
+                Tools
+              </button>
             </div>
           </div>
         </div>

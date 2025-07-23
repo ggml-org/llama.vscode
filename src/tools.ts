@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
+import { dir } from "console";
 
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
@@ -10,8 +11,10 @@ type ToolsMap = Map<string, (...args: any[]) => any>;
 export class Tools {
     private app: Application;
     toolsFunc: ToolsMap = new Map();
+    toolsFuncDesc: ToolsMap = new Map();
     tools: any[] = [];
-                
+    vscodeTools: any[] = [];
+    vscodeToolsSelected: Map<string, boolean> = new Map();
     
     constructor(application: Application) {
         this.app = application;
@@ -24,6 +27,15 @@ export class Tools {
         this.toolsFunc.set("get_diff", this.getDiff)
         this.toolsFunc.set("edit_file", this.editFile)
         this.toolsFunc.set("ask_user", this.askUser)
+        this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
+        this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
+        this.toolsFuncDesc.set("read_file", this.readFileDesc)
+        this.toolsFuncDesc.set("list_directory", this.readDirectoryDesc)
+        this.toolsFuncDesc.set("regex_search",this.getRegextMatchesDesc)
+        this.toolsFuncDesc.set("delete_file", this.deleteFileDesc)
+        this.toolsFuncDesc.set("get_diff", this.getDiffDesc)
+        this.toolsFuncDesc.set("edit_file", this.editFileDesc)
+        this.toolsFuncDesc.set("ask_user", this.askUserDesc)
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -39,6 +51,11 @@ export class Tools {
         return commandOutput;
     }
 
+    public runTerminalCommandDesc = async (args: string ) => {
+        let command = JSON.parse(args).command;
+        return "Executing terminal command: " + command;
+    }
+
 
     public searchSource = async (args: string ) => {
         let query = JSON.parse(args).query;
@@ -47,6 +64,12 @@ export class Tools {
         let relevantSource = await this.app.chatContext.getContextChunksInPlainText(contextChunks);
         
         return relevantSource;
+    }
+
+    public searchSourceDesc = async (args: string ) => {
+        let query = JSON.parse(args).query;
+        
+        return " Searching source code for: " + query;
     }
 
     public readFile = async (args: string ) => {
@@ -78,6 +101,13 @@ export class Tools {
         }
     }
 
+    public readFileDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+        let filePath = params.file_path;
+        
+        return "Reading file: " + filePath;
+    }
+
     public readDirectory = async (args: string ) => {
         let params = JSON.parse(args);
         let dirPath = params.directory_path;
@@ -99,10 +129,22 @@ export class Tools {
         }
     }
 
+    public readDirectoryDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+        let dirPath = params.directory_path;
+        
+        return "Listing directory: " + dirPath;
+    }
+
     public getRegextMatches = async (args: string ) => {
         let params = JSON.parse(args);
         return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern??"", params.regex, this.app.chatContext.entries)
     }   
+
+    public getRegextMatchesDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+        return "Regex search for: " + params.regex;
+    }
 
     public deleteFile = async (args: string ) => {
         let params = JSON.parse(args);
@@ -127,6 +169,13 @@ export class Tools {
         return `Successfully deleted file ${filePath}`;
     }
 
+    public deleteFileDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+        let filePath = params.file_path;
+        
+        return "Deleting file: " + filePath;
+    }
+
     public getDiff = async (args: string) => {
         try {
             const diff = await this.app.shadowGit.git?.diff(['HEAD']);
@@ -137,32 +186,36 @@ export class Tools {
             throw error;
         }        
     }
+
+    public getDiffDesc = async (args: string) => {
+        return "Getting latest changes."       
+    }
     
     public editFile = async (args: string) => {
         let params = JSON.parse(args);
-        // let filePath = params.file_path;
-        // let newContent = params.edited_content;
-        // let absolutePath = filePath;
         let changes = params.input;
-        // if (!path.isAbsolute(filePath)) {
-        //     if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-        //         return "File not found: " + filePath;
-        //     }
-            
-        //     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-        //     absolutePath = path.join(workspaceRoot, filePath);
-        // }
         try {
-            // let fileContent = await fs.promises.readFile(absolutePath, 'utf8');
-            // fileContent = fileContent.split(/\r?\n/).join("\n")
-            // let updatedFile = fs.promises. Utils.editFile(fileContent, codeEdits)
-            // await fs.promises.writeFile(absolutePath, newContent);
             await Utils.applyEdits(changes)
             return "The file is updated ";
         } catch (error) {
             console.error('Error changes since last commit:', error);
             throw error;
         }        
+    }
+
+    public editFileDesc = async (args: string) => {
+        let params = JSON.parse(args);
+        let filePath = ""
+        let diffText = params.input;
+        const blocks = diffText.split("```diff")
+        if (blocks.slice(1).length > 0){
+            let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0])
+            if (blockParts.length === 3) {
+                    filePath = blockParts[0].trim();
+            }
+        }
+        
+        return "Editing file " + filePath;
     }
 
     public askUser = async (args: string) => {
@@ -182,240 +235,324 @@ export class Tools {
 
         return "No answer from the user."
     }
+
+    public askUserDesc = async (args: string) => {
+        let params = JSON.parse(args);
+        let question = params.question;
+
+        return "Ask user: " + question
+    }
     
     
     public init = () => {
         this.tools = [
-                ...(this.app.extConfig.tool_run_terminal_command_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "run_terminal_command",
-                        "description": "Runs the provided command in a terminal and returns the result. For Windows uses powershell.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "command": {
-                                    "type": "string",
-                                    "description": "The command to be executed in the terminal"
-                                }
+            ...(this.app.extConfig.tool_run_terminal_command_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "run_terminal_command",
+                    "description": "Runs the provided command in a terminal and returns the result. For Windows uses powershell.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "command": {
+                                "type": "string",
+                                "description": "The command to be executed in the terminal"
+                            }
+                        },
+                        "required": [
+                            "command"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_search_source_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "search_source",
+                    "description": "Searches the code base and returns relevant code frangments from the files.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "type": "string",
+                                "description": "The query to search the relevat code"
+                            }
+                        },
+                        "required": [
+                            "query"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_read_file_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_file",
+                    "description": "Read the contents of a file from first_line to last_line_inclusive, at most 250 lines at a time or the entire file if parameter should_read_entire_file is true.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "first_line": {
+                                "type": "integer",
+                                "description": "The number of first line to read. Starts with 1."
                             },
-                            "required": [
-                                "command"
-                            ],
-                            // "additionalProperties": false
-                        },
-                        "strict": true
-                    }
-                }
-                ] : []),
-                ...(this.app.extConfig.tool_search_source_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "search_source",
-                        "description": "Searches the code base and returns relevant code frangments from the files.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "query": {
-                                    "type": "string",
-                                    "description": "The query to search the relevat code"
-                                }
+                            "last_line_inclusive": {
+                                "type": "integer",
+                                "description": "The number of last line to read. Line numbers start with 1"
                             },
-                            "required": [
-                                "query"
-                            ],
-                            // "additionalProperties": false
-                        },
-                        "strict": true
-                    }
-                }
-                ] : []),
-                ...(this.app.extConfig.tool_read_file_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "read_file",
-                        "description": "Read the contents of a file from first_line to last_line_inclusive, at most 250 lines at a time or the entire file if parameter should_read_entire_file is true.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "first_line": {
-                                    "type": "integer",
-                                    "description": "The number of first line to read. Starts with 1."
-                                },
-                                "last_line_inclusive": {
-                                    "type": "integer",
-                                    "description": "The number of last line to read. Line numbers start with 1"
-                                },
-                                "should_read_entire_file": {
-                                    "type": "boolean",
-                                    "description": "Whether to read the entire file. Defaults to false.",
-                                },
-                                "file_path": {
-                                    "type": "string",
-                                    "description": "The path of the file to read"
-                                }
+                            "should_read_entire_file": {
+                                "type": "boolean",
+                                "description": "Whether to read the entire file. Defaults to false.",
                             },
-                            "required": [
-                                "first_line", "last_line_inclusive", "file_path"
-                            ],
-                            // "additionalProperties": false
+                            "file_path": {
+                                "type": "string",
+                                "description": "The path of the file to read"
+                            }
                         },
-                        "strict": true
-                    }
+                        "required": [
+                            "first_line", "last_line_inclusive", "file_path"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
                 }
-                ] : []),
-                ...(this.app.extConfig.tool_list_directory_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "list_directory",
-                        "description": "List the contents of a directory. The quick tool to understand the file structure and explore the codebase.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "directory_path": {
-                                    "type": "string",
-                                    "description": "Absolute or relative workspace path"
-                                },
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_list_directory_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "list_directory",
+                    "description": "List the contents of a directory. The quick tool to understand the file structure and explore the codebase.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "directory_path": {
+                                "type": "string",
+                                "description": "Absolute or relative workspace path"
                             },
-                            "required": [
-                                "directory_path"
-                            ],
-                            // "additionalProperties": false
                         },
-                        "strict": true
-                    }
+                        "required": [
+                            "directory_path"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
                 }
-                ] : []),
-                ...(this.app.extConfig.tool_regex_search_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "regex_search",
-                        "description": "Fast text-based regex search in the code base (prefer it for finding exact function names or expressions) that finds exact pattern matches with file names and line numbers within files or directories. If there is no exclude_pattern - provide an empty string. Returns up to 50 matches in format file_name:line_number: line_content",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "include_pattern": {
-                                    "type": "string",
-                                    "description": "Glob pattern for files to include (e.g. '*.ts' for TypeScript files)"
-                                },
-                                "exclude_pattern": {
-                                    "type": "string",
-                                    "description": "Glob pattern for files to exclude"
-                                },
-                                "regex": {
-                                    "type": "string",
-                                    "description": "A string for constructing a typescript RegExp pattern to search for. Escape special regex characters when needed."
-                                }
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_regex_search_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "regex_search",
+                    "description": "Fast text-based regex search in the code base (prefer it for finding exact function names or expressions) that finds exact pattern matches with file names and line numbers within files or directories. If there is no exclude_pattern - provide an empty string. Returns up to 50 matches in format file_name:line_number: line_content",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "include_pattern": {
+                                "type": "string",
+                                "description": "Glob pattern for files to include (e.g. '*.ts' for TypeScript files)"
                             },
-                            // "required": [
-                            //     "include_pattern, exclude_pattern, regex"
-                            // ],
-                            // "additionalProperties": false
-                        },
-                        "strict": true
-                    }
-                }
-                ] : []),
-                ...(this.app.extConfig.tool_delete_file_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "delete_file",
-                        "description": "Deletes a file at the specified path.",
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                "file_path": {
-                                    "description": "The path of the file to delete, absolute or relative to the workspace root.", 
-                                    "type": "string"
-                                },
+                            "exclude_pattern": {
+                                "type": "string",
+                                "description": "Glob pattern for files to exclude"
                             },
-                            "required": [
-                                "file_path"
-                            ],
-                            // "additionalProperties": false
+                            "regex": {
+                                "type": "string",
+                                "description": "A string for constructing a typescript RegExp pattern to search for. Escape special regex characters when needed."
+                            }
                         },
-                        "strict": true
-                    }
+                        // "required": [
+                        //     "include_pattern, exclude_pattern, regex"
+                        // ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
                 }
-                ] : []),
-                ...(this.app.extConfig.tool_get_diff_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "get_diff",
-                        "description": "Gets the files changes since last commit",
-                        "parameters": {
-                            "type": "object",
-                            "required": [
-                            ],
-                            // "additionalProperties": false
-                        },
-                        "strict": true
-                    }
-                }
-                ] : []),
-                ...(this.app.extConfig.tool_edit_file_enabled ? [
-                {
-                    "type": "function",
-                    "function": {
-                        "name": "edit_file",
-                        // "name": "apply_patch",
-                        // "description": "Use this tool to replace the entire file content with the provided new content in parameter edited_content.",
-                        "description": this.app.prompts.TOOL_APPLY_EDITS ,
-                        "parameters": {
-                            "type": "object",
-                            "properties": {
-                                // "file_path": {
-                                //     "type": "string",
-                                //     "description": "The path to the relative the workspace or absolute."
-                                // },
-                                // "edited_content": {
-                                //     "description": `Provide the entire edited file content.`,
-                                //     "type": "string",
-                                // },
-                                "input": {
-                                    "description": `Files changes in SEARCH/REPLACE block format`,
-                                    "type": "string",
-                                },
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_delete_file_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "delete_file",
+                    "description": "Deletes a file at the specified path.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {
+                                "description": "The path of the file to delete, absolute or relative to the workspace root.", 
+                                "type": "string"
                             },
-                            "required": [
-                                "input"
-                            ],
-                            // "additionalProperties": false
                         },
-                        "strict": true
-                    }
+                        "required": [
+                            "file_path"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
                 }
-                ] : []),
-                ...(this.app.extConfig.tool_ask_user_enabled ? [
-                {
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_get_diff_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_diff",
+                    "description": "Gets the files changes since last commit",
+                    "parameters": {
+                        "type": "object",
+                        "required": [
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_edit_file_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "edit_file",
+                    // "name": "apply_patch",
+                    // "description": "Use this tool to replace the entire file content with the provided new content in parameter edited_content.",
+                    "description": this.app.prompts.TOOL_APPLY_EDITS ,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            // "file_path": {
+                            //     "type": "string",
+                            //     "description": "The path to the relative the workspace or absolute."
+                            // },
+                            // "edited_content": {
+                            //     "description": `Provide the entire edited file content.`,
+                            //     "type": "string",
+                            // },
+                            "input": {
+                                "description": `Files changes in SEARCH/REPLACE block format`,
+                                "type": "string",
+                            },
+                        },
+                        "required": [
+                            "input"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_ask_user_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "ask_user",
+                    "description": "Use this tool to ask the user for clarifications if something is unclear.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "question": {
+                                "type": "string",
+                                "description": "The question to the user."
+                            },
+                        },
+                        "required": [
+                            "question"
+                        ],
+                        // "additionalProperties": false
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+        ]
+        
+    }
+
+    selectTools = async () => {
+                    // Define items with initial selection state
+        const toolItems: vscode.QuickPickItem[] = []
+        const appPrefix = "llama.vscode_"
+        const config = this.app.extConfig.config;
+        for (let internalTool of this.toolsFunc.keys()){
+            toolItems.push({ label: appPrefix + internalTool, description: "", picked: (this.app.extConfig as { [key: string]: any; })[this.getToolEnabledPropertyName(internalTool)]})
+        }
+        for (let tool of vscode.lm.tools){
+            toolItems.push({ label: tool.name, description: tool.description, picked: this.vscodeToolsSelected.has(tool.name) })
+        }
+
+        // Show multi-select quick pick
+        const selection = await vscode.window.showQuickPick(toolItems, {
+            canPickMany: true,
+            placeHolder: 'Select tools',
+        });
+
+        // Handle user selection
+        if (selection) {
+            const selectedLabels = selection.map(item => item.label);
+            this.vscodeToolsSelected.forEach((_, key) => {
+                this.vscodeToolsSelected.set(key, false);
+            });
+            for (let toolName of  this.toolsFunc.keys()){
+                await config.update(this.getToolEnabledPropertyName(toolName), false, true);
+            }
+            for (let toolName of  selectedLabels){
+                if (toolName.startsWith(appPrefix)){
+                    await config.update(this.getToolEnabledPropertyName(toolName.slice(appPrefix.length)), true, true);
+                } else {
+                    this.vscodeToolsSelected.set(toolName, true)
+                }
+            }
+        } else {
+            // User canceled
+        }
+    }
+
+    addSelectedTools = () => {
+        this.vscodeToolsSelected.set("mcp_playwright_browser_navigate", true)
+        this.vscodeTools = [];
+        for (let tool of vscode.lm.tools) {
+            if (this.vscodeToolsSelected.has(tool.name) && tool.inputSchema && tool.inputSchema  && 'properties' in tool.inputSchema) {
+                let propertyNames: string[] = Object.keys((tool.inputSchema as { [key: string]: any; })["properties"]);
+                let toolProperties = {};
+                let toolRequiredProps = []
+                for (let property of propertyNames) {
+                    let propType = tool.inputSchema.properties ? (tool.inputSchema.properties as { [key: string]: any; })[property].type : "";
+                    let propDesc = tool.inputSchema.properties ? (tool.inputSchema.properties as { [key: string]: any; })[property].description : "";
+                    toolProperties = { ...toolProperties, [property]: { type: propType, description: propDesc } };
+                    toolRequiredProps = (tool.inputSchema as { [key: string]: any; })["required"];
+                }
+                let newTool = {
                     "type": "function",
                     "function": {
-                        "name": "ask_user",
-                        "description": "Use this tool to ask the user for clarifications if something is unclear.",
+                        "name": tool.name,
+                        "description": tool.description,
                         "parameters": {
                             "type": "object",
-                            "properties": {
-                                "question": {
-                                    "type": "string",
-                                    "description": "The question to the user."
-                                },
-                            },
-                            "required": [
-                                "question"
-                            ],
-                            // "additionalProperties": false
+                            "properties": toolProperties
                         },
+                        "required": toolRequiredProps,
                         "strict": true
-                    }
-                }
-                ] : []),
-            ]
+                    },
+                };
+                this.vscodeTools.push(newTool);
+            }
+
+        }
+    }
+
+    private getToolEnabledPropertyName(toolName: string): string {
+        return "tool_" + toolName + "_enabled";
     }
 }

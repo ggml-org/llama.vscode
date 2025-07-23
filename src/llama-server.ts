@@ -260,35 +260,36 @@ export class LlamaServer {
     }
 
         private createToolsRequestPayload(messages: ChatMessage[]) {
-        return {
-            "messages": messages,
-            "stream": false,
-            // "cache_prompt": true,
-            // "samplers": "edkypmxt",
-            "temperature": 0.8,
-            // "dynatemp_range": 0,
-            // "dynatemp_exponent": 1,
-            // "top_k": 40,
-            "top_p": 0.95,
-            // "min_p": 0.05,
-            // "typical_p": 1,
-            // "xtc_probability": 0,
-            // "xtc_threshold": 0.1,
-            // "repeat_last_n": 64,
-            // "repeat_penalty": 1,
-            // "presence_penalty": 0,
-            // "frequency_penalty": 0,
-            // "dry_multiplier": 0,
-            // "dry_base": 1.75,
-            // "dry_allowed_length": 2,
-            // "dry_penalty_last_n": -1,
-            // "max_tokens": -1,
-            // "timings_per_token": false,
-            // ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            ...(this.app.extConfig.ai_model.trim() != "" && { model: this.app.extConfig.ai_model}),
-            "tools": this.app.tools.tools,
-            "tool_choice": "auto"
-          };
+            this.app.tools.addSelectedTools();
+            return {
+                "messages": messages,
+                "stream": false,
+                // "cache_prompt": true,
+                // "samplers": "edkypmxt",
+                "temperature": 0.8,
+                // "dynatemp_range": 0,
+                // "dynatemp_exponent": 1,
+                // "top_k": 40,
+                "top_p": 0.95,
+                // "min_p": 0.05,
+                // "typical_p": 1,
+                // "xtc_probability": 0,
+                // "xtc_threshold": 0.1,
+                // "repeat_last_n": 64,
+                // "repeat_penalty": 1,
+                // "presence_penalty": 0,
+                // "frequency_penalty": 0,
+                // "dry_multiplier": 0,
+                // "dry_base": 1.75,
+                // "dry_allowed_length": 2,
+                // "dry_penalty_last_n": -1,
+                // "max_tokens": -1,
+                // "timings_per_token": false,
+                // ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+                ...(this.app.extConfig.ai_model.trim() != "" && { model: this.app.extConfig.ai_model}),
+                "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
+                "tool_choice": "auto"
+            };
     }
 
     getFIMCompletion = async (

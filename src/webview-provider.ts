@@ -36,20 +36,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
 
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(
-            message => {
+            async (message) => {
                 console.log('Webview received message:', message);
                 switch (message.command) {
                     case 'sendText':
-                        //vscode.window.showInformationMessage(`Received text: ${message.text}`);
                         this.app.agent.run(message.text);
                         break;
                     case 'clearText':
-                        // vscode.window.showInformationMessage('Clear text requested');
                         this.app.agent.resetMessages();
                         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
                             command: 'updateText',
                             text: ''
                         });
+                        break;
+                    case 'configureTools':
+                        await this.app.tools.selectTools()
                         break;
                 }
             }
