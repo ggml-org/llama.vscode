@@ -27,6 +27,7 @@ export class Tools {
         this.toolsFunc.set("get_diff", this.getDiff)
         this.toolsFunc.set("edit_file", this.editFile)
         this.toolsFunc.set("ask_user", this.askUser)
+        this.toolsFunc.set("custom_tool", this.customTool)
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
         this.toolsFuncDesc.set("read_file", this.readFileDesc)
@@ -36,6 +37,8 @@ export class Tools {
         this.toolsFuncDesc.set("get_diff", this.getDiffDesc)
         this.toolsFuncDesc.set("edit_file", this.editFileDesc)
         this.toolsFuncDesc.set("ask_user", this.askUserDesc)
+        this.toolsFuncDesc.set("custom_tool", this.customToolDesc)
+        
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -243,6 +246,29 @@ export class Tools {
         return "Ask user: " + question
     }
     
+    public customTool = async (args: string) => {
+        let result = "";
+        
+        let workspaceFolder = "";
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
+            workspaceFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
+        }
+        let filePath = path.join(workspaceFolder, "custom_tool.txt")
+        if (fs.existsSync(filePath)){
+            result = fs.readFileSync(filePath, 'utf-8');
+        } else {
+            result = "File " + filePath + " does not exist!"
+        }
+
+        return result
+    }
+
+    public customToolDesc = async (args: string) => {
+        let params = JSON.parse(args);
+        let question = params.question;
+
+        return "Custom tool is executed."
+    }
     
     public init = () => {
         this.tools = [
@@ -263,7 +289,6 @@ export class Tools {
                         "required": [
                             "command"
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -286,7 +311,6 @@ export class Tools {
                         "required": [
                             "query"
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -321,7 +345,6 @@ export class Tools {
                         "required": [
                             "first_line", "last_line_inclusive", "file_path"
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -344,7 +367,6 @@ export class Tools {
                         "required": [
                             "directory_path"
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -372,10 +394,6 @@ export class Tools {
                                 "description": "A string for constructing a typescript RegExp pattern to search for. Escape special regex characters when needed."
                             }
                         },
-                        // "required": [
-                        //     "include_pattern, exclude_pattern, regex"
-                        // ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -398,7 +416,6 @@ export class Tools {
                         "required": [
                             "file_path"
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -414,7 +431,6 @@ export class Tools {
                         "type": "object",
                         "required": [
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -425,20 +441,10 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "edit_file",
-                    // "name": "apply_patch",
-                    // "description": "Use this tool to replace the entire file content with the provided new content in parameter edited_content.",
                     "description": this.app.prompts.TOOL_APPLY_EDITS ,
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            // "file_path": {
-                            //     "type": "string",
-                            //     "description": "The path to the relative the workspace or absolute."
-                            // },
-                            // "edited_content": {
-                            //     "description": `Provide the entire edited file content.`,
-                            //     "type": "string",
-                            // },
                             "input": {
                                 "description": `Files changes in SEARCH/REPLACE block format`,
                                 "type": "string",
@@ -447,7 +453,6 @@ export class Tools {
                         "required": [
                             "input"
                         ],
-                        // "additionalProperties": false
                     },
                     "strict": true
                 }
@@ -470,7 +475,21 @@ export class Tools {
                         "required": [
                             "question"
                         ],
-                        // "additionalProperties": false
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.extConfig.tool_custom_tool_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "custom_tool",
+                    "description": this.app.extConfig.tool_custom_tool_description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": [],
                     },
                     "strict": true
                 }
@@ -501,9 +520,7 @@ export class Tools {
         // Handle user selection
         if (selection) {
             const selectedLabels = selection.map(item => item.label);
-            this.vscodeToolsSelected.forEach((_, key) => {
-                this.vscodeToolsSelected.set(key, false);
-            });
+            this.vscodeToolsSelected = new Map()
             for (let toolName of  this.toolsFunc.keys()){
                 await config.update(this.getToolEnabledPropertyName(toolName), false, true);
             }

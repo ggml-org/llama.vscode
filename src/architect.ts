@@ -8,6 +8,7 @@
 // - използване на MCP
 import * as vscode from 'vscode';
 import {Application} from "./application";
+import {LlamaWebviewProvider} from './webview-provider'
 
 export class Architect {
     private app: Application
@@ -371,7 +372,6 @@ export class Architect {
     }
 
     registerWebviewProvider = (context: vscode.ExtensionContext) => {
-        const { LlamaWebviewProvider } = require('./webview-provider');
         const provider = new LlamaWebviewProvider(context.extensionUri, this.app);
         const webviewProvider = vscode.window.registerWebviewViewProvider(
             LlamaWebviewProvider.viewType,
@@ -404,7 +404,6 @@ export class Architect {
                 );
 
                 // Get the HTML content from the webview provider
-                const { LlamaWebviewProvider } = require('./webview-provider');
                 const tempProvider = new LlamaWebviewProvider(context.extensionUri, this.app);
                 panel.webview.html = tempProvider._getHtmlForWebview(panel.webview);
 

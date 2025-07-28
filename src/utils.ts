@@ -366,8 +366,8 @@ export class Utils {
         let matches:string = "";
         let totalMatches:number = 0;
         const regexSearch = new RegExp(searchPattern);
-        const isMatchInclude = includeGlob.trim() == "" ? undefined : pm(includeGlob);
-        const isMatchExclude = excludeGlobPtr.trim() == "" ? undefined : pm(excludeGlobPtr);
+        const isMatchInclude = includeGlob == undefined || includeGlob.trim() == "" ? undefined : pm(includeGlob);
+        const isMatchExclude = excludeGlobPtr == undefined || excludeGlobPtr.trim() == "" ? undefined : pm(excludeGlobPtr);
         let valuesIterator = chunks.values()
         let chunkIter = valuesIterator.next();
         while (!chunkIter.done){

@@ -1,4 +1,5 @@
 .vscode/**
+.idea/**
 .vscode-test/**
 src/**
 .gitignore
@@ -9,3 +10,6 @@ vsc-extension-quickstart.md
 **/*.map
 **/*.ts
 **/.vscode-test.*
+ui/node_modules/**
+ui/src/**
+**/test

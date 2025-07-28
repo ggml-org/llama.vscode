@@ -65,6 +65,8 @@ export class Configuration {
     tool_get_diff_enabled = false;
     tool_edit_file_enabled = true;
     tool_ask_user_enabled = true;
+    tool_custom_tool_enabled = false;
+    tool_custom_tool_description = "";
     tools_max_iterations = 50;
     tools_log_calls = false;
     // AI_API_VERSION = "v1beta/openai";
@@ -176,6 +178,8 @@ export class Configuration {
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
+        this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
+        this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
         this.tools_max_iterations = Number(config.get<number>("tools_max_iterations"));
         this.tools_log_calls = Boolean(config.get<boolean>("tools_log_calls"));
         this.language = String(config.get<string>("language"));
