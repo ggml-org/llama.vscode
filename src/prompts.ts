@@ -145,9 +145,9 @@ Expected result:
 `
 
 TOOL_APPLY_EDITS = `
-Edits/creates files. Use this tool only if file content or at least  section of the file is already read and there is a sufficient context. Provide here one or multiple files with user instruction to make changes to them using a diff-fenced format. 
+Edits/creates file. Use this tool only if file content or at least  section of the file is already read and there is a sufficient context. Provide here exactly one file with user instruction to make one change to it using a diff-fenced format. 
 
-Files are presented with their relative path followed by code fence markers and the complete file content:
+File is presented with its relative path followed by code fence markers and the complete file content:
 
 ## How to make Edits (diff-fenced format):
 When making changes, you MUST use the SEARCH/REPLACE block format as follows:
@@ -156,21 +156,20 @@ When making changes, you MUST use the SEARCH/REPLACE block format as follows:
 \`\`\`diff
 filename.py
 <<<<<<< SEARCH  
-// original text that should be found and replaced  
+// original text lines that should be found and replaced  
 =======  
-// new text that will replace the original content  
+// new text lines that will replace the original content  
 >>>>>>> REPLACE  
 \`\`\`
   
 2. Format Rules: 
 - The first line must be a code fence opening marker (\`\`\`diff)  
 - The second line must contain ONLY the file path, exactly as shown to you  
-- The SEARCH block must contain the EXACT content to be replaced from the file, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced!
+- The SEARCH block must contain the EXACT lines with correct spacingto be replaced from the file, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced!
 - The REPLACE block contains the new content  
 - End with a code fence closing marker (\`\`\`)  
 - Include enough context in the SEARCH block to uniquely identify the section to change  
-- Keep SEARCH/REPLACE blocks concise - break large changes into multiple smaller blocks  
-- For multiple changes to the same file, use multiple SEARCH/REPLACE blocks  
+- Keep SEARCH/REPLACE blocks concise - break large changes into multiple calls to the tool   
   
 3. **Creating New Files**: Use an empty SEARCH section:  
 
@@ -183,43 +182,18 @@ def new_function():
     return "Hello World"  
 >>>>>>> REPLACE
 \`\`\` 
-4. **Moving Content**: Use two SEARCH/REPLACE blocks:  1. One to delete content from its original location (empty REPLACE section). 2. One to add it to the new location (empty SEARCH section)  
+4. **Moving Content**: Use two calls to the tool:  1. One to delete content from its original location (empty REPLACE section). 2. One to add it to the new location (empty SEARCH section)  
 
-5. **Multiple Edits**: Present each edit as a separate SEARCH/REPLACE block  
+5. **Multiple Edits**: Use separate calls to the tool for each edit.
 
-\`\`\`diff
-math_utils.py
-<<<<<<< SEARCH  
-def factorial(n):  
-    if n == 0:  
-        return 1  
-    else:  
-        return n * factorial(n-1)  
-=======  
-import math  
-  
-def factorial(n):  
-    return math.factorial(n)  
->>>>>>> REPLACE
-
-\`\`\`diff
-app.py
-<<<<<<< SEARCH  
-from utils import helper  
-=======  
-from utils import helper  
-import math_utils  
->>>>>>> REPLACE  
-  
 ## Important Guidelines  
   
 1. Always include the EXACT file path as shown in the context  
 2. Make sure the SEARCH block EXACTLY matches the existing content  
-3. Break large changes into multiple smaller, focused SEARCH/REPLACE blocks  
-4. Only edit files that have been added to the context  
+3. Break large changes into multiple smaller, focused calls to the tool  
+4. Only edit files that are already read  
 5. Explain your changes before presenting the SEARCH/REPLACE blocks  
-6. If you need to edit files not in the context, ask the user to add them first  
-  
+ 
 Following these instructions will ensure your edits can be properly applied to the document.
 `
 

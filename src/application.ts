@@ -14,7 +14,6 @@ import { Prompts } from "./prompts";
 import { Git } from "./git";
 import { Tools } from "./tools";
 import { LlamaAgent } from "./llama-agent";
-import { ShadowGit } from "./shadow-git";
 import * as vscode from "vscode"
 import path from "path";
 
@@ -36,7 +35,6 @@ export class Application {
     public git: Git
     public tools: Tools
     public agent: LlamaAgent
-    public shadowGit: ShadowGit
 
     private constructor(context: vscode.ExtensionContext) {
         this.extConfig = new Configuration()
@@ -55,8 +53,6 @@ export class Application {
         this.git = new Git(this)
         this.tools = new Tools(this)
         this.agent = new LlamaAgent(this)
-        this.shadowGit = new ShadowGit(this);
-        this.shadowGit.initialize(context.globalStorageUri.fsPath);
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {

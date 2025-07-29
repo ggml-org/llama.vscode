@@ -3,6 +3,34 @@ import vscode from "vscode";
 
 export class Menu {
     private app: Application
+    private completionModels = new Map<string, string>([
+        ["Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)", "llama-server --fim-qwen-1.5b-default -ngl 99"],
+        ["Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)", "llama-server --fim-qwen-3b-default -ngl 99"],
+        ["Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)", "llama-server --fim-qwen-7b-default -ngl 99"],
+        ["Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)", "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"],
+    ]);
+    private selectedComplModel: [string, string] = ["", ""]
+    private chatModels = new Map<string, string>([
+        ["Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)", "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256"],
+        ["Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)", "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256"],
+        ["Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)", "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256"],
+        ["Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)", "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"],
+    ]);
+    private selectedChatModel: [string, string] = ["", ""]
+    private embeddingsModels = new Map<string, string>([
+        ["Nomic-Embed-Text-V2-GGUF", "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings"],
+    ]);
+    private selectedEmbeddingsModel: [string, string] = ["", ""]
+    private toolsModels = new Map<string, string>([
+        ["Qwen: Qwen3 Coder (free) - 262K context, $0/M input tokens, $0/M output tokens", "qwen/qwen3-coder:free"],
+        ["Qwen: Qwen3 Coder - 262K context, $0,30/M input tokens, $1,20/M output tokens", "qwen/qwen3-coder"],
+        ["Qwen: Qwen3 235B A22B Instruct 2507 - 262K context, $0,12/M input tokens, $0,59/M output tokens", "qwen/qwen3-235b-a22b-2507"],
+        ["MoonshotAI: Kimi K2 (free) - 131K context, $0/M input tokens, $0/M output tokens", "moonshotai/kimi-k2:free"],
+        ["MoonshotAI: Kimi K2 - 131K context, $0,55/M input tokens, $2,20/M output tokens", "moonshotai/kimi-k2"],
+        ["Google: Gemini 2.5 Flash Lite - 1,05M context, $0,10/M input tokens, $0,40/M output tokens", "google/gemini-2.5-flash-lite"],
+        ["Google: Gemini 2.5 Flash - 1,05M context, $0,30/M input tokens, $2,50/M output tokens, $1,238/K input imgs", "google/gemini-2.5-flash"],
+    ]);
+    private selectedToolsModel: [string, string] = ["", ""]
     constructor(application: Application) {
         this.app = application;
     }
@@ -28,8 +56,8 @@ export class Menu {
                 label: "$(book) " + this.app.extConfig.getUiText("View Documentation..."),
             },
             {
-                label: "$(window) Open AI with tools",
-                description: "Opens the React webview interface"
+                label: "Show running servers",
+                description: "Displays a list of currently running servers"
             },
             {
                 label: "Install/upgrade llama.cpp",
@@ -42,33 +70,77 @@ export class Menu {
                     label: this.app.extConfig.getUiText("Chat with AI") ?? "",
                     description: this.app.extConfig.getUiText(`Opens a chat with AI window inside VS Code using server from property endpoint_chat`)
                 })
-            if (this.app.extConfig.rag_enabled){
-                menuItems.push({
-                    label: this.app.extConfig.getUiText("Chat with AI with project context") ?? "",
-                    description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
-                },
+        if (this.app.extConfig.rag_enabled){
+            menuItems.push({
+                label: this.app.extConfig.getUiText("Chat with AI with project context") ?? "",
+                description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
+            },
+            {
+                label: "Save project state",
+                description: "Saves the project state. Later this state could be restored"
+            },
+            {
+                label: this.app.extConfig.getUiText("Agent History...")??"",
+                description: this.app.extConfig.getUiText(`Show history of agent edits.`)
+            })
+        }
+        menuItems.push(
+            {
+                label: 'Start/change completion model...'
+            })
+        if (!this.app.llamaServer.isFimRunning()){
+            menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Start completion llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_completion`)
+            })
+        } else {
+            menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Stop completion llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Stops completion llama.cpp server if it was started from llama.vscode menu`)
+            })
+        }
+        menuItems.push(
+            {
+                label: 'Start/change chat model...'
+            })
+        if (!this.app.llamaServer.isChatRunning()){
+            menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Start chat llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_chat`)
+            })
+        } else {
+            menuItems.push(
                 {
-                    label: this.app.extConfig.getUiText("Ask Agent (AI with tools)")??"",
-                    description: this.app.extConfig.getUiText("Ask a question and an agent (AI with tools) will try to answer or do the things.")
-                },
-                {
-                    label: this.app.extConfig.getUiText("Stop Agent Session")??"",
-                    description: this.app.extConfig.getUiText(`Stops the current session of the agent.`)
-                },
-                {
-                    label: "Save project state",
-                    description: "Saves the project state. Later this state could be restored"
-                },
-                {
-                    label: "Show changes...",
-                    description: "Show changes..."
-                },
-                {
-                    label: this.app.extConfig.getUiText("Agent History...")??"",
-                    description: this.app.extConfig.getUiText(`Show history of agent edits.`)
-                }
-                )
+                    label: this.app.extConfig.getUiText("Stop chat llama.cpp server")??"",
+                    description: this.app.extConfig.getUiText(`Stops chat llama.cpp server if it was started from llama.vscode menu`)
+                })
+        }
+        menuItems.push(
+            {
+                label: 'Start/change embeddings model...'
+            })
+
+        if (!this.app.llamaServer.isEmbeddingsRunning()){
+            menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Start embeddings llama.cpp server")??"",
+                description: this.app.extConfig.getUiText(`Runs the command from property launch_embeddings`)
             }
+            )
+        } else {
+            menuItems.push(
+                {
+                    label: this.app.extConfig.getUiText("Stop embeddings llama.cpp server")??"",
+                    description: this.app.extConfig.getUiText(`Stops embeddings llama.cpp server if it was started from llama.vscode menu`)
+                })
+        }
+        menuItems.push(
+            {
+                label: 'Start/change AI with tools model...'
+            })
 
         if (process.platform === 'darwin') { // if mac os
             menuItems.push(
@@ -76,57 +148,9 @@ export class Menu {
                     label: this.app.extConfig.getUiText('Start all models') + ' (>= 32GB VRAM)',
                     description: this.app.extConfig.getUiText(`Requires brew, starts completion, chat and embeddings models`)
                 },
-                {
-                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                },
-                {
-                    label: this.app.extConfig.getUiText('Start embeddings model') + ' Nomic-Embed-Text-V2-GGUF',
-                    description: this.app.extConfig.getUiText(`Requires brew, installs/upgrades llama.cpp server, downloads the model if not available, and runs llama.cpp server`)
-                })
+                )
         }
 
-        menuItems.push(
-            {
-                label: this.app.extConfig.getUiText("Start completion llama.cpp server")??"",
-                description: this.app.extConfig.getUiText(`Runs the command from property launch_completion`)
-            },
-            {
-                label: this.app.extConfig.getUiText("Start chat llama.cpp server")??"",
-                description: this.app.extConfig.getUiText(`Runs the command from property launch_chat`)
-            },
-            {
-                label: this.app.extConfig.getUiText("Start embeddings llama.cpp server")??"",
-                description: this.app.extConfig.getUiText(`Runs the command from property launch_embeddings`)
-            })
         if (this.app.extConfig.launch_training_completion.trim() != "") {
             menuItems.push(
             {
@@ -141,19 +165,6 @@ export class Menu {
                 description: this.app.extConfig.getUiText(`Runs the command from property launch_training_chat`)
             })
         }
-        menuItems.push(
-            {
-                label: this.app.extConfig.getUiText("Stop completion llama.cpp server")??"",
-                description: this.app.extConfig.getUiText(`Stops completion llama.cpp server if it was started from llama.vscode menu`)
-            },
-            {
-                label: this.app.extConfig.getUiText("Stop chat llama.cpp server")??"",
-                description: this.app.extConfig.getUiText(`Stops chat llama.cpp server if it was started from llama.vscode menu`)
-            },
-            {
-                label: this.app.extConfig.getUiText("Stop embeddings llama.cpp server")??"",
-                description: this.app.extConfig.getUiText(`Stops embeddings llama.cpp server if it was started from llama.vscode menu`)
-            })
         if (this.app.extConfig.launch_training_completion.trim() != "" || this.app.extConfig.launch_training_chat.trim() != "") {
             menuItems.push(
             {
@@ -165,20 +176,82 @@ export class Menu {
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
 
-    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {       
+    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {      
         const PRESET_PLACEHOLDER = "[preset]";
         const MODEL_PLACEHOLDER = "[model]";
 
         let { port, portChat, portEmbedding } = this.getPorts();
 
-        let llmMacTemplateVram = " brew install llama.cpp && llama-server --" + PRESET_PLACEHOLDER + " --port " + port
-        let llmMacTemplateCpu = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacTemplateChatVram = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
-        let llmMacTemplateChatCpu = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacTemplateEmbedding = " brew install llama.cpp && llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
+        let llmTemplate = " llama-server -hf " + MODEL_PLACEHOLDER
+        let llmMacTemplateVram = " llama-server --" + PRESET_PLACEHOLDER + " --port " + port
+        let llmMacTemplateCpu = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
+        let llmMacTemplateChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
+        let llmMacTemplateChatCpu = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
+        let llmMacTemplateEmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
         let llmMacAllChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
         let llmMacAllEmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
+        
+        if (selected.label.startsWith(this.app.extConfig.getUiText('Start completion model')??"")){
+                await this.app.llamaServer.killFimCmd();
+                await this.app.llamaServer.shellFimCmd(llmTemplate.replace(MODEL_PLACEHOLDER, this.selectedComplModel[1]) +  " --port " + port);
+                this.app.statusbar.updateStatusBarText();
+                return;
+        } else if (selected.label.startsWith(this.app.extConfig.getUiText('Start chat model')??"")){
+                await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(llmTemplate.replace(MODEL_PLACEHOLDER, this.selectedChatModel[1]) +  " --port " + portChat);
+                this.app.statusbar.updateStatusBarText();
+                return; 
+        } else if (selected.label.startsWith(this.app.extConfig.getUiText('Start embeddings model')??"")){
+                await this.app.llamaServer.killEmbeddingsCmd();
+                await this.app.llamaServer.shellEmbeddingsCmd(llmTemplate.replace(MODEL_PLACEHOLDER, this.selectedEmbeddingsModel[1]) +  " --port " + portEmbedding);
+                this.app.statusbar.updateStatusBarText();
+                return;
+        }
+        
         switch (selected.label) {
+            case 'Show running servers':
+                vscode.window.showInformationMessage("Completion: " + this.selectedComplModel.join(' - '));
+                vscode.window.showInformationMessage("Chat: " + this.selectedChatModel.join(' - '));
+                vscode.window.showInformationMessage("Embeddings: " + this.selectedEmbeddingsModel.join(' - '));
+                break;
+            case "Start/change completion model...":
+                const selectedModel = await vscode.window.showQuickPick(Array.from(this.completionModels.keys()));
+                if (selectedModel) {
+                    this.selectedComplModel = [selectedModel,  this.completionModels.get(selectedModel)??""];
+                    let { port, portChat, portEmbedding } = this.getPorts();
+                    await this.app.llamaServer.killFimCmd();
+                    await this.app.llamaServer.shellFimCmd(this.selectedComplModel[1] +  " --port " + port);
+                }
+                break;
+            case "Start/change chat model...":
+                const chatModel = await vscode.window.showQuickPick(Array.from(this.chatModels.keys()));
+                if (chatModel) {
+                    this.selectedChatModel = [chatModel ,this.chatModels.get(chatModel)??""];
+                    let { port, portChat, portEmbedding } = this.getPorts();
+                    await this.app.llamaServer.killChatCmd();
+                    await this.app.llamaServer.shellChatCmd(this.selectedChatModel[1] +  " --port " + portChat);
+                }
+                break;
+            case "Start/change embeddings model...":
+                const embeddingsModel = await vscode.window.showQuickPick(Array.from(this.embeddingsModels.keys()));
+                if (embeddingsModel) {
+                    this.selectedEmbeddingsModel = [embeddingsModel ,this.embeddingsModels.get(embeddingsModel)??""];
+                    let { port, portChat, portEmbedding } = this.getPorts();
+                    await this.app.llamaServer.killEmbeddingsCmd();
+                    await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel[1] +  " --port " + portEmbedding);
+                }
+                break;
+            case "Start/change AI with tools model...":
+                const toolsModel = await vscode.window.showQuickPick(Array.from(this.toolsModels.keys()));
+                if (toolsModel) {
+                    this.selectedToolsModel = [toolsModel ,this.toolsModels.get(toolsModel)??""];
+                    const config = this.app.extConfig.config;
+                    await config.update('endpoint_tools', "https://openrouter.ai/api", true);
+                    await config.update('ai_model', this.selectedToolsModel[1], true);
+                    vscode.window.showInformationMessage("Make sure the extension setting Api_key_tools contains your OpenRouter API key.")
+                     
+                }
+                break;
             case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
@@ -193,42 +266,6 @@ export class Menu {
                     await this.app.llamaServer.shellEmbeddingsCmd(llmMacAllEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
                 }, 5000);
                 break;
-            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)':
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-1.5b-default"));
-                break;
-            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)':
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-3b-default"));
-                break;
-            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)':
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
-                break;
-            case this.app.extConfig.getUiText('Start completion model') + ' Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)':
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacTemplateCpu.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF"));
-                break;
-            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)':
-                await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
-                break;
-            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)':
-                await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF"));
-                break;
-            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)':
-                await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
-                break;
-            case this.app.extConfig.getUiText('Start chat model') + ' Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)':
-                await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmMacTemplateChatCpu.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF"));
-                break;
-            case this.app.extConfig.getUiText('Start embeddings model') + ' Nomic-Embed-Text-V2-GGUF':
-                await this.app.llamaServer.killEmbeddingsCmd();
-                await this.app.llamaServer.shellEmbeddingsCmd(llmMacTemplateEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
-                break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
                 let commandCompletion = this.app.extConfig.launch_completion
@@ -236,6 +273,7 @@ export class Menu {
                     && this.app.extConfig.lora_completion.trim() != "undefined"
                     && this.app.extConfig.lora_completion.trim() != "") commandCompletion += " --lora " + this.app.extConfig.lora_completion
                 await this.app.llamaServer.shellFimCmd(commandCompletion);
+                this.selectedComplModel = ["launch_completion", this.app.extConfig.launch_completion]
                 break;
             case this.app.extConfig.getUiText('Start chat llama.cpp server'):
                 await this.app.llamaServer.killChatCmd();
@@ -244,11 +282,13 @@ export class Menu {
                     && this.app.extConfig.lora_chat.trim() != "undefined"
                     && this.app.extConfig.lora_chat.trim() != "") commandChat += " --lora " + this.app.extConfig.lora_chat
                 await this.app.llamaServer.shellChatCmd(commandChat);
+                this.selectedChatModel = ["launch_chat", this.app.extConfig.launch_chat]
                 break;
             case this.app.extConfig.getUiText('Start embeddings llama.cpp server'):
                 await this.app.llamaServer.killEmbeddingsCmd();
                 let commandEmbeddings = this.app.extConfig.launch_embeddings
                 await this.app.llamaServer.shellEmbeddingsCmd(commandEmbeddings);
+                this.selectedEmbeddingsModel = ["launch_embeddings", this.app.extConfig.launch_embeddings]
                 break;
             case this.app.extConfig.getUiText('Start training completion model'):
                 await this.app.llamaServer.killTrainCmd();
@@ -260,12 +300,15 @@ export class Menu {
                 break;
             case this.app.extConfig.getUiText("Stop completion llama.cpp server"):
                 await this.app.llamaServer.killFimCmd();
+                this.selectedComplModel = ["", ""];
                 break;
             case this.app.extConfig.getUiText("Stop embeddings llama.cpp server"):
                 await this.app.llamaServer.killEmbeddingsCmd();
+                this.selectedEmbeddingsModel = ["", ""];
                 break;
             case this.app.extConfig.getUiText("Stop chat llama.cpp server"):
                 await this.app.llamaServer.killChatCmd();
+                this.selectedChatModel = ["", ""];
                 break;
             case this.app.extConfig.getUiText("Stop training"):
                 await this.app.llamaServer.killTrainCmd();
@@ -273,39 +316,8 @@ export class Menu {
             case "$(book) " + this.app.extConfig.getUiText("View Documentation..."):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
                 break;
-            case "$(window) Open AI with tools":
-                // Open the webview and send a welcome message
-                await vscode.commands.executeCommand('extension.showLlamaWebview');
-                // Show a notification to help with debugging
-                vscode.window.showInformationMessage('Llama AI with tools opened. Check the Explorer panel for the Llama AI with tools view.');
-                // Send a message to the webview to display the welcome text
-                setTimeout(() => {
-                    vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
-                        command: 'updateText',
-                        text: 'Welcome to the Llama AI with tools!'
-                    });
-                }, 2000); // Increased delay to ensure webview is fully loaded
-                break;
             case this.app.extConfig.getUiText("Chat with AI"):
                 this.app.askAi.showChatWithAi(false, context);
-                break;
-            case "Save project state":
-                await this.app.shadowGit.addChanges();
-                this.app.shadowGit.git?.commit((new Date).toISOString());
-                vscode.window.showInformationMessage("Project state saved!")
-                break;
-            case "Show changes...":
-                const hist = await this.app.shadowGit.getHistory(5);
-                const itemsList = hist.map((commit: { message: any; hash: string; }) => ({
-                    label: commit.message,
-                    description: commit.hash.substring(0, 8),
-                    commit
-                })); 
-                const selectedCommit = await vscode.window.showQuickPick(itemsList);
-                if (selectedCommit) {
-                    let diff = await this.app.shadowGit.getDiffSet(selectedCommit.commit.hash)
-                    vscode.window.showInformationMessage(`file: ${diff[0].absolutePath} \nbefore: ${diff[0].before} \nafter: ${diff[0].after}`);
-                }
                 break;
             case "Install/upgrade llama.cpp":
                 if (process.platform != 'darwin' && process.platform != 'win32') {
@@ -318,25 +330,6 @@ export class Menu {
                 break;
             case this.app.extConfig.getUiText("Chat with AI with project context"):
                 this.app.askAi.showChatWithAi(true, context)
-                break;
-            case this.app.extConfig.getUiText("Ask Agent (AI with tools)"):
-                this.app.askAi.showChatWithTools(context);
-                break;
-            case this.app.extConfig.getUiText("Stop Agent Session"):
-                this.app.agent.stopAgent();
-                break;
-            case this.app.extConfig.getUiText("Agent History..."):
-                const history = await this.app.shadowGit.getHistory(5);
-                const items = history.map((commit: { message: any; hash: string; }) => ({
-                    label: commit.hash.substring(0, 8),
-                    description: this.app.extConfig.getUiText("Restore to") + " " + commit.message,
-                    commit
-                })); 
-                const selectedQp = await vscode.window.showQuickPick(items);
-                if (selectedQp) {
-                    this.app.shadowGit.restoreToCommit(selectedQp.commit.hash)
-                    vscode.window.showInformationMessage(`Project restored to commit: ${selectedQp.commit.message} (${selectedQp.commit.hash})`);
-                }
                 break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);

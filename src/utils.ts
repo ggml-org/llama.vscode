@@ -14,6 +14,8 @@ interface BM25Stats {
 }
 
 export class Utils {
+    static MSG_NO_UESR_PERMISSION = "The user doesn't give a permission to execute the request!";
+
     static getLeadingSpaces = (input: string): string => {
         // Match the leading spaces using a regular expression
         const match = input.match(/^[ \t]*/);
@@ -580,5 +582,64 @@ export class Utils {
             part2.slice(1).join('\n'),
             part3.slice(1).join('\n')
         ];
+    }
+
+    static showYesNoPopup = (message: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+            const panel = vscode.window.createWebviewPanel(
+            'yesNoPopup',
+            'Confirmation',
+            { viewColumn: vscode.ViewColumn.One, preserveFocus: true },
+            { enableScripts: true }
+            );
+
+            panel.webview.html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <style>
+                body {
+                    font-family: var(--vscode-font-family);
+                    padding: 16px;
+                    text-align: center;
+                }
+                .message {
+                    margin-bottom: 20px;
+                    white-space: pre-wrap;
+                }
+                .button {
+                    margin: 0 8px;
+                    padding: 4px 12px;
+                    border: none;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                }
+                .button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                </style>
+            </head>
+            <body>
+                <div class="message">${message.replace(/\n/g, '<br>')}</div>
+                <button class="button" onclick="respond(true)">Yes</button>
+                <button class="button" onclick="respond(false)">No</button>
+                <script>
+                const vscode = acquireVsCodeApi();
+                function respond(answer) {
+                    vscode.postMessage({ command: 'answer', value: answer });
+                }
+                </script>
+            </body>
+            </html>
+            `;
+
+            panel.webview.onDidReceiveMessage((message) => {
+            if (message.command === 'answer') {
+                resolve(message.value);
+                panel.dispose();
+            }
+            });
+        });
     }
 }

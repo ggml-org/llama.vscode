@@ -80,9 +80,13 @@ export class LlamaAgent {
             this.logInUi(this.logText);
             
             let currentCycleStartTime = Date.now();
+            let changedFiles = []
+            let deletedFiles = []
             while (iterationsCount < this.app.extConfig.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
+                    this.logText += "\n\n" + "Session stopped." + "\n"
+                    this.logInUi(this.logText);
                     return "agent stopped"
                 }
                 iterationsCount++;
@@ -101,10 +105,12 @@ export class LlamaAgent {
                 this.logInUi(this.logText);
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
+                    this.logText += "\n\n" + "Session stopped." + "\n"
+                    this.logInUi(this.logText);
                     return "agent stopped"
                 }
                 this.messages.push(data.choices[0].message);
-                if (finishReason != "tool_calls") break;
+                if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)) break;
                 let toolCalls:any = data.choices[0].message.tool_calls;
                 if (toolCalls != undefined && toolCalls.length > 0){
                     for (const oneToolCall of toolCalls){
@@ -116,15 +122,17 @@ export class LlamaAgent {
                             let commandOutput = "Tool not found";
                             if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
                                 const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
+                                let commandDescription = ""
                                 if (toolFuncDesc){
-                                    this.logText += await toolFuncDesc(oneToolCall.function.arguments);
-                                    this.logText += "\n\n"
+                                    commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
+                                    this.logText += commandDescription + "\n\n"
                                     this.logInUi(this.logText);
                                 }   
                                 const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                 if (toolFunc) {
                                     commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                    if (oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "delete_file") areFilesChanged = true;
+                                    if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.push(commandDescription);
+                                    if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.push(commandDescription);
                                 }
                             }
                             if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
@@ -144,12 +152,10 @@ export class LlamaAgent {
                     }
                 }
             }
-            this.logText += "\n\n AI with tools session finished. \n\n"
-            if (areFilesChanged){
-                //Commiting a checkpoint in shadow git
-                await this.app.shadowGit.addChanges();
-                this.app.shadowGit.git?.commit((new Date).toISOString() + " " + commitMessage);
-            }
+            if (changedFiles.length + deletedFiles.length > 0) this.logText += "\n\nFiles changes:\n"
+            if (changedFiles.length > 0) this.logText += changedFiles.join("\n") + "\n"
+            if (deletedFiles.length > 0) this.logText += deletedFiles.join("\n") + "\n"
+            this.logText += "\n\nAI with tools session finished. \n\n"
             this.logInUi(this.logText);
             return response;
         }  

@@ -487,15 +487,39 @@ export class LlamaServer {
     }
 
     killFimCmd = (): void => {
-        if (this.vsCodeFimTerminal) this.vsCodeFimTerminal.dispose();
+        if (this.vsCodeFimTerminal) {
+            this.vsCodeFimTerminal.dispose();
+            this.vsCodeFimTerminal = undefined;
+        }
+    }
+
+    isFimRunning = (): boolean => {
+        if (this.vsCodeFimTerminal) return true;
+        else return false;
     }
 
     killChatCmd = (): void => {
-        if (this.vsCodeChatTerminal) this.vsCodeChatTerminal.dispose();
+        if (this.vsCodeChatTerminal) {
+            this.vsCodeChatTerminal.dispose();
+            this.vsCodeChatTerminal = undefined;
+        }
+    }
+
+    isChatRunning = (): boolean => {
+        if (this.vsCodeChatTerminal) return true;
+        else return false;
     }
 
     killEmbeddingsCmd = (): void => {
-        if (this.vsCodeEmbeddingsTerminal) this.vsCodeEmbeddingsTerminal.dispose();
+        if (this.vsCodeEmbeddingsTerminal) {
+            this.vsCodeEmbeddingsTerminal.dispose();
+            this.vsCodeEmbeddingsTerminal = undefined;
+        }
+    }
+
+    isEmbeddingsRunning = (): boolean => {
+        if (this.vsCodeEmbeddingsTerminal) return true;
+        else return false;
     }
 
     killTrainCmd = (): void => {

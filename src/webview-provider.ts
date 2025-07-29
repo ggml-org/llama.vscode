@@ -52,6 +52,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'configureTools':
                         await this.app.tools.selectTools()
                         break;
+                    case 'stopSession':
+                        this.app.agent.stopAgent();
+                        break;
                 }
             }
         );
@@ -60,7 +63,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         setTimeout(() => {
             webviewView.webview.postMessage({
                 command: 'updateText',
-                text: 'Welcome to the webui! (Initial message)'
+                text: 'Welcome to llama AI with tools'
             });
         }, 1000);
     }

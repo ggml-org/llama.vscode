@@ -155,7 +155,7 @@ export class Tools {
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
             if (  !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
-                return "The user doesn't give a permission to delete file " + absolutePath;
+                return Utils.MSG_NO_UESR_PERMISSION;
 
             }
             if (!fs.existsSync(absolutePath)) {
@@ -176,12 +176,12 @@ export class Tools {
         let params = JSON.parse(args);
         let filePath = params.file_path;
         
-        return "Deleting file: " + filePath;
+        return "Deleted file: " + filePath;
     }
 
     public getDiff = async (args: string) => {
         try {
-            const diff = await this.app.shadowGit.git?.diff(['HEAD']);
+            const diff = await this.app.git.getLatestChanges();
             console.log('Changes since last commit:', diff);
             return diff??"";
         } catch (error) {
@@ -198,6 +198,9 @@ export class Tools {
         let params = JSON.parse(args);
         let changes = params.input;
         try {
+            if (!await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
+                return Utils.MSG_NO_UESR_PERMISSION;
+            }
             await Utils.applyEdits(changes)
             return "The file is updated ";
         } catch (error) {
@@ -218,7 +221,7 @@ export class Tools {
             }
         }
         
-        return "Editing file " + filePath;
+        return "Edited file " + filePath;
     }
 
     public askUser = async (args: string) => {

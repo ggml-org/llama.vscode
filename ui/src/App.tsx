@@ -16,7 +16,7 @@ const vscode = window.acquireVsCodeApi();
 interface AppProps {}
 
 const App: React.FC<AppProps> = () => {
-  const [displayText, setDisplayText] = useState<string>('Welcome to Llama VS Code UI!');
+  const [displayText, setDisplayText] = useState<string>('Welcome to Llama AI with tools UI!');
   const [inputText, setInputText] = useState<string>('');
 
   useEffect(() => {
@@ -54,6 +54,14 @@ const App: React.FC<AppProps> = () => {
     // send command configure tools to extension
     vscode.postMessage({
       command: 'configureTools',
+      text: inputText
+    });
+  };
+
+  const handleStopSession = () => {
+    // send command configure tools to extension
+    vscode.postMessage({
+      command: 'stopSession',
       text: inputText
     });
   };
@@ -97,6 +105,9 @@ const App: React.FC<AppProps> = () => {
               </button>
               <button onClick={handleConfigureTools} className="send-btn">
                 Tools
+              </button>
+              <button onClick={handleStopSession} className="send-btn">
+                Stop Session
               </button>
             </div>
           </div>

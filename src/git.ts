@@ -61,4 +61,40 @@ export class Git {
             vscode.window.showErrorMessage(`errors in generateCommitMessage: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
+
+    getLatestChanges = async (): Promise<string> => {
+        const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
+        const git = gitExtension?.getAPI(1);
+        if (!git) {
+            vscode.window.showErrorMessage('extension vscode.git not found');
+            return "";
+        }
+
+        if (git.repositories.length === 0) {
+            vscode.window.showErrorMessage('can`t use on non git dir');
+            return "";
+        }
+        const repo = git.repositories[0];
+
+        try {
+            let diff = await repo.diff(true);
+
+            if (!diff || diff.trim() === '') {
+                // use unstaged change
+                diff = await repo.diff(false);
+                if (!diff || diff.trim() === '') {
+                    vscode.window.showWarningMessage('git diff is empty');
+                    return "";
+                }
+                vscode.window.showWarningMessage('git staged change is empty, using unstaged change');
+            }
+
+
+            return diff??"";
+            
+        } catch (error) {
+            vscode.window.showErrorMessage(`errors in generateCommitMessage: ${error instanceof Error ? error.message : String(error)}`);
+            return "";
+        }
+    }
 }
