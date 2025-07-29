@@ -139,7 +139,7 @@ export class Menu {
         }
         menuItems.push(
             {
-                label: 'Start/change AI with tools model...'
+                label: 'Select/change AI with tools model from OpenRouter...'
             })
 
         if (process.platform === 'darwin') { // if mac os
@@ -213,6 +213,7 @@ export class Menu {
                 vscode.window.showInformationMessage("Completion: " + this.selectedComplModel.join(' - '));
                 vscode.window.showInformationMessage("Chat: " + this.selectedChatModel.join(' - '));
                 vscode.window.showInformationMessage("Embeddings: " + this.selectedEmbeddingsModel.join(' - '));
+                vscode.window.showInformationMessage("Tools: " + this.selectedToolsModel.join(' - '));
                 break;
             case "Start/change completion model...":
                 const selectedModel = await vscode.window.showQuickPick(Array.from(this.completionModels.keys()));
@@ -241,7 +242,7 @@ export class Menu {
                     await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel[1] +  " --port " + portEmbedding);
                 }
                 break;
-            case "Start/change AI with tools model...":
+            case "Select/change AI with tools model from OpenRouter...":
                 const toolsModel = await vscode.window.showQuickPick(Array.from(this.toolsModels.keys()));
                 if (toolsModel) {
                     this.selectedToolsModel = [toolsModel ,this.toolsModels.get(toolsModel)??""];

@@ -90,66 +90,74 @@ export class LlamaAgent {
                     return "agent stopped"
                 }
                 iterationsCount++;
-                let data:any = await this.app.llamaServer.getToolsCompletion(this.messages);
-                if (!data) {
-                    this.outputChannel.appendLine(this.app.extConfig.getUiText("No response from AI")??"")
-                    this.logText += "No response from AI" + "\n"
+                try {
+                    let data:any = await this.app.llamaServer.getToolsCompletion(this.messages);
+                    if (!data) {
+                        this.outputChannel.appendLine(this.app.extConfig.getUiText("No response from AI")??"")
+                        this.logText += "No response from AI" + "\n"
+                        this.logInUi(this.logText);
+                        this.app.statusbar.showTextInfo("answer ready");
+                        return "No response from AI";
+                    }
+                    finishReason = data.choices[0].finish_reason;
+                    response = data.choices[0].message.content;
+                    this.outputChannel.appendLine(response + "\n")
+                    this.logText += response + "\n" + "Iteration: " + iterationsCount + "\n"
                     this.logInUi(this.logText);
-                    this.app.statusbar.showTextInfo("answer ready");
-                    return "No response from AI";
-                }
-                finishReason = data.choices[0].finish_reason;
-                response = data.choices[0].message.content;
-                this.outputChannel.appendLine(response + "\n")
-                this.logText += response + "\n" + "Iteration: " + iterationsCount + "\n"
-                this.logInUi(this.logText);
-                if (currentCycleStartTime < this.lastStopRequestTime) {
-                    this.app.statusbar.showTextInfo("agent stopped");
-                    this.logText += "\n\n" + "Session stopped." + "\n"
-                    this.logInUi(this.logText);
-                    return "agent stopped"
-                }
-                this.messages.push(data.choices[0].message);
-                if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)) break;
-                let toolCalls:any = data.choices[0].message.tool_calls;
-                if (toolCalls != undefined && toolCalls.length > 0){
-                    for (const oneToolCall of toolCalls){
-                        if (oneToolCall && oneToolCall.function){
-                            this.outputChannel.appendLine("tool: " + oneToolCall.function.name + "\narguments: " + oneToolCall.function.arguments)
-                            this.logText += "\ntool: " + oneToolCall.function.name + "\n";
-                            if (this.app.extConfig.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
-                            this.logInUi(this.logText);
-                            let commandOutput = "Tool not found";
-                            if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
-                                const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
-                                let commandDescription = ""
-                                if (toolFuncDesc){
-                                    commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
-                                    this.logText += commandDescription + "\n\n"
-                                    this.logInUi(this.logText);
-                                }   
-                                const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
-                                if (toolFunc) {
-                                    commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                    if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.push(commandDescription);
-                                    if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.push(commandDescription);
-                                }
-                            }
-                            if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
-                                let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
-                                commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
-                            }
-                            this.outputChannel.appendLine("result: " + commandOutput)
-                            if (this.app.extConfig.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
-                            this.logInUi(this.logText);
-                            toolCallsResult = {           
-                                        "role": "tool",
-                                        "tool_call_id": oneToolCall.id,
-                                        "content": commandOutput
+                    if (currentCycleStartTime < this.lastStopRequestTime) {
+                        this.app.statusbar.showTextInfo("agent stopped");
+                        this.logText += "\n\n" + "Session stopped." + "\n"
+                        this.logInUi(this.logText);
+                        return "agent stopped"
+                    }
+                    this.messages.push(data.choices[0].message);
+                    if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)) break;
+                    let toolCalls:any = data.choices[0].message.tool_calls;
+                    if (toolCalls != undefined && toolCalls.length > 0){
+                        for (const oneToolCall of toolCalls){
+                            if (oneToolCall && oneToolCall.function){
+                                this.outputChannel.appendLine("tool: " + oneToolCall.function.name + "\narguments: " + oneToolCall.function.arguments)
+                                this.logText += "\ntool: " + oneToolCall.function.name + "\n";
+                                if (this.app.extConfig.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
+                                this.logInUi(this.logText);
+                                let commandOutput = "Tool not found";
+                                if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
+                                    const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
+                                    let commandDescription = ""
+                                    if (toolFuncDesc){
+                                        commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
+                                        this.logText += commandDescription + "\n\n"
+                                        this.logInUi(this.logText);
+                                    }   
+                                    const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
+                                    if (toolFunc) {
+                                        commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                        if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.push(commandDescription);
+                                        if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.push(commandDescription);
                                     }
-                            this.messages.push(toolCallsResult)
+                                }
+                                if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
+                                    let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
+                                    commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
+                                }
+                                this.outputChannel.appendLine("result: " + commandOutput)
+                                if (this.app.extConfig.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
+                                this.logInUi(this.logText);
+                                toolCallsResult = {           
+                                            "role": "tool",
+                                            "tool_call_id": oneToolCall.id,
+                                            "content": commandOutput
+                                        }
+                                this.messages.push(toolCallsResult)
+                            }
                         }
                     }
+                } catch (error) {
+                    // Handle the error
+                    console.error("An error occurred:", error);
+                    this.logText += "An error occurred: " + error;
+                    this.logInUi(this.logText);
+                    return "An error occurred: " + error;
                 }
             }
             if (changedFiles.length + deletedFiles.length > 0) this.logText += "\n\nFiles changes:\n"
