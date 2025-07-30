@@ -16,8 +16,22 @@ const vscode = window.acquireVsCodeApi();
 interface AppProps {}
 
 const App: React.FC<AppProps> = () => {
-  const [displayText, setDisplayText] = useState<string>('Welcome to Llama AI with tools UI!');
-  const [inputText, setInputText] = useState<string>('');
+  // Initialize state from VS Code's persisted state or defaults
+  const initialState = vscode.getState() || {};
+  const [displayText, setDisplayText] = useState<string>(
+    initialState.displayText || ''
+  );
+  const [inputText, setInputText] = useState<string>(
+    initialState.inputText || ''
+  );
+
+  // Save state to VS Code whenever it changes
+  useEffect(() => {
+    vscode.setState({
+      displayText,
+      inputText
+    });
+  }, [displayText, inputText]);
 
   useEffect(() => {
     // Listen for messages from the extension
