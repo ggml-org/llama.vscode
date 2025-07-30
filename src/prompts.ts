@@ -189,7 +189,7 @@ def new_function():
 ## Important Guidelines  
   
 1. Always include the EXACT file path as shown in the context  
-2. Make sure the SEARCH block EXACTLY matches the existing content  
+2. Make sure the SEARCH block starts with <<<<<<< SEARCH and EXACTLY matches the existing content  
 3. Break large changes into multiple smaller, focused calls to the tool  
 4. Only edit files that are already read  
 5. Explain your changes before presenting the SEARCH/REPLACE blocks  

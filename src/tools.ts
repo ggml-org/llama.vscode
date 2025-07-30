@@ -154,7 +154,7 @@ export class Tools {
         let filePath = params.file_path;
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
-            if (  !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
+            if (!this.app.extConfig.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
                 return Utils.MSG_NO_UESR_PERMISSION;
 
             }
@@ -198,7 +198,7 @@ export class Tools {
         let params = JSON.parse(args);
         let changes = params.input;
         try {
-            if (!await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
+            if (!this.app.extConfig.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
                 return Utils.MSG_NO_UESR_PERMISSION;
             }
             await Utils.applyEdits(changes)
@@ -213,6 +213,7 @@ export class Tools {
         let params = JSON.parse(args);
         let filePath = ""
         let diffText = params.input;
+        if (!diffText) return "EditFile Desc - parameter input not found."
         const blocks = diffText.split("```diff")
         if (blocks.slice(1).length > 0){
             let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0])

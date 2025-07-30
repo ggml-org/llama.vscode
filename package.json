@@ -406,6 +406,11 @@
           "default": false,
           "description": "Permit AI to execute some safe terminal commands, which do not change the environment (no guarantee) "
         },
+        "llama-vscode.tool_permit_file_changes": {
+          "type": "boolean",
+          "default": false,
+          "description": "Permit AI to edit and delete files without user confirmation"
+        },
         "llama-vscode.tool_search_source_enabled": {
           "type": "boolean",
           "default": true,

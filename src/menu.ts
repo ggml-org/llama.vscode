@@ -22,7 +22,10 @@ export class Menu {
     ]);
     private selectedEmbeddingsModel: [string, string] = ["", ""]
     private toolsModels = new Map<string, string>([
+        ["Z.AI: GLM 4.5 - 128,000 context, $0.60/M input tokens, $2.20/M output tokens", "z-ai/glm-4.5"],
+        ["Z.AI: GLM 4.5 Air - 128,000 context, $0.20/M input tokens, $1.10/M output tokens", "z-ai/glm-4.5-air"],
         ["Qwen: Qwen3 Coder (free) - 262K context, $0/M input tokens, $0/M output tokens", "qwen/qwen3-coder:free"],
+        ["Qwen: Qwen3 235B A22B Thinking 2507 - 262,144 context, $0.118/M input tokens, $0.118/M output tokens", "qwen/qwen3-235b-a22b-thinking-2507"],
         ["Qwen: Qwen3 Coder - 262K context, $0,30/M input tokens, $1,20/M output tokens", "qwen/qwen3-coder"],
         ["Qwen: Qwen3 235B A22B Instruct 2507 - 262K context, $0,12/M input tokens, $0,59/M output tokens", "qwen/qwen3-235b-a22b-2507"],
         ["MoonshotAI: Kimi K2 (free) - 131K context, $0/M input tokens, $0/M output tokens", "moonshotai/kimi-k2:free"],

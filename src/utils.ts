@@ -509,6 +509,7 @@ export class Utils {
     static  applyEdits = async (diffText: string) => {
         // Extract edit blocks from the diff-fenced format
         let editBlocks: string[][] = [];
+        if (!diffText) return "Edit file: The input parameter is missing!";
         const blocks = diffText.split("```diff")
         for (const block of blocks.slice(1)){
             editBlocks.push(Utils.extractConflictParts("```diff" + block))

@@ -62,6 +62,7 @@ export class Configuration {
     tool_regex_search_enabled = true;
     tool_delete_file_enabled = true;
     tool_permit_some_terminal_commands = false;
+    tool_permit_file_changes = false
     tool_get_diff_enabled = false;
     tool_edit_file_enabled = true;
     tool_ask_user_enabled = true;
@@ -175,6 +176,7 @@ export class Configuration {
         this.tool_regex_search_enabled = Boolean(config.get<boolean>("tool_regex_search_enabled"));
         this.tool_delete_file_enabled = Boolean(config.get<boolean>("tool_delete_file_enabled"));
         this.tool_permit_some_terminal_commands = Boolean(config.get<boolean>("tool_permit_some_terminal_commands"));
+        this.tool_permit_file_changes = Boolean(config.get<boolean>("tool_permit_file_changes"));
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));

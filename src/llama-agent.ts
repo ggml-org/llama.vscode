@@ -111,7 +111,12 @@ export class LlamaAgent {
                         return "agent stopped"
                     }
                     this.messages.push(data.choices[0].message);
-                    if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)) break;
+                    if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
+                        this.logText += "\n\n" + "Finish reason: " + finishReason + "\n"
+                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "\n"
+                        this.logInUi(this.logText);
+                        break;
+                    }
                     let toolCalls:any = data.choices[0].message.tool_calls;
                     if (toolCalls != undefined && toolCalls.length > 0){
                         for (const oneToolCall of toolCalls){
@@ -155,7 +160,7 @@ export class LlamaAgent {
                 } catch (error) {
                     // Handle the error
                     console.error("An error occurred:", error);
-                    this.logText += "An error occurred: " + error;
+                    this.logText += "An error occurred: " + error + "\n\n";
                     this.logInUi(this.logText);
                     return "An error occurred: " + error;
                 }

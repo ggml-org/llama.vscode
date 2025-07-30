@@ -421,7 +421,7 @@ export class LlamaServer {
         }
         try {
             this.vsCodeChatTerminal = vscode.window.createTerminal({
-                name: 'llama.cpp Completion Terminal'
+                name: 'llama.cpp Chat Terminal'
             });
             this.vsCodeChatTerminal.show(true);
             this.vsCodeChatTerminal.sendText(launchCmd);
