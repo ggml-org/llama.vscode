@@ -24,14 +24,14 @@ export class Completion {
     // Class field is used instead of a function to make "this" available
     getCompletionItems = async (document: vscode.TextDocument, position: vscode.Position, context: vscode.InlineCompletionContext, token: vscode.CancellationToken): Promise<vscode.InlineCompletionList | vscode.InlineCompletionItem[] | null> => {
         let group = "GET_COMPLETION_" + Date.now();
-        if (!this.app.extConfig.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
+        if (!this.app.configuration.auto && context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic) {
             this.app.logger.addEventLog(group, "MANUAL_MODE_AUTOMATIC_TRIGGERING_RETURN", "")
             return null;
         }
 
         // Start only if the previous request is finiched
         while (this.isRequestInProgress) {
-            await Utils.delay(this.app.extConfig.DELAY_BEFORE_COMPL_REQUEST);
+            await Utils.delay(this.app.configuration.DELAY_BEFORE_COMPL_REQUEST);
             if (token.isCancellationRequested) {
                 this.app.logger.addEventLog(group, "CANCELLATION_TOKEN_RETURN", "waiting")
                 return null;
@@ -41,14 +41,14 @@ export class Completion {
         this.app.extraContext.lastComplStartTime = Date.now();
 
         // Gather local context
-        const prefixLines = Utils.getPrefixLines(document, position, this.app.extConfig.n_prefix);
-        const suffixLines = Utils.getSuffixLines(document, position, this.app.extConfig.n_suffix);
+        const prefixLines = Utils.getPrefixLines(document, position, this.app.configuration.n_prefix);
+        const suffixLines = Utils.getSuffixLines(document, position, this.app.configuration.n_suffix);
         const lineText = document.lineAt(position.line).text
         const cursorIndex = position.character;
         const linePrefix = lineText.slice(0, cursorIndex);
         const lineSuffix = lineText.slice(cursorIndex);
         const nindent = lineText.length - lineText.trimStart().length
-        if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && lineSuffix.length > this.app.extConfig.max_line_suffix) {
+        if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && lineSuffix.length > this.app.configuration.max_line_suffix) {
             this.isRequestInProgress = false
             this.app.logger.addEventLog(group, "TOO_LONG_SUFFIX_RETURN", "")
             return null
@@ -120,7 +120,7 @@ export class Completion {
             return [this.getCompletion(this.removeLeadingSpaces(completion, spacesToRemove), position)];
         } catch (err) {
             console.error("Error fetching llama completion:", err);
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText(`Error getting response. Please check if llama.cpp server is running.`)??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText(`Error getting response. Please check if llama.cpp server is running.`)??"");
             let errorMessage = "Error fetching completion"
             if (err instanceof Error) {
                 vscode.window.showInformationMessage(err.message);
@@ -233,8 +233,8 @@ export class Completion {
             futureInputPrefix = inputPrefix + prompt + suggestionLines.slice(0, -1).join('\n') + '\n';
             futurePrompt = suggestionLines[suggestionLines.length - 1];
             let futureInputPrefixLines = futureInputPrefix.slice(0,-1).split(/\r?\n/)
-            if (futureInputPrefixLines.length > this.app.extConfig.n_prefix){
-                futureInputPrefix = futureInputPrefixLines.slice(futureInputPrefixLines.length - this.app.extConfig.n_prefix).join('\n')+ '\n';
+            if (futureInputPrefixLines.length > this.app.configuration.n_prefix){
+                futureInputPrefix = futureInputPrefixLines.slice(futureInputPrefixLines.length - this.app.configuration.n_prefix).join('\n')+ '\n';
             }
         }
         let futureHashKey = this.app.lruResultCache.getHash(futureInputPrefix + "|" + futureInputSuffix + "|" + futurePrompt)

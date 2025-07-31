@@ -85,21 +85,21 @@ export class LlamaServer {
         prompt: string,
         isPreparation = false
     ): Promise<LlamaResponse | void> {
-        const client = this.app.extConfig.openai_client;
+        const client = this.app.configuration.openai_client;
         if (!client) return;
 
         const additional_context = chunks.length > 0 ? "Context:\n\n" + chunks.join("\n") : "";
 
         const replacements = {
-            inputPrefix: inputPrefix.slice(-this.app.extConfig.n_prefix),
+            inputPrefix: inputPrefix.slice(-this.app.configuration.n_prefix),
             prompt: prompt,
-            inputSuffix: inputSuffix.slice(0, this.app.extConfig.n_suffix),
+            inputSuffix: inputSuffix.slice(0, this.app.configuration.n_suffix),
         };
 
         const rsp = await client.completions.create({
-            model: this.app.extConfig.openai_client_model || "",
-            prompt: additional_context + this. app.prompts.replacePlaceholders(this.app.extConfig.openai_prompt_template, replacements),
-            max_tokens: this.app.extConfig.n_predict,
+            model: this.app.configuration.openai_client_model || "",
+            prompt: additional_context + this. app.prompts.replacePlaceholders(this.app.configuration.openai_prompt_template, replacements),
+            max_tokens: this.app.configuration.n_predict,
             temperature: 0.1,
             top_p: this.defaultRequestParams.top_p,
             stream: this.defaultRequestParams.stream,
@@ -132,9 +132,9 @@ export class LlamaServer {
                 n_predict: 0,
                 samplers: [],
                 cache_prompt: true,
-                t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
+                t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
                 t_max_predict_ms: 1,
-                ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+                ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
             };
         }
 
@@ -143,12 +143,12 @@ export class LlamaServer {
             input_suffix: inputSuffix,
             input_extra: chunks,
             prompt,
-            n_predict: this.app.extConfig.n_predict,
+            n_predict: this.app.configuration.n_predict,
             ...this.defaultRequestParams,
             ...(nindent && { n_indent: nindent }),
-            t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
-            t_max_predict_ms: this.app.extConfig.t_max_predict_ms,
-            ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
+            t_max_predict_ms: this.app.configuration.t_max_predict_ms,
+            ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
         };
     }
 
@@ -174,9 +174,9 @@ export class LlamaServer {
                 n_predict: 0,
                 samplers: [],
                 cache_prompt: true,
-                t_max_prompt_ms: this.app.extConfig.t_max_prompt_ms,
+                t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
                 t_max_predict_ms: 1,
-                ...(this.app.extConfig.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+                ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
             };
         }
         const replacements = {
@@ -216,7 +216,7 @@ export class LlamaServer {
             "dry_penalty_last_n": -1,
             "max_tokens": -1,
             "timings_per_token": false,
-            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
           };
     }
 
@@ -254,8 +254,8 @@ export class LlamaServer {
             // "dry_penalty_last_n": -1,
             // "max_tokens": -1,
             // "timings_per_token": false,
-            ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            ...(this.app.extConfig.ai_model.trim() != "" && { model: this.app.extConfig.ai_model}),
+            ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+            ...(this.app.configuration.ai_model.trim() != "" && { model: this.app.configuration.ai_model}),
           };
     }
 
@@ -286,7 +286,7 @@ export class LlamaServer {
                 // "max_tokens": -1,
                 // "timings_per_token": false,
                 // ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-                ...(this.app.extConfig.ai_model.trim() != "" && { model: this.app.extConfig.ai_model}),
+                ...(this.app.configuration.ai_model.trim() != "" && { model: this.app.configuration.ai_model}),
                 "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
                 "tool_choice": "auto"
             };
@@ -300,16 +300,16 @@ export class LlamaServer {
         nindent: number
     ): Promise<LlamaResponse | undefined> => {
         // If the server is OpenAI compatible, use the OpenAI API to get the completion
-        if (this.app.extConfig.use_openai_endpoint) {
+        if (this.app.configuration.use_openai_endpoint) {
             const response = await this.handleOpenAICompletion(chunks, inputPrefix, inputSuffix, prompt);
             return response || undefined;
         }
 
         // else, default to llama.cpp
         const response = await axios.post<LlamaResponse>(
-            `${this.app.extConfig.endpoint}/infill`,
+            `${this.app.configuration.endpoint}/infill`,
             this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, nindent),
-            this.app.extConfig.axiosRequestConfigCompl
+            this.app.configuration.axiosRequestConfigCompl
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -323,9 +323,9 @@ export class LlamaServer {
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.ai_api_version}/chat/completions`,
+            `${this.app.configuration.endpoint_chat}/${this.app.configuration.ai_api_version}/chat/completions`,
             this.createChatEditRequestPayload(false, instructions, originalText, chunks, context, nindent),
-            this.app.extConfig.axiosRequestConfigChat
+            this.app.configuration.axiosRequestConfigChat
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -335,9 +335,9 @@ export class LlamaServer {
         prompt: string,
     ): Promise<LlamaChatResponse | undefined> => {
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.extConfig.endpoint_chat}/${this.app.extConfig.ai_api_version}/chat/completions`,
+            `${this.app.configuration.endpoint_chat}/${this.app.configuration.ai_api_version}/chat/completions`,
             this.createChatRequestPayload(prompt),
-            this.app.extConfig.axiosRequestConfigChat
+            this.app.configuration.axiosRequestConfigChat
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -346,14 +346,14 @@ export class LlamaServer {
     getToolsCompletion = async (
         messages: ChatMessage[]
     ): Promise<LlamaToolsResponse | undefined> => {
-        let uri = `${this.app.extConfig.endpoint_tools}/${this.app.extConfig.ai_api_version}/chat/completions`;
+        let uri = `${this.app.configuration.endpoint_tools}/${this.app.configuration.ai_api_version}/chat/completions`;
         let request = this.createToolsRequestPayload(messages);
         console.log(uri);
         console.log(request);
         const response = await axios.post<LlamaToolsResponse>(
             uri,
             request,
-            this.app.extConfig.axiosRequestConfigTools
+            this.app.configuration.axiosRequestConfigTools
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -363,33 +363,33 @@ export class LlamaServer {
 
     updateExtraContext = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
-        if (this.app.extConfig.use_openai_endpoint) {
+        if (this.app.configuration.use_openai_endpoint) {
             return;
         }
 
         // else, make a request to the API to prepare for the next FIM
         axios.post<LlamaResponse>(
-            `${this.app.extConfig.endpoint}/infill`,
+            `${this.app.configuration.endpoint}/infill`,
             this.createRequestPayload(true, "", "", chunks, "", undefined),
-            this.app.extConfig.axiosRequestConfigCompl
+            this.app.configuration.axiosRequestConfigCompl
         );
     };
 
     getEmbeddings = async (text: string): Promise<LlamaEmbeddingsResponse | undefined> => {
         try {
             const response = await axios.post<LlamaEmbeddingsResponse>(
-                `${this.app.extConfig.endpoint_embeddings}/v1/embeddings`,
+                `${this.app.configuration.endpoint_embeddings}/v1/embeddings`,
                 {
                     "input": text,
                     "model": "GPT-4",
                     "encoding_format": "float"
                 },
-                this.app.extConfig.axiosRequestConfigEmbeddings
+                this.app.configuration.axiosRequestConfigEmbeddings
             );
             return response.data;
         } catch (error: any) {
             console.error('Failed to get embeddings:', error);
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error getting embeddings") + " " + error.message);
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("Error getting embeddings") + " " + error.message);
             return undefined;
         }
 
@@ -398,7 +398,7 @@ export class LlamaServer {
 
     shellFimCmd = (launchCmd: string): void => {
         if (!launchCmd) {
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -409,14 +409,14 @@ export class LlamaServer {
             this.vsCodeFimTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
             }
         }
     }
 
     shellChatCmd = (launchCmd: string): void => {
         if (!launchCmd) {
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -427,14 +427,14 @@ export class LlamaServer {
             this.vsCodeChatTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
             }
         }
     }
 
     shellEmbeddingsCmd = (launchCmd: string): void => {
         if (!launchCmd) {
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -445,14 +445,14 @@ export class LlamaServer {
             this.vsCodeEmbeddingsTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
             }
         }
     }
 
     shellTrainCmd = (trainCmd: string): void => {
         if (!trainCmd) {
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -463,14 +463,14 @@ export class LlamaServer {
             this.vsCodeTrainTerminal.sendText(trainCmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + trainCmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + trainCmd +" : " + err.message);
             }
         }
     }
 
     shellCommandCmd = (cmd: string): void => {
         if (!cmd) {
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("There is no command to execute.")??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("There is no command to execute.")??"");
             return;
         }
         try {
@@ -481,7 +481,7 @@ export class LlamaServer {
             this.vsCodeCommandTerminal.sendText(cmd);
         } catch(err){
             if (err instanceof Error) {
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Error executing command") + " " + cmd +" : " + err.message);
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + cmd +" : " + err.message);
             }
         }
     }

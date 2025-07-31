@@ -77,44 +77,46 @@ export class LlamaAgent {
                 
             this.outputChannel.appendLine(query + "\n")
             this.outputChannel.show(); 
-            this.logInUi(this.logText);
+            this.app.llamaWebviewProvider.logInUi(this.logText);
             
             let currentCycleStartTime = Date.now();
             let changedFiles = []
             let deletedFiles = []
-            while (iterationsCount < this.app.extConfig.tools_max_iterations){
+            while (iterationsCount < this.app.configuration.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
                     this.logText += "\n\n" + "Session stopped." + "\n"
-                    this.logInUi(this.logText);
+                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                    this.app.llamaWebviewProvider.setState("AI is stopped")
                     return "agent stopped"
                 }
                 iterationsCount++;
                 try {
                     let data:any = await this.app.llamaServer.getToolsCompletion(this.messages);
                     if (!data) {
-                        this.outputChannel.appendLine(this.app.extConfig.getUiText("No response from AI")??"")
+                        this.outputChannel.appendLine(this.app.configuration.getUiText("No response from AI")??"")
                         this.logText += "No response from AI" + "\n"
-                        this.logInUi(this.logText);
-                        this.app.statusbar.showTextInfo("answer ready");
+                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                        this.app.llamaWebviewProvider.setState("AI not responding")
                         return "No response from AI";
                     }
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
                     this.outputChannel.appendLine(response + "\n")
                     this.logText += response + "\n" + "Iteration: " + iterationsCount + "\n"
-                    this.logInUi(this.logText);
+                    this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
                         this.app.statusbar.showTextInfo("agent stopped");
                         this.logText += "\n\n" + "Session stopped." + "\n"
-                        this.logInUi(this.logText);
+                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                        this.app.llamaWebviewProvider.setState("AI is stopped")
                         return "agent stopped"
                     }
                     this.messages.push(data.choices[0].message);
                     if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
                         this.logText += "\n\n" + "Finish reason: " + finishReason + "\n"
                         if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "\n"
-                        this.logInUi(this.logText);
+                        this.app.llamaWebviewProvider.logInUi(this.logText);
                         break;
                     }
                     let toolCalls:any = data.choices[0].message.tool_calls;
@@ -123,8 +125,8 @@ export class LlamaAgent {
                             if (oneToolCall && oneToolCall.function){
                                 this.outputChannel.appendLine("tool: " + oneToolCall.function.name + "\narguments: " + oneToolCall.function.arguments)
                                 this.logText += "\ntool: " + oneToolCall.function.name + "\n";
-                                if (this.app.extConfig.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
-                                this.logInUi(this.logText);
+                                if (this.app.configuration.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
+                                this.app.llamaWebviewProvider.logInUi(this.logText);
                                 let commandOutput = "Tool not found";
                                 if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
                                     const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
@@ -132,7 +134,7 @@ export class LlamaAgent {
                                     if (toolFuncDesc){
                                         commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
                                         this.logText += commandDescription + "\n\n"
-                                        this.logInUi(this.logText);
+                                        this.app.llamaWebviewProvider.logInUi(this.logText);
                                     }   
                                     const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                     if (toolFunc) {
@@ -146,8 +148,8 @@ export class LlamaAgent {
                                     commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
                                 }
                                 this.outputChannel.appendLine("result: " + commandOutput)
-                                if (this.app.extConfig.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
-                                this.logInUi(this.logText);
+                                if (this.app.configuration.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
+                                this.app.llamaWebviewProvider.logInUi(this.logText);
                                 toolCallsResult = {           
                                             "role": "tool",
                                             "tool_call_id": oneToolCall.id,
@@ -161,7 +163,8 @@ export class LlamaAgent {
                     // Handle the error
                     console.error("An error occurred:", error);
                     this.logText += "An error occurred: " + error + "\n\n";
-                    this.logInUi(this.logText);
+                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                    this.app.llamaWebviewProvider.setState("Error")
                     return "An error occurred: " + error;
                 }
             }
@@ -169,7 +172,8 @@ export class LlamaAgent {
             if (changedFiles.length > 0) this.logText += changedFiles.join("\n") + "\n"
             if (deletedFiles.length > 0) this.logText += deletedFiles.join("\n") + "\n"
             this.logText += "\n\nAI with tools session finished. \n\n"
-            this.logInUi(this.logText);
+            this.app.llamaWebviewProvider.logInUi(this.logText);
+            this.app.llamaWebviewProvider.setState("AI finished")
             return response;
         }  
         
@@ -195,12 +199,5 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "\n";
         }
         return progress;
-    }
-
-    private logInUi(logText: string) {
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
-            command: 'updateText',
-            text: logText
-        });
     }
 }

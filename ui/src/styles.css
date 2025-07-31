@@ -146,4 +146,19 @@
 
 .content::-webkit-scrollbar-thumb:hover {
   background: #5a5a5a;
+}
+
+.model-info {
+  margin-top: 8px;
+  padding: 8px 12px;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--vscode-input-foreground);
+  opacity: 0.8;
+}
+
+.model-info span {
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
 } 

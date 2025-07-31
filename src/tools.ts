@@ -44,12 +44,12 @@ export class Tools {
     public runTerminalCommand = async (args: string ) => {
         let command = JSON.parse(args).command;
         let commandOutput = "";
-        if ( (!this.app.extConfig.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command)) && !await Utils.showYesNoDialog("Do you give a permission to execute the terminal command:\n" + command)) {
+        if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command)) && !await Utils.showYesNoDialog("Do you give a permission to execute the terminal command:\n" + command)) {
             commandOutput = "The user doesn't give a permission to execute this command.";
 
         } else {
             let resultOneCall = await Utils.executeTerminalCommand(command);
-            commandOutput = resultOneCall.slice(0, this.app.extConfig.MAX_CHARS_TOOL_RETURN);
+            commandOutput = resultOneCall.slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
         }
         return commandOutput;
     }
@@ -156,7 +156,7 @@ export class Tools {
         let filePath = params.file_path;
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
-            if (!this.app.extConfig.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
+            if (!this.app.configuration.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
                 return Utils.MSG_NO_UESR_PERMISSION;
 
             }
@@ -200,7 +200,7 @@ export class Tools {
         let params = JSON.parse(args);
         let changes = params.input;
         try {
-            if (!this.app.extConfig.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
+            if (!this.app.configuration.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
                 return Utils.MSG_NO_UESR_PERMISSION;
             }
             await Utils.applyEdits(changes)
@@ -278,7 +278,7 @@ export class Tools {
     
     public init = () => {
         this.tools = [
-            ...(this.app.extConfig.tool_run_terminal_command_enabled ? [
+            ...(this.app.configuration.tool_run_terminal_command_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -300,7 +300,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_search_source_enabled ? [
+            ...(this.app.configuration.tool_search_source_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -322,7 +322,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_read_file_enabled ? [
+            ...(this.app.configuration.tool_read_file_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -356,7 +356,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_list_directory_enabled ? [
+            ...(this.app.configuration.tool_list_directory_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -378,7 +378,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_regex_search_enabled ? [
+            ...(this.app.configuration.tool_regex_search_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -405,7 +405,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_delete_file_enabled ? [
+            ...(this.app.configuration.tool_delete_file_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -427,7 +427,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_get_diff_enabled ? [
+            ...(this.app.configuration.tool_get_diff_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -442,7 +442,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_edit_file_enabled ? [
+            ...(this.app.configuration.tool_edit_file_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -464,7 +464,7 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_ask_user_enabled ? [
+            ...(this.app.configuration.tool_ask_user_enabled ? [
             {
                 "type": "function",
                 "function": {
@@ -486,12 +486,12 @@ export class Tools {
                 }
             }
             ] : []),
-            ...(this.app.extConfig.tool_custom_tool_enabled ? [
+            ...(this.app.configuration.tool_custom_tool_enabled ? [
             {
                 "type": "function",
                 "function": {
                     "name": "custom_tool",
-                    "description": this.app.extConfig.tool_custom_tool_description,
+                    "description": this.app.configuration.tool_custom_tool_description,
                     "parameters": {
                         "type": "object",
                         "properties": {},
@@ -509,9 +509,9 @@ export class Tools {
                     // Define items with initial selection state
         const toolItems: vscode.QuickPickItem[] = []
         const appPrefix = "llama.vscode_"
-        const config = this.app.extConfig.config;
+        const config = this.app.configuration.config;
         for (let internalTool of this.toolsFunc.keys()){
-            toolItems.push({ label: appPrefix + internalTool, description: "", picked: (this.app.extConfig as { [key: string]: any; })[this.getToolEnabledPropertyName(internalTool)]})
+            toolItems.push({ label: appPrefix + internalTool, description: "", picked: (this.app.configuration as { [key: string]: any; })[this.getToolEnabledPropertyName(internalTool)]})
         }
         for (let tool of vscode.lm.tools){
             toolItems.push({ label: tool.name, description: tool.description, picked: this.vscodeToolsSelected.has(tool.name) })
@@ -576,8 +576,8 @@ export class Tools {
     }
 
     private async indexFilesIfNeeded() {
-        if (!this.app.extConfig.rag_enabled) {
-            vscode.window.showInformationMessage("RAG is disabled. Project files will be indexed now. Enable RAG from llama-vscode menu or rag_enabled setting to avoid reindexing.");
+        if (!this.app.configuration.rag_enabled) {
+            vscode.window.showInformationMessage("Enable RAG to avoid reindexing. Project files will be indexed now.");
             await this.app.chatContext.indexWorkspaceFiles();
         }
     }

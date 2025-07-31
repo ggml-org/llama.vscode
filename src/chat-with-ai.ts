@@ -17,33 +17,33 @@ export class ChatWithAi {
     showChatWithTools = async (context: vscode.ExtensionContext) => {
         let query: string|undefined = undefined
         query = await vscode.window.showInputBox({
-            placeHolder: this.app.extConfig.getUiText('Enter your question...'),
-            prompt: this.app.extConfig.getUiText('What would you like to ask an Agent (AI with tools)?'),
+            placeHolder: this.app.configuration.getUiText('Enter your question...'),
+            prompt: this.app.configuration.getUiText('What would you like to ask an Agent (AI with tools)?'),
             ignoreFocusOut: true
         });
 
         if (!query) {
             return
         } else {        
-            this.app.agent.run(query)
+            this.app.llamaAgent.run(query)
         }
     }
 
     showChatWithAi = async (withContext: boolean, context: vscode.ExtensionContext) => {
         const editor = vscode.window.activeTextEditor;
         let webviewIdentifier = 'htmlChatWithAiViewer'
-        let panelTitle = this.app.extConfig.getUiText("Chat with AI")??""
+        let panelTitle = this.app.configuration.getUiText("Chat with AI")??""
         let aiPanel  = this.askAiPanel
         let extraCont = "";
         let query: string|undefined = undefined
         if (withContext){
-            if (!this.app.extConfig.rag_enabled){
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("RAG is disabled. You could enable it from VS Code menu or setting rag_enabled.")??"")
+            if (!this.app.configuration.rag_enabled){
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("RAG is disabled. You could enable it from VS Code menu or setting rag_enabled.")??"")
                 return;
             }
             query = await vscode.window.showInputBox({
-                placeHolder: this.app.extConfig.getUiText('Enter your question...'),
-                prompt: this.app.extConfig.getUiText('What would you like to ask AI?'),
+                placeHolder: this.app.configuration.getUiText('Enter your question...'),
+                prompt: this.app.configuration.getUiText('What would you like to ask AI?'),
                 ignoreFocusOut: true
             });
 
@@ -54,7 +54,7 @@ export class ChatWithAi {
             aiPanel = this.askAiWithContextPanel
             if (!aiPanel) this.sentContextChunks =  []
             webviewIdentifier = 'htmlChatWithAiWithContextViewer'
-            panelTitle = this.app.extConfig.getUiText("Chat with AI with project context")??""
+            panelTitle = this.app.configuration.getUiText("Chat with AI with project context")??""
         }
         let queryToSend = ""
         if (editor) {
@@ -80,7 +80,7 @@ export class ChatWithAi {
             else this.askAiPanel = aiPanel;
 
             if (aiPanel) context.subscriptions.push(aiPanel);
-            const targetUrl = this.app.extConfig.endpoint_chat + "/";
+            const targetUrl = this.app.configuration.endpoint_chat + "/";
             aiPanel.webview.html = this.getWebviewContent(targetUrl);
             aiPanel.onDidDispose(() => {
                 if (withContext) this.askAiWithContextPanel = undefined

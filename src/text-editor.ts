@@ -25,7 +25,7 @@ export class TextEditor {
     async showEditPrompt(editor: vscode.TextEditor) {
         
         if (editor.selection.isEmpty) {
-            vscode.window.showInformationMessage(this.app.extConfig.getUiText("Please select some text to edit")??"");
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("Please select some text to edit")??"");
             return;
         }
 

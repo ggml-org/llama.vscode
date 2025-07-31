@@ -24,6 +24,13 @@ const App: React.FC<AppProps> = () => {
   const [inputText, setInputText] = useState<string>(
     initialState.inputText || ''
   );
+  const [currentToolsModel, setCurrentToolsModel] = useState<string>(
+    initialState.currentToolsModel || 'No model selected'
+  );
+  const [currentState, setCurrentState] = useState<string>(
+    initialState.currentState || ''
+  );
+  
 
   // Create a ref for the textarea to enable auto-focus
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -32,9 +39,11 @@ const App: React.FC<AppProps> = () => {
   useEffect(() => {
     vscode.setState({
       displayText,
-      inputText
+      inputText,
+      currentToolsModel,
+      currentState
     });
-  }, [displayText, inputText]);
+  }, [displayText, inputText, currentToolsModel, currentState]);
 
   // Auto-focus the textarea when the component mounts
   useEffect(() => {
@@ -59,6 +68,12 @@ const App: React.FC<AppProps> = () => {
           if (textareaRef.current) {
             textareaRef.current.focus();
           }
+          break;
+        case 'updateToolsModel':
+          setCurrentToolsModel(message.model || 'No model selected');
+          break;
+        case 'updateCurrentState':
+          setCurrentState(message.text || '');
           break;
         default:
           break;
@@ -90,6 +105,7 @@ const App: React.FC<AppProps> = () => {
         text: inputText
       });
       setInputText('');
+      setCurrentState('AI is working...');
     }
   };
 
@@ -103,6 +119,7 @@ const App: React.FC<AppProps> = () => {
 
   const handleStopSession = () => {
     // send command configure tools to extension
+    setCurrentState('Session stop requested...');
     vscode.postMessage({
       command: 'stopSession',
       text: inputText
@@ -163,6 +180,12 @@ const App: React.FC<AppProps> = () => {
               <button onClick={handleSelectModel} className="send-btn">
                 Select Model
               </button>
+            </div>
+            <div className="model-info">
+              <span>Current Tools Model: {currentToolsModel}</span>
+            </div>
+            <div className="model-info">
+              <span> {currentState}</span>
             </div>
           </div>
         </div>

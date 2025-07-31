@@ -40,10 +40,10 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 console.log('Webview received message:', message);
                 switch (message.command) {
                     case 'sendText':
-                        this.app.agent.run(message.text);
+                        this.app.llamaAgent.run(message.text);
                         break;
                     case 'clearText':
-                        this.app.agent.resetMessages();
+                        this.app.llamaAgent.resetMessages();
                         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
                             command: 'updateText',
                             text: ''
@@ -53,10 +53,16 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.tools.selectTools()
                         break;
                     case 'stopSession':
-                        this.app.agent.stopAgent();
+                        this.app.llamaAgent.stopAgent();
                         break;
                     case 'selectModelWithTools':
-                        this.app.menu.selectAiWithToolsModel();
+                        await this.app.menu.selectAiWithToolsModel();
+                        // Send updated tools model after selection
+                        const currentToolsModel = this.app.menu.getToolsModel();
+                        webviewView.webview.postMessage({
+                            command: 'updateToolsModel',
+                            model: currentToolsModel || 'No model selected'
+                        });
                         break;                        
                 }
             }
@@ -68,7 +74,28 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 command: 'updateText',
                 text: 'Welcome to llama AI with tools'
             });
+            
+            // Send current tools model
+            const currentToolsModel = this.app.menu.getToolsModel();
+            webviewView.webview.postMessage({
+                command: 'updateToolsModel',
+                model: currentToolsModel || 'No model selected'
+            });
         }, 1000);
+    }
+
+    public logInUi(logText: string) {
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateText',
+            text: logText
+        });
+    }
+
+    public setState(stateText: string) {
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateCurrentState',
+            text: stateText
+        });
     }
 
     public _getHtmlForWebview(webview: vscode.Webview) {

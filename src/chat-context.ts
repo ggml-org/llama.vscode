@@ -30,7 +30,7 @@ export class ChatContext {
     }
 
     public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {
-        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Extracting keywords from query..."))
+        this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
         if (!data || !data.choices[0].message.content) {
@@ -42,18 +42,18 @@ export class ChatContext {
         // TODO the synonyms are not returned with good quality each time - words are repeated and sometimes are irrelevant
         // Probably in future with better models will work better or probably with the previous prompt we could get synonyms as well
 
-        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks with BM25..."))
-        let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.extConfig.rag_max_bm25_filter_chunks)
+        this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with BM25..."))
+        let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.configuration.rag_max_bm25_filter_chunks)
         let topContextChunks: ChunkEntry[];
-        if (this.app.extConfig.endpoint_embeddings.trim() != ""){
-            this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Filtering chunks with embeddings..."))
-            topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.extConfig.rag_max_embedding_filter_chunks);
+        if (this.app.configuration.endpoint_embeddings.trim() != ""){
+            this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with embeddings..."))
+            topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.configuration.rag_max_embedding_filter_chunks);
         } else {
             vscode.window.showInformationMessage('No embeddings server. Filtering chunks with embeddings will be skipped.');
             topContextChunks = topChunksBm25.slice(0, 5);
         }
 
-        this.app.statusbar.showTextInfo(this.app.extConfig.getUiText("Context chunks ready."))
+        this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Context chunks ready."))
 
         return topContextChunks;
     }
@@ -61,12 +61,12 @@ export class ChatContext {
     public getRagFilesContext = async (prompt: string): Promise<string> => {
         let contextFiles = this.getFilesFromQuery(prompt)
         let filesContext = ""
-        for (const fileName of contextFiles.slice(0, this.app.extConfig.rag_max_context_files)) {
+        for (const fileName of contextFiles.slice(0, this.app.configuration.rag_max_context_files)) {
              let contextFile = Array.from(this.filesProperties).find(([key]) => key.toLocaleLowerCase().endsWith(fileName.toLocaleLowerCase()))
              if (contextFile){
                 const [fileUrl, fileProperties] = contextFile;
                 const document = await vscode.workspace.openTextDocument(vscode.Uri.file(fileUrl));
-                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.extConfig.rag_max_context_file_chars)
+                filesContext += "\n\n" + fileUrl + ":\n" + document.getText().slice(0, this.app.configuration.rag_max_context_file_chars)
              }
         };
         return filesContext;
@@ -87,7 +87,7 @@ export class ChatContext {
         }));
         const progressOptions = {
             location: vscode.ProgressLocation.Notification,
-            title: this.app.extConfig.getUiText("Filtering chunks with embeddings..."),
+            title: this.app.configuration.getUiText("Filtering chunks with embeddings..."),
             cancellable: true
         };
         await vscode.window.withProgress(progressOptions, async (progress, token) => {
@@ -223,29 +223,29 @@ export class ChatContext {
             }
             // Split the content into chunks and add them
             const lines = content.split(/\r?\n/);
-            for (let i = 0; i < lines.length; i+= this.app.extConfig.rag_max_lines_per_chunk) {
+            for (let i = 0; i < lines.length; i+= this.app.configuration.rag_max_lines_per_chunk) {
                 const startLine = i; // + this.app.extConfig.MAX_LINES_PER_RAG_CHUNK < lines.length ? i : Math.max(0, lines.length - this.app.extConfig.MAX_LINES_PER_RAG_CHUNK);
-                let endLine = Math.min(lines.length, i + this.app.extConfig.rag_max_lines_per_chunk);
+                let endLine = Math.min(lines.length, i + this.app.configuration.rag_max_lines_per_chunk);
                 let chunkLines = lines.slice(startLine, endLine);
                 let chunk = chunkLines.join('\n');
-                if (chunk.length > this.app.extConfig.rag_chunk_max_chars){
+                if (chunk.length > this.app.configuration.rag_chunk_max_chars){
                     chunk = "";
                     let j = 0;
                     let nextLine = this.getChunkLine(chunkLines, j);
-                    while (chunk.length + nextLine.length  + 1 < this.app.extConfig.rag_chunk_max_chars && j < chunkLines.length){
+                    while (chunk.length + nextLine.length  + 1 < this.app.configuration.rag_chunk_max_chars && j < chunkLines.length){
                         chunk += "\n" + nextLine;
                         j++;
                         nextLine = this.getChunkLine(chunkLines, j);
                     }
                     endLine = startLine + j
                     // Make sure next iteration starts after the last added line
-                    i = startLine + j - this.app.extConfig.rag_max_lines_per_chunk
+                    i = startLine + j - this.app.configuration.rag_max_lines_per_chunk
                 }
                 // const embedding = await this.getEmbedding(chunk);
                 let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk
                 const chunkHash = this.app.lruResultCache.getHash(chunkContent)
                 this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash, embedding: []});
-                if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
+                if (this.entries.size >= this.app.configuration.rag_max_chunks) break;
                 this.nextEntryId++;
             }
         } catch (error) {
@@ -254,7 +254,7 @@ export class ChatContext {
     }
 
     private getChunkLine(chunkLines: string[], j: number) {
-        return chunkLines[j].length > this.app.extConfig.rag_max_chars_per_chunk_line ? chunkLines[j].substring(0, this.app.extConfig.rag_max_chars_per_chunk_line) : chunkLines[j];
+        return chunkLines[j].length > this.app.configuration.rag_max_chars_per_chunk_line ? chunkLines[j].substring(0, this.app.configuration.rag_max_chars_per_chunk_line) : chunkLines[j];
     }
 
     private removeChunkEntries(uri: string) {
@@ -275,13 +275,13 @@ export class ChatContext {
         try {
             this.entries.clear();
             this.filesProperties.clear()
-            if (this.app.extConfig.rag_max_files <= 0) return;
-            const files = (await this.getFilesRespectingGitignore()).slice(0,this.app.extConfig.rag_max_files)
+            if (this.app.configuration.rag_max_files <= 0) return;
+            const files = (await this.getFilesRespectingGitignore()).slice(0,this.app.configuration.rag_max_files)
 
             // Show progress
             const progressOptions = {
                 location: vscode.ProgressLocation.Notification,
-                title: this.app.extConfig.getUiText("Indexing files..."),
+                title: this.app.configuration.getUiText("Indexing files..."),
                 cancellable: true
             };
             await vscode.window.withProgress(progressOptions, async (progress, token) => {
@@ -307,11 +307,11 @@ export class ChatContext {
                     } catch (error) {
                         console.error(`Failed to index file ${file.toString()}:`, error);
                     }
-                    if (this.entries.size >= this.app.extConfig.rag_max_chunks) break;
+                    if (this.entries.size >= this.app.configuration.rag_max_chunks) break;
                 }
                 this.app.logger.addEventLog("RAG", "END_RAG_INDEXING", "Files: " + processed + " Chunks: " + this.entries.size)
-                vscode.window.showInformationMessage(this.app.extConfig.getUiText("Indexed") + " " + processed +"/" + files.length +" "
-                + this.app.extConfig.getUiText("files for RAG search"));
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Indexed") + " " + processed +"/" + files.length +" "
+                + this.app.configuration.getUiText("files for RAG search"));
             });
 
         } catch (error) {
