@@ -116,7 +116,7 @@ The extension includes a React-based webview interface that provides enhanced in
 
 ### Usage
 1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Run the command "llama-vscode: Show Llama UI"
+2. Run the command "llama-vscode: Show Llama AI"
 3. The webview will appear in the Explorer panel on the right side
 
 ### Development

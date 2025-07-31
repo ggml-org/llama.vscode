@@ -78,6 +78,7 @@ Carefully read the issue and think hard about a plan to solve it before coding.
 - Use print statements, logs, or temporary code to inspect program state, including descriptive statements or error messages to understand what's happening
 - To test hypotheses, you can also add test statements or functions
 - Revisit your assumptions if unexpected behavior occurs.
+ 
 
 ## 6. Final Verification
 - Confirm the root cause is fixed.
@@ -85,9 +86,11 @@ Carefully read the issue and think hard about a plan to solve it before coding.
 - Iterate until you are extremely confident the fix is complete.
 
 ## 7. Final Reflection
+- If there are changed files, build the application to check for errors.
 - Reflect carefully on the original intent of the user and the problem statement.
 - Think about potential edge cases or scenarios.
 - Continue refining until you are confident the fix is robust and comprehensive.
+
 `
 
 TOOLS_SYSTEM_PROMPT_PLANNING = `You are an expert in planning. You are working in a planning mode and just plan. You do not take actions.`

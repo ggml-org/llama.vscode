@@ -208,7 +208,7 @@ export class ChatContext {
         return this.filesProperties.get(uri);
     }
 
-    async addDocument(uri: string, content: string) {
+    addDocument = async (uri: string, content: string) => {
         try {
             const hash = this.app.lruResultCache.getHash(content);
             if (this.filesProperties.get(uri)?.hash === hash) {
@@ -273,7 +273,9 @@ export class ChatContext {
 
     async indexWorkspaceFiles() {
         try {
-            if (!this.app.extConfig.rag_enabled || this.app.extConfig.rag_max_files <= 0) return;
+            this.entries.clear();
+            this.filesProperties.clear()
+            if (this.app.extConfig.rag_max_files <= 0) return;
             const files = (await this.getFilesRespectingGitignore()).slice(0,this.app.extConfig.rag_max_files)
 
             // Show progress

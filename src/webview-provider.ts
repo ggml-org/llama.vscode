@@ -55,6 +55,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'stopSession':
                         this.app.agent.stopAgent();
                         break;
+                    case 'selectModelWithTools':
+                        this.app.menu.selectAiWithToolsModel();
+                        break;                        
                 }
             }
         );

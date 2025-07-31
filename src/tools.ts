@@ -63,6 +63,7 @@ export class Tools {
     public searchSource = async (args: string ) => {
         let query = JSON.parse(args).query;
         
+        await this.indexFilesIfNeeded();
         let contextChunks = await this.app.chatContext.getRagContextChunks(query)
         let relevantSource = await this.app.chatContext.getContextChunksInPlainText(contextChunks);
         
@@ -141,6 +142,7 @@ export class Tools {
 
     public getRegextMatches = async (args: string ) => {
         let params = JSON.parse(args);
+        await this.indexFilesIfNeeded();
         return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern??"", params.regex, this.app.chatContext.entries)
     }   
 
@@ -570,6 +572,13 @@ export class Tools {
                 this.vscodeTools.push(newTool);
             }
 
+        }
+    }
+
+    private async indexFilesIfNeeded() {
+        if (!this.app.extConfig.rag_enabled) {
+            vscode.window.showInformationMessage("RAG is disabled. Project files will be indexed now. Enable RAG from llama-vscode menu or rag_enabled setting to avoid reindexing.");
+            await this.app.chatContext.indexWorkspaceFiles();
         }
     }
 

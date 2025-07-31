@@ -19,14 +19,14 @@ export class Architect {
 
     init = () => {
         // Start indexing workspace files
-        if (this.app.extConfig.endpoint_embeddings.trim() != "") {
+        if (this.app.extConfig.rag_enabled) {
             setTimeout(() => {
                 this.app.chatContext.indexWorkspaceFiles().catch(error => {
                     console.error('Failed to index workspace files:', error);
                 });
             }, 0);
-            this.app.tools.init()
         }
+        this.app.tools.init()
     }
 
     setOnSaveDeleteFileForDb = (context: vscode.ExtensionContext) => {
@@ -385,47 +385,56 @@ export class Architect {
             () => {
                 // Focus the webview in the Explorer panel
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
+                
+                // Send a message to focus the textarea after a short delay
+                setTimeout(() => {
+                    if (provider.webview) {
+                        provider.webview.webview.postMessage({
+                            command: 'focusTextarea'
+                        });
+                    }
+                }, 100);
             }
         );
         context.subscriptions.push(showWebviewCommand);
 
-        // Register command to show webview as a panel (alternative approach)
-        const showWebviewPanelCommand = vscode.commands.registerCommand(
-            'extension.showLlamaWebviewPanel',
-            () => {
-                const panel = vscode.window.createWebviewPanel(
-                    'llamaWebview',
-                    'Llama VS Code UI',
-                    vscode.ViewColumn.Two,
-                    {
-                        enableScripts: true,
-                        localResourceRoots: [context.extensionUri]
-                    }
-                );
+        // // Register command to show webview as a panel (alternative approach)
+        // const showWebviewPanelCommand = vscode.commands.registerCommand(
+        //     'extension.showLlamaWebviewPanel',
+        //     () => {
+        //         const panel = vscode.window.createWebviewPanel(
+        //             'llamaWebview',
+        //             'Llama VS Code UI',
+        //             vscode.ViewColumn.Two,
+        //             {
+        //                 enableScripts: true,
+        //                 localResourceRoots: [context.extensionUri]
+        //             }
+        //         );
 
-                // Get the HTML content from the webview provider
-                const tempProvider = new LlamaWebviewProvider(context.extensionUri, this.app);
-                panel.webview.html = tempProvider._getHtmlForWebview(panel.webview);
+        //         // Get the HTML content from the webview provider
+        //         const tempProvider = new LlamaWebviewProvider(context.extensionUri, this.app);
+        //         panel.webview.html = tempProvider._getHtmlForWebview(panel.webview);
 
-                // Handle messages from the webview
-                panel.webview.onDidReceiveMessage(
-                    message => {
-                        switch (message.command) {
-                            case 'sendText':
-                                vscode.window.showInformationMessage(`Received text: ${message.text}`);
-                                break;
-                            case 'clearText':
-                                vscode.window.showInformationMessage('Clear text requested');
-                                break;
-                            case 'configureTools':
-                                vscode.window.showInformationMessage('Configure tools requested');
-                                break;
-                        }
-                    }
-                );
-            }
-        );
-        context.subscriptions.push(showWebviewPanelCommand);
+        //         // Handle messages from the webview
+        //         panel.webview.onDidReceiveMessage(
+        //             message => {
+        //                 switch (message.command) {
+        //                     case 'sendText':
+        //                         vscode.window.showInformationMessage(`Received text: ${message.text}`);
+        //                         break;
+        //                     case 'clearText':
+        //                         vscode.window.showInformationMessage('Clear text requested');
+        //                         break;
+        //                     case 'configureTools':
+        //                         vscode.window.showInformationMessage('Configure tools requested');
+        //                         break;
+        //                 }
+        //             }
+        //         );
+        //     }
+        // );
+        // context.subscriptions.push(showWebviewPanelCommand);
 
         // Register command to send messages to the webview
         const postMessageCommand = vscode.commands.registerCommand(

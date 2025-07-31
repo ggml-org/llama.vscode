@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // Declare the vscode API
 declare global {
@@ -25,6 +25,9 @@ const App: React.FC<AppProps> = () => {
     initialState.inputText || ''
   );
 
+  // Create a ref for the textarea to enable auto-focus
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
   // Save state to VS Code whenever it changes
   useEffect(() => {
     vscode.setState({
@@ -32,6 +35,13 @@ const App: React.FC<AppProps> = () => {
       inputText
     });
   }, [displayText, inputText]);
+
+  // Auto-focus the textarea when the component mounts
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  }, []);
 
   useEffect(() => {
     // Listen for messages from the extension
@@ -44,6 +54,12 @@ const App: React.FC<AppProps> = () => {
         case 'clearText':
           setDisplayText('');
           break;
+        case 'focusTextarea':
+          // Focus the textarea when requested by the extension
+          if (textareaRef.current) {
+            textareaRef.current.focus();
+          }
+          break;
         default:
           break;
       }
@@ -51,6 +67,19 @@ const App: React.FC<AppProps> = () => {
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Function to focus the textarea (can be called from extension)
+  const focusTextarea = () => {
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  // Expose the focus function to the extension
+  useEffect(() => {
+    // @ts-ignore - Adding to window for extension access
+    window.focusTextarea = focusTextarea;
   }, []);
 
   const handleSendText = () => {
@@ -80,6 +109,13 @@ const App: React.FC<AppProps> = () => {
     });
   };
 
+  const handleSelectModel = () => {
+    vscode.postMessage({
+      command: 'selectModelWithTools'
+    });
+  };
+  
+
   const handleClearText = () => {
     vscode.postMessage({
       command: 'clearText'
@@ -89,11 +125,13 @@ const App: React.FC<AppProps> = () => {
   return (
     <div className="app">
       <div className="header">
-        <h1>Llama AI with tools</h1>
         <div className="button-group">
           <button onClick={handleClearText} className="send-btn">
             New chat
           </button>
+          <button onClick={handleStopSession} className="send-btn">
+                Stop Session
+              </button>
         </div>
       </div>
       
@@ -108,20 +146,22 @@ const App: React.FC<AppProps> = () => {
           <h3>Ask AI:</h3>
           <div className="input-group">
             <textarea
+              ref={textareaRef}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Enter text to send to the extension..."
+              placeholder="Enter text to send to the AI..."
               rows={3}
             />
             <div className="button-group">
               <button onClick={handleSendText} className="send-btn">
-                Send
+                Ask
               </button>
               <button onClick={handleConfigureTools} className="send-btn">
                 Tools
               </button>
-              <button onClick={handleStopSession} className="send-btn">
-                Stop Session
+              
+              <button onClick={handleSelectModel} className="send-btn">
+                Select Model
               </button>
             </div>
           </div>

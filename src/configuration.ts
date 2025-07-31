@@ -198,7 +198,11 @@ export class Configuration {
 
     updateOnEvent = (event: vscode.ConfigurationChangeEvent, config: vscode.WorkspaceConfiguration) => {
         this.updateConfigs(config);
-        if (event.affectsConfiguration("llama-vscode.api_key") || event.affectsConfiguration("llama-vscode.self_signed_certificate")) {
+        if (event.affectsConfiguration("llama-vscode.api_key")
+            || event.affectsConfiguration("llama-vscode.api_key_tools")
+            || event.affectsConfiguration("llama-vscode.api_key_chat")
+            || event.affectsConfiguration("llama-vscode.api_key_embeddings")
+            || event.affectsConfiguration("llama-vscode.self_signed_certificate")) {
             this.setLlamaRequestConfig();
             this.setOpenAiClient();
         }

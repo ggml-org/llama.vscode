@@ -92,7 +92,7 @@
       },
       {
         "command": "extension.showLlamaWebview",
-        "title": "llama-vscode: Show Llama UI",
+        "title": "llama-vscode: Show Llama Agent",
         "icon": "$(window)"
       }
     ],
@@ -100,7 +100,7 @@
       "explorer": [
         {
           "id": "llama-vscode.webview",
-          "name": "Llama UI",
+          "name": "Llama Agent",
           "type": "webview"
         }
       ]
@@ -149,6 +149,11 @@
       {
         "command": "extension.showMenu",
         "key": "ctrl+shift+m",
+        "when": "true"
+      },
+      {
+        "command": "extension.showLlamaWebview",
+        "key": "ctrl+shift+a",
         "when": "true"
       },
       {

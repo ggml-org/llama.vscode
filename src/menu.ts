@@ -59,14 +59,18 @@ export class Menu {
                 label: "$(book) " + this.app.extConfig.getUiText("View Documentation..."),
             },
             {
-                label: "Show running servers",
-                description: "Displays a list of currently running servers"
+                label: this.app.extConfig.getUiText("Show running servers"),
+                description: this.app.extConfig.getUiText("Displays a list of currently running servers")
             },
             {
                 label: "Install/upgrade llama.cpp",
-                description: "Installs/updates llama.cpp server"
+                description: "Installs/upgrades llama.cpp server"
             },]
-
+        menuItems.push(
+            {
+                label: this.app.extConfig.getUiText("Show Llama Agent") ?? "",
+                description: this.app.extConfig.getUiText(`Shows Llama Agent panel`)
+            })
         if (this.app.extConfig.endpoint_chat && this.app.extConfig.endpoint_chat.trim() != "")
             menuItems.push(
                 {
@@ -77,19 +81,11 @@ export class Menu {
             menuItems.push({
                 label: this.app.extConfig.getUiText("Chat with AI with project context") ?? "",
                 description: this.app.extConfig.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
-            },
-            {
-                label: "Save project state",
-                description: "Saves the project state. Later this state could be restored"
-            },
-            {
-                label: this.app.extConfig.getUiText("Agent History...")??"",
-                description: this.app.extConfig.getUiText(`Show history of agent edits.`)
             })
         }
         menuItems.push(
             {
-                label: 'Start/change completion model...'
+                label: this.app.extConfig.getUiText('Start/change completion model...')??""
             })
         if (!this.app.llamaServer.isFimRunning()){
             menuItems.push(
@@ -106,7 +102,7 @@ export class Menu {
         }
         menuItems.push(
             {
-                label: 'Start/change chat model...'
+                label: this.app.extConfig.getUiText('Start/change chat model...')??""
             })
         if (!this.app.llamaServer.isChatRunning()){
             menuItems.push(
@@ -123,7 +119,7 @@ export class Menu {
         }
         menuItems.push(
             {
-                label: 'Start/change embeddings model...'
+                label: this.app.extConfig.getUiText('Start/change embeddings model...')??""
             })
 
         if (!this.app.llamaServer.isEmbeddingsRunning()){
@@ -142,17 +138,20 @@ export class Menu {
         }
         menuItems.push(
             {
-                label: 'Select/change AI with tools model from OpenRouter...'
+                label: this.app.extConfig.getUiText('Select/change AI with tools model from OpenRouter...')??""
             })
 
-        if (process.platform === 'darwin') { // if mac os
+        menuItems.push(
+            {
+                label: this.app.extConfig.getUiText('Start all models'),
+                description: this.app.extConfig.getUiText(`Starts completion, chat and embeddings models`)
+            })
             menuItems.push(
-                {
-                    label: this.app.extConfig.getUiText('Start all models') + ' (>= 32GB VRAM)',
-                    description: this.app.extConfig.getUiText(`Requires brew, starts completion, chat and embeddings models`)
-                },
-                )
-        }
+            {
+                label: this.app.extConfig.getUiText('Stop all models'),
+                description: this.app.extConfig.getUiText(`Stops completion, chat and embeddings models`)
+            })
+            
 
         if (this.app.extConfig.launch_training_completion.trim() != "") {
             menuItems.push(
@@ -186,13 +185,9 @@ export class Menu {
         let { port, portChat, portEmbedding } = this.getPorts();
 
         let llmTemplate = " llama-server -hf " + MODEL_PLACEHOLDER
-        let llmMacTemplateVram = " llama-server --" + PRESET_PLACEHOLDER + " --port " + port
-        let llmMacTemplateCpu = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + port + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacTemplateChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
-        let llmMacTemplateChatCpu = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"
-        let llmMacTemplateEmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
-        let llmMacAllChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
-        let llmMacAllEmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
+        let llmTemplateVram = " llama-server --" + PRESET_PLACEHOLDER + " --port " + port
+        let llmChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
+        let llmEmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
         
         if (selected.label.startsWith(this.app.extConfig.getUiText('Start completion model')??"")){
                 await this.app.llamaServer.killFimCmd();
@@ -212,63 +207,63 @@ export class Menu {
         }
         
         switch (selected.label) {
-            case 'Show running servers':
-                vscode.window.showInformationMessage("Completion: " + this.selectedComplModel.join(' - '));
-                vscode.window.showInformationMessage("Chat: " + this.selectedChatModel.join(' - '));
-                vscode.window.showInformationMessage("Embeddings: " + this.selectedEmbeddingsModel.join(' - '));
-                vscode.window.showInformationMessage("Tools: " + this.selectedToolsModel.join(' - '));
+            case this.app.extConfig.getUiText('Show running servers'):
+                vscode.window.showInformationMessage("Tools: " + this.selectedToolsModel[0] + " | Completion: " + this.selectedComplModel[0] + " | Chat: " + this.selectedChatModel[0] + " | Embeddings: " + this.selectedEmbeddingsModel[0]);
                 break;
-            case "Start/change completion model...":
+            case this.app.extConfig.getUiText("Start/change completion model..."):
                 const selectedModel = await vscode.window.showQuickPick(Array.from(this.completionModels.keys()));
                 if (selectedModel) {
                     this.selectedComplModel = [selectedModel,  this.completionModels.get(selectedModel)??""];
                     let { port, portChat, portEmbedding } = this.getPorts();
                     await this.app.llamaServer.killFimCmd();
                     await this.app.llamaServer.shellFimCmd(this.selectedComplModel[1] +  " --port " + port);
+                    if (!this.app.extConfig.launch_completion) await this.app.extConfig.config.update('launch_completion', this.selectedComplModel[1] + " --port " + port, true);
                 }
                 break;
-            case "Start/change chat model...":
+            case this.app.extConfig.getUiText("Start/change chat model..."):
                 const chatModel = await vscode.window.showQuickPick(Array.from(this.chatModels.keys()));
                 if (chatModel) {
                     this.selectedChatModel = [chatModel ,this.chatModels.get(chatModel)??""];
                     let { port, portChat, portEmbedding } = this.getPorts();
                     await this.app.llamaServer.killChatCmd();
                     await this.app.llamaServer.shellChatCmd(this.selectedChatModel[1] +  " --port " + portChat);
+                    if (!this.app.extConfig.launch_chat) await this.app.extConfig.config.update('launch_chat', this.selectedChatModel[1] + " --port " + portChat, true);
                 }
                 break;
-            case "Start/change embeddings model...":
+            case this.app.extConfig.getUiText("Start/change embeddings model..."):
                 const embeddingsModel = await vscode.window.showQuickPick(Array.from(this.embeddingsModels.keys()));
                 if (embeddingsModel) {
                     this.selectedEmbeddingsModel = [embeddingsModel ,this.embeddingsModels.get(embeddingsModel)??""];
                     let { port, portChat, portEmbedding } = this.getPorts();
                     await this.app.llamaServer.killEmbeddingsCmd();
                     await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel[1] +  " --port " + portEmbedding);
+                    if (!this.app.extConfig.launch_embeddings) await this.app.extConfig.config.update('launch_embeddings', this.selectedEmbeddingsModel[1] + " --port " + portEmbedding, true);
                 }
                 break;
-            case "Select/change AI with tools model from OpenRouter...":
-                const toolsModel = await vscode.window.showQuickPick(Array.from(this.toolsModels.keys()));
-                if (toolsModel) {
-                    this.selectedToolsModel = [toolsModel ,this.toolsModels.get(toolsModel)??""];
-                    const config = this.app.extConfig.config;
-                    await config.update('endpoint_tools', "https://openrouter.ai/api", true);
-                    await config.update('ai_model', this.selectedToolsModel[1], true);
-                    vscode.window.showInformationMessage("Make sure the extension setting Api_key_tools contains your OpenRouter API key.")
-                     
-                }
+            case this.app.extConfig.getUiText("Select/change AI with tools model from OpenRouter..."):
+                await this.selectAiWithToolsModel();
                 break;
             case "$(gear) " +  this.app.extConfig.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
-            case this.app.extConfig.getUiText('Start all models') + ' (>= 32GB VRAM)':
+            case this.app.extConfig.getUiText('Start all models'):
                 await this.app.llamaServer.killFimCmd();
+                await this.app.llamaServer.shellChatCmd(this.app.extConfig.launch_completion);
+                this.selectedComplModel = ["launch_completion", this.app.extConfig.launch_completion]
                 await this.app.llamaServer.killChatCmd();
+                await this.app.llamaServer.shellChatCmd(this.app.extConfig.launch_chat);
+                this.selectedChatModel = ["launch_chat", this.app.extConfig.launch_chat]
                 await this.app.llamaServer.killEmbeddingsCmd();
-                await this.app.llamaServer.shellFimCmd(llmMacTemplateVram.replace(PRESET_PLACEHOLDER, "fim-qwen-7b-default"));
-                // Wait some time to finish the installation of llama.cpp (if not available)
-                setTimeout(async () => {
-                    await this.app.llamaServer.shellChatCmd(llmMacAllChatVram.replace(MODEL_PLACEHOLDER, "ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF"));
-                    await this.app.llamaServer.shellEmbeddingsCmd(llmMacAllEmbedding.replace(MODEL_PLACEHOLDER, "ggml-org/Nomic-Embed-Text-V2-GGUF"));
-                }, 5000);
+                await this.app.llamaServer.shellEmbeddingsCmd(this.app.extConfig.launch_embeddings);
+                this.selectedEmbeddingsModel = ["launch_embeddings", this.app.extConfig.launch_embeddings]
+                break;
+            case this.app.extConfig.getUiText('Stop all models'):
+                await this.app.llamaServer.killFimCmd();
+                this.selectedComplModel = ["", ""]
+                await this.app.llamaServer.killChatCmd();
+                this.selectedChatModel = ["", ""]
+                await this.app.llamaServer.killEmbeddingsCmd();
+                this.selectedEmbeddingsModel = ["", ""]
                 break;
             case this.app.extConfig.getUiText('Start completion llama.cpp server'):
                 await this.app.llamaServer.killFimCmd();
@@ -332,6 +327,9 @@ export class Menu {
                 let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : ""
                 await this.app.llamaServer.shellCommandCmd(terminalCommand);
                 break;
+            case this.app.extConfig.getUiText("Show Llama Agent"):
+                vscode.commands.executeCommand('extension.showLlamaWebview');
+                break;
             case this.app.extConfig.getUiText("Chat with AI with project context"):
                 this.app.askAi.showChatWithAi(true, context)
                 break;
@@ -366,6 +364,18 @@ export class Menu {
 
         // TODO Return portTools if needed
         return { port, portChat, portEmbedding };
+    }
+
+    selectAiWithToolsModel = async () => {
+        const toolsModel = await vscode.window.showQuickPick(Array.from(this.toolsModels.keys()));
+        if (toolsModel) {
+            this.selectedToolsModel = [toolsModel, this.toolsModels.get(toolsModel) ?? ""];
+            const config = this.app.extConfig.config;
+            await config.update('endpoint_tools', "https://openrouter.ai/api", true);
+            await config.update('ai_model', this.selectedToolsModel[1], true);
+            vscode.window.showInformationMessage("Make sure the extension setting Api_key_tools contains your OpenRouter API key.");
+
+        }
     }
 
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
