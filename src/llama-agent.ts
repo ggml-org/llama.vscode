@@ -14,7 +14,6 @@ interface Step {
 
 export class LlamaAgent {
     private app: Application
-    private outputChannel: vscode.OutputChannel;
     private lastStopRequestTime = Date.now();
     private messages: ChatMessage[] = []
     private logText = ""
@@ -22,7 +21,6 @@ export class LlamaAgent {
 
     constructor(application: Application) {
         this.app = application;
-        this.outputChannel = vscode.window.createOutputChannel('Chat With Tools');
         this.resetMessages();
     }
 
@@ -98,9 +96,6 @@ export class LlamaAgent {
             )
 
             let iterationsCount = 0;    
-                
-            this.outputChannel.appendLine(query + "\n")
-            this.outputChannel.show(); 
             this.app.llamaWebviewProvider.logInUi(this.logText);
             
             let currentCycleStartTime = Date.now();
@@ -118,7 +113,6 @@ export class LlamaAgent {
                 try {
                     let data:any = await this.app.llamaServer.getToolsCompletion(this.messages);
                     if (!data) {
-                        this.outputChannel.appendLine(this.app.configuration.getUiText("No response from AI")??"")
                         this.logText += "No response from AI" + "\n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         this.app.llamaWebviewProvider.setState("AI not responding")
@@ -126,7 +120,6 @@ export class LlamaAgent {
                     }
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
-                    this.outputChannel.appendLine(response + "\n")
                     this.logText += response + "\n" + "Iteration: " + iterationsCount + "\n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
@@ -147,7 +140,6 @@ export class LlamaAgent {
                     if (toolCalls != undefined && toolCalls.length > 0){
                         for (const oneToolCall of toolCalls){
                             if (oneToolCall && oneToolCall.function){
-                                this.outputChannel.appendLine("tool: " + oneToolCall.function.name + "\narguments: " + oneToolCall.function.arguments)
                                 this.logText += "\ntool: " + oneToolCall.function.name + "\n";
                                 if (this.app.configuration.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
@@ -171,7 +163,6 @@ export class LlamaAgent {
                                     let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
                                     commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
                                 }
-                                this.outputChannel.appendLine("result: " + commandOutput)
                                 if (this.app.configuration.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 toolCallsResult = {           
@@ -195,7 +186,7 @@ export class LlamaAgent {
             if (changedFiles.size + deletedFiles.size > 0) this.logText += "\n\nFiles changes:\n"
             if (changedFiles.size > 0) this.logText += Array.from(changedFiles).join("\n") + "\n"
             if (deletedFiles.size > 0) this.logText += Array.from(deletedFiles).join("\n") + "\n"
-            this.logText += "\n\nAI with tools session finished. \n\n"
+            this.logText += "\n\nAgent session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")
             return response;

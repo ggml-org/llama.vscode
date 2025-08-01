@@ -468,7 +468,7 @@
         },
         "llama-vscode.tool_custom_tool_source": {
           "type": "string",
-          "default": "",
+          "default": "https://news.smol.ai/",
           "description": "The long name of a text file (for example c:\\ai\\llms_basics.txt) or URL of a web page (should start with 'http' i.e. https://news.test.com), which content will be returned by the custom_tool when called. Not all web pages are parsed correctly. "
         },
         "llama-vscode.tool_custom_eval_tool_enabled": {
@@ -479,7 +479,7 @@
         "llama-vscode.tool_custom_eval_tool_description": {
           "type": "string",
           "default": "Use this tool to calculate an arithmetic expression.Example: '15 + 4' or '12/4'",
-          "description": "Description for the custom_eval_tool, which will be sent to the AI. The result of the tool will be the result from the execution of the typescript code from setting custom_eval_tool_code."
+          "description": "Description for the custom_eval_tool, which will be sent to the AI. The result of the tool will be the result from the execution of the typescript code from setting custom_eval_tool_code. This is powerful, but could be security risk. Be careful."
         },
         "llama-vscode.tool_custom_eval_tool_property_description": {
           "type": "string",
@@ -488,8 +488,8 @@
         },
         "llama-vscode.tool_custom_eval_tool_code": {
           "type": "string",
-          "default": "function(input) { return `${input}`; }",
-          "description": "The typescript function to be executed when the tool is called. It should have one parameter of type string. When called, the parameter will be the value provided by the AI in the tool property."
+          "default": "function(input) { return eval(input); }",
+          "description": "The typescript function to be executed when the tool is called. It should have one parameter of type string. When called, the parameter will be the value provided by the AI in the tool property. This is powerful, but could be security risk. Be careful."
         },       
         "llama-vscode.tools_max_iterations": {
           "type": "number",
