@@ -29,6 +29,14 @@ export class ChatContext {
         vscode.window.showInformationMessage('Vector index initialized!');
     }
 
+    getProjectFiles = (): string[] => {
+        return Array.from(this.filesProperties.keys()).map(fullPath => {
+            // Handle both forward and backward slashes
+            const parts = fullPath.split(/[\\/]/);
+            return parts[parts.length - 1] + " | " + fullPath;
+        });
+    }
+
     public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
@@ -398,5 +406,5 @@ export class ChatContext {
         // Only allows letters, numbers, underscores, dots, and hyphens in filenames
         const regex = /@([a-zA-Z0-9_.-]+)(?=[,.?!\s]|$)/g;
         return [...text.matchAll(regex)].map(match => match[1]);
-    }
+    }    
 }

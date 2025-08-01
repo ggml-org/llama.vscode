@@ -161,4 +161,220 @@
 
 .model-info span {
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+/* File Selector Dialog Styles */
+.file-selector-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.file-selector-dialog {
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  width: 80%;
+  max-width: 600px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.file-selector-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.file-selector-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+}
+
+.close-btn {
+  background: none;
+  border: none;
+  color: var(--vscode-editor-foreground);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.close-btn:hover {
+  background-color: var(--vscode-input-background);
+}
+
+.file-selector-search {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.file-selector-search input {
+  width: 100%;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--vscode-input-foreground);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+}
+
+.file-selector-search input:focus {
+  outline: none;
+  border-color: var(--vscode-button-background);
+}
+
+.file-selector-list {
+  flex: 1;
+  overflow-y: auto;
+  max-height: 400px;
+}
+
+.file-item {
+  padding: 12px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-size: 13px;
+  color: var(--vscode-editor-foreground);
+  transition: background-color 0.2s ease;
+}
+
+.file-item:hover {
+  background-color: var(--vscode-input-background);
+}
+
+.file-item.selected {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.file-item.selected:hover {
+  background-color: var(--vscode-button-hoverBackground);
+}
+
+.file-item:last-child {
+  border-bottom: none;
+}
+
+.no-files {
+  padding: 20px;
+  text-align: center;
+  color: var(--vscode-input-foreground);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+/* Scrollbar for file list */
+.file-selector-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.file-selector-list::-webkit-scrollbar-track {
+  background: var(--vscode-panel-background);
+}
+
+.file-selector-list::-webkit-scrollbar-thumb {
+  background: var(--vscode-panel-border);
+  border-radius: 4px;
+}
+
+.file-selector-list::-webkit-scrollbar-thumb:hover {
+  background: #5a5a5a;
+}
+
+/* Context Files Styles */
+.context-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding: 8px 0;
+}
+
+.context-file-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--vscode-editor-foreground);
+  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  transition: all 0.2s ease;
+  cursor: default;
+  position: relative;
+}
+
+.context-file-chip:hover {
+  background-color: var(--vscode-button-background);
+  border-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+}
+
+.context-file-chip:hover .remove-file-btn {
+  opacity: 1;
+  color: var(--vscode-button-foreground);
+}
+
+.file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.file-name.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--vscode-button-background);
+  text-decoration-thickness: 1px;
+  transition: all 0.2s ease;
+}
+
+.file-name.clickable:hover {
+  opacity: 1;
+  color: var(--vscode-button-foreground);
+}
+
+.remove-file-btn {
+  background: none;
+  border: none;
+  color: var(--vscode-editor-foreground);
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 2px;
+  opacity: 0;
+  transition: all 0.2s ease;
+}
+
+.remove-file-btn:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: var(--vscode-button-foreground);
 } 

@@ -4,6 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import { ChunkEntry } from './types'
 import pm from 'picomatch'
+import * as https from 'https';
+import * as http from 'http';
+import { URL } from 'url';
 
 interface BM25Stats {
     avgDocLength: number;
@@ -643,4 +646,75 @@ export class Utils {
             });
         });
     }
+
+    static fetchWebPage = async (url: string): Promise<string> => {
+        // Validate the URL
+        let parsedUrl: URL;
+        try {
+            parsedUrl = new URL(url);
+        } catch (error) {
+            throw new Error(`Invalid URL: ${url}`);
+        }
+
+        // Select the appropriate protocol module
+        const protocol = parsedUrl.protocol === 'https:' ? https : http;
+
+        return new Promise((resolve, reject) => {
+            const req = protocol.get(url, (res) => {
+                // Check status code
+                if (res.statusCode !== 200) {
+                    res.resume(); // Consume response data to free up memory
+                    reject(new Error(`Request failed with status code ${res.statusCode}`));
+                    return;
+                }
+
+                // Set encoding
+                res.setEncoding('utf8');
+
+                let rawData = '';
+                
+                // Collect chunks of data
+                res.on('data', (chunk) => {
+                    rawData += chunk;
+                });
+
+                // Resolve when complete
+                res.on('end', () => {
+                    resolve(rawData);
+                });
+            });
+
+            // Handle errors
+            req.on('error', (error) => {
+                reject(new Error(`Request error: ${error.message}`));
+            });
+
+            // Set timeout
+            req.setTimeout(10000, () => {
+                req.destroy();
+                reject(new Error('Request timed out after 10 seconds'));
+            });
+        });
+    }
+
+    static extractTextFromHtml = (html: string): string => {
+    // Basic HTML tag removal
+    let text = html
+        .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+        .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+        .replace(/<[^>]+>/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+    // Decode HTML entities
+    text = text
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&apos;/g, "'");
+
+    return text;
+}
 }

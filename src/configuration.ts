@@ -68,6 +68,11 @@ export class Configuration {
     tool_ask_user_enabled = true;
     tool_custom_tool_enabled = false;
     tool_custom_tool_description = "";
+    tool_custom_tool_source = ""
+    tool_custom_eval_tool_enabled = ""
+    tool_custom_eval_tool_description = ""
+    tool_custom_eval_tool_property_description = ""
+    tool_custom_eval_tool_code = "";
     tools_max_iterations = 50;
     tools_log_calls = false;
     // AI_API_VERSION = "v1beta/openai";
@@ -182,6 +187,11 @@ export class Configuration {
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
         this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
         this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
+        this.tool_custom_tool_source = String(config.get<string>("tool_custom_tool_source"));
+        this.tool_custom_eval_tool_enabled = String(config.get<string>("tool_custom_eval_tool_enabled"));
+        this.tool_custom_eval_tool_property_description = String(config.get<string>("tool_custom_eval_tool_property_description"));
+        this.tool_custom_eval_tool_description = String(config.get<string>("tool_custom_eval_tool_description"));
+        this.tool_custom_eval_tool_code = String(config.get<string>("tool_custom_eval_tool_code"));
         this.tools_max_iterations = Number(config.get<number>("tools_max_iterations"));
         this.tools_log_calls = Boolean(config.get<boolean>("tools_log_calls"));
         this.language = String(config.get<string>("language"));
@@ -221,7 +231,17 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_search_source_enabled")
         || event.affectsConfiguration("llama-vscode.tool_list_directory_enabled")
         || event.affectsConfiguration("llama-vscode.tool_read_file_enabled")
-        || event.affectsConfiguration("llama-vscode.tool_regex_search_enabled");
+        || event.affectsConfiguration("llama-vscode.tool_regex_search_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_custom_tool_source")
+        || event.affectsConfiguration("llama-vscode.tool_custom_tool_description")
+        || event.affectsConfiguration("llama-vscode.tool_custom_tool_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_ask_user_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_delete_file_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_edit_file_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_get_diff_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_description")
+        || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_property_description")
     }
 
     trimTrailingSlash = (s: string): string => {

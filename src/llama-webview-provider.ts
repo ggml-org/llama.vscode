@@ -57,13 +57,41 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'selectModelWithTools':
                         await this.app.menu.selectAiWithToolsModel();
-                        // Send updated tools model after selection
                         const currentToolsModel = this.app.menu.getToolsModel();
                         webviewView.webview.postMessage({
                             command: 'updateToolsModel',
                             model: currentToolsModel || 'No model selected'
                         });
-                        break;                        
+                        break;
+                    case 'getFileList':
+                        const fileKeys = this.app.chatContext.getProjectFiles();
+                        webviewView.webview.postMessage({
+                            command: 'updateFileList',
+                            files: fileKeys
+                        });
+                        break;
+                    case 'addContextProjectFile':
+                        let fileNames = message.fileLongName.split("|");
+                        this.app.llamaAgent.addContextProjectFile(fileNames[1].trim(),fileNames[0].trim());
+                        const contextFiles = this.app.llamaAgent.getContextProjectFile();
+                        webviewView.webview.postMessage({
+                            command: 'updateContextFiles',
+                            files: Array.from(contextFiles.entries())
+                        });
+                        break;
+                    case 'removeContextProjectFile':
+                        this.app.llamaAgent.removeContextProjectFile(message.fileLongName);
+                        const updatedContextFiles = this.app.llamaAgent.getContextProjectFile();
+                        webviewView.webview.postMessage({
+                            command: 'updateContextFiles',
+                            files: Array.from(updatedContextFiles.entries())
+                        });
+                        break;
+                    case 'openContextFile':
+                        const uri = vscode.Uri.file(message.fileLongName);
+                        const document = await vscode.workspace.openTextDocument(uri);
+                        await vscode.window.showTextDocument(document);
+                        break;
                 }
             }
         );
@@ -80,6 +108,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             webviewView.webview.postMessage({
                 command: 'updateToolsModel',
                 model: currentToolsModel || 'No model selected'
+            });
+
+            // Send initial context files
+            const contextFiles = this.app.llamaAgent.getContextProjectFile();
+            webviewView.webview.postMessage({
+                command: 'updateContextFiles',
+                files: Array.from(contextFiles.entries())
             });
         }, 1000);
     }

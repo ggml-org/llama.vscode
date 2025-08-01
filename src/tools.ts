@@ -28,6 +28,7 @@ export class Tools {
         this.toolsFunc.set("edit_file", this.editFile)
         this.toolsFunc.set("ask_user", this.askUser)
         this.toolsFunc.set("custom_tool", this.customTool)
+        this.toolsFunc.set("custom_eval_tool", this.customEvalTool)        
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
         this.toolsFuncDesc.set("read_file", this.readFileDesc)
@@ -38,6 +39,7 @@ export class Tools {
         this.toolsFuncDesc.set("edit_file", this.editFileDesc)
         this.toolsFuncDesc.set("ask_user", this.askUserDesc)
         this.toolsFuncDesc.set("custom_tool", this.customToolDesc)
+        this.toolsFuncDesc.set("custom_eval_tool", this.customEvalToolDesc)
         
     }
 
@@ -259,21 +261,38 @@ export class Tools {
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
             workspaceFolder = vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
-        let filePath = path.join(workspaceFolder, "custom_tool.txt")
-        if (fs.existsSync(filePath)){
-            result = fs.readFileSync(filePath, 'utf-8');
+        let source = this.app.configuration.tool_custom_tool_source;
+        if (source.startsWith("http")){
+            let htmlResult = await Utils.fetchWebPage(source)
+            result = Utils.extractTextFromHtml(htmlResult)
+        } else if (fs.existsSync(source)){
+            result = fs.readFileSync(source, 'utf-8');
         } else {
-            result = "File " + filePath + " does not exist!"
+            result = "File " + source + " does not exist!"
         }
 
         return result
     }
 
     public customToolDesc = async (args: string) => {
-        let params = JSON.parse(args);
-        let question = params.question;
-
         return "Custom tool is executed."
+    }
+
+     public customEvalTool = async (args: string) => {
+        let params = JSON.parse(args);
+
+        const functionString = '('+ this.app.configuration.tool_custom_eval_tool_code +')';
+        const toolFunction = eval(functionString);
+        
+        let result = toolFunction(params.input)
+
+        return result === null ? "null" : result === undefined ? "undefined" : String(result)
+    }
+
+    public customEvalToolDesc = async (args: string) => {
+        let params = JSON.parse(args);
+
+        return "Custom eval tool is executed. Input: " + params.input
     }
     
     public init = () => {
@@ -495,6 +514,26 @@ export class Tools {
                     "parameters": {
                         "type": "object",
                         "properties": {},
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_custom_eval_tool_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "custom_eval_tool",
+                    "description": this.app.configuration.tool_custom_eval_tool_description,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "input": {
+                                "type": "string",
+                                "description": this.app.configuration.tool_custom_eval_tool_property_description
+                            },
+                        },
                         "required": [],
                     },
                     "strict": true

@@ -16,9 +16,9 @@ export class LlamaAgent {
     private app: Application
     private outputChannel: vscode.OutputChannel;
     private lastStopRequestTime = Date.now();
-    private parser = new DOMParser();
     private messages: ChatMessage[] = []
     private logText = ""
+    public contexProjectFiles: Map<string,string> = new Map();
 
     constructor(application: Application) {
         this.app = application;
@@ -36,6 +36,18 @@ export class LlamaAgent {
         this.logText = "";
     }
 
+    addContextProjectFile = (fileLongName: string, fileShortName: string) => {
+        this.contexProjectFiles.set(fileLongName, fileShortName);
+    }
+
+    removeContextProjectFile = (fileLongName: string) => {
+        this.contexProjectFiles.delete(fileLongName);
+    }
+
+    getContextProjectFile = () => {
+        return this.contexProjectFiles;
+    }
+
     run = async (query:string) => {
         await this.askAgent(query);
     }
@@ -43,9 +55,7 @@ export class LlamaAgent {
     askAgent = async (query:string): Promise<string> => {
             let response = ""
             let toolCallsResult: ChatMessage;
-            let areFilesChanged = true;
             let finishReason:string|undefined = "tool_calls"
-            let commitMessage = query;
             this.logText += query + "\n\n";
 
             
@@ -58,7 +68,21 @@ export class LlamaAgent {
             let projectContext = worspaceFolder + "\n" + recommendation;
             query = projectContext + "\n\n" + query;
             
-            // let result = await vscode.lm.invokeTool("mcp_playwright_browser_navigate",{input: {url: "https://dir.bg"}, toolInvocationToken: undefined})
+            if (this.contexProjectFiles.size > 0){
+                query += "\n\nBelow is the content of some files, which the user has attached as a context."
+                for (const [key, value] of this.contexProjectFiles) {
+                    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(key));
+                    let parts = value.split("|")
+                    if (parts.length == 1) {
+                        query += "\n\nFile " + key + ":\n\n" + document.getText().slice(0, this.app.configuration.rag_max_context_file_chars) 
+                    } else {
+                        let firstLine = parseInt(parts[1]);
+                        let lastLine = parseInt(parts[2]);
+                        let fileContent = document.getText().split(/\r?\n/).slice(firstLine - 1, lastLine).join("\n");
+                        query += "\n\nFile " + key + " content from line " + firstLine + " to line " + lastLine + " (one based):\n\n" + fileContent.slice(0, this.app.configuration.rag_max_context_file_chars)
+                    }
+                }                   
+            }
 
             let filesFromQuery = this.app.chatContext.getFilesFromQuery(query)
             for (const fileName of filesFromQuery){
@@ -80,8 +104,8 @@ export class LlamaAgent {
             this.app.llamaWebviewProvider.logInUi(this.logText);
             
             let currentCycleStartTime = Date.now();
-            let changedFiles = []
-            let deletedFiles = []
+            const changedFiles = new Set<string>
+            const deletedFiles = new Set<string>
             while (iterationsCount < this.app.configuration.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
@@ -139,8 +163,8 @@ export class LlamaAgent {
                                     const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                     if (toolFunc) {
                                         commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                        if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.push(commandDescription);
-                                        if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.push(commandDescription);
+                                        if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.add(commandDescription);
+                                        if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.add(commandDescription);
                                     }
                                 }
                                 if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
@@ -168,9 +192,9 @@ export class LlamaAgent {
                     return "An error occurred: " + error;
                 }
             }
-            if (changedFiles.length + deletedFiles.length > 0) this.logText += "\n\nFiles changes:\n"
-            if (changedFiles.length > 0) this.logText += changedFiles.join("\n") + "\n"
-            if (deletedFiles.length > 0) this.logText += deletedFiles.join("\n") + "\n"
+            if (changedFiles.size + deletedFiles.size > 0) this.logText += "\n\nFiles changes:\n"
+            if (changedFiles.size > 0) this.logText += Array.from(changedFiles).join("\n") + "\n"
+            if (deletedFiles.size > 0) this.logText += Array.from(deletedFiles).join("\n") + "\n"
             this.logText += "\n\nAI with tools session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")

@@ -9,6 +9,7 @@
 import * as vscode from 'vscode';
 import {Application} from "./application";
 import {LlamaWebviewProvider} from './llama-webview-provider'
+import { Utils } from './utils';
 
 export class Architect {
     private app: Application
@@ -23,7 +24,7 @@ export class Architect {
             setTimeout(() => {
                 this.app.chatContext.indexWorkspaceFiles().catch(error => {
                     console.error('Failed to index workspace files:', error);
-                });
+                });     
             }, 0);
         }
         this.app.tools.init()
@@ -384,6 +385,18 @@ export class Architect {
             () => {
                 // Focus the webview in the Explorer panel
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
+                const editor = vscode.window.activeTextEditor;
+                if (editor && editor.selection) {
+                    let fileLongName = editor.document.fileName;
+                    const parts = fileLongName.split(/[\\/]/);
+                    let fileShortName = parts[parts.length - 1]
+                    if (!editor.selection.isEmpty){
+                        let sel = editor.selection;
+                        this.app.llamaAgent.addContextProjectFile(fileLongName, fileShortName + "|" + (sel.start.line + 1) + "|" + (sel.end.line + 1))
+                    } else {
+                        this.app.llamaAgent.addContextProjectFile(fileLongName, fileShortName)
+                    }
+                }
                 
                 // Send a message to focus the textarea after a short delay
                 setTimeout(() => {
@@ -391,7 +404,13 @@ export class Architect {
                         this.app.llamaWebviewProvider.webview.webview.postMessage({
                             command: 'focusTextarea'
                         });
+                        const contextFiles = this.app.llamaAgent.getContextProjectFile();
+                        this.app.llamaWebviewProvider.webview.webview.postMessage({
+                            command: 'updateContextFiles',
+                            files: Array.from(contextFiles.entries())
+                        });
                     }
+                    
                 }, 100);
             }
         );
