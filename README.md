@@ -104,29 +104,27 @@ You can use any other FIM-compatible model that your system can handle. By defau
 
 The plugin requires FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
 
-## React Webview UI
+## Llama Agent Webview
 
-The extension includes a React-based webview interface that provides enhanced interaction capabilities:
+The extension includes Llama Agent:
 
 ### Features
-- Text display area for showing content from the extension
-- Input field for sending text to the extension
-- VS Code theme integration
-- Real-time communication with the extension
+- Llama Agent UI in Explorer view
+- OpenRouter API model selection (assumes your OpenRauter key is in setting Api_key_tools)
+- MCP Support
+- 9 internal tools available for use
+- custom_tool - returns the content of a file or a web page
+- custom_eval_tool - write your own tool in Typescript/javascript
+- Attach the selection to the context
+- Configure maximum loops for Llama Agent
 
 ### Usage
-1. Open the Command Palette (`Ctrl+Shift+P` / `Cmd+Shift+P`)
-2. Run the command "llama-vscode: Show Llama AI"
-3. The webview will appear in the Explorer panel on the right side
+1. Open Llama Agent with Ctrl+Shift+A or from llama-vscode menu Show Llama Agent
+2. If you have OpenRouter API key in setting Api_key_tools - select a model from OpenRouter by clicking button Select Model. Alternatively - set the model directly with settings Endpoint_tools, Api_key_tools, Ai_model, Ai_api_version (should be v1 in almost all cases)
+3. Write a query (Use Enter for new line) and attach files if needed
+4. Click Ask button
 
-### Development
-To work on the UI:
-1. Navigate to the `ui` folder
-2. Run `npm install` to install dependencies
-3. Run `npm run dev` for development with hot reload
-4. Run `npm run build` to build for production
-
-The UI is automatically built when you install the extension dependencies.
+More details(https://github.com/ggml-org/llama.vscode/wiki) 
 
 ## Examples
 
