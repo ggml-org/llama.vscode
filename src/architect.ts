@@ -303,8 +303,9 @@ export class Architect {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
-
-            if (!this.app.configuration.endpoint_chat) return;
+            
+            let endpoint = this.getChatEndpoint();
+            if (!endpoint) return;
 
             this.app.askAi.showChatWithAi(false, context);
         });
@@ -318,7 +319,8 @@ export class Architect {
                 return;
             }
 
-            if (!this.app.configuration.endpoint_chat) return;
+            let endpoint = this.getChatEndpoint();
+            if (!endpoint) return;
 
             this.app.askAi.showChatWithAi(true, context);
         });
@@ -332,7 +334,8 @@ export class Architect {
                 return;
             }
 
-            if (!this.app.configuration.endpoint_chat) return;
+            let endpoint = this.getChatEndpoint();
+            if (!endpoint) return;
 
             this.app.askAi.showChatWithTools(context);
         });
@@ -435,4 +438,11 @@ export class Architect {
         context.subscriptions.push(postMessageCommand);
     }
     
+
+    private getChatEndpoint() {
+        let endpoint = this.app.configuration.endpoint_chat;
+        let chatModel = this.app.menu.getChatModel();
+        if (chatModel && chatModel.endpoint) endpoint = chatModel.endpoint;
+        return endpoint;
+    }
 }
