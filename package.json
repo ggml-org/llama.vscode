@@ -198,19 +198,25 @@
       "properties": {
         "llama-vscode.launch_completion": {
           "type": "string",
-          "default": "cd c:/ai ; ./llama-server.exe -m Qwen2.5-Coder-1.5B.Q8_0.gguf --host 0.0.0.0 --port 8012 -c 2048 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256",
-          "description": "Shell command for starting fim llama.cpp server, executed from the menu"
+          "default": "",
+          "description": "Shell command for starting local fim llama.cpp server"
         },
         "llama-vscode.launch_chat": {
           "type": "string",
-          "default": "cd c:/ai ; ./llama-server.exe -m qwen2.5-coder-3b-instruct-q6_k.gguf -ngl 99 --port 8011 --path C:/llama.cpp/llama.cpp/examples/server/webui/dist",
-          "description": "Shell command for starting chat llama.cpp server, executed from the menu"
+          "default": "",
+          "description": "Shell command for starting local chat llama.cpp server"
         },
         "llama-vscode.launch_embeddings": {
           "type": "string",
-          "default": "cd c:/ai ; ./llama-server.exe -m all-MiniLM-L6-v2-Q8_0.gguf --port 8010",
-          "description": "Shell command for starting chat llama.cpp server, executed from the menu"
+          "default": "",
+          "description": "Shell command for starting local embeddings llama.cpp server"
         },
+        "llama-vscode.launch_tools": {
+          "type": "string",
+          "default": "",
+          "description": "Shell command for starting local lools llama.cpp server"
+        },
+        
         "llama-vscode.launch_training_completion": {
           "type": "string",
           "default": "",
@@ -233,22 +239,22 @@
         },
         "llama-vscode.endpoint": {
           "type": "string",
-          "default": "http://127.0.0.1:8012",
+          "default": "",
           "description": "The URL to be used by the extension for code completion."
         },
         "llama-vscode.endpoint_chat": {
           "type": "string",
-          "default": "http://127.0.0.1:8011",
+          "default": "",
           "description": "The URL to be used by the extension for chat with ai."
         },
         "llama-vscode.endpoint_tools": {
           "type": "string",
-          "default": "http://127.0.0.1:8011",
+          "default": "",
           "description": "The URL to be used by the extension for chat with ai with tools use."
         },
         "llama-vscode.endpoint_embeddings": {
           "type": "string",
-          "default": "http://127.0.0.1:8010",
+          "default": "",
           "description": "The URL to be used by the extension for creating embeddings."
         },
         "llama-vscode.ai_api_version": {
@@ -260,6 +266,797 @@
           "type": "string",
           "default": "google/gemini-2.5-flash",
           "description": "The model name. This is used in the request to the API. It is important when OpenRouter is used (for example google/gemini-2.5-flash)."
+        },
+        "llama-vscode.complition_models_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name for this model to be shown to the user"
+                },
+                "endpoint": {
+                  "type": "string",
+                  "description": "The endpoint, from where to access the model",
+                  "default": ""
+                },
+                "aiModel": {
+                  "type": "string",
+                  "description": "The name of the AI model as expected by the provider",
+                  "default": ""
+                },
+                "isKeyRequired": {
+                  "type": "boolean",
+                  "description": "Is key requried for the endpoint",
+                  "default": false
+                },
+                "localStartCommand": {
+                  "type": "string",
+                  "description": "Command to be used for sterting the model locally.",
+                  "default": ""
+                }
+              },
+              "required": ["name"]
+            },
+          "default": [
+      {
+        "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
+        "localStartCommand": "llama-server --fim-qwen-1.5b-default -ngl 99 --port 8012",
+        "endpoint": "http://localhost:8012",
+        "aiModel": "",
+        "isKeyRequired": false
+      },
+      {
+        "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
+        "localStartCommand": "llama-server --fim-qwen-3b-default -ngl 99 --port 8012",
+        "endpoint": "http://localhost:8012",
+        "aiModel": "",
+        "isKeyRequired": false
+      },
+      {
+        "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
+        "localStartCommand": "llama-server --fim-qwen-7b-default -ngl 99 --port 8012",
+        "endpoint": "http://localhost:8012",
+        "aiModel": "",
+        "isKeyRequired": false
+      },
+      {
+        "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
+        "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port 8012",
+        "endpoint": "http://localhost:8012",
+        "aiModel": "",
+        "isKeyRequired": false
+      }
+    ],
+          "description": "The list of the completion (FIM) models, which could be selected"
+        },
+        "llama-vscode.chat_models_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name for this model to be shown to the user"
+                },
+                "endpoint": {
+                  "type": "string",
+                  "description": "The endpoint, from where to access the model",
+                  "default": ""
+                },
+                "aiModel": {
+                  "type": "string",
+                  "description": "The name of the AI model as expected by the provider",
+                  "default": ""
+                },
+                "isKeyRequired": {
+                  "type": "boolean",
+                  "description": "Is key requried for the endpoint",
+                  "default": false
+                },
+                "localStartCommand": {
+                  "type": "string",
+                  "description": "Command to be used for sterting the model locally.",
+                  "default": ""
+                }
+              },
+              "required": ["name"]
+            },
+          "default": [
+            {
+              "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "endpoint": "http://127.0.0.1:8011"
+            },
+            {
+              "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "endpoint": "http://127.0.0.1:8011"
+            },
+            {
+              "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "endpoint": "http://127.0.0.1:8011"
+            },
+            {
+              "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "endpoint": "http://127.0.0.1:8011"
+            },
+            {
+              "name": "gemini qat tools",
+              "localStartCommand": "llama-server -m c:\\ai\\gemma-3-4B-it-QAT-Q4_0.gguf --port 8011",
+              "endpoint": "http://localhost:8011",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
+            {
+              "name": "OpenAI gpt-oss 20B",
+              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8011",
+              "endpoint": "http://localhost:8011",
+              "aiModel": "",
+              "isKeyRequired": false
+            }
+          ],
+          "description": "The list of chat models, which could be selected"
+        },
+        "llama-vscode.embeddings_models_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name for this model to be shown to the user"
+                },
+                "endpoint": {
+                  "type": "string",
+                  "description": "The endpoint, from where to access the model",
+                  "default": ""
+                },
+                "aiModel": {
+                  "type": "string",
+                  "description": "The name of the AI model as expected by the provider",
+                  "default": ""
+                },
+                "isKeyRequired": {
+                  "type": "boolean",
+                  "description": "Is key requried for the endpoint",
+                  "default": false
+                },
+                "localStartCommand": {
+                  "type": "string",
+                  "description": "Command to be used for sterting the model locally.",
+                  "default": ""
+                }
+              },
+              "required": ["name"]
+            },
+          "default": [
+            {
+              "name": "Nomic-Embed-Text-V2-GGUF",
+              "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+              "endpoint": "http://127.0.0.1:8010"
+            }
+          ],
+          "description": "The list of embeddings models, which could be selected"
+        },
+        "llama-vscode.tools_models_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name for this model to be shown to the user"
+                },
+                "endpoint": {
+                  "type": "string",
+                  "description": "The endpoint, from where to access the model",
+                  "default": ""
+                },
+                "aiModel": {
+                  "type": "string",
+                  "description": "The name of the AI model as expected by the provider",
+                  "default": ""
+                },
+                "isKeyRequired": {
+                  "type": "boolean",
+                  "description": "Is key requried for the endpoint",
+                  "default": false
+                },
+                "localStartCommand": {
+                  "type": "string",
+                  "description": "Command to be used for sterting the model locally.",
+                  "default": ""
+                }
+              },
+              "required": ["name"]
+            },
+          "default": [
+            {
+              "name": "Z.AI: GLM 4.5 - 128000 context $0.60/M input tokens $2.20/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "z-ai/glm-4.5"
+            },
+            {
+              "name": "Z.AI: GLM 4.5 Air - 128.000 context $0.20/M input tokens $1.10/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "z-ai/glm-4.5-air"
+            },
+            {
+              "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
+            },
+            {
+              "name": "Qwen: Qwen3 Coder - 262K context $0.30/M input tokens $1.20/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "qwen/qwen3-coder"
+            },
+            {
+              "name": "Qwen: Qwen3 235B A22B Instruct 2507 - 262K context $0.12/M input tokens $0.59/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "qwen/qwen3-235b-a22b-2507"
+            },
+            {
+              "name": "MoonshotAI: Kimi K2 - 131K context $0.55/M input tokens $2.20/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "moonshotai/kimi-k2"
+            },
+            {
+              "name": "Google: Gemini 2.5 Flash Lite - 1.05M context $0.10/M input tokens $0.40/M output tokens",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "google/gemini-2.5-flash-lite"
+            },
+            {
+              "name": "Google: Gemini 2.5 Flash - 1.05M context $0.30/M input tokens $2.50/M output tokens $1.238/K input imgs",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "google/gemini-2.5-flash"
+            },
+            {
+              "name": "openai/gpt-oss-20b",
+              "localStartCommand": "",
+              "endpoint": "https://openrouter.ai/api",
+              "aiModel": "openai/gpt-oss-20b",
+              "isKeyRequired": true
+            },
+            {
+              "name": "OpenAI gpt-oss 120B (OpenRouter)",
+              "localStartCommand": "",
+              "endpoint": "https://openrouter.ai/api",
+              "aiModel": "openai/gpt-oss-120b",
+              "isKeyRequired": true
+            },
+            {
+              "name": "OpenAI gpt-oss 20B (LOCAL)",
+              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            }
+          ],
+          "description": "The list of tools models, which could be selected"
+        },
+        "llama-vscode.orchestras_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name of the orchestra"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the orchestra"
+              },
+              "completion": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name for this model to be shown to the user"
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "description": "The endpoint, from where to access the model",
+                    "default": ""
+                  },
+                  "aiModel": {
+                    "type": "string",
+                    "description": "The name of the AI model as expected by the provider",
+                    "default": ""
+                  },
+                  "isKeyRequired": {
+                    "type": "boolean",
+                    "description": "Is key requried for the endpoint",
+                    "default": false
+                  },
+                  "localStartCommand": {
+                    "type": "string",
+                    "description": "Command to be used for sterting the model locally.",
+                    "default": ""
+                  }
+                },
+                "required": ["name"]
+              },
+              "chat": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name for this model to be shown to the user"
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "description": "The endpoint, from where to access the model",
+                    "default": ""
+                  },
+                  "aiModel": {
+                    "type": "string",
+                    "description": "The name of the AI model as expected by the provider",
+                    "default": ""
+                  },
+                  "isKeyRequired": {
+                    "type": "boolean",
+                    "description": "Is key requried for the endpoint",
+                    "default": false
+                  },
+                  "localStartCommand": {
+                    "type": "string",
+                    "description": "Command to be used for sterting the model locally.",
+                    "default": ""
+                  }
+                },
+                "required": ["name"]
+              },
+              "embeddings": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name for this model to be shown to the user"
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "description": "The endpoint, from where to access the model",
+                    "default": ""
+                  },
+                  "aiModel": {
+                    "type": "string",
+                    "description": "The name of the AI model as expected by the provider",
+                    "default": ""
+                  },
+                  "isKeyRequired": {
+                    "type": "boolean",
+                    "description": "Is key requried for the endpoint",
+                    "default": false
+                  },
+                  "localStartCommand": {
+                    "type": "string",
+                    "description": "Command to be used for sterting the model locally.",
+                    "default": ""
+                  }
+                },
+                "required": ["name"]
+              },
+              "tools": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name for this model to be shown to the user"
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "description": "The endpoint, from where to access the model",
+                    "default": ""
+                  },
+                  "aiModel": {
+                    "type": "string",
+                    "description": "The name of the AI model as expected by the provider",
+                    "default": ""
+                  },
+                  "isKeyRequired": {
+                    "type": "boolean",
+                    "description": "Is key requried for the endpoint",
+                    "default": false
+                  },
+                  "localStartCommand": {
+                    "type": "string",
+                    "description": "Command to be used for sterting the model locally.",
+                    "default": ""
+                  }
+                },
+                "required": ["name"]
+              }
+            }
+          },
+          "default": [
+      {
+        "name": "Silence",
+        "description": "Empty orchestra, contains no models. When selected, no models will be started.",
+        "completion": {
+          "name": ""
+        },
+        "chat": {
+          "name": ""
+        },
+        "embeddings": {
+          "name": ""
+        },
+        "tools": {
+          "name": ""
+        }
+      },
+      {
+        "name": "Only completions - CPU",
+        "description": "For laptops only with CPU, lightweight model for completion",
+        "completion": {
+          "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only completions (<= 8GB VRAM)",
+        "description": "Only for code completions model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
+        "completion": {
+          "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-1.5b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only completions (<= 16GB VRAM)",
+        "description": "Only for completions, model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
+        "completion": {
+          "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-3b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only completions (> 16GB VRAM)",
+        "description": "Only for code completions, model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
+        "completion": {
+          "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-7b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only chat & edit (CPU Only)",
+        "description": "Only for chat with AI, model Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only chat, chat with project context & edit (<= 16GB VRAM)",
+        "description": "Could be used for edit with AI, chat with AI, chat with AI with project context Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF + embeddings model (<= 16GB VRAM)",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only chat & edit (<= 8GB VRAM)",
+        "description": "Only for chat with AI and edit with AI, Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Only chat, chat with project context & edit (> 16GB VRAM)",
+        "description": "Good for chat with AI, chat with AI with project context, edit Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF + embeddings model  (> 16GB VRAM)",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      },
+      {
+        "name": "Agent & chat (<= 16GB VRAM) (requires OpenRouter API key)",
+        "description": "Agent qwen 3 from OpenRouter (requires OpenRouter API key),  chat and edit with small models (<= 16GB VRAM) ",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens",
+          "endpoint": "https://openrouter.ai/api",
+          "isKeyRequired": true,
+          "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
+        }
+      },
+      {
+        "name": "Completions & agent & chat - min (<= 16GB VRAM))",
+        "description": "The minimal configuration for completions (local), chat (local) and agent (remote - OpenRouter), requires OpenRouter API key for agent",
+        "completion": {
+          "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-1.5b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens",
+          "endpoint": "https://openrouter.ai/api",
+          "isKeyRequired": true,
+          "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
+        }
+      },
+      {
+        "name": "Agent, completions & chat - medium (<= 32GB VRAM))",
+        "description": "Agent qwen 3 from OpenRouter, completions & chat - medium size models, embeddings (<= 32GB VRAM))",
+        "completion": {
+          "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-3b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "tools": {
+          "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens",
+          "endpoint": "https://openrouter.ai/api",
+          "isKeyRequired": true,
+          "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
+        }
+      },
+      {
+        "name": "Agent, comletions, chat - max (>32 GB VRAM)",
+        "description": "Agent - qwen 3 from OpenRouter (API key required), completions, chat (>32 GB VRAM) ",
+        "completion": {
+          "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-7b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens",
+          "endpoint": "https://openrouter.ai/api",
+          "isKeyRequired": true,
+          "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
+        }
+      },
+      {
+        "name": "OpenAI gpt-oss 20B agent, chat - ( < 8GB VRAM) (requires API key from OpenRouter)",
+        "description": "agent - Open AI gpt-oss 20GB from OpenRouter (requries API key), chat - small model (< 8GB VRAM)",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "openai/gpt-oss-20b",
+          "localStartCommand": "",
+          "endpoint": "https://openrouter.ai/api",
+          "aiModel": "openai/gpt-oss-20b",
+          "isKeyRequired": true
+        }
+      },
+      {
+        "name": "OpenAI gpt-oss 20B Agent LOCAL, chat ( >16GB VRAM)",
+        "description": "OpenAI Model local, chat",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "OpenAI gpt-oss 20B",
+          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+          "endpoint": "http://localhost:8009",
+          "aiModel": "",
+          "isKeyRequired": false
+        }
+      },
+      {
+        "name": "OpenAI gpt-0ss 20B chat only LOCAL (>16GB VRAM)",
+        "description": "Only chat with OpenAI gpt-oss 20B local model. (Press Ctrl+; to chat)",
+        "completion": {
+          "name": "",
+          "localStartCommand": ""
+        },
+        "chat": {
+          "name": "OpenAI gpt-oss 20B",
+          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8011",
+          "endpoint": "http://localhost:8011",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": ""
+        }
+      }
+    ],
+          "description": "The list of orchestras, which could be selected"
         },
         "llama-vscode.auto": {
           "type": "boolean",

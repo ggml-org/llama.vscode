@@ -17,6 +17,7 @@ import { LlamaAgent } from "./llama-agent";
 import {LlamaWebviewProvider} from "./llama-webview-provider"
 import * as vscode from "vscode"
 import path from "path";
+import { Persistence } from "./persistence";
 
 export class Application {
     private static instance: Application;
@@ -37,6 +38,7 @@ export class Application {
     public tools: Tools
     public llamaAgent: LlamaAgent
     public llamaWebviewProvider: LlamaWebviewProvider
+    public persistence: Persistence
 
     private constructor(context: vscode.ExtensionContext) {
         this.configuration = new Configuration()
@@ -56,6 +58,7 @@ export class Application {
         this.tools = new Tools(this)
         this.llamaAgent = new LlamaAgent(this)
         this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this)
+        this.persistence = new Persistence(this, context)
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {

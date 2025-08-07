@@ -1,5 +1,6 @@
 import {Application} from "./application";
 import * as vscode from 'vscode';
+import { Utils } from "./utils";
 
 
 export class ChatWithAi {
@@ -80,7 +81,9 @@ export class ChatWithAi {
             else this.askAiPanel = aiPanel;
 
             if (aiPanel) context.subscriptions.push(aiPanel);
-            const targetUrl = this.app.configuration.endpoint_chat + "/";
+            let chatModel = this.app.menu.getChatModel();
+            let targetUrl = this.app.configuration.endpoint_chat + "/";
+            if (chatModel.endpoint) targetUrl = Utils.trimTrailingSlash(chatModel.endpoint) + "/";
             aiPanel.webview.html = this.getWebviewContent(targetUrl);
             aiPanel.onDidDispose(() => {
                 if (withContext) this.askAiWithContextPanel = undefined

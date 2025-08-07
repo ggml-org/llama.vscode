@@ -1,45 +1,88 @@
 import {Application} from "./application";
-import vscode from "vscode";
+import vscode, { QuickPickItem } from "vscode";
+import { LlmModel, Orchestra } from "./types";
+import { LlamaEmbeddingsResponse } from "./llama-server";
+import { Utils } from "./utils";
+import { Configuration } from "./configuration";
+import * as fs from 'fs';
+import * as path from 'path';
 
 export class Menu {
     private app: Application
-    private completionModels = new Map<string, string>([
-        ["Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)", "llama-server --fim-qwen-1.5b-default -ngl 99"],
-        ["Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)", "llama-server --fim-qwen-3b-default -ngl 99"],
-        ["Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)", "llama-server --fim-qwen-7b-default -ngl 99"],
-        ["Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)", "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"],
-    ]);
-    private selectedComplModel: [string, string] = ["", ""]
-    private chatModels = new Map<string, string>([
-        ["Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)", "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256"],
-        ["Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)", "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256"],
-        ["Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)", "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256"],
-        ["Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)", "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256"],
-    ]);
-    private selectedChatModel: [string, string] = ["", ""]
-    private embeddingsModels = new Map<string, string>([
-        ["Nomic-Embed-Text-V2-GGUF", "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings"],
-    ]);
-    private selectedEmbeddingsModel: [string, string] = ["", ""]
-    private toolsModels = new Map<string, string>([
-        ["Z.AI: GLM 4.5 - 128,000 context, $0.60/M input tokens, $2.20/M output tokens", "z-ai/glm-4.5"],
-        ["Z.AI: GLM 4.5 Air - 128,000 context, $0.20/M input tokens, $1.10/M output tokens", "z-ai/glm-4.5-air"],
-        ["Qwen: Qwen3 Coder (free) - 262K context, $0/M input tokens, $0/M output tokens", "qwen/qwen3-coder:free"],
-        ["Qwen: Qwen3 235B A22B Thinking 2507 - 262,144 context, $0.118/M input tokens, $0.118/M output tokens", "qwen/qwen3-235b-a22b-thinking-2507"],
-        ["Qwen: Qwen3 Coder - 262K context, $0,30/M input tokens, $1,20/M output tokens", "qwen/qwen3-coder"],
-        ["Qwen: Qwen3 235B A22B Instruct 2507 - 262K context, $0,12/M input tokens, $0,59/M output tokens", "qwen/qwen3-235b-a22b-2507"],
-        ["MoonshotAI: Kimi K2 (free) - 131K context, $0/M input tokens, $0/M output tokens", "moonshotai/kimi-k2:free"],
-        ["MoonshotAI: Kimi K2 - 131K context, $0,55/M input tokens, $2,20/M output tokens", "moonshotai/kimi-k2"],
-        ["Google: Gemini 2.5 Flash Lite - 1,05M context, $0,10/M input tokens, $0,40/M output tokens", "google/gemini-2.5-flash-lite"],
-        ["Google: Gemini 2.5 Flash - 1,05M context, $0,30/M input tokens, $2,50/M output tokens, $1,238/K input imgs", "google/gemini-2.5-flash"],
-    ]);
-    private selectedToolsModel: [string, string] = ["", ""]
+    private selectedComplModel: LlmModel = {name: ""}
+    private selectedChatModel: LlmModel = {name: ""} 
+    private selectedEmbeddingsModel: LlmModel = {name: ""}
+    private selectedToolsModel: LlmModel = {name: ""}
+    private selectedOrchestra: Orchestra = {name: ""}
+    private readonly startModelDetail = "Selects the model and if local also downloads the model (if not yet done) and starts a llama-server with it.";
+
     constructor(application: Application) {
         this.app = application;
     }
 
     createMenuItems = (currentLanguage: string | undefined, isLanguageEnabled: boolean): vscode.QuickPickItem[] => {
         let menuItems = [
+            {
+                label: this.app.configuration.getUiText("Actions"),
+                kind: vscode.QuickPickItemKind.Separator
+            },
+            {
+                label: this.app.configuration.getUiText('Select/start orchestra...')??"",
+                description: this.app.configuration.getUiText(`Stops the currently running models and starts the selected orchestra - (a predefined group of models for completion, chat, embeddings and tools).`)
+            },
+            {
+                label: this.app.configuration.getUiText('Deselect/stop orchestra and models'),
+                description: this.app.configuration.getUiText(`Unselects/stops orchestra, completion, chat, embeddings and tools models`)
+            },
+            {
+                label: (this.app.configuration.getUiText("Show Llama Agent") ?? "") + " (Ctrl+Shif+A)",
+                description: this.app.configuration.getUiText(`Shows Llama Agent panel`)
+            },
+            {
+                label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
+                description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using server from property endpoint_chat`)
+            },
+            {
+                label: (this.app.configuration.getUiText("Chat with AI with project context") ?? "") + " (Ctrl+Shift+;)",
+                description: this.app.configuration.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
+            },
+            {
+                label: this.app.configuration.getUiText("Show selected models"),
+                description: this.app.configuration.getUiText("Displays a list of currently selected models")
+            },
+            
+            {
+                label: this.app.configuration.getUiText("Entities"),
+                kind: vscode.QuickPickItemKind.Separator
+            },
+            {
+                label: this.app.configuration.getUiText('Orchestras...')??"",
+            },
+            
+            {
+                label: this.app.configuration.getUiText('Completion models...')??""
+            },
+            {
+                label: this.app.configuration.getUiText('Chat models...')??""
+            },
+            {
+                label: this.app.configuration.getUiText('Embeddings models...')??""
+            },
+            {
+                label: this.app.configuration.getUiText('Tools models...')??""
+            },
+            {
+                label: this.app.configuration.getUiText('API keys...'),
+                description: this.app.configuration.getUiText(`Edit or remove API keys. New API keys are added on first use of an endpoint.`)
+            },
+            {
+                label: this.app.configuration.getUiText("Maintenance"),
+                kind: vscode.QuickPickItemKind.Separator
+            },
+            {
+                label: "Install/upgrade llama.cpp",
+                description: "Installs/upgrades llama.cpp server"
+            },
             {
                 label: `${this.app.configuration.enabled ?  this.app.configuration.getUiText('Disable') :  this.app.configuration.getUiText('Enable')} ${this.app.configuration.getUiText("All Completions")}`,
                 description: `${this.app.configuration.enabled ? this.app.configuration.getUiText('Turn off completions globally') : this.app.configuration.getUiText('Turn on completions globally')}`
@@ -56,102 +99,20 @@ export class Menu {
                 label: "$(gear) " + this.app.configuration.getUiText("Edit Settings..."),
             },
             {
+                label: this.app.configuration.getUiText("Help"),
+                kind: vscode.QuickPickItemKind.Separator
+            },
+            {
+                label: this.app.configuration.getUiText("How to use llama-vscode"),
+            },
+            {
+                label: this.app.configuration.getUiText('How to delete models'),
+                description: this.app.configuration.getUiText(`Explains how to delete the downloaded models`)
+            },
+            {
                 label: "$(book) " + this.app.configuration.getUiText("View Documentation..."),
             },
-            {
-                label: this.app.configuration.getUiText("Show running servers"),
-                description: this.app.configuration.getUiText("Displays a list of currently running servers")
-            },
-            {
-                label: "Install/upgrade llama.cpp",
-                description: "Installs/upgrades llama.cpp server"
-            },]
-        menuItems.push(
-            {
-                label: this.app.configuration.getUiText("Show Llama Agent") ?? "",
-                description: this.app.configuration.getUiText(`Shows Llama Agent panel`)
-            })
-        if (this.app.configuration.endpoint_chat && this.app.configuration.endpoint_chat.trim() != "")
-            menuItems.push(
-                {
-                    label: this.app.configuration.getUiText("Chat with AI") ?? "",
-                    description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using server from property endpoint_chat`)
-                })
-        if (this.app.configuration.rag_enabled){
-            menuItems.push({
-                label: this.app.configuration.getUiText("Chat with AI with project context") ?? "",
-                description: this.app.configuration.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
-            })
-        }
-        menuItems.push(
-            {
-                label: this.app.configuration.getUiText('Start/change completion model...')??""
-            })
-        if (!this.app.llamaServer.isFimRunning()){
-            menuItems.push(
-            {
-                label: this.app.configuration.getUiText("Start completion llama.cpp server")??"",
-                description: this.app.configuration.getUiText(`Runs the command from property launch_completion`)
-            })
-        } else {
-            menuItems.push(
-            {
-                label: this.app.configuration.getUiText("Stop completion llama.cpp server")??"",
-                description: this.app.configuration.getUiText(`Stops completion llama.cpp server if it was started from llama.vscode menu`)
-            })
-        }
-        menuItems.push(
-            {
-                label: this.app.configuration.getUiText('Start/change chat model...')??""
-            })
-        if (!this.app.llamaServer.isChatRunning()){
-            menuItems.push(
-            {
-                label: this.app.configuration.getUiText("Start chat llama.cpp server")??"",
-                description: this.app.configuration.getUiText(`Runs the command from property launch_chat`)
-            })
-        } else {
-            menuItems.push(
-                {
-                    label: this.app.configuration.getUiText("Stop chat llama.cpp server")??"",
-                    description: this.app.configuration.getUiText(`Stops chat llama.cpp server if it was started from llama.vscode menu`)
-                })
-        }
-        menuItems.push(
-            {
-                label: this.app.configuration.getUiText('Start/change embeddings model...')??""
-            })
-
-        if (!this.app.llamaServer.isEmbeddingsRunning()){
-            menuItems.push(
-            {
-                label: this.app.configuration.getUiText("Start embeddings llama.cpp server")??"",
-                description: this.app.configuration.getUiText(`Runs the command from property launch_embeddings`)
-            }
-            )
-        } else {
-            menuItems.push(
-                {
-                    label: this.app.configuration.getUiText("Stop embeddings llama.cpp server")??"",
-                    description: this.app.configuration.getUiText(`Stops embeddings llama.cpp server if it was started from llama.vscode menu`)
-                })
-        }
-        menuItems.push(
-            {
-                label: this.app.configuration.getUiText('Select/change AI with tools model from OpenRouter...')??""
-            })
-
-        menuItems.push(
-            {
-                label: this.app.configuration.getUiText('Start all models'),
-                description: this.app.configuration.getUiText(`Starts completion, chat and embeddings models`)
-            })
-            menuItems.push(
-            {
-                label: this.app.configuration.getUiText('Stop all models'),
-                description: this.app.configuration.getUiText(`Stops completion, chat and embeddings models`)
-            })
-            
+            ]                          
 
         if (this.app.configuration.launch_training_completion.trim() != "") {
             menuItems.push(
@@ -178,125 +139,57 @@ export class Menu {
         return menuItems.filter(Boolean) as vscode.QuickPickItem[];
     }
 
-    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {      
-        const PRESET_PLACEHOLDER = "[preset]";
-        const MODEL_PLACEHOLDER = "[model]";
-
-        let { port, portChat, portEmbedding } = this.getPorts();
-
-        let llmTemplate = " llama-server -hf " + MODEL_PLACEHOLDER
-        let llmTemplateVram = " llama-server --" + PRESET_PLACEHOLDER + " --port " + port
-        let llmChatVram = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portChat + " -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 "
-        let llmEmbedding = " llama-server -hf " + MODEL_PLACEHOLDER + " --port " + portEmbedding + " -ub 2048 -b 2048 --ctx-size 2048 --embeddings"
-        
-        if (selected.label.startsWith(this.app.configuration.getUiText('Start completion model')??"")){
-                await this.app.llamaServer.killFimCmd();
-                await this.app.llamaServer.shellFimCmd(llmTemplate.replace(MODEL_PLACEHOLDER, this.selectedComplModel[1]) +  " --port " + port);
-                this.app.statusbar.updateStatusBarText();
-                return;
-        } else if (selected.label.startsWith(this.app.configuration.getUiText('Start chat model')??"")){
-                await this.app.llamaServer.killChatCmd();
-                await this.app.llamaServer.shellChatCmd(llmTemplate.replace(MODEL_PLACEHOLDER, this.selectedChatModel[1]) +  " --port " + portChat);
-                this.app.statusbar.updateStatusBarText();
-                return; 
-        } else if (selected.label.startsWith(this.app.configuration.getUiText('Start embeddings model')??"")){
-                await this.app.llamaServer.killEmbeddingsCmd();
-                await this.app.llamaServer.shellEmbeddingsCmd(llmTemplate.replace(MODEL_PLACEHOLDER, this.selectedEmbeddingsModel[1]) +  " --port " + portEmbedding);
-                this.app.statusbar.updateStatusBarText();
-                return;
-        }
-        
+    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
         switch (selected.label) {
-            case this.app.configuration.getUiText('Show running servers'):
-                vscode.window.showInformationMessage("Tools: " + this.selectedToolsModel[0]  + " (" + this.selectedToolsModel[1] + ") | " + 
-                    "Completion: " + this.selectedComplModel[0] + " (" + this.selectedComplModel[1] + ") | " + 
-                    "Chat: " + this.selectedChatModel[0] + " (" + this.selectedChatModel[1] + ") | " +  
-                    "Embeddings: " + this.selectedEmbeddingsModel[0] + " (" + this.selectedEmbeddingsModel[1] + ")");
+            case this.app.configuration.getUiText("Select/start orchestra..."):
+                this.selectOrchestra();
                 break;
-            case this.app.configuration.getUiText("Start/change completion model..."):
-                const selectedModel = await vscode.window.showQuickPick(Array.from(this.completionModels.keys()));
-                if (selectedModel) {
-                    this.selectedComplModel = [selectedModel,  this.completionModels.get(selectedModel)??""];
-                    let { port, portChat, portEmbedding } = this.getPorts();
-                    await this.app.llamaServer.killFimCmd();
-                    await this.app.llamaServer.shellFimCmd(this.selectedComplModel[1] +  " --port " + port);
-                    if (!this.app.configuration.launch_completion) await this.app.configuration.config.update('launch_completion', this.selectedComplModel[1] + " --port " + port, true);
+            case this.app.configuration.getUiText('Deselect/stop orchestra and models'):
+                this.stopOrchestra()
+                break;
+             case this.app.configuration.getUiText("Chat with AI") + " (Ctrl+;)":
+                this.app.askAi.showChatWithAi(false, context);
+                break;
+            case this.app.configuration.getUiText("Show Llama Agent") + " (Ctrl+Shif+A)":
+                vscode.commands.executeCommand('extension.showLlamaWebview');
+                break;
+            case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
+                if (this.app.configuration.rag_enabled){
+                    this.app.askAi.showChatWithAi(true, context)
+                } else {
+                    vscode.window.showInformationMessage("RAG is not enabled. Please enable it from llama-vscode before using this feature.")
                 }
                 break;
-            case this.app.configuration.getUiText("Start/change chat model..."):
-                const chatModel = await vscode.window.showQuickPick(Array.from(this.chatModels.keys()));
-                if (chatModel) {
-                    this.selectedChatModel = [chatModel ,this.chatModels.get(chatModel)??""];
-                    let { port, portChat, portEmbedding } = this.getPorts();
-                    await this.app.llamaServer.killChatCmd();
-                    await this.app.llamaServer.shellChatCmd(this.selectedChatModel[1] +  " --port " + portChat);
-                    if (!this.app.configuration.launch_chat) await this.app.configuration.config.update('launch_chat', this.selectedChatModel[1] + " --port " + portChat, true);
-                }
+            case this.app.configuration.getUiText('Show selected models'):
+                this.showSelectedModels();
                 break;
-            case this.app.configuration.getUiText("Start/change embeddings model..."):
-                const embeddingsModel = await vscode.window.showQuickPick(Array.from(this.embeddingsModels.keys()));
-                if (embeddingsModel) {
-                    this.selectedEmbeddingsModel = [embeddingsModel ,this.embeddingsModels.get(embeddingsModel)??""];
-                    let { port, portChat, portEmbedding } = this.getPorts();
-                    await this.app.llamaServer.killEmbeddingsCmd();
-                    await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel[1] +  " --port " + portEmbedding);
-                    if (!this.app.configuration.launch_embeddings) await this.app.configuration.config.update('launch_embeddings', this.selectedEmbeddingsModel[1] + " --port " + portEmbedding, true);
-                }
+            case this.app.configuration.getUiText('Completion models...')??"":
+                let complModelActions: vscode.QuickPickItem[] = this.getModelActions("completion");
+                let complModelSelected = await vscode.window.showQuickPick(complModelActions);
+                if (complModelSelected) this.processComplModelsActions(complModelSelected);
                 break;
-            case this.app.configuration.getUiText("Select/change AI with tools model from OpenRouter..."):
-                await this.selectAiWithToolsModel();
+            case this.app.configuration.getUiText('Chat models...')??"":
+                let chatModelActions: vscode.QuickPickItem[] = this.getModelActions("chat");
+                let chatModelSelected = await vscode.window.showQuickPick(chatModelActions);
+                if (chatModelSelected) this.processChatModelsActions(chatModelSelected);
+                break;
+            case this.app.configuration.getUiText('Embeddings models...')??"":
+                let embsModelActions: vscode.QuickPickItem[] = this.getModelActions("embeddings")
+                let embsModelSelected = await vscode.window.showQuickPick(embsModelActions);
+                if (embsModelSelected) this.processEmbsModelsActions(embsModelSelected);
+                break;
+            case this.app.configuration.getUiText('Tools models...')??"":
+                let toolsModelActions: vscode.QuickPickItem[] = this.getModelActions("tools");
+                let toolsActionSelected = await vscode.window.showQuickPick(toolsModelActions);
+                if (toolsActionSelected) this.processToolsModelsActions(toolsActionSelected);
+                break;
+            case this.app.configuration.getUiText('Orchestras...')??"":
+                let orchestrasActions: vscode.QuickPickItem[] = this.getOrchestraActions()
+                let orchestraSelected = await vscode.window.showQuickPick(orchestrasActions);
+                if (orchestraSelected) this.processOrchestraActions(orchestraSelected);
                 break;
             case "$(gear) " +  this.app.configuration.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
-                break;
-            case this.app.configuration.getUiText('Start all models'):
-                if (this.app.configuration.launch_completion){
-                    await this.app.llamaServer.killFimCmd();
-                    await this.app.llamaServer.shellChatCmd(this.app.configuration.launch_completion);
-                    this.selectedComplModel = ["launch_completion", this.app.configuration.launch_completion]
-                } else vscode.window.showInformationMessage("launch_completion setting is empty. Completion server can't be started.");
-                if (this.app.configuration.launch_chat){
-                    await this.app.llamaServer.killChatCmd();
-                    await this.app.llamaServer.shellChatCmd(this.app.configuration.launch_chat);
-                    this.selectedChatModel = ["launch_chat", this.app.configuration.launch_chat]
-                } else vscode.window.showInformationMessage("launch_chat setting is empty. Chat server can't be started.");
-                if (this.app.configuration.launch_chat){
-                    await this.app.llamaServer.killEmbeddingsCmd();
-                    await this.app.llamaServer.shellEmbeddingsCmd(this.app.configuration.launch_embeddings);
-                    this.selectedEmbeddingsModel = ["launch_embeddings", this.app.configuration.launch_embeddings]
-                } else vscode.window.showInformationMessage("launch_embeddings setting is empty. Embeddings server can't be started.");
-                break;
-            case this.app.configuration.getUiText('Stop all models'):
-                await this.app.llamaServer.killFimCmd();
-                this.selectedComplModel = ["", ""]
-                await this.app.llamaServer.killChatCmd();
-                this.selectedChatModel = ["", ""]
-                await this.app.llamaServer.killEmbeddingsCmd();
-                this.selectedEmbeddingsModel = ["", ""]
-                break;
-            case this.app.configuration.getUiText('Start completion llama.cpp server'):
-                await this.app.llamaServer.killFimCmd();
-                let commandCompletion = this.app.configuration.launch_completion
-                if ( this.app.configuration.lora_completion != undefined
-                    && this.app.configuration.lora_completion.trim() != "undefined"
-                    && this.app.configuration.lora_completion.trim() != "") commandCompletion += " --lora " + this.app.configuration.lora_completion
-                await this.app.llamaServer.shellFimCmd(commandCompletion);
-                this.selectedComplModel = ["launch_completion", this.app.configuration.launch_completion]
-                break;
-            case this.app.configuration.getUiText('Start chat llama.cpp server'):
-                await this.app.llamaServer.killChatCmd();
-                let commandChat = this.app.configuration.launch_chat
-                if (this.app.configuration.lora_chat != undefined
-                    && this.app.configuration.lora_chat.trim() != "undefined"
-                    && this.app.configuration.lora_chat.trim() != "") commandChat += " --lora " + this.app.configuration.lora_chat
-                await this.app.llamaServer.shellChatCmd(commandChat);
-                this.selectedChatModel = ["launch_chat", this.app.configuration.launch_chat]
-                break;
-            case this.app.configuration.getUiText('Start embeddings llama.cpp server'):
-                await this.app.llamaServer.killEmbeddingsCmd();
-                let commandEmbeddings = this.app.configuration.launch_embeddings
-                await this.app.llamaServer.shellEmbeddingsCmd(commandEmbeddings);
-                this.selectedEmbeddingsModel = ["launch_embeddings", this.app.configuration.launch_embeddings]
                 break;
             case this.app.configuration.getUiText('Start training completion model'):
                 await this.app.llamaServer.killTrainCmd();
@@ -306,26 +199,29 @@ export class Menu {
                 await this.app.llamaServer.killTrainCmd();
                 await this.app.llamaServer.shellTrainCmd(this.app.configuration.launch_training_chat);
                 break;
-            case this.app.configuration.getUiText("Stop completion llama.cpp server"):
-                await this.app.llamaServer.killFimCmd();
-                this.selectedComplModel = ["", ""];
-                break;
-            case this.app.configuration.getUiText("Stop embeddings llama.cpp server"):
-                await this.app.llamaServer.killEmbeddingsCmd();
-                this.selectedEmbeddingsModel = ["", ""];
-                break;
-            case this.app.configuration.getUiText("Stop chat llama.cpp server"):
-                await this.app.llamaServer.killChatCmd();
-                this.selectedChatModel = ["", ""];
-                break;
             case this.app.configuration.getUiText("Stop training"):
                 await this.app.llamaServer.killTrainCmd();
                 break;
-            case "$(book) " + this.app.configuration.getUiText("View Documentation..."):
-                await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode'));
+            case this.app.configuration.getUiText('API keys...'):
+                let apiKeysActions: vscode.QuickPickItem[] = [
+                    {
+                        label: this.app.configuration.getUiText("Add API key...")??""
+                    },
+                    {
+                        label: this.app.configuration.getUiText("Edit/delete API key...")??""
+                    },
+                ]
+                let apiKeyActionSelected = await vscode.window.showQuickPick(apiKeysActions);
+                if (apiKeyActionSelected) this.processApiKeyActions(apiKeyActionSelected);
                 break;
-            case this.app.configuration.getUiText("Chat with AI"):
-                this.app.askAi.showChatWithAi(false, context);
+            case this.app.configuration.getUiText('How to delete models'):
+                Utils.showOkDialog("The automatically downloaded models (llama-server started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\<user_name>\\AppData\\Local\\llama.cpp. \nIn Mac or Linux the folder could be /users/<user_name>/Library/Caches/llama.cpp. \nYou could delete them from the folder.")
+                break;
+            case this.app.configuration.getUiText("How to use llama-vscode"):
+                this.showHowToUseLlamaVscode();
+                break;
+            case "$(book) " + this.app.configuration.getUiText("View Documentation..."):
+                await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/wiki'));
                 break;
             case "Install/upgrade llama.cpp":
                 if (process.platform != 'darwin' && process.platform != 'win32') {
@@ -336,12 +232,6 @@ export class Menu {
                 let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : ""
                 await this.app.llamaServer.shellCommandCmd(terminalCommand);
                 break;
-            case this.app.configuration.getUiText("Show Llama Agent"):
-                vscode.commands.executeCommand('extension.showLlamaWebview');
-                break;
-            case this.app.configuration.getUiText("Chat with AI with project context"):
-                this.app.askAi.showChatWithAi(true, context)
-                break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
                 await this.handleRagToggle(selected.label, currentLanguage, languageSettings);
@@ -350,58 +240,576 @@ export class Menu {
         this.app.statusbar.updateStatusBarText();
     }
 
-    getPorts = () => {
-        const DEFAULT_PORT_FIM_MODEL = "8012"
-        const DEFAULT_PORT_CHAT_MODEL = "8011"
-        const DEFAULT_PORT_TOOLS_MODEL = "8080"
-        const DEFAULT_PORT_EMBEDDINGS_MODEL = "8010"
+    selectOrchestra = async () => {
+        const orchestrasItems: QuickPickItem[] = this.getOrchestras(this.app.configuration.orchestras_list);
+        orchestrasItems.push({ label: (orchestrasItems.length+1) + ". Last used models", description: "" });
+        const orchestra = await vscode.window.showQuickPick(orchestrasItems);
+        if (orchestra) {
+            await this.app.llamaServer.killFimCmd();
+            this.selectedComplModel = {name: "", localStartCommand: ""}
+            await this.app.llamaServer.killChatCmd();
+            this.selectedChatModel = {name: "", localStartCommand: ""}
+            await this.app.llamaServer.killEmbeddingsCmd();
+            this.selectedEmbeddingsModel = {name: "", localStartCommand: ""}
 
-        let endpointParts = this.app.configuration.endpoint.split(":");
-        let endpointChatParts = this.app.configuration.endpoint_chat.split(":");
-        let endpointToolsParts = this.app.configuration.endpoint_tools.split(":");
-        let endpointEmbeddingParts = this.app.configuration.endpoint_embeddings.split(":");
+            if (orchestra.label.includes("Last used models")){
+                this.selectedComplModel = this.app.persistence.getValue("selectedComplModel") as LlmModel
+                if (this.selectedComplModel && this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
+                this.selectedChatModel = this.app.persistence.getValue("selectedChatModel") as LlmModel
+                if (this.selectedChatModel && this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
+                this.selectedEmbeddingsModel = this.app.persistence.getValue("selectedEmbeddingsModel") as LlmModel
+                if (this.selectedEmbeddingsModel && this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
+                this.selectedToolsModel = this.app.persistence.getValue("selectedToolsModel") as LlmModel
+                if (this.selectedToolsModel) this.addApiKey(this.selectedToolsModel)
+            } else {
+                this.selectedOrchestra = this.app.configuration.orchestras_list[parseInt(orchestra.label.split(". ")[0], 10) - 1]
+                await this.app.persistence.setValue('selectedOrchestra', this.selectedOrchestra);
+                
+                if (this.selectedOrchestra){
+                    this.selectedComplModel = this.selectedOrchestra.completion??{name: ""}
+                    if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
+                    await this.addApiKey(this.selectedComplModel);
+                    
+                    this.selectedChatModel = this.selectedOrchestra.chat??{name: ""}
+                    if (this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
+                    await this.addApiKey(this.selectedChatModel);
 
-        let port = endpointParts[endpointParts.length - 1];
-        let portChat = endpointChatParts[endpointChatParts.length - 1];
-        let portTools = endpointChatParts[endpointToolsParts.length - 1];
-        let portEmbedding = endpointEmbeddingParts[endpointEmbeddingParts.length - 1];
+                    this.selectedEmbeddingsModel = this.selectedOrchestra.embeddings??{name: ""}
+                    if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
+                    await this.addApiKey(this.selectedEmbeddingsModel);
 
-        if (!Number.isInteger(Number(port))) port = DEFAULT_PORT_FIM_MODEL;
-        if (!Number.isInteger(Number(portChat))) portChat = DEFAULT_PORT_CHAT_MODEL;
-        if (!Number.isInteger(Number(portTools))) portTools = DEFAULT_PORT_TOOLS_MODEL;
-        if (!Number.isInteger(Number(portEmbedding))) portEmbedding = DEFAULT_PORT_EMBEDDINGS_MODEL;
-
-        // TODO Return portTools if needed
-        return { port, portChat, portEmbedding };
-    }
-
-    selectAiWithToolsModel = async () => {
-        const toolsModel = await vscode.window.showQuickPick(Array.from(this.toolsModels.keys()));
-        if (toolsModel) {
-            this.selectedToolsModel = [toolsModel, this.toolsModels.get(toolsModel) ?? ""];
-            const config = this.app.configuration.config;
-            await config.update('endpoint_tools', "https://openrouter.ai/api", true);
-            await config.update('ai_model', this.selectedToolsModel[1], true);
-            vscode.window.showInformationMessage("Make sure the extension setting Api_key_tools contains your OpenRouter API key.");
-
+                    this.selectedToolsModel = this.selectedOrchestra.tools??{name: ""}
+                    if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
+                    await this.addApiKey(this.selectedToolsModel);
+                }
+            }
+            this.app.llamaWebviewProvider.updateModelInfo();
         }
     }
 
+    startOrChangeModel = async (modelsList: any[], launchSettingName: string, selModelPropName: string, killCmd: () => void, shellCmd: (message: string) => void) => {
+        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+        const launchToEndpoint = new Map([ ["launch_completion", "endpoint"], ["launch_chat", "endpoint_chat"],  ["launch_embeddings", "endpoint_embeddings"],  ["launch_tools", "endpoint_tools"] ]);
+        // if (this.app.configuration[launchSettingName as keyof Configuration]) modelsItems.push({ label: (modelsItems.length+1) + ". setting " + launchSettingName, description: this.app.configuration.launch_completion, detail: this.startModelDetail });
+        modelsItems.push({ label: (modelsItems.length+1) + ". Use settings", description: "" });
+        const selectedModel = await vscode.window.showQuickPick(modelsItems);
+        if (selectedModel) {
+            let selModel: LlmModel;
+            if (parseInt(selectedModel.label.split(". ")[0], 10) == modelsItems.length){
+                // Last in the list => use settings
+                this[selModelPropName as keyof Menu] = {
+                    name: "Use settings", 
+                    aiModel: this.app.configuration.ai_model,
+                    isKeyRequired: false,
+                    endpoint: this.app.configuration[launchToEndpoint.get(launchSettingName) as keyof Configuration],
+                    localStartCommand: this.app.configuration[launchSettingName as keyof Configuration]
+                } as any
+            } else this[selModelPropName as keyof Menu] = modelsList[parseInt(selectedModel.label.split(". ")[0], 10) - 1]
+            selModel = this[selModelPropName as keyof Menu] as LlmModel
+            this.addApiKey(selModel);
+            await this.app.persistence.setValue(selModelPropName, selModel);
+            await killCmd();
+            if (selModel.localStartCommand) await shellCmd(selModel.localStartCommand??"");
+            this.app.llamaWebviewProvider.updateModelInfo();
+        }
+    }
+
+    private getOrchestraActions(): vscode.QuickPickItem[] {
+        return [
+            {
+                label: this.app.configuration.getUiText("Select/start orchestra...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText("Deselect/stop orchestra and models") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Add orchestra...') ?? "",
+                description: this.app.configuration.getUiText('Adds orchestra with the currently selected models.') ?? "",
+            },
+            {
+                label: this.app.configuration.getUiText('View orchestra details...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Delete orchestra...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Export orchestra...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Import orchestra...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Download/upload orchestras online') ?? ""
+            },
+        ];
+    }
+
+    private getModelActions(modelType: string): vscode.QuickPickItem[] {
+        return [
+            {
+                label: this.app.configuration.getUiText("Select/start "+modelType+" model...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText("Deselect/stop "+modelType+" model") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText("Add "+modelType+" model...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('View '+modelType+' model details...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Delete '+modelType+' model...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Export '+modelType+' model...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Import '+modelType+' model...') ?? ""
+            },
+        ];
+    }
+
+    public showSelectedModels() {
+        Utils.showOkDialog(this.getSelectionsAsString());
+    }
+
+    public showHowToUseLlamaVscode() {
+        Utils.showOkDialog("How to use llama-vscode" +
+            "\n\nllama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp." +
+            "\n\n1. Install llama.cpp " +
+            "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp (sometimes restart is needed to adjust the paths to llama-server)" +
+            "\n\n2. Select orchestra (group of models) for your needs from llama-vscode menu." +
+            "\n  - This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on orchestra)" +
+            "\n\n3. Start using llama-vscode" +
+            "\n  - For code completion - just start typing (uses completion model)" +
+            "\n  - For edit code with AI - select code, right click and select 'llama-vscode Edit Selected Text with AI' (uses chat model, no tools support required)" +
+            "\n  - For chat with AI (quick questions to (local) AI instead of searching with google) - select 'Chat with AI' from llama.vscode menu (uses chat model, no tools support required, llama.cpp server should run on model endpoint.)" +
+            "\n  - For agentic coding - select 'Show Llama Agent' from llama.vscode menu (or Ctrl+Shift+A) and start typing your questions or requests (uses tools model and embeddings model for some tools, most intelligence needed, local usage supported, but you could also use external, paid providers for better results)" +
+            "\n\n If you want to use llama-vscode only for code completion - you could disable RAG from llama-vscode menu to avoid indexing files." +
+            "\n\n If you are an existing user - you could continue useing llama-vscode as before." +
+            "\n\n For more details - select 'View Documentation' from llama-vscode menu" +
+            "\n\n Enjoy!"
+        );
+    }
+
+    private async deleteModelFromList(modelsList: LlmModel[], settingName: string) {
+        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+        const model = await vscode.window.showQuickPick(modelsItems);
+        if (model) {
+            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            const shoulDeleteModel = await Utils.showYesNoDialog("Are you sure you want to delete model below? \n\n"+
+                this.getModelDetailsAsString(modelsList[modelIndex])
+            );
+            if (shoulDeleteModel) {
+                modelsList.splice(modelIndex, 1);
+                this.app.configuration.updateConfigValue(settingName, modelsList);
+                vscode.window.showInformationMessage("The model is deleted.")
+            }
+        }
+    }
+
+    private async viewModelFromList(modelsList: any[]) {
+        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+        let model = await vscode.window.showQuickPick(modelsItems);
+        if (model) {
+            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            let selectedModel =  modelsList[modelIndex];
+            Utils
+            await Utils.showOkDialog("Model details: " +
+            "\nname: " + selectedModel.name +
+            "\nlocal start command: " + selectedModel.localStartCommand +
+            "\nendpoint: " + selectedModel.endpoint +
+            "\nmodel name for provider: " + selectedModel.aiModel +
+            "\napi key required: " + selectedModel.isKeyRequired);
+        }
+    }
+
+    private async addModelToList(modelsList: any[], settingName: string) {
+        const modelListToLocalCommand = new Map([ 
+            ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port 8012"],
+            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011'], 
+            ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010"],  
+            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 --port 8009 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256"] ]);
+        let name = "";
+        while (name.trim() === "") {
+            name = (await vscode.window.showInputBox({
+                placeHolder: 'Enter a user fiendly name for your model (required)',
+                prompt: 'name for your model (required)',
+                value: ''
+            })) ?? "";
+        }
+        const localStartCommand = await vscode.window.showInputBox({
+            placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port 8011. ',
+            prompt: 'Enter a command to start the model locally (leave emtpy if external server is used). If not empty, the command will be run on selecting the model.',
+            value: modelListToLocalCommand.get(settingName)
+        });
+        let endpoint = "";
+        while (endpoint.trim() === "") {
+            endpoint = await vscode.window.showInputBox({
+                placeHolder: 'Endpoint for accessing your model, i.e. http://127.0.0.1:8011 (required)' ,
+                prompt: 'Endpoint for your model (required)',
+                value: ''
+            }) ?? "";
+        }
+        const aiModel = await vscode.window.showInputBox({
+            placeHolder: 'Model name, exactly as expected by the provider, i.e. kimi-latest ',
+            prompt: 'Enter model name as expected by the provider (leave empty if local llama-server is used)',
+            value: ''
+        });
+        const isKeyRequired = await Utils.showYesNoDialog("Is API key required for this endpint (" + endpoint + ")?");
+        let newChatModel: LlmModel = {
+            name: name,
+            localStartCommand: localStartCommand,
+            endpoint: endpoint,
+            aiModel: aiModel,
+            isKeyRequired: isKeyRequired
+        };
+
+        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: " +
+            "\nname: " + name +
+            "\nlocal start command: " + localStartCommand +
+            "\nendpoint: " + endpoint +
+            "\nmodel name for provider: " + aiModel +
+            "\napi key required: " + isKeyRequired +
+            "\nDo you want to add a model with these properties?");
+
+        if (shouldAddModel){
+            modelsList.push(newChatModel);
+            this.app.configuration.updateConfigValue(settingName, modelsList);
+            vscode.window.showInformationMessage("The model is added.")
+        }
+    }
+
+    private async addOrchestraToList(orchestraList: any[], settingName: string) {
+        let name = "";
+        while (name.trim() === "") {
+            name = (await vscode.window.showInputBox({
+                placeHolder: 'Enter a user fiendly name for your orchestra (required)',
+                prompt: 'name for your orchestra (required)',
+                value: ''
+            })) ?? "";
+        }
+
+        const description = await vscode.window.showInputBox({
+            placeHolder: 'description for the orchestra - what is the purpose, when to select etc. ',
+            prompt: 'Enter description for the orchestra.',
+            value: ''
+        });
+        
+        let newOrchestra: Orchestra = {
+            name: name,
+            description: description,
+            completion: this.selectedComplModel,
+            chat: this.selectedChatModel,
+            embeddings: this.selectedEmbeddingsModel,
+            tools: this.selectedToolsModel
+        };
+
+        await this.persistOrchestraToSetting(newOrchestra, orchestraList, settingName);
+    }
+
+    private async persistOrchestraToSetting(newOrchestra: Orchestra, orchestraList: any[], settingName: string) {
+        let orchestraDetails = this.getOrchestraDetailsAsString(newOrchestra);
+        const shouldAddOrchestra = await Utils.showYesNoDialog("A new orchestra will be added. \n\n" +
+            orchestraDetails +
+            "\n\nDo you want to add the orchestra?");
+
+        if (shouldAddOrchestra) {
+            orchestraList.push(newOrchestra);
+            this.app.configuration.updateConfigValue(settingName, orchestraList);
+            vscode.window.showInformationMessage("The orchestra is added.");
+        }
+    }
+
+    private async persistModelToSetting(newModel: Orchestra, modelList: any[], settingName: string) {
+        let orchestraDetails = this.getModelDetailsAsString(newModel);
+        const shouldAddModel = await Utils.showYesNoDialog("A new model will be added. \n\n" +
+            orchestraDetails +
+            "\n\nDo you want to add the model?");
+
+        if (shouldAddModel) {
+            modelList.push(newModel);
+            this.app.configuration.updateConfigValue(settingName, modelList);
+            vscode.window.showInformationMessage("The model is added.");
+        }
+    }
+
+    private async importOrchestraToList(orchestraList: any[], settingName: string) {
+        let name = "";
+        const uris = await vscode.window.showOpenDialog({
+                canSelectMany: false,
+                openLabel: 'Import Orchestra',
+                filters: {
+                    'Orchestra Files': ['orc'],
+                    'All Files': ['*']
+                },
+            });
+
+            if (!uris || uris.length === 0) {
+                return;
+            }
+
+            const filePath = uris[0].fsPath;
+            
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const newOrchestra = JSON.parse(fileContent);
+
+        await this.persistOrchestraToSetting(newOrchestra, orchestraList, settingName);
+    }
+
+    private async importModelToList(modelList: any[], settingName: string) {
+        let name = "";
+        const uris = await vscode.window.showOpenDialog({
+                canSelectMany: false,
+                openLabel: 'Import Model',
+                filters: {
+                    'Model Files': ['json'],
+                    'All Files': ['*']
+                },
+            });
+
+            if (!uris || uris.length === 0) {
+                return;
+            }
+
+            const filePath = uris[0].fsPath;
+            
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const newModel = JSON.parse(fileContent);
+
+        await this.persistModelToSetting(newModel, modelList, settingName);
+    }
+
+    private async deleteOrchestraFromList(orchestrasList: any[], settingName: string) {
+        const orchestrasItems: QuickPickItem[] = this.getOrchestras(orchestrasList);
+        const orchestra = await vscode.window.showQuickPick(orchestrasItems);
+        if (orchestra) {
+            let orchestralIndex = parseInt(orchestra.label.split(". ")[0], 10) - 1;
+            const shoulDeleteOrchestra = await Utils.showYesNoDialog("Are you sure you want to delete the following orchestra? \n\n" 
+                + this.getOrchestraDetailsAsString(orchestrasList[orchestralIndex]));
+            if (shoulDeleteOrchestra) {
+                orchestrasList.splice(orchestralIndex, 1);
+                this.app.configuration.updateConfigValue(settingName, orchestrasList);
+                vscode.window.showInformationMessage("The orchestra is deleted.")
+            }
+        }
+    }
+
+    private async viewOrchestraFromList(orchestrasList: any[]) {
+        const orchestrasItems: QuickPickItem[] = this.getOrchestras(orchestrasList);
+        let model = await vscode.window.showQuickPick(orchestrasItems);
+        if (model) {
+            let orchestraIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            let selectedOrchestra =  orchestrasList[orchestraIndex];
+            let orchestraDetails = this.getOrchestraDetailsAsString(selectedOrchestra);
+            await Utils.showOkDialog(orchestraDetails);
+            
+        }
+    }
+
+    private getOrchestraDetailsAsString(selectedOrchestra: any) {
+        return "Orchestra details: " +
+            "\nname: " + selectedOrchestra.name +
+            "\ndescription: " + selectedOrchestra.description +
+            "\n\ncompletion model: " +
+            "\nname: " + selectedOrchestra.completion?.name +
+            "\nlocal start command: " + selectedOrchestra.completion?.localStartCommand +
+            "\nendpoint: " + selectedOrchestra.completion?.endpoint +
+            "\nmodel name for provider: " + selectedOrchestra.completion?.aiModel +
+            "\napi key required: " + selectedOrchestra.completion?.isKeyRequired +
+            "\n\nchat model: " +
+            "\nname: " + selectedOrchestra.chat?.name +
+            "\nlocal start command: " + selectedOrchestra.chat?.localStartCommand +
+            "\nendpoint: " + selectedOrchestra.chat?.endpoint +
+            "\nmodel name for provider: " + selectedOrchestra.chat?.aiModel +
+            "\napi key required: " + selectedOrchestra.chat?.isKeyRequired +
+            "\n\nembeddings model: " +
+            "\nname: " + selectedOrchestra.embeddings?.name +
+            "\nlocal start command: " + selectedOrchestra.embeddings?.localStartCommand +
+            "\nendpoint: " + selectedOrchestra.embeddings?.endpoint +
+            "\nmodel name for provider: " + selectedOrchestra.embeddings?.aiModel +
+            "\napi key required: " + selectedOrchestra.embeddings?.isKeyRequired +
+            "\n\ntools model: " +
+            "\nname: " + selectedOrchestra.tools?.name +
+            "\nlocal start command: " + selectedOrchestra.tools?.localStartCommand +
+            "\nendpoint: " + selectedOrchestra.tools?.endpoint +
+            "\nmodel name for provider: " + selectedOrchestra.tools?.aiModel +
+            "\napi key required: " + selectedOrchestra.tools?.isKeyRequired;
+    }
+
+    private getModelDetailsAsString(model: LlmModel){
+        return "model: " +
+            "\nname: " + model.name +
+            "\nlocal start command: " + model.localStartCommand +
+            "\nendpoint: " + model.endpoint +
+            "\nmodel name for provider: " + model.aiModel +
+            "\napi key required: " + model.isKeyRequired
+    }
+
+    private getSelectionsAsString() {
+        return "Selected orchestra and models: " +
+            "\norchestra: " + this.selectedOrchestra.name +
+            "\norchestra description: " + this.selectedOrchestra.description +
+            "\n\ncompletion model: " +
+            "\nname: " + this.selectedComplModel?.name +
+            "\nlocal start command: " + this.selectedComplModel.localStartCommand +
+            "\nendpoint: " + this.selectedComplModel.endpoint +
+            "\nmodel name for provider: " + this.selectedComplModel.aiModel +
+            "\napi key required: " + this.selectedComplModel.isKeyRequired +
+            "\n\nchat model: " +
+            "\nname: " + this.selectedChatModel.name +
+            "\nlocal start command: " + this.selectedChatModel.localStartCommand +
+            "\nendpoint: " + this.selectedChatModel.endpoint +
+            "\nmodel name for provider: " + this.selectedChatModel.aiModel +
+            "\napi key required: " + this.selectedChatModel.isKeyRequired +
+            "\n\nembeddings model: " +
+            "\nname: " + this.selectedEmbeddingsModel.name +
+            "\nlocal start command: " + this.selectedEmbeddingsModel.localStartCommand +
+            "\nendpoint: " + this.selectedEmbeddingsModel.endpoint +
+            "\nmodel name for provider: " + this.selectedEmbeddingsModel.aiModel +
+            "\napi key required: " + this.selectedEmbeddingsModel.isKeyRequired +
+            "\n\ntools model: " +
+            "\nname: " + this.selectedToolsModel.name +
+            "\nlocal start command: " + this.selectedToolsModel.localStartCommand +
+            "\nendpoint: " + this.selectedToolsModel.endpoint +
+            "\nmodel name for provider: " + this.selectedToolsModel.aiModel +
+            "\napi key required: " + this.selectedToolsModel.isKeyRequired;
+    }
+
+    private async exportOrchestraFromList(orchestrasList: any[]) {
+        const orchestrasItems: QuickPickItem[] = this.getOrchestras(orchestrasList);
+        let model = await vscode.window.showQuickPick(orchestrasItems);
+        if (model) {
+            let orchestraIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            let selectedOrchestra =  orchestrasList[orchestraIndex];
+            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following orchestra? \n\n" +
+            this.getOrchestraDetailsAsString(selectedOrchestra)
+            );
+
+            if (shouldExport){
+                const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedOrchestra.name.slice(0,40)+'.orc')),
+                        filters: {
+                            'Orchestra Files': ['orc'],
+                            'All Files': ['*']
+                        },
+                        saveLabel: 'Export Orchestra'
+                    });
+
+                if (!uri) {
+                    return;
+                }
+
+                const jsonContent = JSON.stringify(selectedOrchestra, null, 2);
+                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
+                vscode.window.showInformationMessage("Orchestra is saved.")
+            }
+        }
+    }
+
+    private async exportModelFromList(modelsList: any[]) {
+        const modelsItems: QuickPickItem[] = this.getOrchestras(modelsList);
+        let model = await vscode.window.showQuickPick(modelsItems);
+        if (model) {
+            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            let selectedmodel =  modelsList[modelIndex];
+            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following model? \n\n" +
+            this.getModelDetailsAsString(selectedmodel)
+            );
+
+            if (shouldExport){
+                const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedmodel.name.slice(0,40)+'.json')),
+                        filters: {
+                            'Model Files': ['json'],
+                            'All Files': ['*']
+                        },
+                        saveLabel: 'Export Model'
+                    });
+
+                if (!uri) {
+                    return;
+                }
+
+                const jsonContent = JSON.stringify(selectedmodel, null, 2);
+                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
+                vscode.window.showInformationMessage("Model is saved.")
+            }
+        }
+    }
+    
+
+    private async addApiKey(model: LlmModel) {
+        if (model.isKeyRequired) {
+            const apiKey = this.app.persistence.getApiKey(model.endpoint ?? "");
+            if (!apiKey) {
+                const result = await vscode.window.showInputBox({
+                    placeHolder: 'Enter your api key for ' + model.endpoint,
+                    prompt: 'your api key',
+                    value: ''
+                });
+                if (result) this.app.persistence.setApiKey(model.endpoint ?? "", result);
+            }
+        }
+    }
+
+    private getModels(modelsFromProperty:any[]) {
+        const complModelsItems: QuickPickItem[] = [];
+        let i = 0
+        for (let model of modelsFromProperty) {
+            i++;
+            complModelsItems.push({
+                label: i + ". " +model.name,
+                description: model.localStartCommand,
+                detail: this.startModelDetail
+            });
+        }
+        return complModelsItems;
+    }
+
+    private getOrchestras(orchestrasFromProperty:any[]) {
+        const complOrchestrasItems: QuickPickItem[] = [];
+        let i = 0
+        for (let orchestra of orchestrasFromProperty) {
+            i++;
+            complOrchestrasItems.push({
+                label: i + ". " + orchestra.name,
+                description: orchestra.description,
+            });
+        }
+        return complOrchestrasItems;
+    }
+
+    private getToolsModelsList(modelsFromProperty:any[]) {
+        const complModelsItems: QuickPickItem[] = [];
+        let i = 0
+        for (let model of modelsFromProperty) {
+            i++;
+            complModelsItems.push({
+                label: i + ". " +model.name,
+                description: model.aiModel,
+                detail: "Endpoint = " + model.endpoint + " | Is api key required = " + model.isKeyRequired
+            });
+        }
+        return complModelsItems;
+    }
+
+    
+
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
-        const config = this.app.configuration.config;
         if (label.includes(this.app.configuration.getUiText('All Completions')??"")) {
-            await config.update('enabled', !this.app.configuration.enabled, true);
+            await this.app.configuration.updateConfigValue('enabled', !this.app.configuration.enabled);
         } else if (currentLanguage && label.includes(currentLanguage)) {
             const isLanguageEnabled = languageSettings[currentLanguage] ?? true;
             languageSettings[currentLanguage] = !isLanguageEnabled;
-            await config.update('languageSettings', languageSettings, true);
+            await this.app.configuration.updateConfigValue('languageSettings', languageSettings);
         }
     }
 
     private async handleRagToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
-        const config = this.app.configuration.config;
         if (label.includes("RAG")) {
-            await config.update('rag_enabled', !this.app.configuration.rag_enabled, true);
+            await this.app.configuration.updateConfigValue('rag_enabled', !this.app.configuration.rag_enabled);
         } 
     }
 
@@ -417,8 +825,240 @@ export class Menu {
         }
     }
 
-    getToolsModel = (): string => {
-        return this.selectedToolsModel[0];
+    getComplModel = (): LlmModel => {
+        return this.selectedComplModel;
     }
 
+    getToolsModel = (): LlmModel => {
+        return this.selectedToolsModel;
+    }
+
+    getChatModel = (): LlmModel => {
+        return this.selectedChatModel;
+    }
+
+    getEmbeddingsModel = (): LlmModel => {
+        return this.selectedEmbeddingsModel;
+    }
+
+    getOrchestra = (): Orchestra => {
+        return this.selectedOrchestra;
+    }
+
+    isComplModelSelected = (): boolean => {
+        return this.selectedComplModel != undefined && this.selectedComplModel.name. trim() != "";
+    }
+
+    isChatModelSelected = (): boolean => {
+        return this.selectedChatModel != undefined && this.selectedChatModel.name. trim() != "";
+    }
+
+    isToolsModelSelected = (): boolean => {
+        return this.selectedToolsModel != undefined && this.selectedToolsModel.name. trim() != "";
+    }
+
+    isEmbeddingsModelSelected = (): boolean => {
+        return this.selectedEmbeddingsModel != undefined && this.selectedToolsModel.name. trim() != "";
+    }
+
+    isOrchestralected = (): boolean => {
+        return this.selectedOrchestra != undefined && this.selectedOrchestra.name. trim() != "";
+    }
+
+    processChatModelsActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start chat model..."):
+                let chatMdls = this.app.configuration.chat_models_list
+                await this.startOrChangeModel(chatMdls, "launch_chat", "selectedChatModel", this.app.llamaServer.killChatCmd, this.app.llamaServer.shellChatCmd);
+                break;
+            case this.app.configuration.getUiText('Add chat model...')??"":
+                await this.addModelToList(this.app.configuration.chat_models_list, "chat_models_list");
+                break;
+            case this.app.configuration.getUiText('Delete chat model...')??"":
+                await this.deleteModelFromList(this.app.configuration.chat_models_list, "chat_models_list");
+                break;
+            case this.app.configuration.getUiText('View chat model details...')??"":
+                await this.viewModelFromList(this.app.configuration.chat_models_list)
+                break;
+            case this.app.configuration.getUiText("Deselect/stop chat model"):
+                await this.deselectStopModel(this.app.llamaServer.killChatCmd, "selectedChatModel");    
+                break;
+            case this.app.configuration.getUiText('Export chat model...'):
+                await this.exportModelFromList(this.app.configuration.chat_models_list)
+                break;
+            case this.app.configuration.getUiText('Import chat model...'):
+                await this.importModelToList(this.app.configuration.chat_models_list, "chat_models_list")
+                break;
+        }
+    }
+
+    processEmbsModelsActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start embeddings model..."):
+                let embMdls = this.app.configuration.embeddings_models_list
+                await this.startOrChangeModel(embMdls, "launch_embeddings", "selectedEmbeddingsModel", this.app.llamaServer.killEmbeddingsCmd, this.app.llamaServer.shellEmbeddingsCmd);
+                break;
+            case this.app.configuration.getUiText('Add embeddings model...'):
+                await this.addModelToList(this.app.configuration.embeddings_models_list, "embeddings_models_list");
+                break;
+            case this.app.configuration.getUiText('Delete embeddings model...'):
+                await this.deleteModelFromList(this.app.configuration.embeddings_models_list, "embeddings_models_list");
+                break;
+            case this.app.configuration.getUiText('View embeddings model details...'):
+                await this.viewModelFromList(this.app.configuration.embeddings_models_list)
+                break;
+            case this.app.configuration.getUiText("Deselect/stop embeddings model"):
+                await this.deselectStopModel(this.app.llamaServer.killEmbeddingsCmd, "selectedEmbeddingsModel");
+                break;
+            case this.app.configuration.getUiText('Export embeddings model...'):
+                await this.exportModelFromList(this.app.configuration.embeddings_models_list)
+                break;
+            case this.app.configuration.getUiText('Import embeddings model...'):
+                await this.importModelToList(this.app.configuration.embeddings_models_list, "embeddings_models_list")
+                break;
+        }
+    }
+
+    processComplModelsActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start completion model..."):
+                let complMdls = this.app.configuration.complition_models_list
+                await this.startOrChangeModel(complMdls, "launch_completion", 'selectedComplModel', this.app.llamaServer.killFimCmd, this.app.llamaServer.shellFimCmd);
+                break;
+            case this.app.configuration.getUiText('Add completion model...'):
+                await this.addModelToList(this.app.configuration.complition_models_list, "complition_models_list");
+                break;
+            case this.app.configuration.getUiText('Delete completion model...'):
+                await this.deleteModelFromList(this.app.configuration.complition_models_list, "complition_models_list");
+                break;
+            case this.app.configuration.getUiText('View completion model details...'):
+                await this.viewModelFromList(this.app.configuration.complition_models_list)
+                break;
+            case this.app.configuration.getUiText("Deselect/stop completion model"):
+                await this.deselectStopModel(this.app.llamaServer.killFimCmd, "selectedComplModel");
+                break;
+            case this.app.configuration.getUiText('Export completion model...'):
+                await this.exportModelFromList(this.app.configuration.complition_models_list)
+                break;
+            case this.app.configuration.getUiText('Import completion model...'):
+                await this.importModelToList(this.app.configuration.complition_models_list, "complition_models_list")
+                break;
+        }
+    }
+
+    processToolsModelsActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start tools model..."):
+                let tlsMdls = this.app.configuration.tools_models_list
+                await this.startOrChangeModel(tlsMdls, "launch_tools", "selectedToolsModel", this.app.llamaServer.killToolsCmd, this.app.llamaServer.shellToolsCmd);
+                break;
+            case this.app.configuration.getUiText('Add tools model...'):
+                await this.addModelToList(this.app.configuration.tools_models_list, "tools_models_list");
+                break;
+            case this.app.configuration.getUiText('Delete tools model...'):
+                await this.deleteModelFromList(this.app.configuration.tools_models_list, "tools_models_list");
+                break;
+            case this.app.configuration.getUiText('View tools model details...'):
+                await this.viewModelFromList(this.app.configuration.tools_models_list)
+                break;
+            case this.app.configuration.getUiText("Deselect/stop tools model"):
+                await this.deselectStopModel(this.app.llamaServer.killToolsCmd, "selectedToolsModel");
+                break;
+            case this.app.configuration.getUiText('Export tools model...'):
+                await this.exportModelFromList(this.app.configuration.tools_models_list)
+                break;
+            case this.app.configuration.getUiText('Import tools model...'):
+                await this.importModelToList(this.app.configuration.tools_models_list, "tools_models_list")
+                break;
+        }
+    }
+
+    processOrchestraActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start orchestra..."):
+                this.selectOrchestra();
+                break;
+            case this.app.configuration.getUiText('Add orchestra...'):
+                await this.addOrchestraToList(this.app.configuration.orchestras_list, "orchestras_list");
+                break;
+            case this.app.configuration.getUiText('Delete orchestra...'):
+                await this.deleteOrchestraFromList(this.app.configuration.orchestras_list, "orchestras_list");
+                break;
+            case this.app.configuration.getUiText('View orchestra details...'):
+                await this.viewOrchestraFromList(this.app.configuration.orchestras_list)
+                break;
+            case this.app.configuration.getUiText("Deselect/stop orchestra and models"):
+                await this.stopOrchestra();
+                break;
+            case this.app.configuration.getUiText('Export orchestra...'):
+                await this.exportOrchestraFromList(this.app.configuration.orchestras_list)
+                break;
+            case this.app.configuration.getUiText('Import orchestra...'):
+                await this.importOrchestraToList(this.app.configuration.orchestras_list, "orchestras_list")
+                break;
+            case this.app.configuration.getUiText('Download/upload orchestras online'):
+                await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/discussions'));
+                break;
+        }
+    }
+
+    processApiKeyActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Edit/delete API key..."):
+                const apiKeysMap = this.app.persistence.getAllApiKeys();
+                const apiKeysQuickPick = Array.from(apiKeysMap.entries()).map(([key, value]) => ({
+                                            label: key,
+                                            description: "..." + value.slice(-5)
+                                        }));
+                const selectedItem = await vscode.window.showQuickPick(apiKeysQuickPick);
+                if (selectedItem) {
+                    const result = await vscode.window.showInputBox({
+                            placeHolder: 'Enter your new api key for ' + selectedItem.label + ". Leave empty to remove it.",
+                            prompt: 'your api key',
+                            value: ''
+                        })
+                    if (!result || result.trim() === "") this.app.persistence.deleteApiKey(selectedItem.label);
+                    else this.app.persistence.setApiKey(selectedItem.label, result);
+                }
+                break;
+            case this.app.configuration.getUiText('Add API key...')??"":
+                const endpoint = await vscode.window.showInputBox({
+                            placeHolder: 'Enter the endpoint, exactly as in the model',
+                            prompt: 'Endpoint (url)',
+                            value: ''
+                        })
+                const apiKey = await vscode.window.showInputBox({
+                            placeHolder: 'Enter your new api key for ' + endpoint,
+                            prompt: 'your api key',
+                            value: ''
+                        })
+                if (endpoint && apiKey) 
+                    {
+                        this.app.persistence.setApiKey(endpoint, apiKey);
+                        vscode.window.showInformationMessage("Api key is added.")
+                    }
+                else vscode.window.showInformationMessage("Api key is not added! Endpoint or API Key are not entered.")
+                break;
+        }
+    }
+
+    private async deselectStopModel(killCmd: () => void, selModelPropName: string) {
+        await killCmd();
+        this[selModelPropName as keyof Menu] = { name: "", localStartCommand: "" } as any;
+        this.app.llamaWebviewProvider.updateModelInfo();
+    }
+
+    public async stopOrchestra() {
+        await this.app.llamaServer.killFimCmd();
+        this.selectedComplModel = { name: "", localStartCommand: "" };
+        await this.app.llamaServer.killChatCmd();
+        this.selectedChatModel = { name: "", localStartCommand: "" };
+        await this.app.llamaServer.killEmbeddingsCmd();
+        this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
+        await this.app.llamaServer.killToolsCmd();
+        this.selectedToolsModel = { name: "", localStartCommand: "" };
+        this.selectedOrchestra = { name: "" };
+        this.app.llamaWebviewProvider.updateModelInfo();
+        vscode.window.showInformationMessage("Orchestra and models are deselected.")
+    }
 }

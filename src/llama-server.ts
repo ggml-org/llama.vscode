@@ -1,7 +1,8 @@
 import axios from "axios";
 import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
-import {Utils} from "./utils";
+import { LlmModel } from "./types";
+import { Utils } from "./utils";
 
 const STATUS_OK = 200;
 
@@ -61,6 +62,8 @@ export class LlamaServer {
     private vsCodeEmbeddingsTerminal: Terminal | undefined;
     private vsCodeTrainTerminal: Terminal | undefined;
     private vsCodeCommandTerminal: Terminal | undefined;
+    private vsCodeToolsTerminal: Terminal | undefined;
+    private aiModel = "";
     private readonly defaultRequestParams = {
         top_k: 40,
         top_p: 0.99,
@@ -76,6 +79,7 @@ export class LlamaServer {
         this.vsCodeEmbeddingsTerminal = undefined;
         this.vsCodeTrainTerminal = undefined;
         this.vsCodeCommandTerminal = undefined;
+        this.vsCodeToolsTerminal = undefined;
     }
 
     private async handleOpenAICompletion(
@@ -122,7 +126,7 @@ export class LlamaServer {
         };
     }
 
-    private createRequestPayload(noPredict: boolean, inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, nindent?: number) {
+    private createRequestPayload(noPredict: boolean, inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, model: string, nindent?: number) {
         if (noPredict) {
             return {
                 input_prefix: inputPrefix,
@@ -148,37 +152,12 @@ export class LlamaServer {
             ...(nindent && { n_indent: nindent }),
             t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
             t_max_predict_ms: this.app.configuration.t_max_predict_ms,
-            ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+            ...(model.trim() != "" && { model: model})
         };
     }
 
-    private createChatEditRequestPayload(noPredict: boolean, instructions: string, originalText: string, chunks: any[], context: string, nindent?: number) {
-        const CHUNKS_PLACEHOLDER = "[chunks]";
-        const INSTRUCTIONS_PLACEHOLDER = "[instructions]";
-        const ORIGINAL_TEXT_PLACEHOLDER = "[originalText]";
-        const CONTEXT_PLACEHOLDER = "[context]";
-        // let editTextTemplate = `${CHUNKS_PLACEHOLDER}\n\nModify the following original code according to the instructions. Output only the modified code. No explanations.\n\ninstructions:\n${INSTRUCTIONS_PLACEHOLDER}\n\noriginal code:\n${ORIGINAL_TEXT_PLACEHOLDER}\n\nmodified code:`
-        if (noPredict) {
-            return {
-                // input_extra: chunks,
-                "messages": [
-                    {
-                        "role": "system",
-                        "content": "You are an expert coder."
-                    },
-                    {
-                        "role": "user",
-                        "content": context
-                    }
-                ],
-                n_predict: 0,
-                samplers: [],
-                cache_prompt: true,
-                t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
-                t_max_predict_ms: 1,
-                ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
-            };
-        }
+    private createChatEditRequestPayload(instructions: string, originalText: string, context: string, model: string) {
         const replacements = {
             instructions: instructions,
             originalText: originalText,
@@ -196,31 +175,14 @@ export class LlamaServer {
             ],
             "stream": false,
             "cache_prompt": true,
-            "samplers": "edkypmxt",
             "temperature": 0.8,
-            "dynatemp_range": 0,
-            "dynatemp_exponent": 1,
-            "top_k": 40,
             "top_p": 0.95,
-            "min_p": 0.05,
-            "typical_p": 1,
-            "xtc_probability": 0,
-            "xtc_threshold": 0.1,
-            "repeat_last_n": 64,
-            "repeat_penalty": 1,
-            "presence_penalty": 0,
-            "frequency_penalty": 0,
-            "dry_multiplier": 0,
-            "dry_base": 1.75,
-            "dry_allowed_length": 2,
-            "dry_penalty_last_n": -1,
-            "max_tokens": -1,
-            "timings_per_token": false,
-            ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] })
+            ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
+            ...(model.trim() != "" && { model: model}),
           };
     }
 
-    private createChatRequestPayload(content: string) {
+    private createChatRequestPayload(content: string, model: string) {
         return {
             "messages": [
               {
@@ -233,60 +195,20 @@ export class LlamaServer {
               }
             ],
             "stream": false,
-            // "cache_prompt": true,
-            // "samplers": "edkypmxt",
             "temperature": 0.8,
-            // "dynatemp_range": 0,
-            // "dynatemp_exponent": 1,
-            // "top_k": 40,
-            // "top_p": 0.95,
-            // "min_p": 0.05,
-            // "typical_p": 1,
-            // "xtc_probability": 0,
-            // "xtc_threshold": 0.1,
-            // "repeat_last_n": 64,
-            // "repeat_penalty": 1,
-            // "presence_penalty": 0,
-            // "frequency_penalty": 0,
-            // "dry_multiplier": 0,
-            // "dry_base": 1.75,
-            // "dry_allowed_length": 2,
-            // "dry_penalty_last_n": -1,
-            // "max_tokens": -1,
-            // "timings_per_token": false,
             ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            ...(this.app.configuration.ai_model.trim() != "" && { model: this.app.configuration.ai_model}),
+            ...(model.trim() != "" && { model: model}),
           };
     }
 
-        private createToolsRequestPayload(messages: ChatMessage[]) {
+        private createToolsRequestPayload(messages: ChatMessage[], model: string) {
             this.app.tools.addSelectedTools();
             return {
                 "messages": messages,
                 "stream": false,
-                // "cache_prompt": true,
-                // "samplers": "edkypmxt",
                 "temperature": 0.8,
-                // "dynatemp_range": 0,
-                // "dynatemp_exponent": 1,
-                // "top_k": 40,
                 "top_p": 0.95,
-                // "min_p": 0.05,
-                // "typical_p": 1,
-                // "xtc_probability": 0,
-                // "xtc_threshold": 0.1,
-                // "repeat_last_n": 64,
-                // "repeat_penalty": 1,
-                // "presence_penalty": 0,
-                // "frequency_penalty": 0,
-                // "dry_multiplier": 0,
-                // "dry_base": 1.75,
-                // "dry_allowed_length": 2,
-                // "dry_penalty_last_n": -1,
-                // "max_tokens": -1,
-                // "timings_per_token": false,
-                // ...(this.app.extConfig.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-                ...(this.app.configuration.ai_model.trim() != "" && { model: this.app.configuration.ai_model}),
+                ...(model.trim() != "" && { model: model}),
                 "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
                 "tool_choice": "auto"
             };
@@ -306,10 +228,12 @@ export class LlamaServer {
         }
 
         // else, default to llama.cpp
+        let { endpoint, model, requestConfig } = this.getComplModelProperties();
+
         const response = await axios.post<LlamaResponse>(
-            `${this.app.configuration.endpoint}/infill`,
-            this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, nindent),
-            this.app.configuration.axiosRequestConfigCompl
+            `${Utils.trimTrailingSlash(endpoint)}/infill`,
+            this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, model, nindent),
+            requestConfig
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -322,10 +246,13 @@ export class LlamaServer {
         chunks: any,
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
+        let selectedModel: LlmModel = this.app.menu.getChatModel();
+        let { endpoint, model, requestConfig } = this.getChatModelProperties(selectedModel);
+
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.configuration.endpoint_chat}/${this.app.configuration.ai_api_version}/chat/completions`,
-            this.createChatEditRequestPayload(false, instructions, originalText, chunks, context, nindent),
-            this.app.configuration.axiosRequestConfigChat
+            `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
+            this.createChatEditRequestPayload(instructions, originalText, context, model),
+            requestConfig
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -334,10 +261,13 @@ export class LlamaServer {
     getChatCompletion = async (
         prompt: string,
     ): Promise<LlamaChatResponse | undefined> => {
+        let selectedModel: LlmModel = this.app.menu.getChatModel();
+        let { endpoint, model, requestConfig } = this.getChatModelProperties(selectedModel);
+
         const response = await axios.post<LlamaChatResponse>(
-            `${this.app.configuration.endpoint_chat}/${this.app.configuration.ai_api_version}/chat/completions`,
-            this.createChatRequestPayload(prompt),
-            this.app.configuration.axiosRequestConfigChat
+            `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
+            this.createChatRequestPayload(prompt, model),
+            requestConfig
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -346,14 +276,32 @@ export class LlamaServer {
     getToolsCompletion = async (
         messages: ChatMessage[]
     ): Promise<LlamaToolsResponse | undefined> => {
-        let uri = `${this.app.configuration.endpoint_tools}/${this.app.configuration.ai_api_version}/chat/completions`;
-        let request = this.createToolsRequestPayload(messages);
-        console.log(uri);
-        console.log(request);
+        let selectedModel: LlmModel = this.app.menu.getToolsModel();
+        let model = this.app.configuration.ai_model;
+        if (selectedModel.aiModel) model = selectedModel.aiModel;
+
+        let endpoint = this.app.configuration.endpoint_tools;
+        if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
+        
+        let requestConfig = this.app.configuration.axiosRequestConfigTools;
+        if (selectedModel.isKeyRequired){
+            const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
+            if (apiKey){
+                requestConfig = {
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            }
+        }
+        
+        let uri = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
+        let request = this.createToolsRequestPayload(messages, model);
         const response = await axios.post<LlamaToolsResponse>(
             uri,
             request,
-            this.app.configuration.axiosRequestConfigTools
+            requestConfig
         );
 
         return response.status === STATUS_OK ? response.data : undefined;
@@ -368,23 +316,45 @@ export class LlamaServer {
         }
 
         // else, make a request to the API to prepare for the next FIM
+        let { endpoint, model, requestConfig } = this.getComplModelProperties();
         axios.post<LlamaResponse>(
-            `${this.app.configuration.endpoint}/infill`,
-            this.createRequestPayload(true, "", "", chunks, "", undefined),
-            this.app.configuration.axiosRequestConfigCompl
+            `${Utils.trimTrailingSlash(endpoint)}/infill`,
+            this.createRequestPayload(true, "", "", chunks, "", model, undefined),
+            requestConfig
         );
     };
 
     getEmbeddings = async (text: string): Promise<LlamaEmbeddingsResponse | undefined> => {
         try {
+            let selectedModel: LlmModel = this.app.menu.getEmbeddingsModel();
+            let model = this.app.configuration.ai_model;
+            if (selectedModel.aiModel) model = selectedModel.aiModel;
+
+            let endpoint = this.app.configuration.endpoint_embeddings;
+            if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
+            
+            let requestConfig = this.app.configuration.axiosRequestConfigEmbeddings;
+            if (selectedModel.isKeyRequired){
+                const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
+                if (apiKey){
+                    requestConfig = {
+                        headers: {
+                            Authorization: `Bearer ${apiKey}`,
+                            "Content-Type": "application/json",
+                        },
+                    }
+                }
+            }
+            
             const response = await axios.post<LlamaEmbeddingsResponse>(
-                `${this.app.configuration.endpoint_embeddings}/v1/embeddings`,
+                `${Utils.trimTrailingSlash(endpoint)}/v1/embeddings`,
                 {
                     "input": text,
-                    "model": "GPT-4",
+                    // "model": "GPT-4",
+                    ...(model.trim() != "" && { model: model}),
                     "encoding_format": "float"
                 },
-                this.app.configuration.axiosRequestConfigEmbeddings
+                requestConfig
             );
             return response.data;
         } catch (error: any) {
@@ -443,6 +413,24 @@ export class LlamaServer {
             });
             this.vsCodeEmbeddingsTerminal.show(true);
             this.vsCodeEmbeddingsTerminal.sendText(launchCmd);
+        } catch(err){
+            if (err instanceof Error) {
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
+            }
+        }
+    }
+
+    shellToolsCmd = (launchCmd: string): void => {
+        if (!launchCmd) {
+            vscode.window.showInformationMessage(this.app.configuration.getUiText("There is no command to execute.")??"");
+            return;
+        }
+        try {
+            this.vsCodeToolsTerminal = vscode.window.createTerminal({
+                name: 'llama.cpp Tools Terminal'
+            });
+            this.vsCodeToolsTerminal.show(true);
+            this.vsCodeToolsTerminal.sendText(launchCmd);
         } catch(err){
             if (err instanceof Error) {
                 vscode.window.showInformationMessage(this.app.configuration.getUiText("Error executing command") + " " + launchCmd +" : " + err.message);
@@ -522,12 +510,70 @@ export class LlamaServer {
         else return false;
     }
 
+    isToolsRunning = (): boolean => {
+        if (this.vsCodeToolsTerminal) return true;
+        else return false;
+    }
+
     killTrainCmd = (): void => {
         if (this.vsCodeTrainTerminal) this.vsCodeTrainTerminal.dispose();
     }
 
     killCommandCmd = (): void => {
         if (this.vsCodeCommandTerminal) this.vsCodeCommandTerminal.dispose();
-    }   
+    }
+    
+    killToolsCmd = (): void => {
+        if (this.vsCodeToolsTerminal) {
+            this.vsCodeToolsTerminal.dispose();
+            this.vsCodeToolsTerminal = undefined;
+        }
+    }
 
+
+
+    private getChatModelProperties(selectedModel: LlmModel) {
+        let model = this.app.configuration.ai_model;
+        if (selectedModel.aiModel) model = selectedModel.aiModel;
+
+        let endpoint = this.app.configuration.endpoint_chat;
+        if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
+
+        let requestConfig = this.app.configuration.axiosRequestConfigChat;
+        if (selectedModel.isKeyRequired) {
+            const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
+            if (apiKey) {
+                requestConfig = {
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                };
+            }
+        }
+        return { endpoint, model, requestConfig };
+    }
+
+    private getComplModelProperties() {
+        const selectedComplModel: LlmModel = this.app.menu.getComplModel();
+        let model = this.app.configuration.ai_model;
+        if (selectedComplModel.aiModel) model = selectedComplModel.aiModel;
+
+        let endpoint = this.app.configuration.endpoint;
+        if (selectedComplModel.endpoint) endpoint = selectedComplModel.endpoint;
+
+        let requestConfig = this.app.configuration.axiosRequestConfigCompl;
+        if (selectedComplModel.isKeyRequired) {
+            const apiKey = this.app.persistence.getApiKey(selectedComplModel.endpoint??"");
+            if (apiKey) {
+                requestConfig = {
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                };
+            }
+        }
+        return { endpoint, model, requestConfig };
+    }
 }

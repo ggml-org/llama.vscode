@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Application } from './application';
+import { LlmModel, Orchestra } from './types';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -56,12 +57,29 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.llamaAgent.stopAgent();
                         break;
                     case 'selectModelWithTools':
-                        await this.app.menu.selectAiWithToolsModel();
-                        const currentToolsModel = this.app.menu.getToolsModel();
-                        webviewView.webview.postMessage({
-                            command: 'updateToolsModel',
-                            model: currentToolsModel || 'No model selected'
-                        });
+                        let tlsMdls = this.app.configuration.tools_models_list
+                        await this.app.menu.startOrChangeModel(tlsMdls, "launch_tools", "selectedToolsModel", this.app.llamaServer.killToolsCmd, this.app.llamaServer.shellToolsCmd);
+                        break;
+                    case 'selectModelForChat':
+                        let chatMdls = this.app.configuration.chat_models_list
+                        await this.app.menu.startOrChangeModel(chatMdls, "launch_chat", "selectedChatModel", this.app.llamaServer.killChatCmd, this.app.llamaServer.shellChatCmd);
+                        break;
+                    case 'selectModelForEmbeddings':
+                        let embMdls = this.app.configuration.embeddings_models_list
+                        await this.app.menu.startOrChangeModel(embMdls, "launch_embeddings", "selectedEmbeddingsModel", this.app.llamaServer.killEmbeddingsCmd, this.app.llamaServer.shellEmbeddingsCmd);
+                        break;
+                    case 'selectModelForCompletion':
+                        let complMdls = this.app.configuration.complition_models_list
+                        await this.app.menu.startOrChangeModel(complMdls, "launch_completion", "selectedComplModel", this.app.llamaServer.killFimCmd, this.app.llamaServer.shellFimCmd);    
+                    break
+                    case 'selectOrchestra':
+                        await this.app.menu.selectOrchestra();    
+                        break;
+                    case 'stopOrchestra':
+                        await this.app.menu.stopOrchestra();    
+                        break;
+                    case 'showSelectedModels':
+                        await this.app.menu.showSelectedModels();    
                         break;
                     case 'getFileList':
                         const fileKeys = this.app.chatContext.getProjectFiles();
@@ -100,15 +118,10 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         setTimeout(() => {
             webviewView.webview.postMessage({
                 command: 'updateText',
-                text: 'Welcome to llama AI with tools'
+                text: 'Welcome to Llama Agent'
             });
             
-            // Send current tools model
-            const currentToolsModel = this.app.menu.getToolsModel();
-            webviewView.webview.postMessage({
-                command: 'updateToolsModel',
-                model: currentToolsModel || 'No model selected'
-            });
+            this.updateModelInfo();
 
             // Send initial context files
             const contextFiles = this.app.llamaAgent.getContextProjectFile();
@@ -117,6 +130,46 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 files: Array.from(contextFiles.entries())
             });
         }, 1000);
+    }
+
+    private updateEmbsModel() {
+        const currentEmbeddingsModel: LlmModel = this.app.menu.getEmbeddingsModel();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateEmbeddingsModel',
+            model: currentEmbeddingsModel.name || 'No model selected'
+        });
+    }
+
+    private updateChatModel() {
+        const currentChatModel: LlmModel = this.app.menu.getChatModel();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateChatModel',
+            model: currentChatModel.name || 'No model selected'
+        });
+    }
+
+    private updateToolsModel() {
+        const currentToolsModel: LlmModel = this.app.menu.getToolsModel();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateToolsModel',
+            model: currentToolsModel.name || 'No model selected'
+        });
+    }
+
+    private updateComplsModel() {
+        const currentToolsModel: LlmModel = this.app.menu.getComplModel();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateCompletionModel',
+            model: currentToolsModel.name || 'No model selected'
+        });
+    }
+
+    private updateOrchestra() {
+        const currentOrchestra: Orchestra = this.app.menu.getOrchestra();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateOrchestra',
+            model: currentOrchestra.name || 'No orchestra selected'
+        });
     }
 
     public logInUi(logText: string) {
@@ -131,6 +184,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             command: 'updateCurrentState',
             text: stateText
         });
+    }
+
+    public updateModelInfo() {
+        this.updateToolsModel();
+        this.updateChatModel();
+        this.updateEmbsModel();
+        this.updateComplsModel();
+        this.updateOrchestra();
     }
 
     public _getHtmlForWebview(webview: vscode.Webview) {

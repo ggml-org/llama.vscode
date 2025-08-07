@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
 import {translations} from "./translations"
+import { Utils } from "./utils";
 
 export class Configuration {
     // extension configs
@@ -10,6 +11,7 @@ export class Configuration {
     launch_completion = ""
     launch_chat = ""
     launch_embeddings = ""
+    launch_tools = ""
     launch_training_completion = ""
     launch_training_chat = ""
     lora_completion = ""
@@ -69,12 +71,17 @@ export class Configuration {
     tool_custom_tool_enabled = false;
     tool_custom_tool_description = "";
     tool_custom_tool_source = ""
-    tool_custom_eval_tool_enabled = ""
+    tool_custom_eval_tool_enabled = false
     tool_custom_eval_tool_description = ""
     tool_custom_eval_tool_property_description = ""
     tool_custom_eval_tool_code = "";
     tools_max_iterations = 50;
     tools_log_calls = false;
+    complition_models_list = new Array();
+    embeddings_models_list = new Array();
+    tools_models_list = new Array();
+    chat_models_list = new Array();
+    orchestras_list = new Array();
     // AI_API_VERSION = "v1beta/openai";
     ai_api_version = "v1";
     // AI_MODEL = "gemini-2.5-flash";
@@ -87,6 +94,7 @@ export class Configuration {
     axiosRequestConfigEmbeddings = {};
     disabledLanguages: string[] = [];
     languageSettings:Record<string, boolean> = {}
+    
 
     // TODO: change to snake_case for consistency
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000;
@@ -130,13 +138,14 @@ export class Configuration {
 
     private updateConfigs = (config: vscode.WorkspaceConfiguration) => {
         // TODO Handle the case of wrong types for the configuration values
-        this.endpoint = this.trimTrailingSlash(String(config.get<string>("endpoint")));
-        this.endpoint_chat = this.trimTrailingSlash(String(config.get<string>("endpoint_chat")));
-        this.endpoint_tools = this.trimTrailingSlash(String(config.get<string>("endpoint_tools")));
-        this.endpoint_embeddings = this.trimTrailingSlash(String(config.get<string>("endpoint_embeddings")));
+        this.endpoint = Utils.trimTrailingSlash(String(config.get<string>("endpoint")));
+        this.endpoint_chat = Utils.trimTrailingSlash(String(config.get<string>("endpoint_chat")));
+        this.endpoint_tools = Utils.trimTrailingSlash(String(config.get<string>("endpoint_tools")));
+        this.endpoint_embeddings = Utils.trimTrailingSlash(String(config.get<string>("endpoint_embeddings")));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));
         this.launch_embeddings = String(config.get<string>("launch_embeddings"));
+        this.launch_tools = String(config.get<string>("launch_tools"));
         this.launch_training_completion = String(config.get<string>("launch_training_completion"));
         this.launch_training_chat = String(config.get<string>("launch_training_chat"));
         this.ai_model = String(config.get<string>("ai_model"));
@@ -188,7 +197,7 @@ export class Configuration {
         this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
         this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
         this.tool_custom_tool_source = String(config.get<string>("tool_custom_tool_source"));
-        this.tool_custom_eval_tool_enabled = String(config.get<string>("tool_custom_eval_tool_enabled"));
+        this.tool_custom_eval_tool_enabled = Boolean(config.get<boolean>("tool_custom_eval_tool_enabled"));
         this.tool_custom_eval_tool_property_description = String(config.get<string>("tool_custom_eval_tool_property_description"));
         this.tool_custom_eval_tool_description = String(config.get<string>("tool_custom_eval_tool_description"));
         this.tool_custom_eval_tool_code = String(config.get<string>("tool_custom_eval_tool_code"));
@@ -198,6 +207,11 @@ export class Configuration {
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));
         this.languageSettings = config.get<Record<string, boolean>>('languageSettings') || {};
+        this.complition_models_list = config.get("complition_models_list")??new Array();
+        this.chat_models_list = config.get("chat_models_list")??new Array();
+        this.embeddings_models_list = config.get("embeddings_models_list")??new Array(); 
+        this.tools_models_list = config.get("tools_models_list")??new Array();
+        this.orchestras_list = config.get("orchestras_list")??new Array();
     };
 
     getUiText = (uiText: string): string | undefined => {
@@ -243,13 +257,6 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_description")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_property_description")
     }
-
-    trimTrailingSlash = (s: string): string => {
-        if (s.length > 0 && s[s.length - 1] === "/") {
-            return s.slice(0, -1);
-        }
-        return s;
-    };
 
     setLlamaRequestConfig = () => {
         this.axiosRequestConfigCompl = {};
@@ -321,5 +328,9 @@ export class Configuration {
         }
 
         return true;
+    }
+
+    updateConfigValue = async (settingName: string, value: any) => {
+        await this.config.update(settingName, value, true);
     }
 }

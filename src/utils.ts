@@ -316,6 +316,14 @@ export class Utils {
         return choice === 'Yes';
     }
 
+    static showOkDialog = async (message: string) => {
+        const choice = await vscode.window.showInformationMessage(
+            message,
+            { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
+            'OK'
+        );
+    }
+
     static getAbsolutePath = async (shortFileName: string): Promise<string | undefined> => {
         try {
             // Search for files matching the name (glob pattern requires **/)
@@ -698,23 +706,30 @@ export class Utils {
     }
 
     static extractTextFromHtml = (html: string): string => {
-    // Basic HTML tag removal
-    let text = html
-        .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
-        .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
+        // Basic HTML tag removal
+        let text = html
+            .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
+            .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
+            .replace(/<[^>]+>/g, ' ')
+            .replace(/\s+/g, ' ')
+            .trim();
 
-    // Decode HTML entities
-    text = text
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&apos;/g, "'");
+        // Decode HTML entities
+        text = text
+            .replace(/&nbsp;/g, ' ')
+            .replace(/&amp;/g, '&')
+            .replace(/&lt;/g, '<')
+            .replace(/&gt;/g, '>')
+            .replace(/&quot;/g, '"')
+            .replace(/&apos;/g, "'");
 
-    return text;
-}
+        return text;
+    }
+
+    static trimTrailingSlash = (s: string): string => {
+        if (s.length > 0 && s[s.length - 1] === "/") {
+            return s.slice(0, -1);
+        }
+        return s;
+    };
 }

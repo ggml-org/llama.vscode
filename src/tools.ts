@@ -45,6 +45,9 @@ export class Tools {
 
     public runTerminalCommand = async (args: string ) => {
         let command = JSON.parse(args).command;
+        
+        if (command == undefined) return "The terminal command is not provided."
+
         let commandOutput = "";
         if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command)) && !await Utils.showYesNoDialog("Do you give a permission to execute the terminal command:\n" + command)) {
             commandOutput = "The user doesn't give a permission to execute this command.";
@@ -64,6 +67,8 @@ export class Tools {
 
     public searchSource = async (args: string ) => {
         let query = JSON.parse(args).query;
+
+        if (query == undefined) return "The searhc request is not provided."
         
         await this.indexFilesIfNeeded();
         let contextChunks = await this.app.chatContext.getRagContextChunks(query)
@@ -82,6 +87,8 @@ export class Tools {
         let params = JSON.parse(args);
         let filePath = params.file_path;
         let uri: vscode.Uri;
+
+        if (filePath == undefined) return "The file is not provided."
 
         try {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
@@ -118,6 +125,9 @@ export class Tools {
         let params = JSON.parse(args);
         let dirPath = params.directory_path;
         let uri: vscode.Uri;
+        
+        if (dirPath == undefined) return "The directory is not provided."
+        
         let absolutePath = dirPath;
         if (!path.isAbsolute(dirPath)) {
             if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
@@ -144,6 +154,9 @@ export class Tools {
 
     public getRegextMatches = async (args: string ) => {
         let params = JSON.parse(args);
+        
+        if (params.regex == undefined) return "The regex is not provided."
+        
         await this.indexFilesIfNeeded();
         return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern??"", params.regex, this.app.chatContext.entries)
     }   
@@ -156,6 +169,9 @@ export class Tools {
     public deleteFile = async (args: string ) => {
         let params = JSON.parse(args);
         let filePath = params.file_path;
+
+        if (filePath == undefined) return "The file is not provided."
+
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
             if (!this.app.configuration.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
@@ -201,6 +217,9 @@ export class Tools {
     public editFile = async (args: string) => {
         let params = JSON.parse(args);
         let changes = params.input;
+
+        if (params.input == undefined) return "The input is not provided."
+
         try {
             if (!this.app.configuration.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
                 return Utils.MSG_NO_UESR_PERMISSION;
@@ -232,6 +251,9 @@ export class Tools {
     public askUser = async (args: string) => {
         let params = JSON.parse(args);
         let question = params.question;
+
+        if (question == undefined) return "The question is not provided."
+
         const answer = await vscode.window.showInputBox({
             placeHolder: 'Answer',
             prompt: question,
@@ -280,6 +302,8 @@ export class Tools {
 
      public customEvalTool = async (args: string) => {
         let params = JSON.parse(args);
+
+        if (params.input == undefined) return "The input is not provided."
 
         const functionString = '('+ this.app.configuration.tool_custom_eval_tool_code +')';
         const toolFunction = eval(functionString);

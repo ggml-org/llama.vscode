@@ -55,8 +55,12 @@ export class LlamaAgent {
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
             this.logText += query + "\n\n";
-
             
+            if (!this.app.menu.isToolsModelSelected()) {
+                vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or orchestra with tools model) if you want to to use Llama Agent.")
+                this.app.llamaWebviewProvider.setState("AI is stopped")
+                return "Tools model is not selected"
+            }
 
             let worspaceFolder = "";
             if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
@@ -120,7 +124,7 @@ export class LlamaAgent {
                     }
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
-                    this.logText += response + "\n" + "Iteration: " + iterationsCount + "\n"
+                    this.logText += response + "\n" + "Total iterations: " + iterationsCount + "\n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
                         this.app.statusbar.showTextInfo("agent stopped");

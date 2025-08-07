@@ -27,6 +27,18 @@ const App: React.FC<AppProps> = () => {
   const [currentToolsModel, setCurrentToolsModel] = useState<string>(
     initialState.currentToolsModel || 'No model selected'
   );
+  const [currentChatModel, setCurrentChatModel] = useState<string>(
+    initialState.currentChatModel || 'No model selected'
+  );
+  const [currentEmbeddingsModel, setCurrentEmbeddingsModel] = useState<string>(
+    initialState.currentEmbeddingsModel || 'No model selected'
+  );
+  const [currentCompletionModel, setCurrentCompletionModel] = useState<string>(
+    initialState.currentCompletionModel || 'No model selected'
+  );
+  const [currentOrchestra, setCurrentOrchestra] = useState<string>(
+    initialState.currentOrchestra || 'No orchestra selected'
+  );
   const [currentState, setCurrentState] = useState<string>(
     initialState.currentState || ''
   );
@@ -40,6 +52,7 @@ const App: React.FC<AppProps> = () => {
   // Create a ref for the textarea to enable auto-focus
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Save state to VS Code whenever it changes
   useEffect(() => {
@@ -47,9 +60,13 @@ const App: React.FC<AppProps> = () => {
       displayText,
       inputText,
       currentToolsModel,
+      currentChatModel,
+      currentEmbeddingsModel,
+      currentCompletionModel,
+      currentOrchestra: currentOrchestra,
       currentState
     });
-  }, [displayText, inputText, currentToolsModel, currentState]);
+  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentOrchestra, currentState]);
 
   // Auto-focus the textarea when the component mounts
   useEffect(() => {
@@ -57,6 +74,13 @@ const App: React.FC<AppProps> = () => {
       textareaRef.current.focus();
     }
   }, []);
+
+  // Auto-scroll to bottom when displayText changes
+  useEffect(() => {
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [displayText]);
 
   // Filter files based on user input
   const filteredFiles = fileList.filter(file => 
@@ -100,6 +124,18 @@ const App: React.FC<AppProps> = () => {
           break;
         case 'updateToolsModel':
           setCurrentToolsModel(message.model || 'No model selected');
+          break;
+        case 'updateChatModel':
+          setCurrentChatModel(message.model || 'No model selected');
+          break;
+        case 'updateEmbeddingsModel':
+          setCurrentEmbeddingsModel(message.model || 'No model selected');
+          break;
+        case 'updateCompletionModel':
+          setCurrentCompletionModel(message.model || 'No model selected');
+          break;
+        case 'updateOrchestra':
+          setCurrentOrchestra(message.model || 'No orchestra selected');
           break;
         case 'updateCurrentState':
           setCurrentState(message.text || '');
@@ -169,9 +205,45 @@ const App: React.FC<AppProps> = () => {
     });
   };
 
-  const handleSelectModel = () => {
+  const handleSelectToolsModel = () => {
     vscode.postMessage({
       command: 'selectModelWithTools'
+    });
+  };
+
+  const handleSelectChatModel = () => {
+    vscode.postMessage({
+      command: 'selectModelForChat'
+    });
+  };
+
+  const handleSelectEmbModel = () => {
+    vscode.postMessage({
+      command: 'selectModelForEmbeddings'
+    });
+  };
+
+  const handleSelectCompletionModel = () => {
+    vscode.postMessage({
+      command: 'selectModelForCompletion'
+    });
+  };
+
+  const handleSelectOrchestra = () => {
+    vscode.postMessage({
+      command: 'selectOrchestra'
+    });
+  };
+
+  const handleStopOrchestra = () => {
+    vscode.postMessage({
+      command: 'stopOrchestra'
+    });
+  };
+
+  const handleSelectedModels = () => {
+    vscode.postMessage({
+      command: 'showSelectedModels'
     });
   };
   
@@ -285,78 +357,173 @@ const App: React.FC<AppProps> = () => {
 
   return (
     <div className="app">
+      {/* Modern Header */}
       <div className="header">
-        <div className="button-group">
-          <button onClick={handleClearText} className="send-btn">
-            New chat
-          </button>
-          <button onClick={handleStopSession} className="send-btn">
-                Stop Session
-          </button>
-          <button onClick={handleConfigureTools} className="send-btn">
-            Tools
-          </button>
-          <button onClick={handleSelectModel} className="send-btn">
-            Select Model
-          </button>
+        <div className="header-content">
+          <div className="header-left">
+          </div>
+          <div className="header-actions">
+            <button 
+              onClick={handleClearText} 
+              className="header-btn secondary"
+              title="New Chat"
+            >
+              +
+            </button>
+            <button 
+              onClick={handleConfigureTools} 
+              className="header-btn secondary"
+              title="Select Tools"
+            >
+              🔧
+            </button>
+          </div>
         </div>
       </div>
       
+      {/* Main Content */}
       <div className="content">
-        <div className="text-display">
-          <div className="text-area">
-            {displayText || 'No text to display'}
-          </div>
-        </div>
-        
-        <div className="input-section">
-          <h3>Ask AI:</h3>
-          {contextFiles.size > 0 && (
-            <div className="context-files">
-              {Array.from(contextFiles.entries()).map(([longName, shortName]) => (
-                <div
-                  key={longName}
-                  className="context-file-chip"
-                  title={longName}
-                >
-                  <span 
-                    className="file-name clickable"
-                    onClick={() => handleOpenContextFile(longName)}
-                  >
-                    {shortName}
-                  </span>
-                  <button
-                    className="remove-file-btn"
-                    onClick={() => handleRemoveContextFile(longName)}
-                    title={`Remove ${shortName} from context`}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
+        {/* Chat Display Area */}
+        <div className="chat-container" ref={chatContainerRef}>
+          {displayText ? (
+            <div className="chat-message assistant">
+              {displayText}
+            </div>
+          ) : (
+            <div className="chat-message assistant">
+              No messages yet. Start a conversation by typing below.
             </div>
           )}
-          <div className="input-group">
+        </div>
+        
+        {/* Input Section */}
+        <div className="input-section">
+          <div className="input-container">
+            {/* Context Files */}
+            {contextFiles.size > 0 && (
+              <div className="context-chips">
+                {Array.from(contextFiles.entries()).map(([longName, shortName]) => (
+                  <div key={longName} className="context-chip">
+                    <span 
+                      className="file-name clickable"
+                      onClick={() => handleOpenContextFile(longName)}
+                    >
+                      {shortName}
+                    </span>
+                    <button
+                      className="remove-btn"
+                      onClick={() => handleRemoveContextFile(longName)}
+                      title={`Remove ${shortName} from context`}
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            
+            {/* Modern Textarea */}
             <textarea
               ref={textareaRef}
               value={inputText}
               onChange={(e) => setInputText(e.target.value)}
-              placeholder="Enter text to send to the AI..."
-              rows={3}
+              placeholder="Ask me anything about your code..."
+              className="modern-textarea"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  if (e.shiftKey) {
+                    // Shift+Enter: Allow new line (default behavior)
+                    return;
+                  } else {
+                    // Enter: Send message
+                    e.preventDefault();
+                    handleSendText();
+                  }
+                }
+              }}
             />
-            <div className="button-group">
-              <button onClick={handleSendText} className="send-btn">
-                Ask
-              </button>
-              <button onClick={handleAddSource} className="send-btn" title="Add file to the context">
-                @
-              </button>
+            
+            {/* Status Bar */}
+            <div className="status-bar">
+              <div className="status-item">
+                <div className={`status-indicator ${currentState.includes('working') ? 'working' : ''}`}></div>
+                <span>{currentState || 'Ready'}</span>
+              </div>
             </div>
-            <div className="model-info">
-              <span>Current Tools Model: {currentToolsModel}</span>
+
+            {/* Input Actions */}
+            <div className="input-actions">
+              <div className="input-buttons">
+                <button 
+                  onClick={currentState.includes('working') ? handleStopSession : handleSendText} 
+                  className={`modern-btn ${inputText.trim() === '' ? 'secondary' : ''}`}
+                  title={currentState.includes('working') ? "Stop" : "Send"}
+                >
+                  {currentState.includes('working') ? '⏹' : '➤'}
+                </button>
+                <button 
+                  onClick={handleAddSource} 
+                  className="modern-btn secondary" 
+                  title="Add file to context"
+                >
+                  @
+                </button>
+                <button 
+                  onClick={handleSelectOrchestra} 
+                  title={`Select/Start Orchestra (Selected: ${currentOrchestra})`}
+                  className="modern-btn secondary"
+                >
+                  Orchestra
+                </button>
+                <button 
+                  onClick={handleStopOrchestra} 
+                  title="Deselect/Stop orchestra and all models"
+                  className="modern-btn secondary"
+                >
+                  Stop Orchestra
+                </button>
+                <button 
+                  onClick={handleSelectedModels} 
+                  title="Show Selected Models"
+                  className="modern-btn secondary"
+                >
+                  Selected Models
+                </button>
+              </div>
             </div>
-            <div className="model-info">
-              <span> {currentState}</span>
+            
+            
+            
+            {/* LLM Model Selection Buttons */}
+            <div className="llm-buttons">
+              <button 
+                onClick={handleSelectToolsModel} 
+                title={`Select/Start Tools Model (Selected: ${currentToolsModel})`}
+                className="modern-btn secondary"
+              >
+                Tools Model
+              </button>
+              <button 
+                onClick={handleSelectChatModel} 
+                title={`Select/Start Chat Model (Selected: ${currentChatModel})`}
+                className="modern-btn secondary"
+              >
+                Chat Model
+              </button>
+              <button 
+                onClick={handleSelectEmbModel} 
+                title={`Select/Start Embs Model (Selected: ${currentEmbeddingsModel})`}
+                className="modern-btn secondary"
+              >
+                Embs Model
+              </button>
+              <button 
+                onClick={handleSelectCompletionModel} 
+                title={`Select/Start Completion Model (Selected: ${currentCompletionModel})`} 
+                className="modern-btn secondary"
+              >
+                Completion Model
+              </button>
             </div>
           </div>
         </div>

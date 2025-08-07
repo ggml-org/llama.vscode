@@ -1,7 +1,4 @@
 // TODO
-// За мак - да се стартират всички сървери с правилните конфигурации
-// - 3 избора според РАМ паметта на машината (без имена на модели - само РАМ)
-// Ако се използва лора за чат сървера - да се подава в заявката от webui
 // Идеи
 // - Използване на агенти (?)
 // - използване lSP
@@ -26,6 +23,11 @@ export class Architect {
                     console.error('Failed to index workspace files:', error);
                 });     
             }, 0);
+        }
+        let isFirstStart = this.app.persistence.getGlobalValue("isFirstStart")
+        if (isFirstStart == undefined || isFirstStart){
+            this.app.menu.showHowToUseLlamaVscode();
+            this.app.persistence.setGlobalValue("isFirstStart", false)
         }
         this.app.tools.init()
     }

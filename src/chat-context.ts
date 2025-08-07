@@ -53,7 +53,8 @@ export class ChatContext {
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with BM25..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.configuration.rag_max_bm25_filter_chunks)
         let topContextChunks: ChunkEntry[];
-        if (this.app.configuration.endpoint_embeddings.trim() != ""){
+        if ((this.app.menu.getEmbeddingsModel().endpoint && this.app.menu.getEmbeddingsModel().endpoint?.trim() != "") 
+            || this.app.configuration.endpoint_embeddings.trim() != ""){
             this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with embeddings..."))
             topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.configuration.rag_max_embedding_filter_chunks);
         } else {

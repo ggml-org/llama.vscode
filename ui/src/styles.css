@@ -1,18 +1,36 @@
 /* VS Code theme variables */
 :root {
-  --vscode-editor-background: #1e1e1e;
-  --vscode-editor-foreground: #d4d4d4;
-  --vscode-button-background: #0e639c;
+  --vscode-editor-background: #0d1117;
+  --vscode-editor-foreground: #f0f6fc;
+  --vscode-button-background: #238636;
   --vscode-button-foreground: #ffffff;
-  --vscode-button-hoverBackground: #1177bb;
-  --vscode-input-background: #3c3c3c;
-  --vscode-input-foreground: #cccccc;
-  --vscode-input-border: #3c3c3c;
-  --vscode-textArea-background: #3c3c3c;
-  --vscode-textArea-foreground: #cccccc;
-  --vscode-textArea-border: #3c3c3c;
-  --vscode-panel-background: #252526;
-  --vscode-panel-border: #474747;
+  --vscode-button-hoverBackground: #2ea043;
+  --vscode-input-background: #21262d;
+  --vscode-input-foreground: #f0f6fc;
+  --vscode-input-border: #30363d;
+  --vscode-textArea-background: #21262d;
+  --vscode-textArea-foreground: #f0f6fc;
+  --vscode-textArea-border: #30363d;
+  --vscode-panel-background: #161b22;
+  --vscode-panel-border: #30363d;
+  --accent-color: #58a6ff;
+  --success-color: #238636;
+  --warning-color: #d29922;
+  --error-color: #da3633;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
 }
 
 .app {
@@ -21,179 +39,417 @@
   flex-direction: column;
   background-color: var(--vscode-editor-background);
   color: var(--vscode-editor-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
 }
 
+/* Modern Header */
 .header {
-  padding: 16px;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 0;
   background-color: var(--vscode-panel-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  position: relative;
 }
 
-.header h1 {
+.header-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.header-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
   margin: 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
 }
 
-.content {
-  flex: 1;
-  padding: 16px;
-  overflow-y: auto;
-}
-
-.text-display {
-  margin-bottom: 24px;
-}
-
-.text-display h3 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
-}
-
-.text-area {
-  background-color: var(--vscode-textArea-background);
-  border: 1px solid var(--vscode-textArea-border);
-  border-radius: 4px;
-  padding: 12px;
-  min-height: 100px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  color: var(--vscode-textArea-foreground);
-}
-
-.input-section h3 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
-}
-
-.input-group {
+.header-actions {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.input-group textarea {
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--vscode-input-foreground);
-  resize: vertical;
-  min-height: 80px;
-}
-
-.input-group textarea:focus {
-  outline: none;
-  border-color: var(--vscode-button-background);
-}
-
-.button-group {
-  display: flex;
+  align-items: center;
   gap: 8px;
 }
 
-.send-btn, .clear-btn {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
+.header-btn {
+  background: none;
   border: none;
-  border-radius: 4px;
-  padding: 8px 16px;
-  font-size: 13px;
-  font-weight: 500;
+  color: var(--vscode-editor-foreground);
+  padding: 8px;
+  border-radius: 6px;
   cursor: pointer;
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
 }
 
-.send-btn:hover, .clear-btn:hover {
+.header-btn:hover {
+  background-color: var(--vscode-input-background);
+}
+
+.header-btn.primary {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  padding: 8px 16px;
+  font-weight: 500;
+}
+
+.header-btn.primary:hover {
   background-color: var(--vscode-button-hoverBackground);
 }
 
-.clear-btn {
-  background-color: #d73a49;
+.header-btn.danger {
+  background-color: var(--error-color);
+  color: white;
 }
 
-.clear-btn:hover {
-  background-color: #cb2431;
+.header-btn.danger:hover {
+  background-color: #b62324;
 }
 
-/* Scrollbar styling */
-.content::-webkit-scrollbar {
-  width: 8px;
+.header-btn.secondary {
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-editor-foreground);
+  border: 1px solid var(--vscode-input-border);
 }
 
-.content::-webkit-scrollbar-track {
-  background: var(--vscode-panel-background);
+.header-btn.secondary:hover {
+  background-color: var(--vscode-panel-border);
 }
 
-.content::-webkit-scrollbar-thumb {
-  background: var(--vscode-panel-border);
-  border-radius: 4px;
+/* Main Content */
+.content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
-.content::-webkit-scrollbar-thumb:hover {
-  background: #5a5a5a;
+/* Chat Display Area */
+.chat-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  background-color: var(--vscode-editor-background);
+  width: 100%;
+}
+
+.chat-message {
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.chat-message.user {
+  background-color: var(--accent-color);
+  color: white;
+  margin-left: 0;
+  margin-right: 40px;
+}
+
+.chat-message.assistant {
+  background-color: var(--vscode-panel-background);
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* Input Section */
+.input-section {
+  background-color: var(--vscode-panel-background);
+  border-top: 1px solid var(--vscode-panel-border);
+  padding: 20px;
+}
+
+.input-container {
+  position: relative;
+  margin-bottom: 16px;
+}
+
+.input-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.input-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  margin: 0;
+}
+
+.context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.context-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 16px;
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--vscode-editor-foreground);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.context-chip:hover {
+  background-color: var(--accent-color);
+  border-color: var(--accent-color);
+  color: white;
+}
+
+.context-chip .file-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 120px;
+}
+
+.context-chip .file-name.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-color);
+}
+
+.context-chip .remove-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  padding: 0;
+  margin: 0;
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  opacity: 0.7;
+  transition: all 0.2s ease;
+}
+
+.context-chip .remove-btn:hover {
+  opacity: 1;
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Modern Textarea */
+.modern-textarea {
+  width: 100%;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 8px;
+  padding: 16px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--vscode-input-foreground);
+  resize: vertical;
+  min-height: 100px;
+  transition: all 0.2s ease;
+}
+
+.modern-textarea:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.modern-textarea::placeholder {
+  color: var(--vscode-input-foreground);
+  opacity: 0.6;
+}
+
+/* Input Actions */
+.input-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+}
+
+.input-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modern-btn {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 6px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modern-btn:hover {
+  background-color: var(--vscode-button-hoverBackground);
+  transform: translateY(-1px);
+}
+
+.modern-btn.secondary {
+  background-color: var(--vscode-input-background);
+  color: var(--vscode-editor-foreground);
+  border: 1px solid var(--vscode-input-border);
+}
+
+.modern-btn.secondary:hover {
+  background-color: var(--vscode-panel-border);
+}
+
+.modern-btn.icon {
+  padding: 8px;
+  min-width: 36px;
+  justify-content: center;
+}
+
+/* Model Info Cards */
+.model-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+}
+
+.model-card {
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 8px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
 }
 
 .model-info {
-  margin-top: 8px;
-  padding: 8px 12px;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.model-label {
   font-size: 12px;
-  color: var(--vscode-input-foreground);
+  color: var(--vscode-editor-foreground);
+  opacity: 0.7;
+  font-weight: 500;
+}
+
+.model-value {
+  font-size: 13px;
+  color: var(--vscode-editor-foreground);
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-weight: 500;
+}
+
+/* Status Bar */
+.status-bar {
+  margin-top: 8px;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--vscode-editor-foreground);
   opacity: 0.8;
 }
 
-.model-info span {
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+/* LLM Model Selection Buttons */
+.llm-buttons {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 8px 0;
 }
 
-/* File Selector Dialog Styles */
+.status-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background-color: var(--success-color);
+}
+
+.status-indicator.working {
+  background-color: var(--warning-color);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* File Selector Dialog */
 .file-selector-overlay {
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  backdrop-filter: blur(4px);
 }
 
 .file-selector-dialog {
   background-color: var(--vscode-panel-background);
   border: 1px solid var(--vscode-panel-border);
-  border-radius: 8px;
-  width: 80%;
+  border-radius: 12px;
+  width: 90%;
   max-width: 600px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
 }
 
 .file-selector-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
@@ -210,9 +466,12 @@
   color: var(--vscode-editor-foreground);
   font-size: 20px;
   cursor: pointer;
-  padding: 4px 8px;
-  border-radius: 4px;
+  padding: 8px;
+  border-radius: 6px;
   transition: background-color 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .close-btn:hover {
@@ -220,7 +479,7 @@
 }
 
 .file-selector-search {
-  padding: 16px 20px;
+  padding: 20px 24px;
   border-bottom: 1px solid var(--vscode-panel-border);
 }
 
@@ -228,16 +487,18 @@
   width: 100%;
   background-color: var(--vscode-input-background);
   border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
-  padding: 8px 12px;
-  font-size: 13px;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
   color: var(--vscode-input-foreground);
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  transition: all 0.2s ease;
 }
 
 .file-selector-search input:focus {
   outline: none;
-  border-color: var(--vscode-button-background);
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
 }
 
 .file-selector-list {
@@ -247,13 +508,13 @@
 }
 
 .file-item {
-  padding: 12px 20px;
+  padding: 12px 24px;
   cursor: pointer;
   border-bottom: 1px solid var(--vscode-panel-border);
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
   font-size: 13px;
   color: var(--vscode-editor-foreground);
-  transition: background-color 0.2s ease;
+  transition: all 0.2s ease;
 }
 
 .file-item:hover {
@@ -261,12 +522,8 @@
 }
 
 .file-item.selected {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-}
-
-.file-item.selected:hover {
-  background-color: var(--vscode-button-hoverBackground);
+  background-color: var(--accent-color);
+  color: white;
 }
 
 .file-item:last-child {
@@ -274,107 +531,47 @@
 }
 
 .no-files {
-  padding: 20px;
+  padding: 40px 24px;
   text-align: center;
   color: var(--vscode-input-foreground);
   opacity: 0.7;
   font-style: italic;
 }
 
-/* Scrollbar for file list */
-.file-selector-list::-webkit-scrollbar {
+/* Scrollbar styling */
+::-webkit-scrollbar {
   width: 8px;
 }
 
-.file-selector-list::-webkit-scrollbar-track {
+::-webkit-scrollbar-track {
   background: var(--vscode-panel-background);
 }
 
-.file-selector-list::-webkit-scrollbar-thumb {
+::-webkit-scrollbar-thumb {
   background: var(--vscode-panel-border);
   border-radius: 4px;
 }
 
-.file-selector-list::-webkit-scrollbar-thumb:hover {
+::-webkit-scrollbar-thumb:hover {
   background: #5a5a5a;
 }
 
-/* Context Files Styles */
-.context-files {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-  padding: 8px 0;
-}
-
-.context-file-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  color: var(--vscode-editor-foreground);
-  font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
-  transition: all 0.2s ease;
-  cursor: default;
-  position: relative;
-}
-
-.context-file-chip:hover {
-  background-color: var(--vscode-button-background);
-  border-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-}
-
-.context-file-chip:hover .remove-file-btn {
-  opacity: 1;
-  color: var(--vscode-button-foreground);
-}
-
-.file-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 150px;
-}
-
-.file-name.clickable {
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: var(--vscode-button-background);
-  text-decoration-thickness: 1px;
-  transition: all 0.2s ease;
-}
-
-.file-name.clickable:hover {
-  opacity: 1;
-  color: var(--vscode-button-foreground);
-}
-
-.remove-file-btn {
-  background: none;
-  border: none;
-  color: var(--vscode-editor-foreground);
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  padding: 0;
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 2px;
-  opacity: 0;
-  transition: all 0.2s ease;
-}
-
-.remove-file-btn:hover {
-  background-color: rgba(255, 255, 255, 0.2);
-  color: var(--vscode-button-foreground);
+/* Responsive Design */
+@media (max-width: 768px) {
+  .header-content {
+    padding: 12px 16px;
+  }
+  
+  .input-section {
+    padding: 16px;
+  }
+  
+  .model-info-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .file-selector-dialog {
+    width: 95%;
+    margin: 20px;
+  }
 } 
