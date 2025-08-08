@@ -1,3 +1,5 @@
+[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/ggml-org-llama-vscode-badge.png)](https://mseep.ai/app/ggml-org-llama-vscode)
+
 # llama.vscode
 
 Local LLM-assisted text completion extension for VS Code
