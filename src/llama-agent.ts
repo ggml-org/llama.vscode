@@ -2,7 +2,6 @@ import {Application} from "./application";
 import { ChatMessage } from "./llama-server";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
-import { DOMParser } from 'xmldom';
 
 interface Step {
     id: string | number;
@@ -111,6 +110,7 @@ export class LlamaAgent {
                     this.logText += "\n\n" + "Session stopped." + "\n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     this.app.llamaWebviewProvider.setState("AI is stopped")
+                    this.resetMessages();
                     return "agent stopped"
                 }
                 iterationsCount++;
@@ -131,11 +131,12 @@ export class LlamaAgent {
                         this.logText += "\n\n" + "Session stopped." + "\n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         this.app.llamaWebviewProvider.setState("AI is stopped")
+                        this.resetMessages();
                         return "agent stopped"
                     }
                     this.messages.push(data.choices[0].message);
                     if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
-                        this.logText += "\n\n" + "Finish reason: " + finishReason + "\n"
+                        this.logText += "\n" + "Finish reason: " + finishReason
                         if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "\n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         break;
@@ -148,25 +149,34 @@ export class LlamaAgent {
                                 if (this.app.configuration.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 let commandOutput = "Tool not found";
-                                if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
-                                    const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
-                                    let commandDescription = ""
-                                    if (toolFuncDesc){
-                                        commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
-                                        this.logText += commandDescription + "\n\n"
-                                        this.app.llamaWebviewProvider.logInUi(this.logText);
-                                    }   
-                                    const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
-                                    if (toolFunc) {
-                                        commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                        if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.add(commandDescription);
-                                        if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.add(commandDescription);
+                                try {
+                                    if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
+                                        const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
+                                        let commandDescription = ""
+                                        if (toolFuncDesc){
+                                            commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
+                                            this.logText += commandDescription + "\n\n"
+                                            this.app.llamaWebviewProvider.logInUi(this.logText);
+                                        }   
+                                        const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
+                                        if (toolFunc) {
+                                            commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.add(commandDescription);
+                                            if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.add(commandDescription);
+                                        }
                                     }
+                                    if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
+                                        let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
+                                        commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
+                                    }
+                                } catch (error) {
+                                    // Handle the error
+                                    console.error("An error occurred:", error);
+                                    commandOutput = "Error during the execution of tool: " + oneToolCall.function.name
+                                    this.logText += "Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n";
+                                    this.app.llamaWebviewProvider.logInUi(this.logText);
                                 }
-                                if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
-                                    let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
-                                    commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
-                                }
+
                                 if (this.app.configuration.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 toolCallsResult = {           
@@ -190,7 +200,7 @@ export class LlamaAgent {
             if (changedFiles.size + deletedFiles.size > 0) this.logText += "\n\nFiles changes:\n"
             if (changedFiles.size > 0) this.logText += Array.from(changedFiles).join("\n") + "\n"
             if (deletedFiles.size > 0) this.logText += Array.from(deletedFiles).join("\n") + "\n"
-            this.logText += "\n\nAgent session finished. \n\n"
+            this.logText += "\nAgent session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")
             return response;

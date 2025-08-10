@@ -386,13 +386,35 @@ body {
   opacity: 0.8;
 }
 
+/* Model Selection Frame */
+.model-selection-frame {
+  position: relative;
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+  background-color: var(--vscode-editor-background);
+}
+
+.frame-label {
+  position: absolute;
+  top: -8px;
+  left: 12px;
+  background-color: var(--vscode-editor-background);
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  opacity: 0.8;
+}
+
 /* LLM Model Selection Buttons */
 .llm-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
-  margin-top: 8px;
-  padding: 8px 0;
+  margin: 0;
+  padding: 0;
 }
 
 .status-item {

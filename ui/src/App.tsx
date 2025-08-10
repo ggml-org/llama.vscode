@@ -246,6 +246,18 @@ const App: React.FC<AppProps> = () => {
       command: 'showSelectedModels'
     });
   };
+
+  const handleAddHuggingfaceModel = () => {
+    vscode.postMessage({
+      command: 'addHuggingfaceModel'
+    });
+  };
+
+  const handleChatWithAI = () => {
+    vscode.postMessage({
+      command: 'chatWithAI'
+    });
+  };
   
 
   const handleClearText = () => {
@@ -495,35 +507,59 @@ const App: React.FC<AppProps> = () => {
             
             
             {/* LLM Model Selection Buttons */}
-            <div className="llm-buttons">
-              <button 
-                onClick={handleSelectToolsModel} 
-                title={`Select/Start Tools Model (Selected: ${currentToolsModel})`}
-                className="modern-btn secondary"
-              >
-                Tools Model
-              </button>
-              <button 
-                onClick={handleSelectChatModel} 
-                title={`Select/Start Chat Model (Selected: ${currentChatModel})`}
-                className="modern-btn secondary"
-              >
-                Chat Model
-              </button>
-              <button 
-                onClick={handleSelectEmbModel} 
-                title={`Select/Start Embs Model (Selected: ${currentEmbeddingsModel})`}
-                className="modern-btn secondary"
-              >
-                Embs Model
-              </button>
-              <button 
-                onClick={handleSelectCompletionModel} 
-                title={`Select/Start Completion Model (Selected: ${currentCompletionModel})`} 
-                className="modern-btn secondary"
-              >
-                Completion Model
-              </button>
+            <div className="model-selection-frame">
+              <div className="frame-label">Select Model</div>
+              <div className="llm-buttons">
+                <button 
+                  onClick={handleSelectToolsModel} 
+                  title={`Select/Start Tools Model (Selected: ${currentToolsModel})`}
+                  className="modern-btn secondary"
+                >
+                  Tools
+                </button>
+                <button 
+                  onClick={handleSelectChatModel} 
+                  title={`Select/Start Chat Model (Selected: ${currentChatModel})`}
+                  className="modern-btn secondary"
+                >
+                  Chat
+                </button>
+                <button 
+                  onClick={handleSelectEmbModel} 
+                  title={`Select/Start Embs Model (Selected: ${currentEmbeddingsModel})`}
+                  className="modern-btn secondary"
+                >
+                  Embs
+                </button>
+                <button 
+                  onClick={handleSelectCompletionModel} 
+                  title={`Select/Start Completion Model (Selected: ${currentCompletionModel})`} 
+                  className="modern-btn secondary"
+                >
+                  Completion
+                </button>
+              </div>
+            </div>
+
+            {/* Chat With AI Frame */}
+            <div className="model-selection-frame">
+              <div className="frame-label">Chat With AI</div>
+              <div className="llm-buttons">
+                <button 
+                  onClick={handleAddHuggingfaceModel} 
+                  title="Add Huggingface Model"
+                  className="modern-btn secondary"
+                >
+                  Add Chat Model From Huggingface
+                </button>
+                <button 
+                  onClick={handleChatWithAI} 
+                  title="Chat With AI"
+                  className="modern-btn secondary"
+                >
+                  Chat With AI
+                </button>
+              </div>
             </div>
           </div>
         </div>

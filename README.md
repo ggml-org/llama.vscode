@@ -1,6 +1,6 @@
 # llama.vscode
 
-Local LLM-assisted text completion extension for VS Code
+Local LLM-assisted text completion, chat with AI and agentic coding extension for VS Code
 
 ![image](https://github.com/user-attachments/assets/857acc41-0b6c-4899-8f92-3020208a21eb)
 
@@ -20,7 +20,14 @@ Local LLM-assisted text completion extension for VS Code
 - Ring context with chunks from open and edited files and yanked text
 - [Supports very large contexts even on low-end hardware via smart context reuse](https://github.com/ggerganov/llama.cpp/pull/9787)
 - Display performance stats
-- **NEW**: React-based UI Llama AI with tools
+- Llama Agent for agentic coding
+- Add/remove/export/import for models - completion, chat, embeddings and tools
+- Model selection - for completion, chat, embeddings and tools
+- Orchestra (group of models) concept introduced. Selecting/Deselecting orchestra selects/deselects all the models in it
+- Add/remove/export/import for orchestra
+- Predefined models (including OpenAI gpt-oss 20B added as a local one) 
+- Predefined Orchestras for different use cases - only completion, chat + completion, chat + agent, etc.
+- MCP tools selection for the agent (from VS Code installed MCP Servers)
 
 ## Installation
 

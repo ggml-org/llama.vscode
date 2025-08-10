@@ -4,7 +4,7 @@ import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
 import { dir } from "console";
-
+import * as ts from "typescript";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -304,9 +304,19 @@ export class Tools {
         let params = JSON.parse(args);
 
         if (params.input == undefined) return "The input is not provided."
+        let functionCode = ""
+        let settingValue = this.app.configuration.tool_custom_eval_tool_code
+        if (settingValue.startsWith("function")){
+            functionCode = settingValue;
+        } else {
+            // Assumes this is a file
+            if (fs.existsSync(settingValue)) functionCode = fs.readFileSync(settingValue, 'utf-8');
+            else return "Error: There is no function to eval!"
+        }
 
-        const functionString = '('+ this.app.configuration.tool_custom_eval_tool_code +')';
-        const toolFunction = eval(functionString);
+        const functionString = '('+ functionCode +')';
+        const jscode = ts.transpile(functionString);
+        const toolFunction = eval(jscode);
         
         let result = toolFunction(params.input)
 

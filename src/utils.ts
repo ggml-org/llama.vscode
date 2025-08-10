@@ -527,7 +527,7 @@ export class Utils {
         }
 
         if (editBlocks.length === 0) {
-            if (diffText.length > 0) editBlocks.push(Utils.extractConflictParts("```diff" + diffText))
+            if (diffText.length > 0) editBlocks.push(Utils.extractConflictParts("```diff\n" + diffText))
             else return "";
         }
 
@@ -568,7 +568,7 @@ export class Utils {
     }
 
     static extractConflictParts = (input: string): [string, string, string] => {
-        const lines = input.split('\n');
+        const lines = input.split(/\r?\n/);
         const part1: string[] = [];
         const part2: string[] = [];
         const part3: string[] = [];

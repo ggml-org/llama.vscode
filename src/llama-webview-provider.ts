@@ -10,7 +10,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
-        private readonly app: Application
+        private readonly app: Application,
+        private readonly context: vscode.ExtensionContext
     ) { }
 
     public get webview(): vscode.WebviewView | undefined {
@@ -57,21 +58,28 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.llamaAgent.stopAgent();
                         break;
                     case 'selectModelWithTools':
-                        let tlsMdls = this.app.configuration.tools_models_list
-                        await this.app.menu.startOrChangeModel(tlsMdls, "launch_tools", "selectedToolsModel", this.app.llamaServer.killToolsCmd, this.app.llamaServer.shellToolsCmd);
+                        let toolsTypeDetails = this.app.menu.getToolsTypeDetails();
+                        await this.app.menu.selectStartModel(toolsTypeDetails);
                         break;
                     case 'selectModelForChat':
-                        let chatMdls = this.app.configuration.chat_models_list
-                        await this.app.menu.startOrChangeModel(chatMdls, "launch_chat", "selectedChatModel", this.app.llamaServer.killChatCmd, this.app.llamaServer.shellChatCmd);
+                        let chatTypeDetails = this.app.menu.getChatTypeDetails();
+                        await this.app.menu.selectStartModel(chatTypeDetails);
                         break;
                     case 'selectModelForEmbeddings':
-                        let embMdls = this.app.configuration.embeddings_models_list
-                        await this.app.menu.startOrChangeModel(embMdls, "launch_embeddings", "selectedEmbeddingsModel", this.app.llamaServer.killEmbeddingsCmd, this.app.llamaServer.shellEmbeddingsCmd);
+                        let embsTypeDetails = this.app.menu.getEmbsTypeDetails()
+                        await this.app.menu.selectStartModel(embsTypeDetails);
                         break;
                     case 'selectModelForCompletion':
-                        let complMdls = this.app.configuration.complition_models_list
-                        await this.app.menu.startOrChangeModel(complMdls, "launch_completion", "selectedComplModel", this.app.llamaServer.killFimCmd, this.app.llamaServer.shellFimCmd);    
-                    break
+                        let complTypeDetails = this.app.menu.getComplTypeDetails()
+                        await this.app.menu.selectStartModel(complTypeDetails);    
+                        break
+                    case 'chatWithAI':
+                        this.app.askAi.showChatWithAi(false, this.context);
+                        break;
+                    case 'addHuggingfaceModel':
+                        let chatTypeDetailsHf = this.app.menu.getChatTypeDetails();
+                        await this.app.menu.addHuggingfaceModelToList(chatTypeDetailsHf);
+                        break;
                     case 'selectOrchestra':
                         await this.app.menu.selectOrchestra();    
                         break;

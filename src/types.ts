@@ -23,3 +23,33 @@ export interface Orchestra {
     embeddings?: LlmModel,
     tools?: LlmModel
 }
+
+export interface HuggingfaceFile {
+    type: string // file or directory
+    size: number // in bytes
+    path: string // relative to main
+}
+
+export interface HuggingfaceModel {
+    createdAt: string
+    downloads: number
+    id: string // 'unsloth/gpt-oss-20b-GGUF'
+    library_name: string // 'transformers'
+    likes: number
+    modelId: string // 'unsloth/gpt-oss-20b-GGUF'
+    pipeline_tag: string // 'text-generation'
+    private: boolean
+    tags: string[] // (13) ['transformers', 'gguf', 'gpt_oss', 'text-generation', 'openai', 'unsloth', 'base_model:openai/gpt-oss-20b', 'base_model:quantized:openai/gpt-oss-20b', 'license:apache-2.0', 'autotrain_compatible', 'endpoints_compatible', 'region:us', 'conversational']
+    trendingScore: number
+}
+
+export interface ModelTypeDetails {
+    modelsList: LlmModel[]
+    modelsListSettingName: string
+    newModelPort: number
+    selModelPropName: string
+    launchSettingName: string
+    killCmd: () => void
+    shellCmd: (message: string) => void
+}
+

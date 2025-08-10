@@ -57,7 +57,7 @@ export class Application {
         this.git = new Git(this)
         this.tools = new Tools(this)
         this.llamaAgent = new LlamaAgent(this)
-        this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this)
+        this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this, context)
         this.persistence = new Persistence(this, context)
     }
 

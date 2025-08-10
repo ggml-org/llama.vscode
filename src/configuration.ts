@@ -20,6 +20,10 @@ export class Configuration {
     endpoint_chat = "http=//127.0.0.1:8011";
     endpoint_tools = "http=//127.0.0.1:8011";
     endpoint_embeddings = "http=//127.0.0.1:8010";
+    new_completion_model_port = 8012
+    new_chat_model_port = 8011
+    new_embeddings_model_port = 8010
+    new_tools_model_port = 8009
     auto = true;
     api_key = "";
     api_key_chat = "";
@@ -142,6 +146,10 @@ export class Configuration {
         this.endpoint_chat = Utils.trimTrailingSlash(String(config.get<string>("endpoint_chat")));
         this.endpoint_tools = Utils.trimTrailingSlash(String(config.get<string>("endpoint_tools")));
         this.endpoint_embeddings = Utils.trimTrailingSlash(String(config.get<string>("endpoint_embeddings")));
+        this.new_completion_model_port = Number(config.get<number>("new_completion_model_port"));
+        this.new_chat_model_port = Number(config.get<number>("new_chat_model_port"));
+        this.new_embeddings_model_port = Number(config.get<number>("new_embeddings_model_port"));
+        this.new_tools_model_port = Number(config.get<number>("new_tools_model_port"));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));
         this.launch_embeddings = String(config.get<string>("launch_embeddings"));

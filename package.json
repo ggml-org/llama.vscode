@@ -257,6 +257,26 @@
           "default": "",
           "description": "The URL to be used by the extension for creating embeddings."
         },
+        "llama-vscode.new_completion_model_port": {
+          "type": "number",
+          "default": 8012,
+          "description": "The port will be used when a new completion model is created."
+        },
+        "llama-vscode.new_chat_model_port": {
+          "type": "number",
+          "default": 8011,
+          "description": "The port will be used when a new chat model is created."
+        },
+        "llama-vscode.new_embeddings_model_port": {
+          "type": "number",
+          "default": 8010,
+          "description": "The port will be used when a new embeddings model is created."
+        },
+        "llama-vscode.new_tools_model_port": {
+          "type": "number",
+          "default": 8009,
+          "description": "The port will be used when a new tools model is created."
+        },
         "llama-vscode.ai_api_version": {
           "type": "string",
           "default": "v1",
@@ -1089,8 +1109,8 @@
           "description": "self-signed certificate file - path/to/cert.pem"
         },
         "llama-vscode.n_prefix": {
-          "type": "number",
           "default": 256,
+          "type": "number",
           "description": "number of lines before the cursor location to include in the local prefix"
         },
         "llama-vscode.n_suffix": {
@@ -1369,8 +1389,7 @@
     "ignore": "^7.0.4",
     "openai": "^4.80.1",
     "picomatch": "^4.0.2",
-    "simple-git": "^3.28.0",
-    "xmldom": "^0.6.0"
+    "simple-git": "^3.28.0"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
@@ -1378,7 +1397,6 @@
     "@types/node": "^18.0.0",
     "@types/picomatch": "^4.0.0",
     "@types/vscode": "^1.100.0",
-    "@types/xmldom": "^0.1.34",
     "typescript": "^4.8.0",
     "webpack": "^5.100.2",
     "webpack-cli": "^4.10.0"
