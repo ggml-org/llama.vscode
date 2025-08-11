@@ -30,6 +30,20 @@ export class ChatWithAi {
         }
     }
 
+    closeChatWithAi = (withContext: boolean) => {
+        if (withContext){
+            if (this.askAiWithContextPanel ) {
+                this.askAiWithContextPanel.dispose()
+                this.askAiWithContextPanel = undefined;
+            }
+        } else {
+            if (this.askAiPanel) {
+                this.askAiPanel.dispose()
+                this.askAiPanel = undefined;
+            }
+        }
+    }
+
     showChatWithAi = async (withContext: boolean, context: vscode.ExtensionContext) => {
         const editor = vscode.window.activeTextEditor;
         let webviewIdentifier = 'htmlChatWithAiViewer'

@@ -247,6 +247,13 @@ const App: React.FC<AppProps> = () => {
     });
   };
 
+  
+  const handleInstallLlamacpp = () => {
+    vscode.postMessage({
+      command: 'installLlamacpp'
+    });
+  };
+
   const handleAddHuggingfaceModel = () => {
     vscode.postMessage({
       command: 'addHuggingfaceModel'
@@ -380,7 +387,7 @@ const App: React.FC<AppProps> = () => {
               className="header-btn secondary"
               title="New Chat"
             >
-              +
+              New Chat
             </button>
             <button 
               onClick={handleConfigureTools} 
@@ -546,11 +553,24 @@ const App: React.FC<AppProps> = () => {
               <div className="frame-label">Chat With AI</div>
               <div className="llm-buttons">
                 <button 
+                  onClick={handleInstallLlamacpp} 
+                  className="modern-btn secondary"
+                >
+                  Install/Upgrade llama.cpp
+                </button>
+                <button 
                   onClick={handleAddHuggingfaceModel} 
                   title="Add Huggingface Model"
                   className="modern-btn secondary"
                 >
                   Add Chat Model From Huggingface
+                </button>
+                <button 
+                  onClick={handleSelectChatModel} 
+                  title={`Selected: ${currentChatModel}`}
+                  className="modern-btn secondary"
+                >
+                  Select Model
                 </button>
                 <button 
                   onClick={handleChatWithAI} 

@@ -74,7 +74,11 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.menu.selectStartModel(complTypeDetails);    
                         break
                     case 'chatWithAI':
+                        this.app.askAi.closeChatWithAi(false);
                         this.app.askAi.showChatWithAi(false, this.context);
+                        break;
+                    case 'installLlamacpp':
+                        this.app.menu.installLlamacpp();
                         break;
                     case 'addHuggingfaceModel':
                         let chatTypeDetailsHf = this.app.menu.getChatTypeDetails();

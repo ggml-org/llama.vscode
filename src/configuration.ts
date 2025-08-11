@@ -79,6 +79,7 @@ export class Configuration {
     tool_custom_eval_tool_description = ""
     tool_custom_eval_tool_property_description = ""
     tool_custom_eval_tool_code = "";
+    tool_llama_vscode_help_enabled = true;
     tools_max_iterations = 50;
     tools_log_calls = false;
     complition_models_list = new Array();
@@ -86,9 +87,7 @@ export class Configuration {
     tools_models_list = new Array();
     chat_models_list = new Array();
     orchestras_list = new Array();
-    // AI_API_VERSION = "v1beta/openai";
     ai_api_version = "v1";
-    // AI_MODEL = "gemini-2.5-flash";
     ai_model = "google/gemini-2.5-flash"
     // additional configs`
     // TODO: change to snake_case for consistency
@@ -203,6 +202,7 @@ export class Configuration {
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
         this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
+        this.tool_llama_vscode_help_enabled = Boolean(config.get<boolean>("tool_llama_vscode_help_enabled"));
         this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
         this.tool_custom_tool_source = String(config.get<string>("tool_custom_tool_source"));
         this.tool_custom_eval_tool_enabled = Boolean(config.get<boolean>("tool_custom_eval_tool_enabled"));
@@ -261,6 +261,7 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_delete_file_enabled")
         || event.affectsConfiguration("llama-vscode.tool_edit_file_enabled")
         || event.affectsConfiguration("llama-vscode.tool_get_diff_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_llama_vscode_help_enabled")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_enabled")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_description")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_property_description")

@@ -224,13 +224,7 @@ export class Menu {
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/wiki'));
                 break;
             case "Install/upgrade llama.cpp":
-                if (process.platform != 'darwin' && process.platform != 'win32') {
-                    vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.")
-                    return;
-                }
-                await this.app.llamaServer.killCommandCmd();
-                let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : ""
-                await this.app.llamaServer.shellCommandCmd(terminalCommand);
+                await this.installLlamacpp();
                 break;
             default:
                 await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
@@ -307,6 +301,16 @@ export class Menu {
             }
             
             await this.activateModel(modelType.selModelPropName, modelType.killCmd, modelType.shellCmd);
+        }
+    }
+
+    public async installLlamacpp() {
+        if (process.platform != 'darwin' && process.platform != 'win32') {
+            vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
+        } else {
+            await this.app.llamaServer.killCommandCmd();
+            let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : "";
+            await this.app.llamaServer.shellCommandCmd(terminalCommand);
         }
     }
 
@@ -489,8 +493,8 @@ export class Menu {
         }
     }
 
-    // public async addHuggingfaceModelToList(modelsList: any[], settingName: string, port: number, selModelPropName: string, killCmd: () => void, shellCmd: (message: string) => void) {
     public async addHuggingfaceModelToList(typeDetails: ModelTypeDetails) {
+        const localhostEndpoint = "http://127.0.0.1";
         const modelPlaceholder = "<model_name>";
         const modelListToLocalCommand = new Map([ 
             ["complition_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + typeDetails.newModelPort],
@@ -508,97 +512,11 @@ export class Menu {
               vscode.window.showInformationMessage("No huggingface model selected.")
               return;
         }
-        const foundModels = await this.getHfModels(searchWords??"");
-        let hfModelName = ""
-        if (foundModels && foundModels.length > 0){
-            const hfModelsQp: QuickPickItem[] = [];
-            for(let hfModel of foundModels){
-                if (!hfModel.private){
-                    hfModelsQp.push({
-                        label: hfModel.modelId, 
-                        description: "created: " + hfModel.createdAt + " | downloads: " + hfModel.downloads + " | likes: " + hfModel.likes
-                    })
-                }
-            }
-            const selModel = await vscode.window.showQuickPick(hfModelsQp);
-            if(selModel && selModel.label) {
-                let modelFiles = await this.getHfModelFiles(selModel.label)
-                if(modelFiles && modelFiles.length > 0){
-                    const hfModelsFilesQp: QuickPickItem[] = [];
-                    const ggufSuffix = ".gguf"
-                    let cleanModelName = selModel.label.split("/")[1].replace(/-gguf/gi, "")
-                    let arePartsOfOneFile = true;
-                    let multiplePartsSize = 0;
-                    let multiplePartsCount = 0;
-                    for(let file of modelFiles){
-                        if (file.type == "file" 
-                            && file.path.toLowerCase().endsWith(ggufSuffix)
-                            && file.path.toLowerCase().startsWith(cleanModelName.toLowerCase())){
-                            let quantization = file.path.slice(cleanModelName.length+1, -ggufSuffix.length)
-                            if (arePartsOfOneFile && !this.isOneOfMany(quantization.slice(-14))) arePartsOfOneFile = false;
-                            if (!arePartsOfOneFile){
-                                hfModelsFilesQp.push({
-                                    label: selModel.label + ":" + quantization, 
-                                    description: "size: " + (Math.round((file.size/1000000000)*100)/100) + "GB"
-                                })
-                            } else {
-                                multiplePartsSize += file.size;
-                                multiplePartsCount++;
-                            }
-                        }
-                        if (file.type == "directory") {
-                            let subfolderFiles = await this.getHfModelSubforlderFiles(selModel.label, file.path)
-                            let totalSize = 0;
-                            let totalFiles = 0;
-                            for (let file of subfolderFiles){
-                                if (file.path.toLowerCase().endsWith(ggufSuffix)) {
-                                    totalSize += file.size;
-                                    totalFiles++;
-                                }
-                            }
-                            hfModelsFilesQp.push({
-                                label: selModel.label + ":" + file.path, 
-                                description: "size: " + (Math.round((totalSize/1000000000)*100)/100) + " GB | files: " + totalFiles
-                            })
-                        }
-                    }
-                    if (arePartsOfOneFile){
-                        hfModelsFilesQp.push({
-                                label: selModel.label, 
-                                description: "size: " + (Math.round((multiplePartsSize/1073741824)*100)/100) + " GB | files: " + multiplePartsCount
-                            })
-                    }
-                    if (hfModelsFilesQp.length <= 0){
-                        vscode.window.showInformationMessage("No files found for model " + selModel.label + " or the files are with are with unexpected naming conventions.");
-                        return;
-                    }
-                    let selFile = await vscode.window.showQuickPick(hfModelsFilesQp);
-                    if (!selFile){
-                        vscode.window.showInformationMessage("No files selected for model " + selModel.label + ".");
-                        return;
-                    }
-                    hfModelName = selFile?.label;
-                    
-                } else {
-                    vscode.window.showInformationMessage("No files found for model " + selModel.label);
-                    return;
-                }
-                
-                
-            }
-            else {
-                vscode.window.showInformationMessage("No huggingface model selected.")
-                return;
-            }
-            // set the selected model in hfEndpoint
-        } else {
-            // No model found
-            vscode.window.showInformationMessage("No model selected.")
-            return;
-        }
+        let hfModelName = await this.getDownloadModelName(searchWords);
+        if (hfModelName == "") return;
         const localStartCommand = modelListToLocalCommand.get(typeDetails.modelsListSettingName)?.replace(modelPlaceholder, hfModelName)
         
-        let endpoint = "http://127.0.0.1:" + typeDetails.newModelPort;
+        let endpoint = localhostEndpoint +":" + typeDetails.newModelPort;
         const aiModel = ""
         const isKeyRequired = false;
         let name = "hf: " + hfModelName;
@@ -629,6 +547,99 @@ export class Menu {
                 this.activateModel(typeDetails.selModelPropName, typeDetails.killCmd, typeDetails.shellCmd);
             }
         }
+    }
+
+    private async getDownloadModelName(searchWords: string) {
+        const foundModels = await this.getHfModels(searchWords ?? "");
+        let hfModelName = "";
+        if (foundModels && foundModels.length > 0) {
+            const hfModelsQp: QuickPickItem[] = [];
+            for (let hfModel of foundModels) {
+                if (!hfModel.private) {
+                    hfModelsQp.push({
+                        label: hfModel.modelId,
+                        description: "created: " + hfModel.createdAt + " | downloads: " + hfModel.downloads + " | likes: " + hfModel.likes
+                    });
+                }
+            }
+            const selModel = await vscode.window.showQuickPick(hfModelsQp);
+            if (selModel && selModel.label) {
+                let modelFiles = await this.getHfModelFiles(selModel.label);
+                if (modelFiles && modelFiles.length > 0) {
+                    const hfModelsFilesQp: QuickPickItem[] = await this.getFilesOfModel(selModel, modelFiles);
+                    if (hfModelsFilesQp.length <= 0) {
+                        vscode.window.showInformationMessage("No files found for model " + selModel.label + " or the files are with are with unexpected naming conventions.");
+                        return "";
+                    }
+                    let selFile = await vscode.window.showQuickPick(hfModelsFilesQp);
+                    if (!selFile) {
+                        vscode.window.showInformationMessage("No files selected for model " + selModel.label + ".");
+                        return "";
+                    }
+                    hfModelName = selFile?.label ?? "";
+
+                } else {
+                    vscode.window.showInformationMessage("No files found for model " + selModel.label);
+                    return "";
+                }
+            }
+            else {
+                vscode.window.showInformationMessage("No huggingface model selected.");
+                return '';
+            }
+        } else {
+            vscode.window.showInformationMessage("No model selected.");
+            return "";
+        }
+        return hfModelName;
+    }
+
+    private async getFilesOfModel(selModel: vscode.QuickPickItem, modelFiles: HuggingfaceFile[]) {
+        const hfModelsFilesQp: QuickPickItem[] = [];
+        const ggufSuffix = ".gguf";
+        let cleanModelName = selModel.label.split("/")[1].replace(/-gguf/gi, "");
+        let arePartsOfOneFile = true;
+        let multiplePartsSize = 0;
+        let multiplePartsCount = 0;
+        for (let file of modelFiles) {
+            if (file.type == "file"
+                && file.path.toLowerCase().endsWith(ggufSuffix)
+                && file.path.toLowerCase().startsWith(cleanModelName.toLowerCase())) {
+                let quantization = file.path.slice(cleanModelName.length + 1, -ggufSuffix.length);
+                if (arePartsOfOneFile && !this.isOneOfMany(quantization.slice(-14))) arePartsOfOneFile = false;
+                if (!arePartsOfOneFile) {
+                    hfModelsFilesQp.push({
+                        label: selModel.label + ":" + quantization,
+                        description: "size: " + (Math.round((file.size / 1000000000) * 100) / 100) + "GB"
+                    });
+                } else {
+                    multiplePartsSize += file.size;
+                    multiplePartsCount++;
+                }
+            }
+            if (file.type == "directory") {
+                let subfolderFiles = await this.getHfModelSubforlderFiles(selModel.label, file.path);
+                let totalSize = 0;
+                let totalFiles = 0;
+                for (let file of subfolderFiles) {
+                    if (file.path.toLowerCase().endsWith(ggufSuffix)) {
+                        totalSize += file.size;
+                        totalFiles++;
+                    }
+                }
+                hfModelsFilesQp.push({
+                    label: selModel.label + ":" + file.path,
+                    description: "size: " + (Math.round((totalSize / 1000000000) * 100) / 100) + " GB | files: " + totalFiles
+                });
+            }
+        }
+        if (arePartsOfOneFile) {
+            hfModelsFilesQp.push({
+                label: selModel.label,
+                description: "size: " + (Math.round((multiplePartsSize / 1073741824) * 100) / 100) + " GB | files: " + multiplePartsCount
+            });
+        }
+        return hfModelsFilesQp;
     }
 
     private isOneOfMany(input: string): boolean {

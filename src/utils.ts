@@ -732,4 +732,21 @@ export class Utils {
         }
         return s;
     };
+
+    static readExtensionFile = async (relativePath: string): Promise<string> => {
+        // Get the extension's context (passed in activation)
+        const extension = vscode.extensions.getExtension('ggml-org.llama-vscode');
+        if (!extension) {
+            throw new Error('Extension not found');
+        }
+
+        const absolitePath = path.join(extension.extensionPath, relativePath);
+
+        try {
+            // Read the file content
+            return await fs.promises.readFile(absolitePath, 'utf-8');
+        } catch (error) {
+            return `Failed to read extension file: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    }
 }
