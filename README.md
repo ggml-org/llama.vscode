@@ -28,6 +28,7 @@ Local LLM-assisted text completion, chat with AI and agentic coding extension fo
 - Predefined models (including OpenAI gpt-oss 20B added as a local one) 
 - Predefined Orchestras for different use cases - only completion, chat + completion, chat + agent, etc.
 - MCP tools selection for the agent (from VS Code installed MCP Servers)
+- Search and download models from Huggingface directly from llama-vscode
 
 ## Installation
 

@@ -1300,7 +1300,7 @@
         },
         "llama-vscode.tool_llama_vscode_help_enabled": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "description": "Enable/disable tool llama-vscode_help"
         },
         "llama-vscode.tool_custom_tool_description": {

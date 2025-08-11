@@ -610,7 +610,7 @@ export class Menu {
                 if (arePartsOfOneFile && !this.isOneOfMany(quantization.slice(-14))) arePartsOfOneFile = false;
                 if (!arePartsOfOneFile) {
                     hfModelsFilesQp.push({
-                        label: selModel.label + ":" + quantization,
+                        label: selModel.label + (quantization? ":" + quantization : ""),
                         description: "size: " + (Math.round((file.size / 1000000000) * 100) / 100) + "GB"
                     });
                 } else {

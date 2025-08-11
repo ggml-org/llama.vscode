@@ -380,15 +380,35 @@ const App: React.FC<AppProps> = () => {
       <div className="header">
         <div className="header-content">
           <div className="header-left">
-          </div>
-          <div className="header-actions">
             <button 
-              onClick={handleClearText} 
-              className="header-btn secondary"
-              title="New Chat"
-            >
-              New Chat
-            </button>
+                  onClick={handleSelectOrchestra} 
+                  title={`Select/Start Orchestra (Selected: ${currentOrchestra})`}
+                  className="modern-btn secondary"
+                >
+                  Orchestra
+                </button>
+                <button 
+                  onClick={handleClearText} 
+                  className="header-btn secondary"
+                  title="New Chat"
+                >
+                  New Chat
+                </button>
+                <button 
+                  onClick={handleStopOrchestra} 
+                  title="Deselect/Stop orchestra and all models"
+                  className="modern-btn secondary"
+                >
+                  Stop Orchestra
+                </button>
+                <button 
+                  onClick={handleSelectedModels} 
+                  title="Show Selected Models"
+                  className="modern-btn secondary"
+                >
+                  Selected Models
+                </button>
+                
             <button 
               onClick={handleConfigureTools} 
               className="header-btn secondary"
@@ -396,6 +416,10 @@ const App: React.FC<AppProps> = () => {
             >
               🔧
             </button>
+          </div>
+          <div className="header-actions">
+
+            
           </div>
         </div>
       </div>
@@ -487,33 +511,7 @@ const App: React.FC<AppProps> = () => {
                 >
                   @
                 </button>
-                <button 
-                  onClick={handleSelectOrchestra} 
-                  title={`Select/Start Orchestra (Selected: ${currentOrchestra})`}
-                  className="modern-btn secondary"
-                >
-                  Orchestra
-                </button>
-                <button 
-                  onClick={handleStopOrchestra} 
-                  title="Deselect/Stop orchestra and all models"
-                  className="modern-btn secondary"
-                >
-                  Stop Orchestra
-                </button>
-                <button 
-                  onClick={handleSelectedModels} 
-                  title="Show Selected Models"
-                  className="modern-btn secondary"
-                >
-                  Selected Models
-                </button>
-              </div>
-            </div>
-            
-            
-            
-            {/* LLM Model Selection Buttons */}
+                            {/* LLM Model Selection Buttons */}
             <div className="model-selection-frame">
               <div className="frame-label">Select Model</div>
               <div className="llm-buttons">
@@ -543,10 +541,16 @@ const App: React.FC<AppProps> = () => {
                   title={`Select/Start Completion Model (Selected: ${currentCompletionModel})`} 
                   className="modern-btn secondary"
                 >
-                  Completion
+                  Compl
                 </button>
               </div>
             </div>
+              </div>
+            </div>
+            
+            
+            
+
 
             {/* Chat With AI Frame */}
             <div className="model-selection-frame">
@@ -555,29 +559,30 @@ const App: React.FC<AppProps> = () => {
                 <button 
                   onClick={handleInstallLlamacpp} 
                   className="modern-btn secondary"
+                  title= "Install/Upgrade llama.cpp"
                 >
-                  Install/Upgrade llama.cpp
+                  llama.cpp
                 </button>
                 <button 
                   onClick={handleAddHuggingfaceModel} 
                   title="Add Huggingface Model"
                   className="modern-btn secondary"
                 >
-                  Add Chat Model From Huggingface
+                  Add
                 </button>
                 <button 
                   onClick={handleSelectChatModel} 
                   title={`Selected: ${currentChatModel}`}
                   className="modern-btn secondary"
                 >
-                  Select Model
+                  Select
                 </button>
                 <button 
                   onClick={handleChatWithAI} 
                   title="Chat With AI"
                   className="modern-btn secondary"
                 >
-                  Chat With AI
+                  Chat
                 </button>
               </div>
             </div>

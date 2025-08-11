@@ -106,19 +106,32 @@ This generate a commit message, based on the current changes.
 - Embeddings server (if search_source tool is used)
 
 ### How to use it 
-Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A 
+Llama Agent is still in development, but could produce some results with intlligent models with tools support.
+
+The best wey to prepare the environment for the agent is by selecting and Orchestra (group of models). So, below is the standard workflow:
+1. Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A to show Llama Agent. 
+2. Click "Orhestra" button and select orchestra, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
+3. Write your request and send it with Enter or the Send button.
+
+Optional
+- You could add files to the context with the @ button. 
+- You could select source code and activate the agent (Ctrl+Shift+A) to attache the selected lines to the contxt
+- You could choose the tools to be used from "Select Tools" button (on the right side of "New Chat" button). If you have installed and started MCP Servers in VS Code, their tools will be available for selection too. Don't forget to click the OK button after changing the tool selection.
+
+Click button "Stop Orchestra" to stop the servers.
+Click button "Selected Models" to show details about the selected models 
  
-## Use as local AI runner (as LMStudio, Ollama, etc.) 
+## Use as local AI runner (as LM Studio, Ollama, etc.) 
 
 ### Overview
-llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . Models are searched in huggingface. After a model is selected, llama-vscode automatically downloads it and starts a llama-server with it. With this the user could start chatting with an AI.
+llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . Models are searched in Huggingface. After a model is selected, llama-vscode automatically downloads it and starts a llama-server with it. With this the user could start chatting with an AI.
 
 ### How to use it
-1. Show Llama Agent panel (Ctrl+Shift+A or from llama-vscode menu)
-2. Click "Install/Upgrade llama.cpp" button to install llama.cpp (if not yet done). The installation for Windows (with winget) and Mac (with brew) is automatic. For Linux, the user should do it manually ([download the latest llama.cpp package for Linux](https://github.com/ggml-org/llama.cpp/releases) and add the bin folder to the PATH)
-3. Click "Add Chat Model From Huggingface", enter search words to see a list of models, select a model, select quantization. If prefered - accept to start the model immediately. (not needed if the model is already added)
-4. Click "Select Model" button and select a button to run (not needed if the model is already started in the previous step)
-5. Click "Chat With AI" button - a web page for chat with AI will be shown in VS Code
+1. Show Llama Agent panel (Ctrl+Shift+A or from llama-vscode menu) and see the "Chat With AI" frame.
+2. Click "llama.cpp" button to install llama.cpp (if not yet done). The installation for Windows (with winget) and Mac (with brew) is automatic. For Linux, the user should do it manually ([download the latest llama.cpp package for Linux](https://github.com/ggml-org/llama.cpp/releases) and add the bin folder to the PATH)
+3. Click "Add" button, enter search words to see a list of models from Huggingface, select a model, select quantization. If prefered - accept to start the model immediately. (not needed if the model is already added)
+4. Click "Select" button and select a model to run (not needed if the model is already started in the previous step)
+5. Click "Chat" button - a web page for chat with AI will be shown in VS Code
 
 Enjoy talking with local AI.
  
