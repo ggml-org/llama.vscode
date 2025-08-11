@@ -3,8 +3,6 @@ import * as vscode from 'vscode';
 import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
-import { dir } from "console";
-import * as ts from "typescript";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -317,8 +315,7 @@ export class Tools {
         }
 
         const functionString = '('+ functionCode +')';
-        const jscode = ts.transpile(functionString);
-        const toolFunction = eval(jscode);
+        const toolFunction = eval(functionString);
         
         let result = toolFunction(params.input)
 

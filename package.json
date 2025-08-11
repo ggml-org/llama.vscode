@@ -1331,7 +1331,7 @@
         "llama-vscode.tool_custom_eval_tool_code": {
           "type": "string",
           "default": "function(input) { return eval(input); }",
-          "description": "The typescript function to be executed when the tool is called. It should have one parameter of type string. When called, the parameter will be the value provided by the AI in the tool property. This is powerful, but could be security risk. Be careful."
+          "description": "The javascript function to be executed when the tool is called. It should have one parameter of type string. When called, the parameter will be the value provided by the AI in the tool property. This is powerful, but could be security risk. Be careful."
         },       
         "llama-vscode.tools_max_iterations": {
           "type": "number",
