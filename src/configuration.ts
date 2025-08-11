@@ -24,6 +24,10 @@ export class Configuration {
     new_chat_model_port = 8011
     new_embeddings_model_port = 8010
     new_tools_model_port = 8009
+    new_completion_model_host = "127.0.0.1"
+    new_chat_model_host = "127.0.0.1"
+    new_embeddings_model_host = "127.0.0.1"
+    new_tools_model_host = "127.0.0.1"
     auto = true;
     api_key = "";
     api_key_chat = "";
@@ -149,6 +153,10 @@ export class Configuration {
         this.new_chat_model_port = Number(config.get<number>("new_chat_model_port"));
         this.new_embeddings_model_port = Number(config.get<number>("new_embeddings_model_port"));
         this.new_tools_model_port = Number(config.get<number>("new_tools_model_port"));
+        this.new_completion_model_host = String(config.get<string>("new_completion_model_host"));
+        this.new_chat_model_host = String(config.get<string>("new_chat_model_host"));
+        this.new_embeddings_model_host = String(config.get<string>("new_embeddings_model_host"));
+        this.new_tools_model_host = String(config.get<string>("new_tools_model_host"));
         this.launch_completion = String(config.get<string>("launch_completion"));
         this.launch_chat = String(config.get<string>("launch_chat"));
         this.launch_embeddings = String(config.get<string>("launch_embeddings"));

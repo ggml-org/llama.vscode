@@ -106,9 +106,22 @@ This generate a commit message, based on the current changes.
 - Embeddings server (if search_source tool is used)
 
 ### How to use it 
-Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A
+Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A 
+ 
+## Use as local AI runner (as LMStudio, Ollama, etc.) 
 
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
+### Overview
+llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . Models are searched in huggingface. After a model is selected, llama-vscode automatically downloads it and starts a llama-server with it. With this the user could start chatting with an AI.
+
+### How to use it
+1. Show Llama Agent panel (Ctrl+Shift+A or from llama-vscode menu)
+2. Click "Install/Upgrade llama.cpp" button to install llama.cpp (if not yet done). The installation for Windows (with winget) and Mac (with brew) is automatic. For Linux, the user should do it manually ([download the latest llama.cpp package for Linux](https://github.com/ggml-org/llama.cpp/releases) and add the bin folder to the PATH)
+3. Click "Add Chat Model From Huggingface", enter search words to see a list of models, select a model, select quantization. If prefered - accept to start the model immediately. (not needed if the model is already added)
+4. Click "Select Model" button and select a button to run (not needed if the model is already started in the previous step)
+5. Click "Chat With AI" button - a web page for chat with AI will be shown in VS Code
+
+Enjoy talking with local AI.
+ 
  
 ## Manage chat models 
 
@@ -116,19 +129,49 @@ Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A
 - No servers required
 
 ### How to use it 
-Select "Chat models..." from llama-vscode menu
-
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
+See manage completion models. The functionality is the same. 
  
 ## Manage completion models 
 
 ### Requred servers
 - No servers required
 
-### How to use it 
-Select "Completion models..." from llama-vscode menu
+### Overview
+Completion models configurations are stored and could be reused. For simplicity the term "completion models" will be used as a synonim for Completion models configurations.
+Completion models could be for local models (run by llama-vscode) and for externally run servers.
+They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+ 
 
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
+Completion models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
+
+### How to use it 
+Select "Completion models..." from llama-vscode menu  
+
+- Add models  
+Enter the requested properties.  
+For local models name, local start command and endpoint are required  
+For external servers name and endpoint are required  
+
+- Delete models  
+Select the model you want to delete from the list and delete it.
+
+- View  
+Select a model from the list to view all the details for this model
+
+- Selected  
+Select a model from the list to select it. If the model is a local one (has a command in local start command) a llama.cpp server with this model will be started. Only one completion model could be selected at a time.
+
+- Deselect  
+Deselect the currently selected model. If the model is local, the llama.cpp server will be started.
+
+- Add model from huggingface  
+Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Export  
+A model could be export as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+
+- Import  
+A model could be imported from a .json file - select a file to import it. 
  
 ## Manage embeddings 
 
@@ -136,9 +179,7 @@ Select "Completion models..." from llama-vscode menu
 - No servers required
 
 ### How to use it 
-Select "Embeddings models..." from llama-vscode menu
-
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
+See manage completion models. The functionality is the same. 
  
 ## Manage orchestras 
 
@@ -146,9 +187,15 @@ Select "Embeddings models..." from llama-vscode menu
 - No servers required
 
 ### How to use it 
-Select "Orchestras..." from llama-vscode menu
+Orchestra is a group of models (completion, chat, embeddings, tools)
 
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
+See manage completion models for more details. The functionality is similar.
+The differences are:   
+no add model from Huggingface  
+adding an orchestra is adding and orchestra with the currently selected models  
+selecting an orchestra deselects all models and selects the models inside the orchestra  
+deselecting an orchestra deselects/stops all currently selected models 
+menu item "Download/upload orchestras online", which opens a web page where orchestras could be downloaded/uploaded 
  
 ## Manage tools models 
 
@@ -156,9 +203,7 @@ Select "Orchestras..." from llama-vscode menu
 - No servers required
 
 ### How to use it 
-Select "Tools models..." from llama-vscode menu
-
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
+See manage completion models. The functionality is the same. 
  
 ## Menu  
 
@@ -177,8 +222,10 @@ OR
 ## Model selection
 
 ### What is model selection
+At a given time only one model could be selected (no model selected is also possible). If a model is selected, llama-vscode assumes this model is available at the endpoint for this model. If the model is local, the selection of a model starts a llama.cpp server with it.
 
 ### Why is model selection needed
+This way is more clear what models for what will be used.
 
 ### How to use it 
 There are different ways to select a model
@@ -190,10 +237,11 @@ There are different ways to select a model
 ## Orchestra
 
 ### What is orchestra
-
-### Why is orchestra needed
+Orchestra is a group of models. The concept was introduced to make it easier for the users to prepare the environment for their needs. Selecting an orchestra with a given intent will make sure all needed servers are available.
 
 ### How to use it
+Select orchestra from "Orchestra" button of the Llama Agent or from llama-vscode menu. This will select the models inside an orchestra (and start the corresponding local servers)
+Deselect orchestra from "Stop Orchestra" button of the Llama Agent or from llama-vscode menu. This deselect all models (and stop the locally running servers)
  
  
 ## Statusbar  
@@ -212,6 +260,12 @@ There are different ways to select a model
  
  
 ## Setup llama.cpp server for Linux 
+
+1. Download the release files for your OS from [llama.cpp releases.](https://github.com/ggerganov/llama.cpp/releases) (or build from source).  
+2. Add the bin folder to PATH, so that it is globally available
+
+The configurations below are left for a reference, but now it is possible to do it easier - add a model from the menu and select it.
+
 ### Code completion server
 *Used for*  
     - code completion
@@ -220,8 +274,6 @@ There are different ways to select a model
     - FIM (fill in the middle)  
 
 *Instructions*  
-1. Download the release files for your OS from [llama.cpp releases.](https://github.com/ggerganov/llama.cpp/releases) (or build from source).  
-2. Download the LLM model and run llama.cpp server (combined in one command)  
 
 CPU only
 
@@ -293,6 +345,11 @@ Same like code completion server, but use embeddings model and a little bit diff
  
  
 ### Setup llama.cpp servers for Mac  
+
+Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if not yet done). After that add/select the models you want to use.   
+
+The instructions below are left for a reference, but now it is possible to do it easier - add a model from the menu and select it.
+
 #### Prerequisites - [Homebrew](https://brew.sh/)
 
 ### Code completion server
@@ -303,6 +360,8 @@ Same like code completion server, but use embeddings model and a little bit diff
     - FIM (fill in the middle)  
 
 *Instructions*
+
+
 1. Install llama.cpp with the command
 ```bash  
 `brew install llama.cpp`  
@@ -367,6 +426,10 @@ Same like code completion server, but use embeddings model and a little bit diff
  
 ### Setup llama.cpp servers for Windows  
 
+Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if not yet done). After that add/select the models you want to use.   
+
+The instructions below are left for a reference, but now it is possible to do it easier - add a model from the menu and select it.
+
 ### Code completion server
 *Used for*  
     - code completion
@@ -375,18 +438,26 @@ Same like code completion server, but use embeddings model and a little bit diff
     - FIM (fill in the middle)  
 
 *Instructions*
+#### Install llama.cpp
+```bash
+`winget install llama.cpp`
+```
+OR  
+  
 Download the release files for Windows for llama.cpp from [releases](https://github.com/ggerganov/llama.cpp/releases). For CPU use llama-*-bin-win-cpu-*.zip. For Nvidia: llama-*-bin-win-cuda*-x64.zip and if you don't have cuda drivers installed also cudart-llama-bin-win-cuda*-x64.zip.
 
-3. Run llama.cpp server  
-3.1 No GPUs   
+#### Run llama.cpp server  
+No GPUs   
 ```bash
 `llama-server.exe --fim-qwen-1.5b-default --port 8012`  
 ```
-3.2 With Nvidia GPUs and installed latest cuda     
+With GPUs     
 ```bash
 `llama-server.exe --fim-qwen-1.5b-default --port 8012 -ngl 99`  
-```
-Now you could start using llama-vscode extension.  
+```  
+If you've installed llama.cpp with winget you could skip the .exe suffix and use just llama-server in the commands.  
+
+Now you could start using llama-vscode extension for code completion.  
 
 [More details about llama.cpp server](https://github.com/ggerganov/llama.cpp/blob/master/tools/server/)
 
@@ -395,12 +466,13 @@ Now you could start using llama-vscode extension.
     - Chat with AI  
     - Chat with AI with project context  
     - Edit with AI  
-    - Generage commit message  
+    - Generate commit message  
 
 *LLM type*  
     - Chat Models    
 
 *Instructions*  
+
 Same like code completion server, but use chat model and a little bit different parameters.  
 
 CPU-only:  

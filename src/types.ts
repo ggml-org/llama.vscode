@@ -47,6 +47,7 @@ export interface ModelTypeDetails {
     modelsList: LlmModel[]
     modelsListSettingName: string
     newModelPort: number
+    newModelHost: string
     selModelPropName: string
     launchSettingName: string
     killCmd: () => void

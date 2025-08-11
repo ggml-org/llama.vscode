@@ -437,12 +437,13 @@ export class Menu {
         }
     }
 
-    private async addModelToList(modelsList: any[], settingName: string, port: number) {
+    private async addModelToList(modelTypeDetails: ModelTypeDetails) {
+        const hostEndpoint = "http://" + modelTypeDetails.newModelHost
         const modelListToLocalCommand = new Map([ 
-            ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + port],
-            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + port], 
-            ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + port],  
-            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256 --port " + port] ]);
+            ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
+            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost], 
+            ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],  
+            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost] ]);
         let name = "";
         while (name.trim() === "") {
             name = (await vscode.window.showInputBox({
@@ -452,14 +453,14 @@ export class Menu {
             })) ?? "";
         }
         const localStartCommand = await vscode.window.showInputBox({
-            placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port '+ port + '. ',
+            placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port '+ modelTypeDetails.newModelPort + '. ',
             prompt: 'Enter a command to start the model locally (leave emtpy if external server is used). If not empty, the command will be run on selecting the model.',
-            value: modelListToLocalCommand.get(settingName)
+            value: modelListToLocalCommand.get(modelTypeDetails.modelsListSettingName)
         });
         let endpoint = "";
         while (endpoint.trim() === "") {
             endpoint = await vscode.window.showInputBox({
-                placeHolder: 'Endpoint for accessing your model, i.e. http://127.0.0.1:' + port + ' (required)' ,
+                placeHolder: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' (required)' ,
                 prompt: 'Endpoint for your model (required)',
                 value: ''
             }) ?? "";
@@ -487,20 +488,20 @@ export class Menu {
             "\nDo you want to add a model with these properties?");
 
         if (shouldAddModel){
-            modelsList.push(newModel);
-            this.app.configuration.updateConfigValue(settingName, modelsList);
+            modelTypeDetails.modelsList.push(newModel);
+            this.app.configuration.updateConfigValue(modelTypeDetails.modelsListSettingName, modelTypeDetails.modelsList);
             vscode.window.showInformationMessage("The model is added.")
         }
     }
 
     public async addHuggingfaceModelToList(typeDetails: ModelTypeDetails) {
-        const localhostEndpoint = "http://127.0.0.1";
+        const hostEndpoint = "http://" + typeDetails.newModelHost
         const modelPlaceholder = "<model_name>";
         const modelListToLocalCommand = new Map([ 
-            ["complition_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + typeDetails.newModelPort],
-            ["chat_models_list", 'llama-server -hf ' + modelPlaceholder + ' -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + typeDetails.newModelPort], 
-            ["embeddings_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + typeDetails.newModelPort],  
-            ["tools_models_list", "llama-server -hf " + modelPlaceholder + " --jinja  -ngl 99 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256 --port " + typeDetails.newModelPort] ]);
+            ["complition_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost],
+            ["chat_models_list", 'llama-server -hf ' + modelPlaceholder + ' -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + typeDetails.newModelPort + " --host " + typeDetails.newModelHost], 
+            ["embeddings_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost],  
+            ["tools_models_list", "llama-server -hf " + modelPlaceholder + " --jinja  -ngl 99 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost] ]);
         
         const searchWords = await vscode.window.showInputBox({
             placeHolder: 'keywords for searching a model from huggingface',
@@ -516,7 +517,7 @@ export class Menu {
         if (hfModelName == "") return;
         const localStartCommand = modelListToLocalCommand.get(typeDetails.modelsListSettingName)?.replace(modelPlaceholder, hfModelName)
         
-        let endpoint = localhostEndpoint +":" + typeDetails.newModelPort;
+        let endpoint = hostEndpoint +":" + typeDetails.newModelPort;
         const aiModel = ""
         const isKeyRequired = false;
         let name = "hf: " + hfModelName;
@@ -1053,7 +1054,7 @@ export class Menu {
                 await this.selectStartModel(compleModelType);
                 break;
             case this.app.configuration.getUiText('Add completion model...'):
-                await this.addModelToList(this.app.configuration.complition_models_list, "complition_models_list", this.app.configuration.new_completion_model_port);
+                await this.addModelToList(compleModelType)
                 break;
             case this.app.configuration.getUiText('Add completion model from huggingface...'):
                 await this.addHuggingfaceModelToList(compleModelType);
@@ -1083,7 +1084,7 @@ export class Menu {
                 await this.selectStartModel(chatTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add chat model...')??"":
-                await this.addModelToList(this.app.configuration.chat_models_list, "chat_models_list", this.app.configuration.new_chat_model_port);
+                await this.addModelToList(chatTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add chat model from huggingface...')??"":
                 await this.addHuggingfaceModelToList(chatTypeDetails);
@@ -1113,7 +1114,7 @@ export class Menu {
                 await this.selectStartModel(embsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add embeddings model...'):
-                await this.addModelToList(this.app.configuration.embeddings_models_list, "embeddings_models_list", this.app.configuration.new_embeddings_model_port);
+                await this.addModelToList(embsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add embeddings model from huggingface...')??"":
                 await this.addHuggingfaceModelToList(embsTypeDetails);
@@ -1143,7 +1144,7 @@ export class Menu {
                 await this.selectStartModel(toolsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add tools model...'):
-                await this.addModelToList(this.app.configuration.tools_models_list, "tools_models_list", this.app.configuration.new_tools_model_port);
+                await this.addModelToList(toolsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add tools model from huggingface...')??"":
                 await this.addHuggingfaceModelToList(toolsTypeDetails);
@@ -1260,6 +1261,7 @@ export class Menu {
             modelsList: this.app.configuration.chat_models_list,
             modelsListSettingName: "chat_models_list",
             newModelPort: this.app.configuration.new_chat_model_port,
+            newModelHost: this.app.configuration.new_chat_model_host,
             selModelPropName: "selectedChatModel",
             launchSettingName: "launch_chat",
             killCmd: this.app.llamaServer.killChatCmd,
@@ -1272,6 +1274,7 @@ export class Menu {
             modelsList: this.app.configuration.complition_models_list,
             modelsListSettingName: "complition_models_list",
             newModelPort: this.app.configuration.new_completion_model_port,
+            newModelHost: this.app.configuration.new_completion_model_host,
             selModelPropName: "selectedComplModel",
             launchSettingName: "launch_completion",
             killCmd: this.app.llamaServer.killFimCmd,
@@ -1284,6 +1287,7 @@ export class Menu {
             modelsList: this.app.configuration.embeddings_models_list,
             modelsListSettingName: "embeddings_models_list",
             newModelPort: this.app.configuration.new_embeddings_model_port,
+            newModelHost: this.app.configuration.new_embeddings_model_host,
             selModelPropName: "selectedEmbeddingsModel",
             launchSettingName: "launch_embeddings",
             killCmd: this.app.llamaServer.killEmbeddingsCmd,
@@ -1296,6 +1300,7 @@ export class Menu {
             modelsList: this.app.configuration.tools_models_list,
             modelsListSettingName: "tools_models_list",
             newModelPort: this.app.configuration.new_tools_model_port,
+            newModelHost: this.app.configuration.new_tools_model_host,
             selModelPropName: "selectedToolsModel",
             launchSettingName: "launch_tools",
             killCmd: this.app.llamaServer.killToolsCmd,
