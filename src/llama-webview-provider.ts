@@ -210,8 +210,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public updateContextFilesInfo() {
         const fileKeys = this.app.chatContext.getProjectFiles();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
-            command: 'updateFileList',
-            files: fileKeys
+            command: 'updateContextFiles',
+            files: []
         });
     }
 

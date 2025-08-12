@@ -35,7 +35,7 @@ export class LlamaAgent {
 
     resetContextProjectFiles = () => {
         this.contexProjectFiles.clear();
-        // this.app.llamaWebviewProvider.updateContextFilesInfo();
+        this.app.llamaWebviewProvider.updateContextFilesInfo();
     }
 
     addContextProjectFile = (fileLongName: string, fileShortName: string) => {

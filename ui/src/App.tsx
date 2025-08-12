@@ -48,7 +48,6 @@ const App: React.FC<AppProps> = () => {
   const [fileFilter, setFileFilter] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
-  const [showScrollToTop, setShowScrollToTop] = useState<boolean>(false);
   
 
   // Create a ref for the textarea to enable auto-focus
@@ -78,35 +77,22 @@ const App: React.FC<AppProps> = () => {
     }
   }, []);
 
-  // Auto-scroll to bottom when displayText changes
+  // Simple auto-scroll to bottom when displayText changes
   useEffect(() => {
-    if (chatContainerRef.current) {
-      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-    }
-    if (markdownContainerRef.current) {
-      markdownContainerRef.current.scrollTop = markdownContainerRef.current.scrollHeight;
+    if (displayText) {
+      // Use requestAnimationFrame to ensure DOM is updated
+      requestAnimationFrame(() => {
+        const markdownContent = document.querySelector('.markdown-content');
+        if (markdownContent) {
+          markdownContent.scrollTop = markdownContent.scrollHeight;
+        }
+      });
     }
   }, [displayText]);
 
-  // Handle scroll events for markdown container
-  useEffect(() => {
-    const markdownContainer = markdownContainerRef.current;
-    if (!markdownContainer) return;
 
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = markdownContainer;
-      // Show scroll-to-top button when not at the very top (with a small threshold)
-      const isScrolledUp = scrollTop > 50;
-      console.log('Scroll values:', { scrollTop, scrollHeight, clientHeight, isScrolledUp });
-      setShowScrollToTop(isScrolledUp);
-    };
 
-    // Initial check
-    handleScroll();
-    
-    markdownContainer.addEventListener('scroll', handleScroll);
-    return () => markdownContainer.removeEventListener('scroll', handleScroll);
-  }, []);
+
 
   // Filter files based on user input
   const filteredFiles = fileList.filter(file => 
@@ -190,15 +176,7 @@ const App: React.FC<AppProps> = () => {
     }
   };
 
-  // Function to scroll markdown container to top
-  const scrollMarkdownToTop = () => {
-    if (markdownContainerRef.current) {
-      markdownContainerRef.current.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }
-  };
+
 
   // Expose the focus function to the extension
   useEffect(() => {

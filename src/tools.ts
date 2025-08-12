@@ -333,8 +333,6 @@ export class Tools {
     }
 
     public llamaVscodeHelpDesc = async (args: string) => {
-        let params = JSON.parse(args);
-
         return "llama_vscode_help tool is executed. "
     }
     
