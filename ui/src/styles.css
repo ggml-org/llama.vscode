@@ -578,6 +578,26 @@ body {
   background: #5a5a5a;
 }
 
+/* Markdown specific scrollbar styling */
+.markdown-content::-webkit-scrollbar {
+  width: 10px;
+}
+
+.markdown-content::-webkit-scrollbar-track {
+  background: var(--vscode-panel-background);
+  border-radius: 4px;
+}
+
+.markdown-content::-webkit-scrollbar-thumb {
+  background: var(--vscode-panel-border);
+  border-radius: 5px;
+  border: 2px solid var(--vscode-panel-background);
+}
+
+.markdown-content::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-color);
+}
+
 /* Responsive Design */
 @media (max-width: 768px) {
   .header-content {
@@ -596,4 +616,213 @@ body {
     width: 95%;
     margin: 20px;
   }
+}
+
+/* Markdown Display Area */
+.markdown-container {
+  background-color: var(--vscode-panel-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 8px;
+  margin: 0 20px 20px 20px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  /* Ensure proper sizing */
+  display: flex;
+  flex-direction: column;
+}
+
+.markdown-header {
+  background-color: var(--vscode-input-background);
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 12px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.markdown-header h3 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  opacity: 0.9;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.markdown-header-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.scroll-status {
+  font-size: 12px;
+  color: var(--vscode-editor-foreground);
+  opacity: 0.7;
+  font-style: italic;
+}
+
+.markdown-header h3::after {
+  content: "📄";
+  font-size: 12px;
+  opacity: 0.7;
+}
+
+.markdown-header h3.scrollable::after {
+  content: "📄 📜";
+}
+
+.scroll-to-top-btn {
+  background-color: var(--vscode-button-background);
+  color: var(--vscode-button-foreground);
+  border: none;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  margin-left: auto;
+}
+
+.scroll-to-top-btn:hover {
+  background-color: var(--vscode-button-hoverBackground);
+  transform: translateY(-1px);
+}
+
+.markdown-content {
+  padding: 20px;
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  line-height: 1.6;
+  min-height: 400px;
+  max-height: 400px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scroll-behavior: smooth;
+  /* Force scrollbar to always show */
+  scrollbar-width: thin;
+  scrollbar-color: var(--vscode-panel-border) var(--vscode-panel-background);
+}
+
+.markdown-content h1,
+.markdown-content h2,
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  margin-top: 24px;
+  margin-bottom: 16px;
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--vscode-editor-foreground);
+}
+
+.markdown-content h1 {
+  font-size: 2em;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding-bottom: 8px;
+}
+
+.markdown-content h2 {
+  font-size: 1.5em;
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding-bottom: 6px;
+}
+
+.markdown-content h3 {
+  font-size: 1.25em;
+}
+
+.markdown-content p {
+  margin-top: 0;
+  margin-bottom: 16px;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-top: 0;
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+.markdown-content li {
+  margin-bottom: 4px;
+}
+
+.markdown-content blockquote {
+  margin: 16px 0;
+  padding: 0 16px;
+  color: var(--vscode-input-foreground);
+  border-left: 4px solid var(--vscode-panel-border);
+  background-color: var(--vscode-input-background);
+}
+
+.markdown-content code {
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 0.9em;
+}
+
+.markdown-content pre {
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 16px 0;
+}
+
+.markdown-content pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.9em;
+  line-height: 1.4;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 16px 0;
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--vscode-panel-border);
+  padding: 8px 12px;
+  text-align: left;
+}
+
+.markdown-content th {
+  background-color: var(--vscode-input-background);
+  font-weight: 600;
+}
+
+.markdown-content a {
+  color: var(--accent-color);
+  text-decoration: none;
+}
+
+.markdown-content a:hover {
+  text-decoration: underline;
+}
+
+.markdown-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 4px;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid var(--vscode-panel-border);
+  margin: 24px 0;
 } 

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 
 // Declare the vscode API
 declare global {
@@ -47,12 +48,14 @@ const App: React.FC<AppProps> = () => {
   const [fileFilter, setFileFilter] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
+  const [showScrollToTop, setShowScrollToTop] = useState<boolean>(false);
   
 
   // Create a ref for the textarea to enable auto-focus
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const markdownContainerRef = useRef<HTMLDivElement>(null);
 
   // Save state to VS Code whenever it changes
   useEffect(() => {
@@ -80,7 +83,30 @@ const App: React.FC<AppProps> = () => {
     if (chatContainerRef.current) {
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
     }
+    if (markdownContainerRef.current) {
+      markdownContainerRef.current.scrollTop = markdownContainerRef.current.scrollHeight;
+    }
   }, [displayText]);
+
+  // Handle scroll events for markdown container
+  useEffect(() => {
+    const markdownContainer = markdownContainerRef.current;
+    if (!markdownContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = markdownContainer;
+      // Show scroll-to-top button when not at the very top (with a small threshold)
+      const isScrolledUp = scrollTop > 50;
+      console.log('Scroll values:', { scrollTop, scrollHeight, clientHeight, isScrolledUp });
+      setShowScrollToTop(isScrolledUp);
+    };
+
+    // Initial check
+    handleScroll();
+    
+    markdownContainer.addEventListener('scroll', handleScroll);
+    return () => markdownContainer.removeEventListener('scroll', handleScroll);
+  }, []);
 
   // Filter files based on user input
   const filteredFiles = fileList.filter(file => 
@@ -109,6 +135,7 @@ const App: React.FC<AppProps> = () => {
     // Listen for messages from the extension
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
+      console.log('Received message from extension:', message);
       switch (message.command) {
         case 'updateText':
           setDisplayText(message.text);
@@ -163,6 +190,16 @@ const App: React.FC<AppProps> = () => {
     }
   };
 
+  // Function to scroll markdown container to top
+  const scrollMarkdownToTop = () => {
+    if (markdownContainerRef.current) {
+      markdownContainerRef.current.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }
+  };
+
   // Expose the focus function to the extension
   useEffect(() => {
     // @ts-ignore - Adding to window for extension access
@@ -182,6 +219,10 @@ const App: React.FC<AppProps> = () => {
   };
 
   const handleAddSource = () => {
+    console.log('@ button clicked - requesting file list');
+    // For testing, let's also manually set some test files
+    console.log('Current showFileSelector state:', showFileSelector);
+    
     // Request file list from extension
     vscode.postMessage({
       command: 'getFileList'
@@ -268,9 +309,14 @@ const App: React.FC<AppProps> = () => {
   
 
   const handleClearText = () => {
+    console.log('New Chat button clicked - clearing text');
+    // Clear the display text locally
+    setDisplayText('');
+    // Also send command to extension to clear text
     vscode.postMessage({
       command: 'clearText'
     });
+    console.log('Sent clearText command to extension');
   };
 
   const handleFileSelect = (fileLongName: string) => {
@@ -403,10 +449,10 @@ const App: React.FC<AppProps> = () => {
                 </button>
                 <button 
                   onClick={handleSelectedModels} 
-                  title="Show Selected Models"
+                  title="Show Current Musicians (Selected Models)"
                   className="modern-btn secondary"
                 >
-                  Selected Models
+                  Show Musicians
                 </button>
                 
             <button 
@@ -426,18 +472,15 @@ const App: React.FC<AppProps> = () => {
       
       {/* Main Content */}
       <div className="content">
-        {/* Chat Display Area */}
-        <div className="chat-container" ref={chatContainerRef}>
-          {displayText ? (
-            <div className="chat-message assistant">
-              {displayText}
+        {/* Chat Display Area */}        
+        {/* Markdown Display Area */}
+        {displayText && (
+          <div className="markdown-container" ref={markdownContainerRef}>
+            <div className="markdown-content">
+              <ReactMarkdown>{displayText}</ReactMarkdown>
             </div>
-          ) : (
-            <div className="chat-message assistant">
-              No messages yet. Start a conversation by typing below.
-            </div>
-          )}
-        </div>
+          </div>
+        )}
         
         {/* Input Section */}
         <div className="input-section">
@@ -513,7 +556,7 @@ const App: React.FC<AppProps> = () => {
                 </button>
                             {/* LLM Model Selection Buttons */}
             <div className="model-selection-frame">
-              <div className="frame-label">Select Model</div>
+              <div className="frame-label">Select Musician (Model) For</div>
               <div className="llm-buttons">
                 <button 
                   onClick={handleSelectToolsModel} 
@@ -595,7 +638,7 @@ const App: React.FC<AppProps> = () => {
         <div className="file-selector-overlay">
           <div className="file-selector-dialog">
             <div className="file-selector-header">
-              <h3>Select a file to add to context</h3>
+              <h3>Select a file to add to context (Debug: {showFileSelector ? 'Visible' : 'Hidden'})</h3>
               <button onClick={handleCancelFileSelect} className="close-btn">×</button>
             </div>
             <div className="file-selector-search">

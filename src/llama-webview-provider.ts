@@ -46,6 +46,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'clearText':
                         this.app.llamaAgent.resetMessages();
+                        this.app.llamaAgent.resetContextProjectFiles()
                         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
                             command: 'updateText',
                             text: ''
@@ -204,6 +205,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateEmbsModel();
         this.updateComplsModel();
         this.updateOrchestra();
+    }
+
+    public updateContextFilesInfo() {
+        const fileKeys = this.app.chatContext.getProjectFiles();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateFileList',
+            files: fileKeys
+        });
     }
 
     public _getHtmlForWebview(webview: vscode.Webview) {

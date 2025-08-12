@@ -33,6 +33,11 @@ export class LlamaAgent {
         this.logText = "";
     }
 
+    resetContextProjectFiles = () => {
+        this.contexProjectFiles.clear();
+        // this.app.llamaWebviewProvider.updateContextFilesInfo();
+    }
+
     addContextProjectFile = (fileLongName: string, fileShortName: string) => {
         this.contexProjectFiles.set(fileLongName, fileShortName);
     }
@@ -66,7 +71,7 @@ export class LlamaAgent {
                 worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
             }
             let recommendation = "Obligatory read the file before editing it with a tool."
-            let projectContext = worspaceFolder + "\n" + recommendation;
+            let projectContext = worspaceFolder + "  \n" + recommendation;
             query = projectContext + "\n\n" + query;
             
             if (this.contexProjectFiles.size > 0){
@@ -107,7 +112,7 @@ export class LlamaAgent {
             while (iterationsCount < this.app.configuration.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
-                    this.logText += "\n\n" + "Session stopped." + "\n"
+                    this.logText += "\n\n" + "Session stopped." + "  \n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     this.app.llamaWebviewProvider.setState("AI is stopped")
                     this.resetMessages();
@@ -117,14 +122,14 @@ export class LlamaAgent {
                 try {
                     let data:any = await this.app.llamaServer.getToolsCompletion(this.messages);
                     if (!data) {
-                        this.logText += "No response from AI" + "\n"
+                        this.logText += "No response from AI" + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         this.app.llamaWebviewProvider.setState("AI not responding")
                         return "No response from AI";
                     }
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
-                    this.logText += response + "\n" + "Total iterations: " + iterationsCount + "\n"
+                    this.logText += response + "  \n" + "Total iterations: " + iterationsCount + "  \n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
                         this.app.statusbar.showTextInfo("agent stopped");
@@ -136,8 +141,8 @@ export class LlamaAgent {
                     }
                     this.messages.push(data.choices[0].message);
                     if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
-                        this.logText += "\n" + "Finish reason: " + finishReason
-                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "\n"
+                        this.logText += "  \n" + "Finish reason: " + finishReason
+                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         break;
                     }
@@ -145,8 +150,8 @@ export class LlamaAgent {
                     if (toolCalls != undefined && toolCalls.length > 0){
                         for (const oneToolCall of toolCalls){
                             if (oneToolCall && oneToolCall.function){
-                                this.logText += "\ntool: " + oneToolCall.function.name + "\n";
-                                if (this.app.configuration.tools_log_calls) this.logText += "\narguments: " + oneToolCall.function.arguments
+                                this.logText += "  \ntool: " + oneToolCall.function.name + "  \n";
+                                if (this.app.configuration.tools_log_calls) this.logText += "  \narguments: " + oneToolCall.function.arguments
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 let commandOutput = "Tool not found";
                                 try {
@@ -177,7 +182,7 @@ export class LlamaAgent {
                                     this.app.llamaWebviewProvider.logInUi(this.logText);
                                 }
 
-                                if (this.app.configuration.tools_log_calls) this.logText += "result: \n" + commandOutput + "\n"
+                                if (this.app.configuration.tools_log_calls) this.logText += "result:  \n" + commandOutput + "  \n"
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 toolCallsResult = {           
                                             "role": "tool",
@@ -197,10 +202,10 @@ export class LlamaAgent {
                     return "An error occurred: " + error;
                 }
             }
-            if (changedFiles.size + deletedFiles.size > 0) this.logText += "\n\nFiles changes:\n"
-            if (changedFiles.size > 0) this.logText += Array.from(changedFiles).join("\n") + "\n"
-            if (deletedFiles.size > 0) this.logText += Array.from(deletedFiles).join("\n") + "\n"
-            this.logText += "\nAgent session finished. \n\n"
+            if (changedFiles.size + deletedFiles.size > 0) this.logText += "\n\nFiles changes:  \n"
+            if (changedFiles.size > 0) this.logText += Array.from(changedFiles).join("  \n") + "  \n"
+            if (deletedFiles.size > 0) this.logText += Array.from(deletedFiles).join("  \n") + "  \n"
+            this.logText += "  \nAgent session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")
             return response;
@@ -215,7 +220,7 @@ export class LlamaAgent {
         for (let i = 0; i < plan.length; i++) {
             const step = plan[i];
             if (step.result && step.state.toLowerCase() == "done") {
-                context = "Result from task - " + step.description + ":\n" + step.result + "\n\n";
+                context = "Result from task - " + step.description + ":  \n" + step.result + "\n\n";
             }
         }
         return context;
@@ -225,7 +230,7 @@ export class LlamaAgent {
         let progress = "";
         for (let i = 0; i < plan.length; i++) {
             const step = plan[i];
-            progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "\n";
+            progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
     }

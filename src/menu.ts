@@ -941,7 +941,7 @@ export class Menu {
             if (!apiKey) {
                 const result = await vscode.window.showInputBox({
                     placeHolder: 'Enter your api key for ' + model.endpoint,
-                    prompt: 'your api key',
+                    prompt: 'your api key for ' + model.endpoint,
                     value: ''
                 });
                 if (result) {
