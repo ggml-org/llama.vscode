@@ -90,7 +90,7 @@ export class Configuration {
     embeddings_models_list = new Array();
     tools_models_list = new Array();
     chat_models_list = new Array();
-    orchestras_list = new Array();
+    envs_list = new Array();
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     // additional configs`
@@ -227,7 +227,7 @@ export class Configuration {
         this.chat_models_list = config.get("chat_models_list")??new Array();
         this.embeddings_models_list = config.get("embeddings_models_list")??new Array(); 
         this.tools_models_list = config.get("tools_models_list")??new Array();
-        this.orchestras_list = config.get("orchestras_list")??new Array();
+        this.envs_list = config.get("envs_list")??new Array();
     };
 
     getUiText = (uiText: string): string | undefined => {

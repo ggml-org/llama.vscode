@@ -15,7 +15,7 @@ export interface LlmModel {
     localStartCommand?: string
 }
 
-export interface Orchestra {
+export interface Env {
     name: string,
     description?: string,
     completion?: LlmModel,

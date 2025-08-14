@@ -44,13 +44,32 @@ export class ChatWithAi {
         }
     }
 
-    showChatWithAi = async (withContext: boolean, context: vscode.ExtensionContext) => {
+    showChatWithAi = async (withContext: boolean, context: vscode.ExtensionContext, aiInitialExtraContext: string="") => {
         const editor = vscode.window.activeTextEditor;
         let webviewIdentifier = 'htmlChatWithAiViewer'
         let panelTitle = this.app.configuration.getUiText("Chat with AI")??""
         let aiPanel  = this.askAiPanel
-        let extraCont = "";
+        let extraCont = aiInitialExtraContext ? aiInitialExtraContext + "\n\n" : "";
         let query: string|undefined = undefined
+
+        let chatModel = this.app.menu.getChatModel();
+        let targetUrl = this.app.configuration.endpoint_chat ? this.app.configuration.endpoint_chat + "/" : "";
+        if (chatModel.endpoint) {
+            const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
+            targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
+        }
+        if (!targetUrl) { 
+            const shouldSelectModel = await Utils.showYesNoDialog("No chat model is selected. Do you want to select an env with chat model?")
+            if (shouldSelectModel){
+                await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) // .selectStartModel(chatTypeDetails);
+                vscode.window.showInformationMessage("After the chat model is loaded, try again opening Chat with AI.")
+                return;
+            } else {
+                vscode.window.showErrorMessage("No endpoint for the chat model. Select an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
+                return
+            }
+        }
+
         if (withContext){
             if (!this.app.configuration.rag_enabled){
                 vscode.window.showInformationMessage(this.app.configuration.getUiText("RAG is disabled. You could enable it from VS Code menu or setting rag_enabled.")??"")
@@ -95,9 +114,7 @@ export class ChatWithAi {
             else this.askAiPanel = aiPanel;
 
             if (aiPanel) context.subscriptions.push(aiPanel);
-            let chatModel = this.app.menu.getChatModel();
-            let targetUrl = this.app.configuration.endpoint_chat + "/";
-            if (chatModel.endpoint) targetUrl = Utils.trimTrailingSlash(chatModel.endpoint) + "/";
+            
             aiPanel.webview.html = this.getWebviewContent(targetUrl);
             aiPanel.onDidDispose(() => {
                 if (withContext) this.askAiWithContextPanel = undefined
@@ -111,14 +128,14 @@ export class ChatWithAi {
                 }
             });
             // Wait for the page to load before sending message
-            if (query) extraCont = await this.prepareRagContext(query);
+            if (query) extraCont += await this.prepareRagContext(query);
             setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
             }, Math.max(0, 3000 - (Date.now() - createWebviewTimeInMs)));
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
-            if (query) extraCont = await this.prepareRagContext(query);
+            if (query) extraCont += await this.prepareRagContext(query);
             // Wait for the page to load before sending message
             setTimeout(async () => {
                 if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });

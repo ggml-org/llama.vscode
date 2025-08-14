@@ -307,7 +307,7 @@ export class Utils {
 
     static showYesNoDialog = async (message: string): Promise<boolean> => {
         const choice = await vscode.window.showInformationMessage(
-            message,
+            "llama-vscode \n\n" + message,
             { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
             'Yes',
             'No'
@@ -748,5 +748,9 @@ export class Utils {
         } catch (error) {
             return `Failed to read extension file: ${error instanceof Error ? error.message : String(error)}`;
         }
+    }
+
+    static getExtensionHelp = async () => {
+        return Utils.readExtensionFile("resources/help.md")
     }
 }

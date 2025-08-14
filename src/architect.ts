@@ -303,9 +303,6 @@ export class Architect {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
-            
-            let endpoint = this.getChatEndpoint();
-            if (!endpoint) return;
 
             this.app.askAi.showChatWithAi(false, context);
         });
@@ -319,9 +316,6 @@ export class Architect {
                 return;
             }
 
-            let endpoint = this.getChatEndpoint();
-            if (!endpoint) return;
-
             this.app.askAi.showChatWithAi(true, context);
         });
         context.subscriptions.push(triggerAskAiDisposable);
@@ -333,9 +327,6 @@ export class Architect {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
-
-            let endpoint = this.getChatEndpoint();
-            if (!endpoint) return;
 
             this.app.askAi.showChatWithTools(context);
         });
@@ -389,7 +380,9 @@ export class Architect {
             'extension.showLlamaWebview',
             () => {
                 // Focus the webview in the Explorer panel
+                
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
+                this.app.llamaWebviewProvider.setView("agent")
                 const editor = vscode.window.activeTextEditor;
                 if (editor && editor.selection) {
                     let fileLongName = editor.document.fileName;

@@ -1,6 +1,6 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
-import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Orchestra } from "./types";
+import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env } from "./types";
 import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
@@ -13,7 +13,7 @@ export class Menu {
     private selectedChatModel: LlmModel = {name: ""} 
     private selectedEmbeddingsModel: LlmModel = {name: ""}
     private selectedToolsModel: LlmModel = {name: ""}
-    private selectedOrchestra: Orchestra = {name: ""}
+    private selectedEnv: Env = {name: ""}
     private readonly startModelDetail = "Selects the model and if local also downloads the model (if not yet done) and starts a llama-server with it.";
 
     constructor(application: Application) {
@@ -27,12 +27,16 @@ export class Menu {
                 kind: vscode.QuickPickItemKind.Separator
             },
             {
-                label: this.app.configuration.getUiText('Select/start orchestra...')??"",
-                description: this.app.configuration.getUiText(`Stops the currently running models and starts the selected orchestra - (a predefined group of models for completion, chat, embeddings and tools).`)
+                label: this.app.configuration.getUiText('Select/start env...')??"",
+                description: this.app.configuration.getUiText(`Stops the currently running models and starts the selected env - (a predefined group of models for completion, chat, embeddings and tools).`)
             },
             {
-                label: this.app.configuration.getUiText('Deselect/stop orchestra and models'),
-                description: this.app.configuration.getUiText(`Unselects/stops orchestra, completion, chat, embeddings and tools models`)
+                label: this.app.configuration.getUiText('Deselect/stop env and models'),
+                description: this.app.configuration.getUiText('Deselects/stops env, completion, chat, embeddings and tools models')
+            },
+            {
+                label: this.app.configuration.getUiText('Show selected env'),
+                description: this.app.configuration.getUiText(`Shows details about the selected env`)
             },
             {
                 label: (this.app.configuration.getUiText("Show Llama Agent") ?? "") + " (Ctrl+Shif+A)",
@@ -40,23 +44,30 @@ export class Menu {
             },
             {
                 label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
-                description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using server from property endpoint_chat`)
+                description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)`)
+            },
+            {
+                label: (this.app.configuration.getUiText("Chat with AI about llama-vscode") ?? ""),
+                description: this.app.configuration.getUiText(`Opens a chat with AI window with llama-vscode help docu context inside VS Code using the selected chat model (or setting endpoint_chat)`)
             },
             {
                 label: (this.app.configuration.getUiText("Chat with AI with project context") ?? "") + " (Ctrl+Shift+;)",
-                description: this.app.configuration.getUiText(`Opens a chat with AI window with project context inside VS Code using server from property endpoint_chat`)
+                description: this.app.configuration.getUiText(`Opens a chat with AI window with project context inside VS Code using the selected chat model (or setting endpoint_chat)`)
             },
             {
                 label: this.app.configuration.getUiText("Show selected models"),
                 description: this.app.configuration.getUiText("Displays a list of currently selected models")
             },
-            
+            {
+                label: this.app.configuration.getUiText("Use as local AI runner"),
+                description: this.app.configuration.getUiText("Download models automatically from Huggingface and chat with them (as LM Studio, Ollama, etc.)")
+            },
             {
                 label: this.app.configuration.getUiText("Entities"),
                 kind: vscode.QuickPickItemKind.Separator
             },
             {
-                label: this.app.configuration.getUiText('Orchestras...')??"",
+                label: this.app.configuration.getUiText('Envs...')??"",
             },
             
             {
@@ -141,16 +152,39 @@ export class Menu {
 
     handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
         switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start orchestra..."):
-                this.selectOrchestra();
+            case this.app.configuration.getUiText("Select/start env..."):
+                this.selectEnv(this.app.configuration.envs_list);
                 break;
-            case this.app.configuration.getUiText('Deselect/stop orchestra and models'):
-                this.stopOrchestra()
+            case this.app.configuration.getUiText('Deselect/stop env and models'):
+                this.stopEnv()
+                break;
+            case this.app.configuration.getUiText('Show selected env'):
+                this.showCurrentEnv();
                 break;
              case this.app.configuration.getUiText("Chat with AI") + " (Ctrl+;)":
                 this.app.askAi.showChatWithAi(false, context);
                 break;
+            case this.app.configuration.getUiText("Chat with AI about llama-vscode"):
+                this.app.askAi.showChatWithAi(false, context, await Utils.getExtensionHelp())
+                break;
             case this.app.configuration.getUiText("Show Llama Agent") + " (Ctrl+Shif+A)":
+                let toolsModel = this.app.menu.getToolsModel();
+                let targetUrl = this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
+                if (toolsModel && toolsModel.endpoint) {
+                    const toolsEndpoint = Utils.trimTrailingSlash(toolsModel.endpoint)
+                    targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
+                }
+                if (!targetUrl) { 
+                    const shouldSelectModel = await Utils.showYesNoDialog("No tools model is selected. Do you want to select an env with tools model?")
+                    if (shouldSelectModel){
+                        await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name)) // .selectStartModel(chatTypeDetails);
+                        vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.")
+                        return;
+                    } else {
+                        vscode.window.showErrorMessage("No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools. ")
+                        return
+                    }
+                }
                 vscode.commands.executeCommand('extension.showLlamaWebview');
                 break;
             case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
@@ -161,7 +195,11 @@ export class Menu {
                 }
                 break;
             case this.app.configuration.getUiText('Show selected models'):
-                this.showSelectedModels();
+                this.showCurrentEnv();
+                break;
+            case this.app.configuration.getUiText("Use as local AI runner"):
+                vscode.commands.executeCommand('extension.showLlamaWebview');
+                this.app.llamaWebviewProvider.setView("airunner")
                 break;
             case this.app.configuration.getUiText('Completion models...')??"":
                 let complModelActions: vscode.QuickPickItem[] = this.getModelActions("completion");
@@ -183,10 +221,10 @@ export class Menu {
                 let toolsActionSelected = await vscode.window.showQuickPick(toolsModelActions);
                 if (toolsActionSelected) this.processToolsModelsActions(toolsActionSelected);
                 break;
-            case this.app.configuration.getUiText('Orchestras...')??"":
-                let orchestrasActions: vscode.QuickPickItem[] = this.getOrchestraActions()
-                let orchestraSelected = await vscode.window.showQuickPick(orchestrasActions);
-                if (orchestraSelected) this.processOrchestraActions(orchestraSelected);
+            case this.app.configuration.getUiText('Envs...')??"":
+                let envsActions: vscode.QuickPickItem[] = this.getEnvActions()
+                let envSelected = await vscode.window.showQuickPick(envsActions);
+                if (envSelected) this.processEnvActions(envSelected);
                 break;
             case "$(gear) " +  this.app.configuration.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
@@ -234,11 +272,11 @@ export class Menu {
         this.app.statusbar.updateStatusBarText();
     }
 
-    selectOrchestra = async () => {
-        const orchestrasItems: QuickPickItem[] = this.getOrchestras(this.app.configuration.orchestras_list);
-        orchestrasItems.push({ label: (orchestrasItems.length+1) + ". Last used models", description: "" });
-        const orchestra = await vscode.window.showQuickPick(orchestrasItems);
-        if (orchestra) {
+    selectEnv = async (envsList: Env[]) => {
+        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        envsItems.push({ label: (envsItems.length+1) + ". Last used models", description: "" });
+        const env = await vscode.window.showQuickPick(envsItems);
+        if (env) {
             await this.app.llamaServer.killFimCmd();
             this.selectedComplModel = {name: "", localStartCommand: ""}
             await this.app.llamaServer.killChatCmd();
@@ -246,7 +284,7 @@ export class Menu {
             await this.app.llamaServer.killEmbeddingsCmd();
             this.selectedEmbeddingsModel = {name: "", localStartCommand: ""}
 
-            if (orchestra.label.includes("Last used models")){
+            if (env.label.includes("Last used models")){
                 this.selectedComplModel = this.app.persistence.getValue("selectedComplModel") as LlmModel
                 if (this.selectedComplModel && this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
                 this.selectedChatModel = this.app.persistence.getValue("selectedChatModel") as LlmModel
@@ -256,23 +294,23 @@ export class Menu {
                 this.selectedToolsModel = this.app.persistence.getValue("selectedToolsModel") as LlmModel
                 if (this.selectedToolsModel) this.addApiKey(this.selectedToolsModel)
             } else {
-                this.selectedOrchestra = this.app.configuration.orchestras_list[parseInt(orchestra.label.split(". ")[0], 10) - 1]
-                await this.app.persistence.setValue('selectedOrchestra', this.selectedOrchestra);
+                this.selectedEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
+                await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
                 
-                if (this.selectedOrchestra){
-                    this.selectedComplModel = this.selectedOrchestra.completion??{name: ""}
+                if (this.selectedEnv){
+                    this.selectedComplModel = this.selectedEnv.completion??{name: ""}
                     if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
                     await this.addApiKey(this.selectedComplModel);
                     
-                    this.selectedChatModel = this.selectedOrchestra.chat??{name: ""}
+                    this.selectedChatModel = this.selectedEnv.chat??{name: ""}
                     if (this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
                     await this.addApiKey(this.selectedChatModel);
 
-                    this.selectedEmbeddingsModel = this.selectedOrchestra.embeddings??{name: ""}
+                    this.selectedEmbeddingsModel = this.selectedEnv.embeddings??{name: ""}
                     if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
                     await this.addApiKey(this.selectedEmbeddingsModel);
 
-                    this.selectedToolsModel = this.selectedOrchestra.tools??{name: ""}
+                    this.selectedToolsModel = this.selectedEnv.tools??{name: ""}
                     if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
                     await this.addApiKey(this.selectedToolsModel);
                 }
@@ -323,32 +361,32 @@ export class Menu {
         this.app.llamaWebviewProvider.updateModelInfo();
     }
 
-    private getOrchestraActions(): vscode.QuickPickItem[] {
+    private getEnvActions(): vscode.QuickPickItem[] {
         return [
             {
-                label: this.app.configuration.getUiText("Select/start orchestra...") ?? ""
+                label: this.app.configuration.getUiText("Select/start env...") ?? ""
             },
             {
-                label: this.app.configuration.getUiText("Deselect/stop orchestra and models") ?? ""
+                label: this.app.configuration.getUiText("Deselect/stop env and models") ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Add orchestra...') ?? "",
-                description: this.app.configuration.getUiText('Adds orchestra with the currently selected models.') ?? "",
+                label: this.app.configuration.getUiText('Add env...') ?? "",
+                description: this.app.configuration.getUiText('Adds env with the currently selected models.') ?? "",
             },
             {
-                label: this.app.configuration.getUiText('View orchestra details...') ?? ""
+                label: this.app.configuration.getUiText('View env details...') ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Delete orchestra...') ?? ""
+                label: this.app.configuration.getUiText('Delete env...') ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Export orchestra...') ?? ""
+                label: this.app.configuration.getUiText('Export env...') ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Import orchestra...') ?? ""
+                label: this.app.configuration.getUiText('Import env...') ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Download/upload orchestras online') ?? ""
+                label: this.app.configuration.getUiText('Download/upload envs online') ?? ""
             },
         ];
     }
@@ -382,7 +420,7 @@ export class Menu {
         ];
     }
 
-    public showSelectedModels() {
+    public showCurrentEnv() {
         Utils.showOkDialog(this.getSelectionsAsString());
     }
 
@@ -391,8 +429,8 @@ export class Menu {
             "\n\nllama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp." +
             "\n\n1. Install llama.cpp " +
             "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp (sometimes restart is needed to adjust the paths to llama-server)" +
-            "\n\n2. Select orchestra (group of models) for your needs from llama-vscode menu." +
-            "\n  - This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on orchestra)" +
+            "\n\n2. Select env (group of models) for your needs from llama-vscode menu." +
+            "\n  - This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on env)" +
             "\n\n3. Start using llama-vscode" +
             "\n  - For code completion - just start typing (uses completion model)" +
             "\n  - For edit code with AI - select code, right click and select 'llama-vscode Edit Selected Text with AI' (uses chat model, no tools support required)" +
@@ -488,6 +526,18 @@ export class Menu {
             "\nDo you want to add a model with these properties?");
 
         if (shouldAddModel){
+            let shouldOverwrite = false;
+            [newModel.name, shouldOverwrite] =  await this.getUniqueModelName(modelTypeDetails.modelsList, newModel);
+            if (!newModel.name){
+                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
+                return;
+            }
+            if (shouldOverwrite) {
+                const index = modelTypeDetails.modelsList.findIndex(model => model.name === newModel.name);
+                if (index !== -1) {
+                    modelTypeDetails.modelsList.splice(index, 1);
+                }
+            }
             modelTypeDetails.modelsList.push(newModel);
             this.app.configuration.updateConfigValue(modelTypeDetails.modelsListSettingName, modelTypeDetails.modelsList);
             vscode.window.showInformationMessage("The model is added.")
@@ -530,24 +580,56 @@ export class Menu {
         };
 
         
-        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: " +
-            "\nname: " + name +
-            "\nlocal start command: " + localStartCommand +
-            "\nendpoint: " + endpoint +
-            "\nmodel name for provider: " + aiModel +
-            "\napi key required: " + isKeyRequired +
+        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: \n\n" +
+            this.getModelDetailsAsString(newHfModel) +
             "\nDo you want to add a model with these properties?");
 
         if (shouldAddModel){
+            let shouldOverwrite = false;
+            [newHfModel.name, shouldOverwrite] =  await this.getUniqueModelName(typeDetails.modelsList, newHfModel);
+            if (!newHfModel.name){
+                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
+                return;
+            }
+            if (shouldOverwrite) {
+                const index = typeDetails.modelsList.findIndex(model => model.name === newHfModel.name);
+                if (index !== -1) {
+                    typeDetails.modelsList.splice(index, 1);
+                }
+            }
             typeDetails.modelsList.push(newHfModel);
             this.app.configuration.updateConfigValue(typeDetails.modelsListSettingName, typeDetails.modelsList);
-            vscode.window.showInformationMessage("The model is added.")
+            vscode.window.showInformationMessage("The model is added: " + newHfModel.name)
             const shouldSelct = await Utils.showYesNoDialog("Do you want to select/start the newly added model?")
             if (shouldSelct) {
                 this[typeDetails.selModelPropName as keyof Menu] = newHfModel as any
                 this.activateModel(typeDetails.selModelPropName, typeDetails.killCmd, typeDetails.shellCmd);
             }
         }
+    }
+
+    private async getUniqueModelName(modelsList: LlmModel[], newModel: LlmModel): Promise<[string, boolean]> {
+        let uniqueName = newModel.name;
+        let shouldOverwrite = false;
+        let modelSameName = modelsList.find(model => model.name === uniqueName);
+        while (uniqueName && !shouldOverwrite && modelSameName !== undefined) {
+            shouldOverwrite = await Utils.showYesNoDialog("A model with the same name already exists: \n\n" +
+                " Existing model: \n" +
+                this.getModelDetailsAsString(modelSameName) +
+                "\n\n New model: \n" +
+                this.getModelDetailsAsString(newModel) +
+                "\n\nDo you want to overwrite the existing model?");
+            if (!shouldOverwrite) {
+                uniqueName = (await vscode.window.showInputBox({
+                    placeHolder: 'a unique name for your new model',
+                    prompt: 'Enter a unique name for your new model. Leave empty to cancel entering.',
+                    value: newModel.name
+                })) ?? "";
+            if (uniqueName) modelSameName = modelsList.find(model => model.name === uniqueName);
+            }
+        }
+
+        return [uniqueName, shouldOverwrite]
     }
 
     private async getDownloadModelName(searchWords: string) {
@@ -571,14 +653,15 @@ export class Menu {
                     if (hfModelsFilesQp.length <= 0) {
                         vscode.window.showInformationMessage("No files found for model " + selModel.label + " or the files are with are with unexpected naming conventions.");
                         return "";
+                    } else {
+                        let selFile = await vscode.window.showQuickPick(hfModelsFilesQp);
+                        if (!selFile) {
+                            vscode.window.showInformationMessage("No files selected for model " + selModel.label + ".");
+                            return "";
+                        }
+                        if (hfModelsFilesQp.length == 1) hfModelName = selModel.label??"";
+                        else hfModelName = selFile?.label ?? "";
                     }
-                    let selFile = await vscode.window.showQuickPick(hfModelsFilesQp);
-                    if (!selFile) {
-                        vscode.window.showInformationMessage("No files selected for model " + selModel.label + ".");
-                        return "";
-                    }
-                    hfModelName = selFile?.label ?? "";
-
                 } else {
                     vscode.window.showInformationMessage("No files found for model " + selModel.label);
                     return "";
@@ -676,23 +759,23 @@ export class Menu {
         else return [];
     }
 
-    private async addOrchestraToList(orchestraList: any[], settingName: string) {
+    public async addEnvToList(envList: any[], settingName: string) {
         let name = "";
         while (name.trim() === "") {
             name = (await vscode.window.showInputBox({
-                placeHolder: 'Enter a user fiendly name for your orchestra (required)',
-                prompt: 'name for your orchestra (required)',
+                placeHolder: 'Enter a user fiendly name for your env (required)',
+                prompt: 'name for your env (required)',
                 value: ''
             })) ?? "";
         }
 
         const description = await vscode.window.showInputBox({
-            placeHolder: 'description for the orchestra - what is the purpose, when to select etc. ',
-            prompt: 'Enter description for the orchestra.',
+            placeHolder: 'description for the env - what is the purpose, when to select etc. ',
+            prompt: 'Enter description for the env.',
             value: ''
         });
         
-        let newOrchestra: Orchestra = {
+        let newEnv: Env = {
             name: name,
             description: description,
             completion: this.selectedComplModel,
@@ -701,26 +784,26 @@ export class Menu {
             tools: this.selectedToolsModel
         };
 
-        await this.persistOrchestraToSetting(newOrchestra, orchestraList, settingName);
+        await this.persistEnvToSetting(newEnv, envList, settingName);
     }
 
-    private async persistOrchestraToSetting(newOrchestra: Orchestra, orchestraList: any[], settingName: string) {
-        let orchestraDetails = this.getOrchestraDetailsAsString(newOrchestra);
-        const shouldAddOrchestra = await Utils.showYesNoDialog("A new orchestra will be added. \n\n" +
-            orchestraDetails +
-            "\n\nDo you want to add the orchestra?");
+    private async persistEnvToSetting(newEnv: Env, envList: any[], settingName: string) {
+        let envDetails = this.getEnvDetailsAsString(newEnv);
+        const shouldAddEnv = await Utils.showYesNoDialog("A new env will be added. \n\n" +
+            envDetails +
+            "\n\nDo you want to add the env?");
 
-        if (shouldAddOrchestra) {
-            orchestraList.push(newOrchestra);
-            this.app.configuration.updateConfigValue(settingName, orchestraList);
-            vscode.window.showInformationMessage("The orchestra is added.");
+        if (shouldAddEnv) {
+            envList.push(newEnv);
+            this.app.configuration.updateConfigValue(settingName, envList);
+            vscode.window.showInformationMessage("The env is added.");
         }
     }
 
-    private async persistModelToSetting(newModel: Orchestra, modelList: any[], settingName: string) {
-        let orchestraDetails = this.getModelDetailsAsString(newModel);
+    private async persistModelToSetting(newModel: Env, modelList: any[], settingName: string) {
+        let envDetails = this.getModelDetailsAsString(newModel);
         const shouldAddModel = await Utils.showYesNoDialog("A new model will be added. \n\n" +
-            orchestraDetails +
+            envDetails +
             "\n\nDo you want to add the model?");
 
         if (shouldAddModel) {
@@ -730,13 +813,13 @@ export class Menu {
         }
     }
 
-    private async importOrchestraToList(orchestraList: any[], settingName: string) {
+    private async importEnvToList(envList: any[], settingName: string) {
         let name = "";
         const uris = await vscode.window.showOpenDialog({
                 canSelectMany: false,
-                openLabel: 'Import Orchestra',
+                openLabel: 'Import Env',
                 filters: {
-                    'Orchestra Files': ['orc'],
+                    'Env Files': ['json'],
                     'All Files': ['*']
                 },
             });
@@ -748,9 +831,9 @@ export class Menu {
             const filePath = uris[0].fsPath;
             
             const fileContent = fs.readFileSync(filePath, 'utf8');
-            const newOrchestra = JSON.parse(fileContent);
+            const newEnv = JSON.parse(fileContent);
 
-        await this.persistOrchestraToSetting(newOrchestra, orchestraList, settingName);
+        await this.persistEnvToSetting(newEnv, envList, settingName);
     }
 
     private async importModelToList(modelList: any[], settingName: string) {
@@ -776,61 +859,61 @@ export class Menu {
         await this.persistModelToSetting(newModel, modelList, settingName);
     }
 
-    private async deleteOrchestraFromList(orchestrasList: any[], settingName: string) {
-        const orchestrasItems: QuickPickItem[] = this.getOrchestras(orchestrasList);
-        const orchestra = await vscode.window.showQuickPick(orchestrasItems);
-        if (orchestra) {
-            let orchestralIndex = parseInt(orchestra.label.split(". ")[0], 10) - 1;
-            const shoulDeleteOrchestra = await Utils.showYesNoDialog("Are you sure you want to delete the following orchestra? \n\n" 
-                + this.getOrchestraDetailsAsString(orchestrasList[orchestralIndex]));
-            if (shoulDeleteOrchestra) {
-                orchestrasList.splice(orchestralIndex, 1);
-                this.app.configuration.updateConfigValue(settingName, orchestrasList);
-                vscode.window.showInformationMessage("The orchestra is deleted.")
+    private async deleteEnvFromList(envsList: any[], settingName: string) {
+        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        const env = await vscode.window.showQuickPick(envsItems);
+        if (env) {
+            let envIndex = parseInt(env.label.split(". ")[0], 10) - 1;
+            const shoulDeleteEnv = await Utils.showYesNoDialog("Are you sure you want to delete the following env? \n\n" 
+                + this.getEnvDetailsAsString(envsList[envIndex]));
+            if (shoulDeleteEnv) {
+                envsList.splice(envIndex, 1);
+                this.app.configuration.updateConfigValue(settingName, envsList);
+                vscode.window.showInformationMessage("The env is deleted.")
             }
         }
     }
 
-    private async viewOrchestraFromList(orchestrasList: any[]) {
-        const orchestrasItems: QuickPickItem[] = this.getOrchestras(orchestrasList);
-        let model = await vscode.window.showQuickPick(orchestrasItems);
+    private async viewEnvFromList(envsList: any[]) {
+        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
-            let orchestraIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedOrchestra =  orchestrasList[orchestraIndex];
-            let orchestraDetails = this.getOrchestraDetailsAsString(selectedOrchestra);
-            await Utils.showOkDialog(orchestraDetails);
+            let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            let selectedEnv =  envsList[envIndex];
+            let envDetails = this.getEnvDetailsAsString(selectedEnv);
+            await Utils.showOkDialog(envDetails);
             
         }
     }
 
-    private getOrchestraDetailsAsString(selectedOrchestra: any) {
-        return "Orchestra details: " +
-            "\nname: " + selectedOrchestra.name +
-            "\ndescription: " + selectedOrchestra.description +
+    private getEnvDetailsAsString(selectedEnv: any) {
+        return "Env details: " +
+            "\nname: " + selectedEnv.name +
+            "\ndescription: " + selectedEnv.description +
             "\n\ncompletion model: " +
-            "\nname: " + selectedOrchestra.completion?.name +
-            "\nlocal start command: " + selectedOrchestra.completion?.localStartCommand +
-            "\nendpoint: " + selectedOrchestra.completion?.endpoint +
-            "\nmodel name for provider: " + selectedOrchestra.completion?.aiModel +
-            "\napi key required: " + selectedOrchestra.completion?.isKeyRequired +
+            "\nname: " + selectedEnv.completion?.name +
+            "\nlocal start command: " + selectedEnv.completion?.localStartCommand +
+            "\nendpoint: " + selectedEnv.completion?.endpoint +
+            "\nmodel name for provider: " + selectedEnv.completion?.aiModel +
+            "\napi key required: " + selectedEnv.completion?.isKeyRequired +
             "\n\nchat model: " +
-            "\nname: " + selectedOrchestra.chat?.name +
-            "\nlocal start command: " + selectedOrchestra.chat?.localStartCommand +
-            "\nendpoint: " + selectedOrchestra.chat?.endpoint +
-            "\nmodel name for provider: " + selectedOrchestra.chat?.aiModel +
-            "\napi key required: " + selectedOrchestra.chat?.isKeyRequired +
+            "\nname: " + selectedEnv.chat?.name +
+            "\nlocal start command: " + selectedEnv.chat?.localStartCommand +
+            "\nendpoint: " + selectedEnv.chat?.endpoint +
+            "\nmodel name for provider: " + selectedEnv.chat?.aiModel +
+            "\napi key required: " + selectedEnv.chat?.isKeyRequired +
             "\n\nembeddings model: " +
-            "\nname: " + selectedOrchestra.embeddings?.name +
-            "\nlocal start command: " + selectedOrchestra.embeddings?.localStartCommand +
-            "\nendpoint: " + selectedOrchestra.embeddings?.endpoint +
-            "\nmodel name for provider: " + selectedOrchestra.embeddings?.aiModel +
-            "\napi key required: " + selectedOrchestra.embeddings?.isKeyRequired +
+            "\nname: " + selectedEnv.embeddings?.name +
+            "\nlocal start command: " + selectedEnv.embeddings?.localStartCommand +
+            "\nendpoint: " + selectedEnv.embeddings?.endpoint +
+            "\nmodel name for provider: " + selectedEnv.embeddings?.aiModel +
+            "\napi key required: " + selectedEnv.embeddings?.isKeyRequired +
             "\n\ntools model: " +
-            "\nname: " + selectedOrchestra.tools?.name +
-            "\nlocal start command: " + selectedOrchestra.tools?.localStartCommand +
-            "\nendpoint: " + selectedOrchestra.tools?.endpoint +
-            "\nmodel name for provider: " + selectedOrchestra.tools?.aiModel +
-            "\napi key required: " + selectedOrchestra.tools?.isKeyRequired;
+            "\nname: " + selectedEnv.tools?.name +
+            "\nlocal start command: " + selectedEnv.tools?.localStartCommand +
+            "\nendpoint: " + selectedEnv.tools?.endpoint +
+            "\nmodel name for provider: " + selectedEnv.tools?.aiModel +
+            "\napi key required: " + selectedEnv.tools?.isKeyRequired;
     }
 
     private getModelDetailsAsString(model: LlmModel){
@@ -843,9 +926,9 @@ export class Menu {
     }
 
     private getSelectionsAsString() {
-        return "Selected orchestra and models: " +
-            "\norchestra: " + this.selectedOrchestra.name +
-            "\norchestra description: " + this.selectedOrchestra.description +
+        return "Selected env and models: " +
+            "\nenv: " + this.selectedEnv.name +
+            "\nenv description: " + this.selectedEnv.description +
             "\n\ncompletion model: " +
             "\nname: " + this.selectedComplModel?.name +
             "\nlocal start command: " + this.selectedComplModel.localStartCommand +
@@ -872,39 +955,39 @@ export class Menu {
             "\napi key required: " + this.selectedToolsModel.isKeyRequired;
     }
 
-    private async exportOrchestraFromList(orchestrasList: any[]) {
-        const orchestrasItems: QuickPickItem[] = this.getOrchestras(orchestrasList);
-        let model = await vscode.window.showQuickPick(orchestrasItems);
+    private async exportEnvFromList(envsList: any[]) {
+        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
-            let orchestraIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedOrchestra =  orchestrasList[orchestraIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following orchestra? \n\n" +
-            this.getOrchestraDetailsAsString(selectedOrchestra)
+            let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            let selectedEnv =  envsList[envIndex];
+            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following env? \n\n" +
+            this.getEnvDetailsAsString(selectedEnv)
             );
 
             if (shouldExport){
                 const uri = await vscode.window.showSaveDialog({
-                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedOrchestra.name+'.orc')),
+                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedEnv.name+'.json')),
                         filters: {
-                            'Orchestra Files': ['orc'],
+                            'Env Files': ['json'],
                             'All Files': ['*']
                         },
-                        saveLabel: 'Export Orchestra'
+                        saveLabel: 'Export Env'
                     });
 
                 if (!uri) {
                     return;
                 }
 
-                const jsonContent = JSON.stringify(selectedOrchestra, null, 2);
+                const jsonContent = JSON.stringify(selectedEnv, null, 2);
                 fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
-                vscode.window.showInformationMessage("Orchestra is saved.")
+                vscode.window.showInformationMessage("Env is saved.")
             }
         }
     }
 
     private async exportModelFromList(modelsList: any[]) {
-        const modelsItems: QuickPickItem[] = this.getOrchestras(modelsList);
+        const modelsItems: QuickPickItem[] = this.getEnvs(modelsList);
         let model = await vscode.window.showQuickPick(modelsItems);
         if (model) {
             let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
@@ -966,18 +1049,22 @@ export class Menu {
         return complModelsItems;
     }
 
-    private getOrchestras(orchestrasFromProperty:any[]) {
-        const complOrchestrasItems: QuickPickItem[] = [];
+    private getEnvs(envsFromProperty:any[]) {
+        const complEnvsItems: QuickPickItem[] = [];
         let i = 0
-        for (let orchestra of orchestrasFromProperty) {
+        for (let env of envsFromProperty) {
             i++;
-            complOrchestrasItems.push({
-                label: i + ". " + orchestra.name,
-                description: orchestra.description,
+            complEnvsItems.push({
+                label: i + ". " + env.name,
+                description: env.description,
             });
         }
-        return complOrchestrasItems;
-    }    
+        return complEnvsItems;
+    }  
+    
+    public async setCompletion(enabled: boolean){
+        await this.app.configuration.updateConfigValue('enabled', enabled);
+    }
 
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
         if (label.includes(this.app.configuration.getUiText('All Completions')??"")) {
@@ -1023,8 +1110,8 @@ export class Menu {
         return this.selectedEmbeddingsModel;
     }
 
-    getOrchestra = (): Orchestra => {
-        return this.selectedOrchestra;
+    getEnv = (): Env => {
+        return this.selectedEnv;
     }
 
     isComplModelSelected = (): boolean => {
@@ -1043,11 +1130,11 @@ export class Menu {
         return this.selectedEmbeddingsModel != undefined && this.selectedToolsModel.name. trim() != "";
     }
 
-    isOrchestralected = (): boolean => {
-        return this.selectedOrchestra != undefined && this.selectedOrchestra.name. trim() != "";
+    isEnvSelected = (): boolean => {
+        return this.selectedEnv != undefined && this.selectedEnv.name. trim() != "";
     }
 
-        processComplModelsActions = async (selected:vscode.QuickPickItem) => {
+    processComplModelsActions = async (selected:vscode.QuickPickItem) => {
         let compleModelType = this.getComplTypeDetails()
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start completion model..."):  
@@ -1167,30 +1254,32 @@ export class Menu {
         }
     }
 
-    processOrchestraActions = async (selected:vscode.QuickPickItem) => {
+    processEnvActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start orchestra..."):
-                this.selectOrchestra();
+            case this.app.configuration.getUiText("Select/start env..."):
+                this.selectEnv(this.app.configuration.envs_list);
                 break;
-            case this.app.configuration.getUiText('Add orchestra...'):
-                await this.addOrchestraToList(this.app.configuration.orchestras_list, "orchestras_list");
+            case this.app.configuration.getUiText('Add env...'):
+                vscode.commands.executeCommand('extension.showLlamaWebview');
+                this.app.llamaWebviewProvider.setView("addenv")
+                // await this.addEnvToList(this.app.configuration.envs_list, "envs_list");
                 break;
-            case this.app.configuration.getUiText('Delete orchestra...'):
-                await this.deleteOrchestraFromList(this.app.configuration.orchestras_list, "orchestras_list");
+            case this.app.configuration.getUiText('Delete env...'):
+                await this.deleteEnvFromList(this.app.configuration.envs_list, "envs_list");
                 break;
-            case this.app.configuration.getUiText('View orchestra details...'):
-                await this.viewOrchestraFromList(this.app.configuration.orchestras_list)
+            case this.app.configuration.getUiText('View env details...'):
+                await this.viewEnvFromList(this.app.configuration.envs_list)
                 break;
-            case this.app.configuration.getUiText("Deselect/stop orchestra and models"):
-                await this.stopOrchestra();
+            case this.app.configuration.getUiText("Deselect/stop env and models"):
+                await this.stopEnv();
                 break;
-            case this.app.configuration.getUiText('Export orchestra...'):
-                await this.exportOrchestraFromList(this.app.configuration.orchestras_list)
+            case this.app.configuration.getUiText('Export env...'):
+                await this.exportEnvFromList(this.app.configuration.envs_list)
                 break;
-            case this.app.configuration.getUiText('Import orchestra...'):
-                await this.importOrchestraToList(this.app.configuration.orchestras_list, "orchestras_list")
+            case this.app.configuration.getUiText('Import env...'):
+                await this.importEnvToList(this.app.configuration.envs_list, "envs_list")
                 break;
-            case this.app.configuration.getUiText('Download/upload orchestras online'):
+            case this.app.configuration.getUiText('Download/upload env online'):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/discussions'));
                 break;
         }
@@ -1242,7 +1331,7 @@ export class Menu {
         this.app.llamaWebviewProvider.updateModelInfo();
     }
 
-    public async stopOrchestra() {
+    public async stopEnv() {
         await this.app.llamaServer.killFimCmd();
         this.selectedComplModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killChatCmd();
@@ -1251,9 +1340,9 @@ export class Menu {
         this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killToolsCmd();
         this.selectedToolsModel = { name: "", localStartCommand: "" };
-        this.selectedOrchestra = { name: "" };
+        this.selectedEnv = { name: "" };
         this.app.llamaWebviewProvider.updateModelInfo();
-        vscode.window.showInformationMessage("Orchestra and models are deselected.")
+        vscode.window.showInformationMessage("Env and models are deselected.")
     }
 
     getChatTypeDetails = (): ModelTypeDetails => {

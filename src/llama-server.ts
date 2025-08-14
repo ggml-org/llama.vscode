@@ -182,6 +182,60 @@ export class LlamaServer {
           };
     }
 
+    // Helper – removes every thought block, regardless of format
+    // -------------------------------------------------------------
+    /**
+     * Strip all “thought” sections from a message string.
+     *
+     * Supported formats:
+     *   <think> … </think>
+     *   <|channel|>analysis<|message|> … <|end|>
+     *
+     * If the input is `null` the function returns `null` unchanged.
+     */
+    private stripThoughts(content: string | null): string | null {
+        if (content === null) return null;
+
+        // Opening tags: <think>  OR  <|channel|>analysis<|message|>
+        const OPEN = /<think>|<\|channel\|>analysis<\|message\|>/g;
+
+        // Closing tags: </think>  OR  <|end|>
+        const CLOSE = /<\/think>|<\|end\|>/g;
+
+        // Build a single regex that matches an opening tag, anything (lazy),
+        // then a closing tag.
+        const THOUGHT_BLOCK = new RegExp(
+            `(?:${OPEN.source})[\\s\\S]*?(?:${CLOSE.source})`,
+            'g'
+        );
+
+        // Remove every thought block and trim the result.
+        return content.replace(THOUGHT_BLOCK, '').trim();
+    }
+
+    // -------------------------------------------------------------
+    // Public utility – filter thought from an array of messages
+    // -------------------------------------------------------------
+    private filterThoughtFromMsgs(messages:any) {
+    return messages.map((msg:any) => {
+        // Non‑assistant messages never contain thoughts, return them untouched.
+        if (msg.role !== 'assistant') {
+        return msg;
+        }
+
+        // `msg.content` is guaranteed to be a string for assistants,
+        // but we stay defensive and accept `null` as well.
+        const originalContent = msg.content as string | null;
+        const cleanedContent = this.stripThoughts(originalContent);
+
+        // Preserve every other field (name, function_call, …) unchanged.
+        return {
+        ...msg,
+        content: cleanedContent,
+        };
+    });
+    }
+
     private createChatRequestPayload(content: string, model: string) {
         return {
             "messages": [
@@ -201,17 +255,18 @@ export class LlamaServer {
           };
     }
 
-        private createToolsRequestPayload(messages: ChatMessage[], model: string) {
-            this.app.tools.addSelectedTools();
-            return {
-                "messages": messages,
-                "stream": false,
-                "temperature": 0.8,
-                "top_p": 0.95,
-                ...(model.trim() != "" && { model: model}),
-                "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
-                "tool_choice": "auto"
-            };
+    private createToolsRequestPayload(messages: ChatMessage[], model: string) {
+        this.app.tools.addSelectedTools();
+        let filteredMsgs = this.filterThoughtFromMsgs(messages)
+        return {
+            "messages": filteredMsgs,
+            "stream": false,
+            "temperature": 0.8,
+            "top_p": 0.95,
+            ...(model.trim() != "" && { model: model}),
+            "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
+            "tool_choice": "auto"
+        };
     }
 
     getFIMCompletion = async (
@@ -229,6 +284,22 @@ export class LlamaServer {
 
         // else, default to llama.cpp
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
+        if (!endpoint) { 
+            const shouldSelectModel = await Utils.showYesNoDialog("No completion model is selected. Do you want to select an env with completion model?")
+            if (shouldSelectModel){
+                await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
+                vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
+                return;
+            } else {
+                const shouldDisable = await Utils.showYesNoDialog("Do you want to disable completions? (You could enable them from llama-vscode menu.)")
+                if (shouldDisable) {
+                    await this.app.menu.setCompletion(false);
+                    vscode.window.showInformationMessage("The completions are disabled. You could enable them from llama-vscode menu.")
+                }
+                else vscode.window.showErrorMessage("No endpoint for the completion (fim) model. Select an env with completion model or enter the endpoint of a running llama.cpp server with completion (fim) model in setting endpoint. ")
+                return;
+            }
+        }
 
         const response = await axios.post<LlamaResponse>(
             `${Utils.trimTrailingSlash(endpoint)}/infill`,

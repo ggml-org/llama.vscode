@@ -329,7 +329,7 @@ export class Tools {
     }
 
     public llamaVscodeHelp = async (args: string) => {
-        return Utils.readExtensionFile("resources/help.md")
+        return await Utils.getExtensionHelp()
     }
 
     public llamaVscodeHelpDesc = async (args: string) => {

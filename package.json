@@ -100,7 +100,7 @@
       "explorer": [
         {
           "id": "llama-vscode.webview",
-          "name": "Llama Agent",
+          "name": "llama-vscode",
           "type": "webview"
         }
       ]
@@ -587,18 +587,18 @@
           ],
           "description": "The list of tools models, which could be selected"
         },
-        "llama-vscode.orchestras_list": {
+        "llama-vscode.envs_list": {
           "type": "array",
           "items": {
             "type": "object",
             "properties": {
               "name": {
                 "type": "string",
-                "description": "Name of the orchestra"
+                "description": "Name of the env"
               },
               "description": {
                 "type": "string",
-                "description": "Description of the orchestra"
+                "description": "Description of the env"
               },
               "completion": {
                 "type": "object",
@@ -723,25 +723,9 @@
             }
           },
           "default": [
-      {
-        "name": "Silence",
-        "description": "Empty orchestra, contains no models. When selected, no models will be started.",
-        "completion": {
-          "name": ""
-        },
-        "chat": {
-          "name": ""
-        },
-        "embeddings": {
-          "name": ""
-        },
-        "tools": {
-          "name": ""
-        }
-      },
-      {
-        "name": "Only completions - CPU",
-        "description": "For laptops only with CPU, lightweight model for completion",
+                 {
+        "name": "Local, only completions - CPU (HD: 1.6 GB)",
+        "description": "For laptops only with CPU, lightweight model for completion ",
         "completion": {
           "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (CPU Only)",
           "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port 8012",
@@ -763,7 +747,7 @@
         }
       },
       {
-        "name": "Only completions (<= 8GB VRAM)",
+        "name": "Local, only completions (<= 8GB VRAM | HD: 1.6 GB) ",
         "description": "Only for code completions model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
         "completion": {
           "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
@@ -786,8 +770,8 @@
         }
       },
       {
-        "name": "Only completions (<= 16GB VRAM)",
-        "description": "Only for completions, model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
+        "name": "Local, only completions (<= 16GB VRAM | HD: 3,2 GB)",
+        "description": "Only for completions, model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM | HD: 3,2 GB)",
         "completion": {
           "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
           "localStartCommand": "llama-server --fim-qwen-3b-default -ngl 99 --port 8012",
@@ -809,10 +793,10 @@
         }
       },
       {
-        "name": "Only completions (> 16GB VRAM)",
+        "name": "Local, only completions (> 16GB VRAM)",
         "description": "Only for code completions, model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
         "completion": {
-          "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
+          "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM | HD: 8.1 GB)",
           "localStartCommand": "llama-server --fim-qwen-7b-default -ngl 99 --port 8012",
           "endpoint": "http://localhost:8012",
           "aiModel": "",
@@ -831,8 +815,93 @@
           "localStartCommand": ""
         }
       },
+      
+          {
+        "name": "Local, full package - min, gpt-oss 20B ( > 20GB VRAM | HD: 16 GB)",
+        "description": "Everything local, gpt-oss 20B for agent",
+        "completion": {
+          "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-1.5b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "OpenAI gpt-oss 20B",
+          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+          "endpoint": "http://localhost:8009",
+          "aiModel": "",
+          "isKeyRequired": false
+        }
+      },
       {
-        "name": "Only chat & edit (CPU Only)",
+        "name": "Local, full package - medium, gpt-oss 20B (>32GB VRAM | HD: 20 GB)",
+        "description": "Everything local, gpt-oss 20B for agent",
+        "completion": {
+          "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-3b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "OpenAI gpt-oss 20B",
+          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+          "endpoint": "http://localhost:8009",
+          "aiModel": "",
+          "isKeyRequired": false
+        }
+      },
+      {
+        "name": "Local, full package - max, gpt-oss 20B (>48GB VRAM | HD: 30 GB)",
+        "description": "Everything local, gpt-oss 20B for agent",
+        "completion": {
+          "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
+          "localStartCommand": "llama-server --fim-qwen-7b-default -ngl 99 --port 8012",
+          "endpoint": "http://localhost:8012",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
+          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+          "endpoint": "http://127.0.0.1:8011"
+        },
+        "embeddings": {
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
+        },
+        "tools": {
+          "name": "OpenAI gpt-oss 20B",
+          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+          "endpoint": "http://localhost:8009",
+          "aiModel": "",
+          "isKeyRequired": false
+        }
+      },
+      {
+        "name": "Local, only chat & edit (CPU Only | HD: 2.2 GB)",
         "description": "Only for chat with AI, model Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
         "completion": {
           "name": "",
@@ -853,7 +922,7 @@
         }
       },
       {
-        "name": "Only chat, chat with project context & edit (<= 16GB VRAM)",
+        "name": "Local, only chat, chat with project context & edit (<= 16GB VRAM | HD: 4 GB)",
         "description": "Could be used for edit with AI, chat with AI, chat with AI with project context Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF + embeddings model (<= 16GB VRAM)",
         "completion": {
           "name": "",
@@ -875,7 +944,7 @@
         }
       },
       {
-        "name": "Only chat & edit (<= 8GB VRAM)",
+        "name": "Local, only chat & edit (<= 8GB VRAM | HD: 1.65)",
         "description": "Only for chat with AI and edit with AI, Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
         "completion": {
           "name": "",
@@ -896,7 +965,7 @@
         }
       },
       {
-        "name": "Only chat, chat with project context & edit (> 16GB VRAM)",
+        "name": "Local, only chat, chat with project context & edit (> 16GB VRAM | HD: 8.6 GB)",
         "description": "Good for chat with AI, chat with AI with project context, edit Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF + embeddings model  (> 16GB VRAM)",
         "completion": {
           "name": "",
@@ -918,7 +987,7 @@
         }
       },
       {
-        "name": "Agent & chat (<= 16GB VRAM) (requires OpenRouter API key)",
+        "name": "Agent & chat (<= 16GB VRAM | HD: 3.8 GB) (requires OpenRouter API key)",
         "description": "Agent qwen 3 from OpenRouter (requires OpenRouter API key),  chat and edit with small models (<= 16GB VRAM) ",
         "completion": {
           "name": "",
@@ -942,7 +1011,7 @@
         }
       },
       {
-        "name": "Completions & agent & chat - min (<= 16GB VRAM))",
+        "name": "Full package - min (<= 16GB VRAM | HD: 4 GB) (requires OpenRouter API key)",
         "description": "The minimal configuration for completions (local), chat (local) and agent (remote - OpenRouter), requires OpenRouter API key for agent",
         "completion": {
           "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
@@ -969,7 +1038,7 @@
         }
       },
       {
-        "name": "Agent, completions & chat - medium (<= 32GB VRAM))",
+        "name": "Full package - medium (<= 32GB VRAM | HD: 7.1 GB) (requires OpenRouter API key)",
         "description": "Agent qwen 3 from OpenRouter, completions & chat - medium size models, embeddings (<= 32GB VRAM))",
         "completion": {
           "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
@@ -984,8 +1053,9 @@
           "endpoint": "http://127.0.0.1:8011"
         },
         "embeddings": {
-          "name": "",
-          "localStartCommand": ""
+          "name": "Nomic-Embed-Text-V2-GGUF",
+          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+          "endpoint": "http://127.0.0.1:8010"
         },
         "tools": {
           "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens",
@@ -995,7 +1065,7 @@
         }
       },
       {
-        "name": "Agent, comletions, chat - max (>32 GB VRAM)",
+        "name": "Full package - max (>32 GB VRAM | HD: 17 GB) (requires OpenRouter API key)",
         "description": "Agent - qwen 3 from OpenRouter (API key required), completions, chat (>32 GB VRAM) ",
         "completion": {
           "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
@@ -1022,7 +1092,7 @@
         }
       },
       {
-        "name": "OpenAI gpt-oss 20B agent, chat - ( < 8GB VRAM) (requires API key from OpenRouter)",
+        "name": "OpenAI gpt-oss,  20B agent, chat - ( < 8GB VRAM | HD: 2.2 GB) (requires OpenRouter API key)",
         "description": "agent - Open AI gpt-oss 20GB from OpenRouter (requries API key), chat - small model (< 8GB VRAM)",
         "completion": {
           "name": "",
@@ -1045,58 +1115,10 @@
           "aiModel": "openai/gpt-oss-20b",
           "isKeyRequired": true
         }
-      },
-      {
-        "name": "OpenAI gpt-oss 20B Agent LOCAL, chat ( >16GB VRAM)",
-        "description": "OpenAI Model local, chat",
-        "completion": {
-          "name": "",
-          "localStartCommand": ""
-        },
-        "chat": {
-          "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-          "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
-          "endpoint": "http://127.0.0.1:8011"
-        },
-        "embeddings": {
-          "name": "Nomic-Embed-Text-V2-GGUF",
-          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
-          "endpoint": "http://127.0.0.1:8010"
-        },
-        "tools": {
-          "name": "OpenAI gpt-oss 20B",
-          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
-          "endpoint": "http://localhost:8009",
-          "aiModel": "",
-          "isKeyRequired": false
-        }
-      },
-      {
-        "name": "OpenAI gpt-0ss 20B chat only LOCAL (>16GB VRAM)",
-        "description": "Only chat with OpenAI gpt-oss 20B local model. (Press Ctrl+; to chat)",
-        "completion": {
-          "name": "",
-          "localStartCommand": ""
-        },
-        "chat": {
-          "name": "OpenAI gpt-oss 20B",
-          "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8011",
-          "endpoint": "http://localhost:8011",
-          "aiModel": "",
-          "isKeyRequired": false
-        },
-        "embeddings": {
-          "name": "Nomic-Embed-Text-V2-GGUF",
-          "localStartCommand": "llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
-          "endpoint": "http://127.0.0.1:8010"
-        },
-        "tools": {
-          "name": "",
-          "localStartCommand": ""
-        }
       }
+  
     ],
-          "description": "The list of orchestras, which could be selected"
+          "description": "The list of envs, which could be selected"
         },
         "llama-vscode.auto": {
           "type": "boolean",

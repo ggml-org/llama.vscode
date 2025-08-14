@@ -56,7 +56,7 @@ export class Statusbar {
             1000
         );
         this.llamaVscodeStatusBarItem.command = 'llama-vscode.showMenu';
-        this.llamaVscodeStatusBarItem.tooltip = "Llama Settings";
+        this.llamaVscodeStatusBarItem.tooltip = "Show llama-vscode menu";
         this.updateStatusBarText();
         this.llamaVscodeStatusBarItem.show();
     }

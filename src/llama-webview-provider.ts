@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Application } from './application';
-import { LlmModel, Orchestra } from './types';
+import { LlmModel, Env } from './types';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -85,14 +85,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         let chatTypeDetailsHf = this.app.menu.getChatTypeDetails();
                         await this.app.menu.addHuggingfaceModelToList(chatTypeDetailsHf);
                         break;
-                    case 'selectOrchestra':
-                        await this.app.menu.selectOrchestra();    
+                    case 'selectEnv':
+                        await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));    
                         break;
-                    case 'stopOrchestra':
-                        await this.app.menu.stopOrchestra();    
+                    case 'stopEnv':
+                        await this.app.menu.stopEnv();    
                         break;
                     case 'showSelectedModels':
-                        await this.app.menu.showSelectedModels();    
+                        await this.app.menu.showCurrentEnv();    
                         break;
                     case 'getFileList':
                         const fileKeys = this.app.chatContext.getProjectFiles();
@@ -122,6 +122,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         const uri = vscode.Uri.file(message.fileLongName);
                         const document = await vscode.workspace.openTextDocument(uri);
                         await vscode.window.showTextDocument(document);
+                        break;
+                    case 'addEnv':
+                        this.app.menu.addEnvToList(this.app.configuration.envs_list, "envs_list")
                         break;
                 }
             }
@@ -177,11 +180,11 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    private updateOrchestra() {
-        const currentOrchestra: Orchestra = this.app.menu.getOrchestra();
+    private updateEnv() {
+        const currentEnv: Env = this.app.menu.getEnv();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
-            command: 'updateOrchestra',
-            model: currentOrchestra.name || 'No orchestra selected'
+            command: 'updateEnv',
+            model: currentEnv.name || 'No env selected'
         });
     }
 
@@ -199,12 +202,19 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
+    public setView(view: string) {
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateView',
+            text: view
+        });
+    }
+
     public updateModelInfo() {
         this.updateToolsModel();
         this.updateChatModel();
         this.updateEmbsModel();
         this.updateComplsModel();
-        this.updateOrchestra();
+        this.updateEnv();
     }
 
     public updateContextFilesInfo() {
