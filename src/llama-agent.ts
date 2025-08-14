@@ -58,7 +58,7 @@ export class LlamaAgent {
             let response = ""
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
-            this.logText += query + "\n\n";
+            this.logText += "***" + query + "***" + "\n\n";
             
             if (!this.app.menu.isToolsModelSelected()) {
                 vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or orchestra with tools model) if you want to to use Llama Agent.")

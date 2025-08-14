@@ -23,7 +23,24 @@ export class TextEditor {
     }
 
     async showEditPrompt(editor: vscode.TextEditor) {
-        
+        let chatUrl = this.app.configuration.endpoint_chat
+        let chatModel = this.app.menu.getChatModel();    
+        if (chatModel.endpoint) {
+            const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
+            chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
+        }
+        if (!chatUrl) { 
+            const shouldSelectModel = await Utils.showYesNoDialog("No chat model is selected. Do you want to select an env with chat model?")
+            if (shouldSelectModel){
+                await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) 
+                vscode.window.showInformationMessage("After the chat model is loaded, try again using Edit with AI.")
+                return;
+            } else {
+                vscode.window.showErrorMessage("No endpoint for the chat model. Select an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
+                return
+            }
+        }
+
         if (editor.selection.isEmpty) {
             vscode.window.showInformationMessage(this.app.configuration.getUiText("Please select some text to edit")??"");
             return;

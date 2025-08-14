@@ -295,10 +295,16 @@ export class Menu {
                 this.selectedToolsModel = this.app.persistence.getValue("selectedToolsModel") as LlmModel
                 if (this.selectedToolsModel) this.addApiKey(this.selectedToolsModel)
             } else {
-                this.selectedEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
-                await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
+                let futureEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
+                let shouldSelect = await Utils.showYesNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
+                    this.getEnvDetailsAsString(futureEnv) +
+                    "\n\n Are you sure you want to continue?"
+                 )
                 
-                if (this.selectedEnv){
+                if (shouldSelect && futureEnv){
+                    this.selectedEnv = futureEnv
+                    await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
+
                     this.selectedComplModel = this.selectedEnv.completion??{name: ""}
                     if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
                     await this.addApiKey(this.selectedComplModel);

@@ -440,17 +440,25 @@ const App: React.FC<AppProps> = () => {
               </button>
             </div>)}
             <div className="header-actions">
-              {currentToolsModel.includes(noModelSelected) && (<button
+                             {/* Environment Status Line */}
+               {!currentToolsModel.includes(noModelSelected) && (<div className="env-status-line" style={{ marginLeft: '20px' }}>
+                 {`Env: ${currentEnv}`}
+               </div>)}
+              
+              {currentToolsModel.includes(noModelSelected) && (<div>
+                <button
                 onClick={handleSelectEnv}
                 title={`Select/Start Env (Selected: ${currentEnv})`}
                 className="modern-btn secondary"
               >
                 Select Env
-              </button>)}
+              </button>
+              Env (short for environment) is a group of LLMs. Select an env for your needs to prepare the environment (run servers for the local models or configure access for external models)
+              </div>)}
 
               {!currentToolsModel.includes(noModelSelected) && (<button
                 onClick={handleStopEnv}
-                title={`Selected Env: ${currentEnv}`}
+                title={`Deselect the environment and stop the local models`}
                 className="modern-btn secondary"
               >
                 Deselect Env

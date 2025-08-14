@@ -51,9 +51,9 @@ export class ChatWithAi {
         let aiPanel  = this.askAiPanel
         let extraCont = aiInitialExtraContext ? aiInitialExtraContext + "\n\n" : "";
         let query: string|undefined = undefined
-
-        let chatModel = this.app.menu.getChatModel();
         let targetUrl = this.app.configuration.endpoint_chat ? this.app.configuration.endpoint_chat + "/" : "";
+
+        let chatModel = this.app.menu.getChatModel();    
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
