@@ -1,3 +1,15 @@
+## Chat with AI about llama-vscode  
+
+### Requred servers
+- Chat server
+
+### How to use it 
+This is a conversation with the local AI about llama-vscode, something like help how to use llama-vscode.
+- From llama-vscode menu select "Chat with AI about llama-vscode -> a window will be opened (the conversation history overlays the actual chat window, but just click on the chat window)
+- Enter your question about llama-vscode
+The first time it could take longer to answer. The following questions will be answered faster as the input will be cached.
+ 
+ 
 ## Chat with AI with project context 
 
 ### Requred servers
@@ -60,6 +72,16 @@ Every change in the editor will trigger a completion request to the server.
 
 ![Edit with AI](https://github.com/user-attachments/assets/d7aef6a8-8c29-4278-b91f-9b3031c8cbd5) 
  
+## Env
+
+### What is env
+Env (short for environment) is a group of models. Env makes it easier for the users to prepare the environment for their needs. Selecting an env with a given intent will make sure all needed servers are available. One env could contain up to 4 different models - for completions, chat, embeddings, tools. If the user wants to use only code completions functionality, he/she could select an env with only one model for completions. If the user wants to use wants to use all the functionality from llama-vscode, he/she could select an env with full package of models.
+
+### How to use it
+Select env for your needs from llama-vscode menu, "Select/start env..." or from Llama Agent, button "Select Env". This will select the models inside an env (and start the corresponding local servers)
+Deselect env fromllama-vscode menu, "Deselect/stop env..." or from Llama Agent, button "Deselect Env". This deselect all models (and stops the locally running servers, started by llama-vscode).
+ 
+ 
 ## Generate a commit message  
 
 ### Requred servers
@@ -108,18 +130,32 @@ This generate a commit message, based on the current changes.
 ### How to use it 
 Llama Agent is still in development, but could produce some results with intlligent models with tools support.
 
-The best wey to prepare the environment for the agent is by selecting and Orchestra (group of models). So, below is the standard workflow:
+The best wey to prepare the environment for the agent is by selecting an Env (group of models). So, below is the standard workflow:
 1. Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A to show Llama Agent. 
-2. Click "Orhestra" button and select orchestra, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
-3. Write your request and send it with Enter or the Send button.
+2. Click "Select Env" button (visible if there is no selected env) and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
+3. Write your request and send it with Enter or the "Send" button.
 
 Optional
 - You could add files to the context with the @ button. 
-- You could select source code and activate the agent (Ctrl+Shift+A) to attache the selected lines to the contxt
+- Activating an agent (Ctrl+Shift+A or from llama-vscodd menu) adds the open file to the agent context
+- You could select source code and activate the agent (Ctrl+Shift+A or from llama-vscodd menu) to attach the selected lines to the context
 - You could choose the tools to be used from "Select Tools" button (on the right side of "New Chat" button). If you have installed and started MCP Servers in VS Code, their tools will be available for selection too. Don't forget to click the OK button after changing the tool selection.
 
-Click button "Stop Orchestra" to stop the servers.
-Click button "Selected Models" to show details about the selected models 
+Click button "Deselect Env" (vislble if there is a selected env with agent model) to deselect the env and selected models and stop the servers, which were started by llama-vscode. 
+Click button "Selected Models" to show details about the selected models
+
+https://github.com/user-attachments/assets/72029f04-0ec0-4087-8ec3-316de88092c8
+
+
+
+
+https://github.com/user-attachments/assets/d7da8610-ebca-4d1f-b412-82d58e81a43e
+
+
+
+https://github.com/user-attachments/assets/78596474-d8ef-4d29-9b36-59cbc5308116
+
+ 
  
 ## Use as local AI runner (as LM Studio, Ollama, etc.) 
 
@@ -127,8 +163,8 @@ Click button "Selected Models" to show details about the selected models
 llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . Models are searched in Huggingface. After a model is selected, llama-vscode automatically downloads it and starts a llama-server with it. With this the user could start chatting with an AI.
 
 ### How to use it
-1. Show Llama Agent panel (Ctrl+Shift+A or from llama-vscode menu) and see the "Chat With AI" frame.
-2. Click "llama.cpp" button to install llama.cpp (if not yet done). The installation for Windows (with winget) and Mac (with brew) is automatic. For Linux, the user should do it manually ([download the latest llama.cpp package for Linux](https://github.com/ggml-org/llama.cpp/releases) and add the bin folder to the PATH)
+1. From llama-vscode menu select "Use as local AI runner" - llama view will be opened with buttons "llama.cpp", "Add", "Select", "Chat".
+2. Click "llama.cpp" button to install/upgrade llama.cpp (if not yet done). The installation for Windows (with winget) and Mac (with brew) is automatic. For Linux, the user should do it manually ([download the latest llama.cpp package for Linux](https://github.com/ggml-org/llama.cpp/releases) and add the bin folder to the PATH)
 3. Click "Add" button, enter search words to see a list of models from Huggingface, select a model, select quantization. If prefered - accept to start the model immediately. (not needed if the model is already added)
 4. Click "Select" button and select a model to run (not needed if the model is already started in the previous step)
 5. Click "Chat" button - a web page for chat with AI will be shown in VS Code
@@ -141,8 +177,42 @@ Enjoy talking with local AI.
 ### Requred servers
 - No servers required
 
+### Overview
+Chat models configurations are stored and could be reused. For simplicity the term "chat models" will be used as a synonim for chat models configurations.
+Chat models could be for local models (run by llama-vscode) and for externally run servers.
+They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+ 
+
+Chat models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
+
 ### How to use it 
-See manage completion models. The functionality is the same. 
+Select "Chat models..." from llama-vscode menu  
+
+- Add models  
+Enter the requested properties.  
+For local models name, local start command and endpoint are required  
+For external servers name and endpoint are required  
+
+- Delete models  
+Select the model you want to delete from the list and delete it.
+
+- View  
+Select a model from the list to view all the details for this model
+
+- Selected  
+Select a model from the list to select it. If the model is a local one (has a command in local start command) a llama.cpp server with this model will be started. Only one chat model could be selected at a time.
+
+- Deselect  
+Deselect the currently selected model. If the model is local, the llama.cpp server will be started.
+
+- Add model from huggingface  
+Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Export  
+A model could be export as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+
+- Import  
+A model could be imported from a .json file - select a file to import it. 
  
 ## Manage completion models 
 
@@ -191,32 +261,124 @@ A model could be imported from a .json file - select a file to import it.
 ### Requred servers
 - No servers required
 
-### How to use it 
-See manage completion models. The functionality is the same. 
+### Overview
+Embeddings models configurations are stored and could be reused. For simplicity the term "embeddings models" will be used as a synonim for embeddings models configurations.
+Embeddings models could be for local models (run by llama-vscode) and for externally run servers.
+They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
  
-## Manage orchestras 
+
+Embeddings models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
+
+### How to use it 
+Select "Embeddings models..." from llama-vscode menu  
+
+- Add models  
+Enter the requested properties.  
+For local models name, local start command and endpoint are required  
+For external servers name and endpoint are required  
+
+- Delete models  
+Select the model you want to delete from the list and delete it.
+
+- View  
+Select a model from the list to view all the details for this model
+
+- Selected  
+Select a model from the list to select it. If the model is a local one (has a command in local start command) a llama.cpp server with this model will be started. Only one Embeddings model could be selected at a time.
+
+- Deselect  
+Deselect the currently selected model. If the model is local, the llama.cpp server will be started.
+
+- Add model from huggingface  
+Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Export  
+A model could be export as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+
+- Import  
+A model could be imported from a .json file - select a file to import it. 
+ 
+## Manage envs 
 
 ### Requred servers
 - No servers required
 
-### How to use it 
-Orchestra is a group of models (completion, chat, embeddings, tools)
+### Overview
+Env is a group of models (Env, chat, embeddings, tools)
+Env configurations are stored and could be reused. For simplicity the term "Env" will be used as a synonim for environemnt  configurations.  
+They have properties: name, description, env, chat, embeddings, tools
+ 
 
-See manage completion models for more details. The functionality is similar.
-The differences are:   
-no add model from Huggingface  
-adding an orchestra is adding and orchestra with the currently selected models  
-selecting an orchestra deselects all models and selects the models inside the orchestra  
-deselecting an orchestra deselects/stops all currently selected models 
-menu item "Download/upload orchestras online", which opens a web page where orchestras could be downloaded/uploaded 
+Env configurations could be added/deleted/viewed/selected/deselected/exported/imported
+
+### How to use it 
+Select "Env..." from llama-vscode menu  
+
+- Add Env...
+Opens a llama view with buttons for selecting envs.The button "Add Env" creates an env with the currently selected models (i.e. current environment).
+
+
+- Delete env...  
+Select the env you want to delete from the list and delete it.
+
+- View env...
+Select an env from the list to view all the details for this model
+
+- Select/Start env...  
+Select env from the list. Only one Env could be selected at a time. If an env is selected, the models from this env will be selected as well and the local ones will be started.
+
+- Deselect/stop env...
+Deselect the currently selected env. All models from this env will be also deselected and the local ones, started by llama-vscode will be stopped.
+
+- Export  
+An env could be export as a .json files. This file could be shared with other used, modified if needed and imported again. Select an env to export it.
+
+- Import  
+An env could be imported from a .json file - select a file to import it.
+
+There is also a menu item "Download/upload envs online", which opens a web page where envs could be downloaded/uploaded 
  
 ## Manage tools models 
 
 ### Requred servers
 - No servers required
 
+### Overview
+Tools models configurations are stored and could be reused. For simplicity the term "tools models" will be used as a synonim for tools models configurations.
+Tools models could be for local models (run by llama-vscode) and for externally run servers.
+They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+ 
+
+Tools models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
+
 ### How to use it 
-See manage completion models. The functionality is the same. 
+Select "Tools models..." from llama-vscode menu  
+
+- Add models  
+Enter the requested properties.  
+For local models name, local start command and endpoint are required  
+For external servers name and endpoint are required  
+
+- Delete models  
+Select the model you want to delete from the list and delete it.
+
+- View  
+Select a model from the list to view all the details for this model
+
+- Selected  
+Select a model from the list to select it. If the model is a local one (has a command in local start command) a llama.cpp server with this model will be started. Only one Tools model could be selected at a time.
+
+- Deselect  
+Deselect the currently selected model. If the model is local, the llama.cpp server will be started.
+
+- Add model from huggingface  
+Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Export  
+A model could be export as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+
+- Import  
+A model could be imported from a .json file - select a file to import it. 
  
 ## Menu  
 
@@ -244,17 +406,7 @@ This way is more clear what models for what will be used.
 There are different ways to select a model
 - In Llama Agent click the button for selecting a model (completion, chat, embeddings, tools)
 - In llama-vscode menu select "Completion models..." (or chat, embeddings, tools)
-- Select an orchestra. This will select the models, which are part of the orchestra
- 
- 
-## Orchestra
-
-### What is orchestra
-Orchestra is a group of models. The concept was introduced to make it easier for the users to prepare the environment for their needs. Selecting an orchestra with a given intent will make sure all needed servers are available.
-
-### How to use it
-Select orchestra from "Orchestra" button of the Llama Agent or from llama-vscode menu. This will select the models inside an orchestra (and start the corresponding local servers)
-Deselect orchestra from "Stop Orchestra" button of the Llama Agent or from llama-vscode menu. This deselect all models (and stop the locally running servers)
+- Select an env. This will select the models, which are part of the env
  
  
 ## Statusbar  
