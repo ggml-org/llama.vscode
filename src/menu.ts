@@ -43,13 +43,14 @@ export class Menu {
                 description: this.app.configuration.getUiText(`Shows Llama Agent panel`)
             },
             {
-                label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
-                description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)`)
-            },
-            {
                 label: (this.app.configuration.getUiText("Chat with AI about llama-vscode") ?? ""),
                 description: this.app.configuration.getUiText(`Opens a chat with AI window with llama-vscode help docu context inside VS Code using the selected chat model (or setting endpoint_chat)`)
             },
+            {
+                label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
+                description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)`)
+            },
+            
             {
                 label: (this.app.configuration.getUiText("Chat with AI with project context") ?? "") + " (Ctrl+Shift+;)",
                 description: this.app.configuration.getUiText(`Opens a chat with AI window with project context inside VS Code using the selected chat model (or setting endpoint_chat)`)

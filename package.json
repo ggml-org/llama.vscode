@@ -845,7 +845,7 @@
         }
       },
       {
-        "name": "Local, full package - medium, gpt-oss 20B (>32GB VRAM | HD: 20 GB)",
+        "name": "Local, full package - medium, gpt-oss 20B (> 34 GB VRAM | HD: 20 GB)",
         "description": "Everything local, gpt-oss 20B for agent",
         "completion": {
           "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
