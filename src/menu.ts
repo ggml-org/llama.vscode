@@ -176,8 +176,8 @@ export class Menu {
                     targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
                 }
                 if (!targetUrl) { 
-                    const shouldSelectModel = await Utils.showYesNoDialog("No tools model is selected. Do you want to select an env with tools model?")
-                    if (shouldSelectModel){
+                    const shouldSelectEnv = await Utils.showYesNoDialog("No tools model is selected. Do you want to select an env with tools model?")
+                    if (shouldSelectEnv){
                         await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name)) // .selectStartModel(chatTypeDetails);
                         vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.")
                         return;
@@ -187,6 +187,7 @@ export class Menu {
                     }
                 }
                 vscode.commands.executeCommand('extension.showLlamaWebview');
+                this.app.llamaWebviewProvider.updateModelInfo()
                 break;
             case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
                 if (this.app.configuration.rag_enabled){
@@ -435,7 +436,7 @@ export class Menu {
         Utils.showOkDialog("How to use llama-vscode" +
             "\n\nllama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp." +
             "\n\n1. Install llama.cpp " +
-            "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp (sometimes restart is needed to adjust the paths to llama-server)" +
+            "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama-server)" +
             "\n\n2. Select env (group of models) for your needs from llama-vscode menu." +
             "\n  - This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on env)" +
             "\n\n3. Start using llama-vscode" +
@@ -444,7 +445,7 @@ export class Menu {
             "\n  - For chat with AI (quick questions to (local) AI instead of searching with google) - select 'Chat with AI' from llama.vscode menu (uses chat model, no tools support required, llama.cpp server should run on model endpoint.)" +
             "\n  - For agentic coding - select 'Show Llama Agent' from llama.vscode menu (or Ctrl+Shift+A) and start typing your questions or requests (uses tools model and embeddings model for some tools, most intelligence needed, local usage supported, but you could also use external, paid providers for better results)" +
             "\n\n If you want to use llama-vscode only for code completion - you could disable RAG from llama-vscode menu to avoid indexing files." +
-            "\n\n If you are an existing user - you could continue useing llama-vscode as before." +
+            "\n\n If you are an existing user - you could continue using llama-vscode as before." +
             "\n\n For more details - select 'View Documentation' from llama-vscode menu" +
             "\n\n Enjoy!"
         );

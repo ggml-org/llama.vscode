@@ -39,6 +39,7 @@ body {
   flex-direction: column;
   background-color: var(--vscode-editor-background);
   color: var(--vscode-editor-foreground);
+  overflow: hidden; /* Prevent any overflow issues */
 }
 
 /* Modern Header */
@@ -129,6 +130,7 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0; /* Allow content to shrink */
 }
 
 /* Chat Display Area */
@@ -173,6 +175,7 @@ body {
   background-color: var(--vscode-panel-background);
   border-top: 1px solid var(--vscode-panel-border);
   padding: 20px;
+  flex-shrink: 0; /* Prevent input section from shrinking */
 }
 
 .input-container {
@@ -629,6 +632,8 @@ body {
   /* Ensure proper sizing */
   display: flex;
   flex-direction: column;
+  flex: 1; /* Make it expand to fill available space */
+  min-height: 0; /* Allow it to shrink */
 }
 
 .markdown-header {
@@ -716,8 +721,8 @@ body {
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   line-height: 1.6;
-  min-height: 400px;
-  max-height: 400px;
+  flex: 1; /* Make it expand to fill the container */
+  min-height: 0; /* Allow it to shrink */
   overflow-y: auto;
   overflow-x: hidden;
   scroll-behavior: smooth;

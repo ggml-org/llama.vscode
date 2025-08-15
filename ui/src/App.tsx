@@ -487,7 +487,7 @@ const App: React.FC<AppProps> = () => {
             </div>
           )}
 
-          {/* Input Section */}
+          {/* Input Section - Moved to bottom */}
           <div className="input-section">
             <div className="input-container">
               {/* Context Files */}
