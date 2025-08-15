@@ -5,7 +5,7 @@
 
 ### How to use it 
 This is a conversation with the local AI about llama-vscode, something like help how to use llama-vscode.
-- From llama-vscode menu select "Chat with AI about llama-vscode -> a window will be opened (the conversation history overlays the actual chat window, but just click on the chat window)
+- From llama-vscode menu select "Chat with AI about llama-vscode" -> a window will be opened (the conversation history overlays the actual chat window, but just click on the chat window)
 - Enter your question about llama-vscode
 The first time it could take longer to answer. The following questions will be answered faster as the input will be cached.
  
@@ -93,6 +93,12 @@ This generate a commit message, based on the current changes.
 
 ![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3) 
  
+## Version 0.0.16 is released (14.08.2025)
+## What is new
+* Llama Agent UI improved
+* Chat with AI about llama.vscode added (select it from llama-vscode menu)
+* Envs (environments) with local usage of gpt-oss 20B (for agent) are added. Please wait several days until llama.cpp delivers a version with a good support for gpt-oss for agent usage (in week 18-24 of August, 2025) and then upgrade llama.cpp (for example from llama-vscode menu).
+
 ## Setup instructions for llama.cpp server
 
 ### [Linux](https://github.com/ggml-org/llama.vscode/wiki/Linux)  
@@ -107,17 +113,67 @@ This generate a commit message, based on the current changes.
 
 ### [Code completion](https://github.com/ggml-org/llama.vscode/wiki/Code-completion) 
 
+### [Edit with AI](https://github.com/ggml-org/llama.vscode/wiki/Edit-with-AI) 
+
+### [Llama agent](https://github.com/ggml-org/llama.vscode/wiki/Llama-agent)
+
+### [Local ai runner](https://github.com/ggml-org/llama.vscode/wiki/Local-ai-runner)
+
+### [Chat with AI about llama vscode](https://github.com/ggml-org/llama.vscode/wiki/Chat-with-AI-about-llama-vscode)
+
 ### [Chat with AI](https://github.com/ggml-org/llama.vscode/wiki/Chat-with-AI) 
 
 ### [Chat with AI with project context](https://github.com/ggml-org/llama.vscode/wiki/Chat-with-AI-with-project-context) 
 
-### [Edit with AI](https://github.com/ggml-org/llama.vscode/wiki/Edit-with-AI) 
-
 ### [Generate commit message](https://github.com/ggml-org/llama.vscode/wiki/Generate-commit-message) 
+
+
 
 ### [Statusbar](https://github.com/ggml-org/llama.vscode/wiki/Statusbar)
 
 ### [Menu](https://github.com/ggml-org/llama.vscode/wiki/Statusbar)
+
+### [Env](https://github.com/ggml-org/llama.vscode/wiki/Env)
+
+### [Manage completion models](https://github.com/ggml-org/llama.vscode/wiki/Manage-completion-models)
+
+### [Manage chat models](https://github.com/ggml-org/llama.vscode/wiki/Manage-chat-models)
+
+### [Manage embeddings models](https://github.com/ggml-org/llama.vscode/wiki/Manage-embeddings-models)
+
+### [Manage tools models](https://github.com/ggml-org/llama.vscode/wiki/Manage-tools-models)
+
+### [Manage envs](https://github.com/ggml-org/llama.vscode/wiki/Manage-envs)
+
+### [Model selection](https://github.com/ggml-org/llama.vscode/wiki/Model-selection)
+
+ 
+ 
+## How to use llama-vscode  
+
+### Overview
+llama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp.
+
+### How to use it 
+1. Install llama.cpp  
+- Show llama-vscode menu by clicking "llama-vscode" in the status bar or by Ctrl+Shift+M, and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama-server)
+2. Select env (group of models) for your needs from llama-vscode menu.  
+- This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on env)
+3. Start using llama-vscode  
+- For code completion - just start typing (uses completion model)
+- For edit code with AI - select code, right click and select 'llama-vscode Edit Selected Text with AI' (uses chat model, no tools support required)
+- For chat with AI (quick questions to (local) AI instead of searching with google) - select 'Chat with AI' from llama.vscode menu (uses chat model, no tools support required, llama.cpp server should run on model endpoint.)
+- For agentic coding - select 'Show Llama Agent' from llama.vscode menu (or Ctrl+Shift+A) and start typing your questions or requests (uses tools model and embeddings model for some tools, most intelligence needed, local usage supported, but you could also use external, paid providers for better results)
+
+
+If you want to use llama-vscode only for code completion - you could disable RAG from   llama-vscode menu to avoid indexing files.
+
+
+If you are an existing user - you could continue using llama-vscode as before.
+
+
+For more details - select 'View Documentation' from llama-vscode menu
+
  
  
 ## Llama Agent 
@@ -379,6 +435,28 @@ A model could be export as a .json files. This file could be shared with other u
 
 - Import  
 A model could be imported from a .json file - select a file to import it. 
+ 
+## MCP Support  
+
+### Requred servers
+- Tools server
+
+### Overview
+llama-vscode could use the the tools from the MCP servers, which are installed in VS Code (part of VS Code's Extensions view). 
+
+### How to use it 
+1. Install MCP Server in VS Code 
+- Select "Extensions" view from VS Code, 
+- Open MCP Servers panel
+- Click "Browse MCP Servers" (at the end of the "MCP SERVERS" line)
+- Select and install MCP Server
+2. Start the installed MCP Server 
+- From the context menu of the MCP Server select "Start Server". VS Code should recognize the tools of the MCP Server.
+3. Select "Show Llama Agent" from vscode-menu or use Ctrl+Shift+A (if needed select environment with agent/tools support). 
+4. Click "Select Tools" from Llama Agent panel and select the tools, which you want to use from your MCP Server
+
+
+ 
  
 ## Menu  
 
