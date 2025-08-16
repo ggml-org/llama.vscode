@@ -43,10 +43,6 @@ export class Menu {
                 description: this.app.configuration.getUiText(`Shows Llama Agent panel`)
             },
             {
-                label: (this.app.configuration.getUiText("Chat with AI about llama-vscode") ?? ""),
-                description: this.app.configuration.getUiText(`Opens a chat with AI window with llama-vscode help docu context inside VS Code using the selected chat model (or setting endpoint_chat)`)
-            },
-            {
                 label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
                 description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)`)
             },
@@ -118,6 +114,10 @@ export class Menu {
                 label: this.app.configuration.getUiText("How to use llama-vscode"),
             },
             {
+                label: (this.app.configuration.getUiText("Chat with AI about llama-vscode") ?? ""),
+                description: this.app.configuration.getUiText(`Opens a chat with AI window with llama-vscode help docu context inside VS Code using the selected chat model (or setting endpoint_chat)`)
+            },
+            {
                 label: this.app.configuration.getUiText('How to delete models'),
                 description: this.app.configuration.getUiText(`Explains how to delete the downloaded models`)
             },
@@ -154,7 +154,7 @@ export class Menu {
     handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start env..."):
-                this.selectEnv(this.app.configuration.envs_list);
+                this.selectEnvFromList(this.app.configuration.envs_list);
                 break;
             case this.app.configuration.getUiText('Deselect/stop env and models'):
                 this.stopEnv()
@@ -178,7 +178,7 @@ export class Menu {
                 if (!targetUrl) { 
                     const shouldSelectEnv = await Utils.showYesNoDialog("No tools model is selected. Do you want to select an env with tools model?")
                     if (shouldSelectEnv){
-                        await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name)) // .selectStartModel(chatTypeDetails);
+                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name)) // .selectStartModel(chatTypeDetails);
                         vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.")
                         return;
                     } else {
@@ -274,56 +274,23 @@ export class Menu {
         this.app.statusbar.updateStatusBarText();
     }
 
-    selectEnv = async (envsList: Env[]) => {
+    selectEnvFromList = async (envsList: Env[]) => {
         const envsItems: QuickPickItem[] = this.getEnvs(envsList);
-        envsItems.push({ label: (envsItems.length+1) + ". Last used models", description: "" });
+        let lastUsedEnv = this.app.persistence.getValue("selectedEnv")
+        if (lastUsedEnv) envsItems.push({ label: (envsItems.length+1) + ". Last used env", description: lastUsedEnv.name });
         const env = await vscode.window.showQuickPick(envsItems);
         if (env) {
-            await this.app.llamaServer.killFimCmd();
-            this.selectedComplModel = {name: "", localStartCommand: ""}
-            await this.app.llamaServer.killChatCmd();
-            this.selectedChatModel = {name: "", localStartCommand: ""}
-            await this.app.llamaServer.killEmbeddingsCmd();
-            this.selectedEmbeddingsModel = {name: "", localStartCommand: ""}
-
-            if (env.label.includes("Last used models")){
-                this.selectedComplModel = this.app.persistence.getValue("selectedComplModel") as LlmModel
-                if (this.selectedComplModel && this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
-                this.selectedChatModel = this.app.persistence.getValue("selectedChatModel") as LlmModel
-                if (this.selectedChatModel && this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
-                this.selectedEmbeddingsModel = this.app.persistence.getValue("selectedEmbeddingsModel") as LlmModel
-                if (this.selectedEmbeddingsModel && this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
-                this.selectedToolsModel = this.app.persistence.getValue("selectedToolsModel") as LlmModel
-                if (this.selectedToolsModel) this.addApiKey(this.selectedToolsModel)
-            } else {
-                let futureEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
-                let shouldSelect = await Utils.showYesNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
-                    this.getEnvDetailsAsString(futureEnv) +
-                    "\n\n Are you sure you want to continue?"
-                 )
-                
-                if (shouldSelect && futureEnv){
-                    this.selectedEnv = futureEnv
-                    await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
-
-                    this.selectedComplModel = this.selectedEnv.completion??{name: ""}
-                    if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
-                    await this.addApiKey(this.selectedComplModel);
-                    
-                    this.selectedChatModel = this.selectedEnv.chat??{name: ""}
-                    if (this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
-                    await this.addApiKey(this.selectedChatModel);
-
-                    this.selectedEmbeddingsModel = this.selectedEnv.embeddings??{name: ""}
-                    if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
-                    await this.addApiKey(this.selectedEmbeddingsModel);
-
-                    this.selectedToolsModel = this.selectedEnv.tools??{name: ""}
-                    if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
-                    await this.addApiKey(this.selectedToolsModel);
+            let futureEnv: Env;
+            if (env.label.includes("Last used env")){
+                futureEnv = lastUsedEnv;
+                if(!futureEnv){
+                    vscode.window.showWarningMessage("No envoronment selected. There is no last used env.");
+                    return;
                 }
+            } else {
+                futureEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
             }
-            this.app.llamaWebviewProvider.updateModelInfo();
+            await this.selectEnv(futureEnv, true);
         }
     }
 
@@ -348,6 +315,44 @@ export class Menu {
             
             await this.activateModel(modelType.selModelPropName, modelType.killCmd, modelType.shellCmd);
         }
+    }
+
+    public async selectEnv(futureEnv: Env, askConfirm: boolean) {
+        await this.app.llamaServer.killFimCmd();
+        this.selectedComplModel = { name: "", localStartCommand: "" };
+        await this.app.llamaServer.killChatCmd();
+        this.selectedChatModel = { name: "", localStartCommand: "" };
+        await this.app.llamaServer.killEmbeddingsCmd();
+        this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
+        let shouldSelect = true;
+        if (askConfirm){
+           shouldSelect = await Utils.showYesNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
+                this.getEnvDetailsAsString(futureEnv) +
+                "\n\n Do you want to continue?"
+            );
+        }
+
+        if (shouldSelect && futureEnv) {
+            this.selectedEnv = futureEnv;
+            await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
+
+            this.selectedComplModel = this.selectedEnv.completion ?? { name: "" };
+            if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
+            await this.addApiKey(this.selectedComplModel);
+
+            this.selectedChatModel = this.selectedEnv.chat ?? { name: "" };
+            if (this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
+            await this.addApiKey(this.selectedChatModel);
+
+            this.selectedEmbeddingsModel = this.selectedEnv.embeddings ?? { name: "" };
+            if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
+            await this.addApiKey(this.selectedEmbeddingsModel);
+
+            this.selectedToolsModel = this.selectedEnv.tools ?? { name: "" };
+            if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
+            await this.addApiKey(this.selectedToolsModel);
+        }
+        this.app.llamaWebviewProvider.updateModelInfo();
     }
 
     public async installLlamacpp() {
@@ -379,7 +384,7 @@ export class Menu {
             },
             {
                 label: this.app.configuration.getUiText('Add env...') ?? "",
-                description: this.app.configuration.getUiText('Adds env with the currently selected models.') ?? "",
+                description: this.app.configuration.getUiText('Opens a panel for adding an env.') ?? "",
             },
             {
                 label: this.app.configuration.getUiText('View env details...') ?? ""
@@ -434,6 +439,7 @@ export class Menu {
 
     public showHowToUseLlamaVscode() {
         Utils.showOkDialog("How to use llama-vscode" +
+            "\n\nTL;DR: install llama.cpp, select env, start using" +
             "\n\nllama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp." +
             "\n\n1. Install llama.cpp " +
             "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama-server)" +
@@ -446,7 +452,7 @@ export class Menu {
             "\n  - For agentic coding - select 'Show Llama Agent' from llama.vscode menu (or Ctrl+Shift+A) and start typing your questions or requests (uses tools model and embeddings model for some tools, most intelligence needed, local usage supported, but you could also use external, paid providers for better results)" +
             "\n\n If you want to use llama-vscode only for code completion - you could disable RAG from llama-vscode menu to avoid indexing files." +
             "\n\n If you are an existing user - you could continue using llama-vscode as before." +
-            "\n\n For more details - select 'View Documentation' from llama-vscode menu" +
+            "\n\n For more details - select 'Chat with AI about llama.vscode' or 'View Documentation' from llama-vscode menu" +
             "\n\n Enjoy!"
         );
     }
@@ -649,7 +655,8 @@ export class Menu {
                 if (!hfModel.private) {
                     hfModelsQp.push({
                         label: hfModel.modelId,
-                        description: "created: " + hfModel.createdAt + " | downloads: " + hfModel.downloads + " | likes: " + hfModel.likes
+                        description: "created: " + hfModel.createdAt + " | downloads: " + hfModel.downloads + " | likes: " + hfModel.likes + 
+                        " | pipeline: " + hfModel.pipeline_tag + " | tags: " + hfModel.tags 
                     });
                 }
             }
@@ -894,7 +901,7 @@ export class Menu {
         }
     }
 
-    private getEnvDetailsAsString(selectedEnv: any) {
+    public getEnvDetailsAsString(selectedEnv: any) {
         return "Env details: " +
             "\nname: " + selectedEnv.name +
             "\ndescription: " + selectedEnv.description +
@@ -1265,7 +1272,7 @@ export class Menu {
     processEnvActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start env..."):
-                this.selectEnv(this.app.configuration.envs_list);
+                this.selectEnvFromList(this.app.configuration.envs_list);
                 break;
             case this.app.configuration.getUiText('Add env...'):
                 vscode.commands.executeCommand('extension.showLlamaWebview');

@@ -91,6 +91,8 @@ export class Configuration {
     tools_models_list = new Array();
     chat_models_list = new Array();
     envs_list = new Array();
+    env_start_last_used = false;
+    env_start_last_used_confirm = true;
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     // additional configs`
@@ -228,6 +230,8 @@ export class Configuration {
         this.embeddings_models_list = config.get("embeddings_models_list")??new Array(); 
         this.tools_models_list = config.get("tools_models_list")??new Array();
         this.envs_list = config.get("envs_list")??new Array();
+        this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
+        this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
     };
 
     getUiText = (uiText: string): string | undefined => {
@@ -246,6 +250,7 @@ export class Configuration {
             this.setLlamaRequestConfig();
             this.setOpenAiClient();
         }
+        if (event.affectsConfiguration("llama-vscode.env_start_last_used")) this.updateConfigValue("env_start_last_used_confirm", true);
     };
 
     isRagConfigChanged = (event: vscode.ConfigurationChangeEvent) => {

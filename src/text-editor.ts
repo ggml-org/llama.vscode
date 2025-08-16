@@ -32,7 +32,7 @@ export class TextEditor {
         if (!chatUrl) { 
             const shouldSelectModel = await Utils.showYesNoDialog("No chat model is selected. Do you want to select an env with chat model?")
             if (shouldSelectModel){
-                await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) 
+                await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) 
                 vscode.window.showInformationMessage("After the chat model is loaded, try again using Edit with AI.")
                 return;
             } else {

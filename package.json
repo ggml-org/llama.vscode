@@ -735,15 +735,24 @@
         },
         "chat": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "embeddings": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "tools": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         }
       },
       {
@@ -758,15 +767,24 @@
         },
         "chat": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "embeddings": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "tools": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         }
       },
       {
@@ -781,15 +799,24 @@
         },
         "chat": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "embeddings": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "tools": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         }
       },
       {
@@ -804,19 +831,28 @@
         },
         "chat": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "embeddings": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         },
         "tools": {
           "name": "",
-          "localStartCommand": ""
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
         }
       },
       
-      
+
       {
         "name": "Local, only chat & edit (CPU Only | HD: 2.2 GB)",
         "description": "Only for chat with AI, model Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (CPU Only)",
@@ -1032,10 +1068,51 @@
           "aiModel": "openai/gpt-oss-20b",
           "isKeyRequired": true
         }
+      },
+      {
+        "name": "Empty - no models",
+        "description": "For cases when the settings (endpoint*, Launch_*, Api_key*,  Ai_model) are used for configuring what severs to be used by llama-vscode instead of env.",
+        "completion": {
+          "name": "",
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "chat": {
+          "name": "",
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "embeddings": {
+          "name": "",
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
+        },
+        "tools": {
+          "name": "",
+          "localStartCommand": "",
+          "endpoint": "",
+          "aiModel": "",
+          "isKeyRequired": false
+        }
       }
-  
     ],
           "description": "The list of envs, which could be selected"
+        },
+        "llama-vscode.env_start_last_used": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true - starts the last used env on starup."
+        },
+        "llama-vscode.env_start_last_used_confirm": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, before starting the last used env, the user is asked for confirmation. Used only if env_start_last_used = true"
         },
         "llama-vscode.auto": {
           "type": "boolean",

@@ -453,7 +453,7 @@ const App: React.FC<AppProps> = () => {
               >
                 Select Env
               </button>
-              Env (short for environment) is a group of LLMs. Select an env for your needs to prepare the environment (run servers for the local models or configure access for external models)
+              Select an env (group of LLMs) with tools model to start using Llama Agent.
               </div>)}
 
               {!currentToolsModel.includes(noModelSelected) && (<button

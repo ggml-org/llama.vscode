@@ -58,6 +58,23 @@ Every change in the editor will trigger a completion request to the server.
 
 ![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok) 
  
+## Delete models  
+
+### Overview
+Llama-vscode automatically downloads (if not yet done) models (LLMs) from [Huggingface](https://huggingface.co/) if a local model (or env) is selected. The downloaded models are GGUF files. Once downloaded, the models are reused. The LLMs could take a lot of space on your hard disk. For example gpt-oss-20b-GGUF is 12GB.
+
+### How to delete models
+All downloaded models are stored in one standard folder:
+- Windows: C:\Users\<user_name>\AppData\Local\llama.cpp.
+- Mac or Linux: /users/<user_name>/Library/Caches/llama.cpp. 
+
+
+You could delete the GGUF files from this folder. If they are missing, but are needed by llama-vscode, it will download them automatically again.
+
+
+
+ 
+ 
 ## Edit with AI  
 
 ### Requred servers
@@ -183,9 +200,13 @@ For more details - select 'View Documentation' from llama-vscode menu
 - Chat server (if search_source tool is used)
 - Embeddings server (if search_source tool is used)
 
-### How to use it 
-Llama Agent is still in development, but could produce some results with intlligent models with tools support.
+### Overview
+Llama agent uses AI and tools to answer questions, change and add files and do everythin eles, which is provided by the tools.  
+Llama agent is still in development, but could produce some results with intlligent models with tools support.  
+Llama agent doesn't ask for permission for each change of a file. Use VS Code's Source Control view or github to review and rollback (if needed) the changes.  
+Llama agent asks for permission for executing terminal command. However, if the setting Tool_permit_some_terminal_commands is enabled, it will stop asking for permissions for some commands, which are considered safe.
 
+### How to use it 
 The best wey to prepare the environment for the agent is by selecting an Env (group of models). So, below is the standard workflow:
 1. Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A to show Llama Agent. 
 2. Click "Select Env" button (visible if there is no selected env) and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
@@ -290,6 +311,7 @@ Select "Completion models..." from llama-vscode menu
 Enter the requested properties.  
 For local models name, local start command and endpoint are required  
 For external servers name and endpoint are required  
+Use models, which support FIM (Fill In the Middle), for example Qwen2.5-Coder-1.5B-Q8_0-GGUF
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -332,6 +354,7 @@ Select "Embeddings models..." from llama-vscode menu
 Enter the requested properties.  
 For local models name, local start command and endpoint are required  
 For external servers name and endpoint are required  
+Use models, which support embeddings, for example Nomic-Embed-Text-V2-GGUF
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -414,6 +437,7 @@ Select "Tools models..." from llama-vscode menu
 Enter the requested properties.  
 For local models name, local start command and endpoint are required  
 For external servers name and endpoint are required  
+Use models, which support tools usage, for example gpt-oss-20b-GGUF
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -498,6 +522,28 @@ There are different ways to select a model
 - Click on "llama-vscode" status bar to show llama-vscode menu
 
 ![Statusbar](https://github.com/user-attachments/assets/62562aab-93b5-4334-928f-f2a4efcf8b46)
+
+
+ 
+ 
+## Use cases  
+
+### Overview
+The use cases below describe how to prepare and use llama-vscode in some specific cases. There are already some configurations for models and env, which could be selected and used directly
+
+### Only completion used, local server started by llama-vscode
+- Use the default configuration if it works for you by selecting Env for your case
+- If you want to use a different one, here is how to prepare it:
+1. Create completion model - select llama-vscode menu -> "Completion models..." -> "Add completion model from Huggingface", find the model in Huggingface and add it.
+2. From llama-vscode menu select "Deselect/stop env and models"
+3. Create an env, which includes only this model - from llama-vscode menu -> "Env..." -> "Add Env...". A panel will be show with buttons for selecting completion, chat, embeddings and tools models. Click "Compl" button and select the newly added model (the name is hf: model_name_from_huggingface). Test if code completion works well. Click button "Add Env" to save the environment.
+
+### Only completion used, external server
+Extarnal server could be also a local one, but is not started by llama-vscode on selecting the model. The completion server should support /infill endpoint, which is currently available only by llama.cpp.
+1. Create a new model - select llama-vscode menu -> "Completion models..." -> "Add completion model...". Enter only name and endpoint.
+2. From llama-vscode menu select "Deselect/stop env and models"
+3. Create an env, which includes only this model - from llama-vscode menu -> "Env..." -> "Add Env...". A panel will be show with buttons for selecting completion, chat, embeddings and tools models. Click "Compl" button and select the newly added model. Test if code completion works well. Click button "Add Env" to save the environment.
+
 
 
  

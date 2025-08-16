@@ -86,7 +86,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.menu.addHuggingfaceModelToList(chatTypeDetailsHf);
                         break;
                     case 'selectEnv':
-                        await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));    
+                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));    
                         break;
                     case 'stopEnv':
                         await this.app.menu.stopEnv();    

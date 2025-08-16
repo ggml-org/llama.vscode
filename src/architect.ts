@@ -15,19 +15,29 @@ export class Architect {
         this.app = application;
     }
 
-    init = () => {
+    init = async () => {
         // Start indexing workspace files
-        if (this.app.configuration.rag_enabled) {
-            setTimeout(() => {
-                this.app.chatContext.indexWorkspaceFiles().catch(error => {
-                    console.error('Failed to index workspace files:', error);
-                });     
-            }, 0);
-        }
+        this.indexWorspaceFiles();
         let isFirstStart = this.app.persistence.getGlobalValue("isFirstStart")
         if (isFirstStart == undefined || isFirstStart){
             this.app.menu.showHowToUseLlamaVscode();
             this.app.persistence.setGlobalValue("isFirstStart", false)
+        }
+        if (this.app.configuration.env_start_last_used){
+            let lastEnv = this.app.persistence.getValue("selectedEnv")
+            if (lastEnv) {
+                if (this.app.configuration.env_start_last_used_confirm) {
+                    let [shouldSelect, dontAskAgain]  = await Utils.showYesYesdontaskNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
+                                                                        this.app.menu.getEnvDetailsAsString(lastEnv) +
+                                                                        "\n\n Do you want to continue?"
+                                                                        );
+                    if (shouldSelect) this.app.menu.selectEnv(lastEnv, false);
+                    if (dontAskAgain) this.app.configuration.updateConfigValue("env_start_last_used_confirm", false);
+                } else {
+                     this.app.menu.selectEnv(lastEnv, false);
+                }
+
+            }
         }
         this.app.tools.init()
     }
@@ -162,7 +172,7 @@ export class Architect {
         context.subscriptions.push(
             vscode.workspace.onDidChangeWorkspaceFolders(event => {
                 event.added.forEach(folder => {
-                    this.init();
+                    this.indexWorspaceFiles();
                 });
             })
         );
@@ -431,6 +441,16 @@ export class Architect {
         context.subscriptions.push(postMessageCommand);
     }
     
+
+    private indexWorspaceFiles() {
+        if (this.app.configuration.rag_enabled) {
+            setTimeout(() => {
+                this.app.chatContext.indexWorkspaceFiles().catch(error => {
+                    console.error('Failed to index workspace files:', error);
+                });
+            }, 0);
+        }
+    }
 
     private getChatEndpoint() {
         let endpoint = this.app.configuration.endpoint_chat;

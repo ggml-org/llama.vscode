@@ -287,7 +287,7 @@ export class LlamaServer {
         if (!endpoint) { 
             const shouldSelectModel = await Utils.showYesNoDialog("No completion model is selected. Do you want to select an env with completion model?")
             if (shouldSelectModel){
-                await this.app.menu.selectEnv(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
+                await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
                 return;
             } else {
@@ -349,13 +349,13 @@ export class LlamaServer {
     ): Promise<LlamaToolsResponse | undefined> => {
         let selectedModel: LlmModel = this.app.menu.getToolsModel();
         let model = this.app.configuration.ai_model;
-        if (selectedModel.aiModel) model = selectedModel.aiModel;
+        if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
 
         let endpoint = this.app.configuration.endpoint_tools;
-        if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
+        if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) endpoint = selectedModel.endpoint;
         
         let requestConfig = this.app.configuration.axiosRequestConfigTools;
-        if (selectedModel.isKeyRequired){
+        if (selectedModel?.isKeyRequired !== undefined && selectedModel.isKeyRequired){
             const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
             if (apiKey){
                 requestConfig = {
@@ -605,13 +605,13 @@ export class LlamaServer {
 
     private getChatModelProperties(selectedModel: LlmModel) {
         let model = this.app.configuration.ai_model;
-        if (selectedModel.aiModel) model = selectedModel.aiModel;
+        if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
 
         let endpoint = this.app.configuration.endpoint_chat;
-        if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
+        if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) endpoint = selectedModel.endpoint;
 
         let requestConfig = this.app.configuration.axiosRequestConfigChat;
-        if (selectedModel.isKeyRequired) {
+        if (selectedModel?.isKeyRequired !== undefined && selectedModel.isKeyRequired) {
             const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
             if (apiKey) {
                 requestConfig = {
@@ -628,13 +628,13 @@ export class LlamaServer {
     private getComplModelProperties() {
         const selectedComplModel: LlmModel = this.app.menu.getComplModel();
         let model = this.app.configuration.ai_model;
-        if (selectedComplModel.aiModel) model = selectedComplModel.aiModel;
+        if (selectedComplModel?.aiModel !== undefined && selectedComplModel.aiModel) model = selectedComplModel.aiModel;
 
         let endpoint = this.app.configuration.endpoint;
-        if (selectedComplModel.endpoint) endpoint = selectedComplModel.endpoint;
+        if (selectedComplModel?.endpoint !== undefined && selectedComplModel.endpoint) endpoint = selectedComplModel.endpoint;
 
         let requestConfig = this.app.configuration.axiosRequestConfigCompl;
-        if (selectedComplModel.isKeyRequired) {
+        if (selectedComplModel?.isKeyRequired !== undefined && selectedComplModel.isKeyRequired) {
             const apiKey = this.app.persistence.getApiKey(selectedComplModel.endpoint??"");
             if (apiKey) {
                 requestConfig = {
