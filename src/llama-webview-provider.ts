@@ -137,7 +137,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 text: 'Welcome to Llama Agent'
             });
             
-            this.updateModelInfo();
+            this.updateLlamaView();
 
             // Send initial context files
             const contextFiles = this.app.llamaAgent.getContextProjectFile();
@@ -209,12 +209,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    public updateModelInfo() {
+    public updateLlamaView() {
         this.updateToolsModel();
         this.updateChatModel();
         this.updateEmbsModel();
         this.updateComplsModel();
         this.updateEnv();
+        // TODO update with the selected agent
     }
 
     public updateContextFilesInfo() {

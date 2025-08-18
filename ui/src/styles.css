@@ -814,6 +814,10 @@ body {
   border-collapse: collapse;
   width: 100%;
   margin: 16px 0;
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .markdown-content th,
@@ -821,11 +825,44 @@ body {
   border: 1px solid var(--vscode-panel-border);
   padding: 8px 12px;
   text-align: left;
+  vertical-align: top;
+  word-wrap: break-word;
+  max-width: 0;
 }
 
 .markdown-content th {
   background-color: var(--vscode-input-background);
   font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.markdown-content td {
+  background-color: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+.markdown-content tr:nth-child(even) td {
+  background-color: var(--vscode-panel-background);
+}
+
+.markdown-content tr:hover td {
+  background-color: var(--vscode-input-background);
+}
+
+/* Handle table overflow */
+.markdown-content .table-container {
+  overflow-x: auto;
+  border-radius: 6px;
+  border: 1px solid var(--vscode-panel-border);
+}
+
+.markdown-content .table-container table {
+  margin: 0;
+  border: none;
+  box-shadow: none;
 }
 
 .markdown-content a {
@@ -847,4 +884,59 @@ body {
   border: none;
   border-top: 1px solid var(--vscode-panel-border);
   margin: 24px 0;
+}
+
+/* Additional table enhancements */
+.markdown-content table caption {
+  caption-side: top;
+  text-align: left;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground);
+  margin-bottom: 8px;
+  font-size: 0.9em;
+}
+
+.markdown-content table tbody tr:last-child td {
+  border-bottom: 1px solid var(--vscode-panel-border);
+}
+
+.markdown-content table tbody tr:first-child td {
+  border-top: 1px solid var(--vscode-panel-border);
+}
+
+/* Ensure proper spacing for nested elements in tables */
+.markdown-content table p {
+  margin: 0 0 8px 0;
+}
+
+.markdown-content table p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content table ul,
+.markdown-content table ol {
+  margin: 0 0 8px 0;
+  padding-left: 16px;
+}
+
+.markdown-content table li:last-child {
+  margin-bottom: 0;
+}
+
+/* Handle code blocks in tables */
+.markdown-content table code {
+  font-size: 0.85em;
+  padding: 1px 4px;
+}
+
+/* Responsive table handling */
+@media (max-width: 768px) {
+  .markdown-content table {
+    font-size: 0.9em;
+  }
+  
+  .markdown-content th,
+  .markdown-content td {
+    padding: 6px 8px;
+  }
 } 

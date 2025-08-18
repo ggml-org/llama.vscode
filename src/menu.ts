@@ -191,7 +191,7 @@ export class Menu {
                     }
                 }
                 vscode.commands.executeCommand('extension.showLlamaWebview');
-                this.app.llamaWebviewProvider.updateModelInfo()
+                this.app.llamaWebviewProvider.updateLlamaView()
                 break;
             case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
                 if (this.app.configuration.rag_enabled){
@@ -321,8 +321,21 @@ export class Menu {
                 futureAgent = agentsList[parseInt(agent.label.split(". ")[0], 10) - 1]
             }
             this.selectedAgent = futureAgent;
+            this.selectAgent(futureAgent)
             // TODO when model is added to the agent type - select it
         }
+    }
+
+    selectAgent = async (agent: Agent) => {
+        this.selectedAgent = agent;
+        if(!agent.tools || agent.tools.length == 0) return;
+
+        for  (let toolFunc of this.app.tools.toolsFunc){
+            let toolName = toolFunc[0];
+            this.app.configuration.updateConfigValue("tool_" + toolName + "_enabled", agent.tools.includes(toolName))
+        }
+        await this.app.persistence.setValue("selectedAgent", this.selectedAgent);
+        this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     selectStartModel = async (modelType: ModelTypeDetails) => {
@@ -384,7 +397,7 @@ export class Menu {
             if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
             await this.addApiKey(this.selectedToolsModel);
         }
-        this.app.llamaWebviewProvider.updateModelInfo();
+        this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     public async installLlamacpp() {
@@ -403,7 +416,7 @@ export class Menu {
         await this.app.persistence.setValue(selModelPropName, selModel);
         await killCmd();
         if (selModel.localStartCommand) await shellCmd(selModel.localStartCommand ?? "");
-        this.app.llamaWebviewProvider.updateModelInfo();
+        this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     private getEnvActions(): vscode.QuickPickItem[] {
@@ -1526,7 +1539,7 @@ export class Menu {
     private async deselectStopModel(killCmd: () => void, selModelPropName: string) {
         await killCmd();
         this[selModelPropName as keyof Menu] = { name: "", localStartCommand: "" } as any;
-        this.app.llamaWebviewProvider.updateModelInfo();
+        this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     public async stopEnv() {
@@ -1539,7 +1552,7 @@ export class Menu {
         await this.app.llamaServer.killToolsCmd();
         this.selectedToolsModel = { name: "", localStartCommand: "" };
         this.selectedEnv = { name: "" };
-        this.app.llamaWebviewProvider.updateModelInfo();
+        this.app.llamaWebviewProvider.updateLlamaView();
         vscode.window.showInformationMessage("Env and models are deselected.")
     }
 

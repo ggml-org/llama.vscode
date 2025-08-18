@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm'
 
 // Declare the vscode API
 declare global {
@@ -463,13 +464,6 @@ const App: React.FC<AppProps> = () => {
               >
                 Deselect Env
               </button>)}
-              {/* <button 
-                  onClick={handleSelectedModels} 
-                  title="Show Current Musicians (Selected Models)"
-                  className="modern-btn secondary"
-                >
-                  Show Orchestra
-                </button> */}
             </div>
 
           </div>
@@ -482,7 +476,7 @@ const App: React.FC<AppProps> = () => {
           {displayText && (
             <div className="markdown-container" ref={markdownContainerRef}>
               <div className="markdown-content">
-                <ReactMarkdown>{displayText}</ReactMarkdown>
+                <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
               </div>
             </div>
           )}
