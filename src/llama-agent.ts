@@ -26,6 +26,7 @@ export class LlamaAgent {
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
         if (this.app.menu.isAgentSelected()) systemPromt = this.app.menu.getAgent().systemInstruction.join("\n")
+       
         this.messages = [
                             {
                                 "role": "system",
@@ -67,13 +68,13 @@ export class LlamaAgent {
                 this.app.llamaWebviewProvider.setState("AI is stopped")
                 return "Tools model is not selected"
             }
-
-            let worspaceFolder = "";
+            
+             let worspaceFolder = "";
             if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
                 worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
             }
-            let recommendation = "Obligatory read the file before editing it with a tool."
-            let projectContext = worspaceFolder + "  \n" + recommendation;
+            let projectContext = "  \n" + worspaceFolder;
+            
             query = projectContext + "\n\n" + query;
             
             if (this.contexProjectFiles.size > 0){

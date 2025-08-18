@@ -84,6 +84,8 @@ export class Configuration {
     tool_custom_eval_tool_property_description = ""
     tool_custom_eval_tool_code = "";
     tool_llama_vscode_help_enabled = true;
+    tool_save_plan_enabled = false;
+    tool_update_task_enabled = false;
     tools_max_iterations = 50;
     tools_log_calls = false;
     complition_models_list = new Array();
@@ -213,6 +215,8 @@ export class Configuration {
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
         this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
+        this.tool_save_plan_enabled = Boolean(config.get<boolean>("tool_save_plan_enabled"));
+        this.tool_update_task_enabled = Boolean(config.get<boolean>("tool_update_task_enabled"));
         this.tool_llama_vscode_help_enabled = Boolean(config.get<boolean>("tool_llama_vscode_help_enabled"));
         this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
         this.tool_custom_tool_source = String(config.get<string>("tool_custom_tool_source"));
@@ -280,6 +284,8 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_enabled")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_description")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_property_description")
+        || event.affectsConfiguration("llama-vscode.tool_update_task_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_save_plan_enabled")
     }
 
     setLlamaRequestConfig = () => {

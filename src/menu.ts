@@ -161,7 +161,7 @@ export class Menu {
                 this.selectEnvFromList(this.app.configuration.envs_list);
                 break;
             case this.app.configuration.getUiText('Deselect/stop env and models'):
-                this.stopEnv()
+                await this.stopEnv()
                 break;
             case this.app.configuration.getUiText('Show selected env'):
                 this.showCurrentEnv();
@@ -368,6 +368,8 @@ export class Menu {
         this.selectedChatModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killEmbeddingsCmd();
         this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
+         await this.app.llamaServer.killToolsCmd();
+        this.selectedToolsModel = { name: "", localStartCommand: "" };
         let shouldSelect = true;
         if (askConfirm){
            shouldSelect = await Utils.showYesNoDialog("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
@@ -381,7 +383,6 @@ export class Menu {
             await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
 
             this.selectedComplModel = this.selectedEnv.completion ?? { name: "" };
-            if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
             if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
             await this.addApiKey(this.selectedComplModel);
 

@@ -1531,6 +1531,16 @@
           "default": false,
           "description": "Enable/disable tool llama-vscode_help"
         },
+        "llama-vscode.tool_save_plan_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable tool llama-vscode_help"
+        },
+        "llama-vscode.tool_update_task_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable tool llama-vscode_help"
+        },
         "llama-vscode.tool_custom_tool_description": {
           "type": "string",
           "default": "Use this tool to get information about ...",
