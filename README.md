@@ -23,10 +23,10 @@ Local LLM-assisted text completion, chat with AI and agentic coding extension fo
 - Llama Agent for agentic coding
 - Add/remove/export/import for models - completion, chat, embeddings and tools
 - Model selection - for completion, chat, embeddings and tools
-- Orchestra (group of models) concept introduced. Selecting/Deselecting orchestra selects/deselects all the models in it
-- Add/remove/export/import for orchestra
+- Env (group of models) concept introduced. Selecting/Deselecting env selects/deselects all the models in it
+- Add/remove/export/import for env
 - Predefined models (including OpenAI gpt-oss 20B added as a local one) 
-- Predefined Orchestras for different use cases - only completion, chat + completion, chat + agent, etc.
+- Predefined envs for different use cases - only completion, chat + completion, chat + agent, loccal full package (with gpt-oss 20B), etc.
 - MCP tools selection for the agent (from VS Code installed MCP Servers)
 - Search and download models from Huggingface directly from llama-vscode
 
@@ -42,9 +42,11 @@ Note: also available at [Open VSX](https://open-vsx.org/extension/ggml-org/llama
 
 ### `llama.cpp` setup
 
-The plugin requires a [llama.cpp](https://github.com/ggerganov/llama.cpp) server instance to be running at the configured endpoint:
+Show llama-vscode menu by clicking on llama-vscode in the status bar or Ctrl+Shift+M and select "Install/Upgrade llama.cpp". This will install llama.cpp automatically for Mac and Windows. For Linux get the [latest binaries](https://github.com/ggerganov/llama.cpp/releases) and add the bin folder to the path.
 
-<img width="508" alt="image" src="https://github.com/user-attachments/assets/1cc40392-a92c-46df-8a4d-aa762c692ad7" />
+Once you have llama.cpp installed, you can select env for your needs from llama-vscode menu "Select/start env..."
+
+Below are some details how to install llama.cpp manually (if you prefer it).
 
 #### Mac OS
 
@@ -112,25 +114,25 @@ You can use any other FIM-compatible model that your system can handle. By defau
 
 The plugin requires FIM-compatible models: [HF collection](https://huggingface.co/collections/ggml-org/llamavim-6720fece33898ac10544ecf9)
 
-## Llama Agent Webview
+## Llama Agent
 
-The extension includes Llama Agent:
+The extension includes Llama Agent
 
 ### Features
 - Llama Agent UI in Explorer view
-- OpenRouter API model selection (assumes your OpenRauter key is in setting Api_key_tools)
-- MCP Support
+- Works with local models - gpt-oss 20B is the best choice for now
+- Could work with external models (for example from OpenRouter)
+- MCP Support - could use the tools from the MCP Servers, which are installed and started in VS Code
 - 9 internal tools available for use
 - custom_tool - returns the content of a file or a web page
-- custom_eval_tool - write your own tool in Typescript/javascript
+- custom_eval_tool - write your own tool in javascript (function with input and return value string)
 - Attach the selection to the context
 - Configure maximum loops for Llama Agent
 
 ### Usage
-1. Open Llama Agent with Ctrl+Shift+A or from llama-vscode menu Show Llama Agent
-2. If you have OpenRouter API key in setting Api_key_tools - select a model from OpenRouter by clicking button Select Model. Alternatively - set the model directly with settings Endpoint_tools, Api_key_tools, Ai_model, Ai_api_version (should be v1 in almost all cases)
-3. Write a query (Use Enter for new line) and attach files if needed
-4. Click Ask button
+1. Open Llama Agent with Ctrl+Shift+A or from llama-vscode menu "Show Llama Agent"
+2. Select Env with an agent if you haven't done it before. 
+3. Write a query and attach files with the @ button if needed
 
 More details(https://github.com/ggml-org/llama.vscode/wiki) 
 
