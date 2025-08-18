@@ -307,6 +307,108 @@
           "default": "google/gemini-2.5-flash",
           "description": "The model name. This is used in the request to the API. It is important when OpenRouter is used (for example google/gemini-2.5-flash)."
         },
+        "llama-vscode.agents_list": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+                "name": {
+                  "type": "string",
+                  "description": "Name for this agent to be shown to the user"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the model - for what purposes should be used, what are his strengths, etc."
+                },
+                "systemInstruction": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "The system instructions for this agent",
+                  "default": ""
+                },
+                "tools": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "Tools, which will be used by default by this agent",
+                  "default": []
+                }
+              },
+              "required": ["name", "system_instruction"]
+            },
+          "default": [
+            {
+              "name": "default",
+              "description": "This is the default agent.",
+              "systemInstruction": [
+                "You are an agent for software development - please keep going until the user’s query is completely resolved, before ending your turn and yielding back to the user.",
+                "Only terminate your turn when you are sure that the problem is solved.",
+                "If you are not sure about anything pertaining to the user’s request, use your tools to read files and gather the relevant information: do NOT guess or make up an answer.",
+                "You MUST plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.",
+                "Read the file content or a section of the file before editing a the file.",
+                "",
+                "# Workflow",
+                "",
+                "## High-Level Problem Solving Strategy",
+                "",
+                "1. Understand the problem deeply. Carefully read the issue and think critically about what is required.",
+                "2. Investigate the codebase. Explore relevant files, search for key functions, and gather context.",
+                "3. Develop a clear, step-by-step plan. Break down the fix into manageable, incremental steps.",
+                "4. Implement the fix incrementally. Make small, testable code changes.",
+                "5. Debug as needed. Use debugging techniques to isolate and resolve issues.",
+                "6. Iterate until the root cause is fixed.",
+                "7. Reflect and validate comprehensively.",
+                "",
+                "Refer to the detailed sections below for more information on each step.",
+                "",
+                "## 1. Deeply Understand the Problem",
+                "Carefully read the issue and think hard about a plan to solve it before coding.",
+                "",
+                "## 2. Codebase Investigation",
+                "- Explore relevant files and directories.",
+                "- Search for key functions, classes, or variables related to the issue.",
+                "- Read and understand relevant code snippets.",
+                "- Identify the root cause of the problem.",
+                "- Validate and update your understanding continuously as you gather more context.",
+                "",
+                "## 3. Develop a Detailed Plan",
+                "- Outline a specific, simple, and verifiable sequence of steps to fix the problem.",
+                "- Break down the fix into small, incremental changes.",
+                "",
+                "## 4. Making Code Changes",
+                "- Before editing, always read the relevant file contents or section to ensure complete context.",
+                "- If a patch is not applied correctly, attempt to reapply it.",
+                "- Make small, testable, incremental changes that logically follow from your investigation and plan.",
+                "",
+                "## 5. Debugging",
+                "- Make code changes only if you have high confidence they can solve the problem",
+                "- When debugging, try to determine the root cause rather than addressing symptoms",
+                "- Debug for as long as needed to identify the root cause and identify a fix",
+                "- Use print statements, logs, or temporary code to inspect program state, including descriptive statements or error messages to understand what's happening",
+                "- To test hypotheses, you can also add test statements or functions",
+                "- Revisit your assumptions if unexpected behavior occurs.",
+                "",
+                "",
+                "## 6. Final Verification",
+                "- Confirm the root cause is fixed.",
+                "- Review your solution for logic correctness and robustness.",
+                "- Iterate until you are extremely confident the fix is complete.",
+                "",
+                "## 7. Final Reflection",
+                "- If there are changed files, build the application to check for errors.",
+                "- Reflect carefully on the original intent of the user and the problem statement.",
+                "- Think about potential edge cases or scenarios.",
+                "- Continue refining until you are confident the fix is robust and comprehensive.",
+                ""
+              ],
+              "tools": ["run_terminal_command","search_source","read_file","list_directory","regex_search","delete_file","get_diff","edit_file","ask_user"]
+            }
+          ],
+          "description": "The list of the agents, which could be selected"
+        },
         "llama-vscode.complition_models_list": {
           "type": "array",
           "items": {
@@ -370,39 +472,39 @@
       }
     ],
           "description": "The list of the completion (FIM) models, which could be selected"
-        },
-        "llama-vscode.chat_models_list": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-                "name": {
-                  "type": "string",
-                  "description": "Name for this model to be shown to the user"
-                },
-                "endpoint": {
-                  "type": "string",
-                  "description": "The endpoint, from where to access the model",
-                  "default": ""
-                },
-                "aiModel": {
-                  "type": "string",
-                  "description": "The name of the AI model as expected by the provider",
-                  "default": ""
-                },
-                "isKeyRequired": {
-                  "type": "boolean",
-                  "description": "Is key requried for the endpoint",
-                  "default": false
-                },
-                "localStartCommand": {
-                  "type": "string",
-                  "description": "Command to be used for sterting the model locally.",
-                  "default": ""
-                }
+      },
+      "llama-vscode.chat_models_list": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name for this model to be shown to the user"
               },
-              "required": ["name"]
+              "endpoint": {
+                "type": "string",
+                "description": "The endpoint, from where to access the model",
+                "default": ""
+              },
+              "aiModel": {
+                "type": "string",
+                "description": "The name of the AI model as expected by the provider",
+                "default": ""
+              },
+              "isKeyRequired": {
+                "type": "boolean",
+                "description": "Is key requried for the endpoint",
+                "default": false
+              },
+              "localStartCommand": {
+                "type": "string",
+                "description": "Command to be used for sterting the model locally.",
+                "default": ""
+              }
             },
+            "required": ["name"]
+          },
           "default": [
             {
               "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",

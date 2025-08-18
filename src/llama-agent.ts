@@ -24,10 +24,12 @@ export class LlamaAgent {
     }
 
     resetMessages = () => {
+        let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
+        if (this.app.menu.isAgentSelected()) systemPromt = this.app.menu.getAgent().systemInstruction.join("\n")
         this.messages = [
                             {
                                 "role": "system",
-                                "content": this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION
+                                "content": systemPromt
                             }
                         ];
         this.logText = "";

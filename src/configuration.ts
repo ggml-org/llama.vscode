@@ -95,6 +95,7 @@ export class Configuration {
     env_start_last_used_confirm = true;
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
+    agents_list = new Array();
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
@@ -230,6 +231,7 @@ export class Configuration {
         this.embeddings_models_list = config.get("embeddings_models_list")??new Array(); 
         this.tools_models_list = config.get("tools_models_list")??new Array();
         this.envs_list = config.get("envs_list")??new Array();
+        this.agents_list = config.get("agents_list")??new Array();
         this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
         this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
     };

@@ -157,4 +157,12 @@ export const translations: string[][] = [
     ["Use as local AI runner", "Използвай като локален AI изпълнител", "Als lokalen AI-Runner verwenden", "Использовать как локальный AI-раннер", "Usar como ejecutor local de IA", "用作本地AI运行器", "Utiliser comme exécuteur local d'IA"],
     ["Download models automatically from Huggingface and chat with them (as LM Studio, Ollama, etc.)", "Изтегляй модели автоматично от Huggingface и чат с тях (като LM Studio, Ollama и др.)", "Modelle automatisch von Huggingface herunterladen und mit ihnen chatten (wie LM Studio, Ollama usw.)", "Автоматически загружать модели из Huggingface и общаться с ними (как в LM Studio, Ollama и т.д.)", "Descargar modelos automáticamente desde Huggingface y chatear con ellos (como LM Studio, Ollama, etc.)", "从Huggingface自动下载模型并与之聊天（如LM Studio、Ollama等）", "Télécharger automatiquement les modèles depuis Huggingface et discuter avec eux (comme LM Studio, Ollama, etc.)"],
     ["Opens a panel for adding an env", "Отваря панел за добавяне на среда", "Öffnet ein Panel zum Hinzufügen einer Umgebung", "Открывает панель для добавления окружения", "Abre un panel para añadir un entorno", "打开添加环境的面板", "Ouvre un panneau pour ajouter un environnement"],
+    ["Agents...", "Агенти...", "Agenten...", "Агенты...", "Agentes...", "代理...", "Agents..."],
+    ["Select/start agent...", "Избери/стартирай агент...", "Agent auswählen/starten...", "Выбрать/запустить агента...", "Seleccionar/iniciar agente...", "选择/启动代理...", "Sélectionner/démarrer l'agent..."],
+    ["Deselect/stop agent...", "Отмени избора/спри агент...", "Agent abwählen/stoppen...", "Отменить выбор/остановить агента...", "Deseleccionar/detener agente...", "取消选择/停止代理...", "Désélectionner/arrêter l'agent..."],
+    ["Add agent...", "Добави агент...", "Agent hinzufügen...", "Добавить агента...", "Añadir agente...", "添加代理...", "Ajouter un agent..."],
+    ["View agent details...", "Преглед на детайлите за агента...", "Agentendetails anzeigen...", "Просмотреть детали агента...", "Ver detalles del agente...", "查看代理详情...", "Voir les détails de l'agent..."],
+    ["Delete agent...", "Изтрий агент...", "Agent löschen...", "Удалить агента...", "Eliminar agente...", "删除代理...", "Supprimer l'agent..."],
+    ["Export agent...", "Експортирай агент...", "Agent exportieren...", "Экспортировать агента...", "Exportar agente...", "导出代理...", "Exporter l'agent..."],
+    ["Import agent...", "Импортирай агент...", "Agent importieren...", "Импортировать агента...", "Importar agente...", "导入代理...", "Importer l'agent..."],
   ];

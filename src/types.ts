@@ -24,6 +24,13 @@ export interface Env {
     tools?: LlmModel
 }
 
+export interface Agent {
+    name: string,
+    description?: string,
+    systemInstruction: string[]
+    tools?: string[]
+}
+
 export interface HuggingfaceFile {
     type: string // file or directory
     size: number // in bytes

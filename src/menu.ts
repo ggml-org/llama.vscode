@@ -1,6 +1,6 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
-import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env } from "./types";
+import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env, Agent } from "./types";
 import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
@@ -14,6 +14,7 @@ export class Menu {
     private selectedEmbeddingsModel: LlmModel = {name: ""}
     private selectedToolsModel: LlmModel = {name: ""}
     private selectedEnv: Env = {name: ""}
+    private selectedAgent: Agent = {name: "", systemInstruction: []}
     private readonly startModelDetail = "Selects the model and if local also downloads the model (if not yet done) and starts a llama-server with it.";
 
     constructor(application: Application) {
@@ -82,6 +83,9 @@ export class Menu {
             {
                 label: this.app.configuration.getUiText('API keys...'),
                 description: this.app.configuration.getUiText(`Edit or remove API keys. New API keys are added on first use of an endpoint.`)
+            },
+            {
+                label: this.app.configuration.getUiText('Agents...'),
             },
             {
                 label: this.app.configuration.getUiText("Maintenance"),
@@ -178,7 +182,7 @@ export class Menu {
                 if (!targetUrl) { 
                     const shouldSelectEnv = await Utils.showYesNoDialog("No tools model is selected. Do you want to select an env with tools model?")
                     if (shouldSelectEnv){
-                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name)) // .selectStartModel(chatTypeDetails);
+                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name))
                         vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.")
                         return;
                     } else {
@@ -228,6 +232,11 @@ export class Menu {
                 let envSelected = await vscode.window.showQuickPick(envsActions);
                 if (envSelected) this.processEnvActions(envSelected);
                 break;
+            case this.app.configuration.getUiText('Agents...')??"":
+                let agentsActions: vscode.QuickPickItem[] = this.getAgentActions();
+                let actionSelected = await vscode.window.showQuickPick(agentsActions);
+                if (actionSelected) this.processAgentsActions(actionSelected);
+                break;
             case "$(gear) " +  this.app.configuration.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
@@ -275,7 +284,7 @@ export class Menu {
     }
 
     selectEnvFromList = async (envsList: Env[]) => {
-        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
         let lastUsedEnv = this.app.persistence.getValue("selectedEnv")
         if (lastUsedEnv) envsItems.push({ label: (envsItems.length+1) + ". Last used env", description: lastUsedEnv.name });
         const env = await vscode.window.showQuickPick(envsItems);
@@ -291,6 +300,28 @@ export class Menu {
                 futureEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
             }
             await this.selectEnv(futureEnv, true);
+        }
+    }
+
+    
+    selectAgentFromList = async (agentsList: Agent[]) => {
+        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let lastUsedAgent = this.app.persistence.getValue("selectedAgent")
+        if (lastUsedAgent) agentsItems.push({ label: (agentsItems.length+1) + ". Last used agent", description: lastUsedAgent.name });
+        const agent = await vscode.window.showQuickPick(agentsItems);
+        if (agent) {
+            let futureAgent: Agent;
+            if (agent.label.includes("Last used agent")){
+                futureAgent = lastUsedAgent;
+                if(!futureAgent){
+                    vscode.window.showWarningMessage("No envoronment selected. There is no last used agent.");
+                    return;
+                }
+            } else {
+                futureAgent = agentsList[parseInt(agent.label.split(". ")[0], 10) - 1]
+            }
+            this.selectedAgent = futureAgent;
+            // TODO when model is added to the agent type - select it
         }
     }
 
@@ -326,7 +357,7 @@ export class Menu {
         this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
         let shouldSelect = true;
         if (askConfirm){
-           shouldSelect = await Utils.showYesNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
+           shouldSelect = await Utils.showYesNoDialog("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
                 this.getEnvDetailsAsString(futureEnv) +
                 "\n\n Do you want to continue?"
             );
@@ -337,6 +368,7 @@ export class Menu {
             await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
 
             this.selectedComplModel = this.selectedEnv.completion ?? { name: "" };
+            if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
             if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
             await this.addApiKey(this.selectedComplModel);
 
@@ -433,6 +465,32 @@ export class Menu {
         ];
     }
 
+    private getAgentActions(): vscode.QuickPickItem[] {
+        return [
+            {
+                label: this.app.configuration.getUiText("Select/start agent...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText("Deselect/stop agent...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText("Add agent...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('View agent details...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Delete agent...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Export agent...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Import agent...') ?? ""
+            },
+        ];
+    }
+
     public showCurrentEnv() {
         Utils.showOkDialog(this.getSelectionsAsString());
     }
@@ -487,6 +545,26 @@ export class Menu {
             "\nmodel name for provider: " + selectedModel.aiModel +
             "\napi key required: " + selectedModel.isKeyRequired);
         }
+    }
+
+    private async viewAgentFromList(agentsList: any[]) {
+        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let agent = await vscode.window.showQuickPick(agentsItems);
+        if (agent) {
+            let agentIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
+            let selectedAgent =  agentsList[agentIndex];
+            await Utils.showOkDialog(
+                this.getAgentDetailsAsString(selectedAgent)
+            )
+        }
+    }
+
+    private getAgentDetailsAsString(selectedAgent: Agent): string {
+        return "Agent details: " +
+            "\nname: " + selectedAgent.name +
+            "\ndescription: " + selectedAgent.description +
+            "\nsystem prompt: \n" + selectedAgent.systemInstruction.join("\n") +
+            "\n\ntools: " + (selectedAgent.tools ? selectedAgent.tools.join(", ") : "");
     }
 
     private async addModelToList(modelTypeDetails: ModelTypeDetails) {
@@ -815,16 +893,29 @@ export class Menu {
         }
     }
 
-    private async persistModelToSetting(newModel: Env, modelList: any[], settingName: string) {
-        let envDetails = this.getModelDetailsAsString(newModel);
+    private async persistModelToSetting(newModel: LlmModel, modelList: any[], settingName: string) {
+        let modelDetails = this.getModelDetailsAsString(newModel);
         const shouldAddModel = await Utils.showYesNoDialog("A new model will be added. \n\n" +
-            envDetails +
+            modelDetails +
             "\n\nDo you want to add the model?");
 
         if (shouldAddModel) {
             modelList.push(newModel);
             this.app.configuration.updateConfigValue(settingName, modelList);
             vscode.window.showInformationMessage("The model is added.");
+        }
+    }
+
+    private async persistAgentToSetting(newAgent: Agent, agentsList: any[], settingName: string) {
+        let modelDetails = this.getAgentDetailsAsString(newAgent);
+        const shouldAddModel = await Utils.showYesNoDialog("A new agent will be added. \n\n" +
+            modelDetails +
+            "\n\nDo you want to add the agent?");
+
+        if (shouldAddModel) {
+            agentsList.push(newAgent);
+            this.app.configuration.updateConfigValue(settingName, agentsList);
+            vscode.window.showInformationMessage("The agent is added.");
         }
     }
 
@@ -874,8 +965,31 @@ export class Menu {
         await this.persistModelToSetting(newModel, modelList, settingName);
     }
 
+    private async importAgentToList(agentList: any[], settingName: string) {
+        let name = "";
+        const uris = await vscode.window.showOpenDialog({
+                canSelectMany: false,
+                openLabel: 'Import Agent',
+                filters: {
+                    'Agent Files': ['json'],
+                    'All Files': ['*']
+                },
+            });
+
+            if (!uris || uris.length === 0) {
+                return;
+            }
+
+            const filePath = uris[0].fsPath;
+            
+            const fileContent = fs.readFileSync(filePath, 'utf8');
+            const newAgent = JSON.parse(fileContent);
+
+        await this.persistAgentToSetting(newAgent, agentList, settingName);
+    }
+
     private async deleteEnvFromList(envsList: any[], settingName: string) {
-        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
         const env = await vscode.window.showQuickPick(envsItems);
         if (env) {
             let envIndex = parseInt(env.label.split(". ")[0], 10) - 1;
@@ -890,7 +1004,7 @@ export class Menu {
     }
 
     private async viewEnvFromList(envsList: any[]) {
-        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
         let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
             let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
@@ -971,7 +1085,7 @@ export class Menu {
     }
 
     private async exportEnvFromList(envsList: any[]) {
-        const envsItems: QuickPickItem[] = this.getEnvs(envsList);
+        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
         let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
             let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
@@ -1002,7 +1116,7 @@ export class Menu {
     }
 
     private async exportModelFromList(modelsList: any[]) {
-        const modelsItems: QuickPickItem[] = this.getEnvs(modelsList);
+        const modelsItems: QuickPickItem[] = this.getStandardQpList(modelsList);
         let model = await vscode.window.showQuickPick(modelsItems);
         if (model) {
             let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
@@ -1028,6 +1142,37 @@ export class Menu {
                 const jsonContent = JSON.stringify(selectedmodel, null, 2);
                 fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
                 vscode.window.showInformationMessage("Model is saved.")
+            }
+        }
+    }
+
+    private async exportAgentFromList(agentsList: any[]) {
+        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let agent = await vscode.window.showQuickPick(agentsItems);
+        if (agent) {
+            let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
+            let selectedAgent =  agentsList[modelIndex];
+            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent? \n\n" +
+            this.getAgentDetailsAsString(selectedAgent)
+            );
+
+            if (shouldExport){
+                const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedAgent.name+'.json')),
+                        filters: {
+                            'Agent Files': ['json'],
+                            'All Files': ['*']
+                        },
+                        saveLabel: 'Export Agent'
+                    });
+
+                if (!uri) {
+                    return;
+                }
+
+                const jsonContent = JSON.stringify(selectedAgent, null, 2);
+                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
+                vscode.window.showInformationMessage("Agent is saved.")
             }
         }
     }
@@ -1064,7 +1209,7 @@ export class Menu {
         return complModelsItems;
     }
 
-    private getEnvs(envsFromProperty:any[]) {
+    private getStandardQpList(envsFromProperty:any[]) {
         const complEnvsItems: QuickPickItem[] = [];
         let i = 0
         for (let env of envsFromProperty) {
@@ -1129,6 +1274,10 @@ export class Menu {
         return this.selectedEnv;
     }
 
+    getAgent = (): Agent => {
+        return this.selectedAgent;
+    }
+
     isComplModelSelected = (): boolean => {
         return this.selectedComplModel != undefined && this.selectedComplModel.name. trim() != "";
     }
@@ -1147,6 +1296,10 @@ export class Menu {
 
     isEnvSelected = (): boolean => {
         return this.selectedEnv != undefined && this.selectedEnv.name. trim() != "";
+    }
+
+    isAgentSelected = (): boolean => {
+        return this.selectedAgent != undefined && this.selectedAgent.name.trim() != "";
     }
 
     processComplModelsActions = async (selected:vscode.QuickPickItem) => {
@@ -1296,6 +1449,36 @@ export class Menu {
                 break;
             case this.app.configuration.getUiText('Download/upload env online'):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/discussions'));
+                break;
+        }
+    }
+
+    processAgentsActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start agent..."):
+                await this.selectAgentFromList(this.app.configuration.agents_list);
+                break;
+            case this.app.configuration.getUiText('Add agent...'):
+                // await this.addModelToList(toolsTypeDetails);
+                Utils.showOkDialog("You could add an agent in setting agents_list")
+                break;
+            case this.app.configuration.getUiText('Delete agent...'):
+                // await this.deleteModelFromList(this.app.configuration.tools_models_list, "tools_models_list");
+                Utils.showOkDialog("You could delete an agent in setting agents_list")
+                break;
+            case this.app.configuration.getUiText('View agent details...'):
+                await this.viewAgentFromList(this.app.configuration.agents_list)
+                break;
+            case this.app.configuration.getUiText("Deselect/stop agent"):
+                // await this.deselectStopModel(this.app.llamaServer.killToolsCmd, "selectedToolsModel");
+                this.selectedAgent = {name: "", systemInstruction: []};
+                vscode.window.showInformationMessage("The agent is deselected.")
+                break;
+            case this.app.configuration.getUiText('Export agent...'):
+                await this.exportAgentFromList(this.app.configuration.agents_list)
+                break;
+            case this.app.configuration.getUiText('Import agent...'):
+                await this.importAgentToList(this.app.configuration.agents_list, "agents_list")
                 break;
         }
     }

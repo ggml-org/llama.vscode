@@ -330,7 +330,7 @@ export class Utils {
 
     static showOkDialog = async (message: string) => {
         const choice = await vscode.window.showInformationMessage(
-            message,
+             "llama-vscode \n\n" + message,
             { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
             'OK'
         );
