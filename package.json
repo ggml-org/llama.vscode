@@ -1258,7 +1258,7 @@
             },
             {
               "name": "OpenAI gpt-oss,  20B agent, chat - ( < 8GB VRAM | HD: 2.2 GB) (requires OpenRouter API key)",
-              "description": "agent - Open AI gpt-oss 20GB from OpenRouter (requries API key), chat - small model (< 8GB VRAM)",
+              "description": "agent - Open AI gpt-oss 20GB from OpenRouter (requires API key), chat - small model (< 8GB VRAM)",
               "completion": {
                 "name": "",
                 "localStartCommand": ""
@@ -1283,7 +1283,7 @@
             },
             {
               "name": "Empty - no models",
-              "description": "For cases when the settings (endpoint*, Launch_*, Api_key*,  Ai_model) are used for configuring what severs to be used by llama-vscode instead of env.",
+              "description": "For cases when the settings (endpoint*, Launch_*, Api_key*,  Ai_model) are used for configuring which servers to be used by llama-vscode instead of env.",
               "completion": {
                 "name": "",
                 "localStartCommand": "",
@@ -1319,7 +1319,7 @@
         "llama-vscode.env_start_last_used": {
           "type": "boolean",
           "default": false,
-          "description": "If true - starts the last used env on starup."
+          "description": "If true - starts the last used env on startup."
         },
         "llama-vscode.env_start_last_used_confirm": {
           "type": "boolean",
@@ -1329,7 +1329,7 @@
         "llama-vscode.auto": {
           "type": "boolean",
           "default": true,
-          "description": "If code completion should be trggered automatically (true) or only by pressing Ctrl+l."
+          "description": "If code completion should be triggered automatically (true) or only by pressing Ctrl+l."
         },
         "llama-vscode.api_key": {
           "type": "string",
