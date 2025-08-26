@@ -3,6 +3,8 @@ import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
 import { LlmModel } from "./types";
 import { Utils } from "./utils";
+import * as cp from 'child_process';
+import * as util from 'util';
 
 const STATUS_OK = 200;
 
@@ -33,7 +35,7 @@ export interface LlamaChatResponse {
 
 export interface LlamaToolsResponse {
     choices: [{
-        message:{content?: string, tool_calls:[{id:string, function: {name:string, arguments: string}}]},
+        message:{content?: string, tool_calls?:[{id:string, function: {name:string, arguments: string}}]},
         finish_reason?: string,
         
     }];
@@ -269,6 +271,24 @@ export class LlamaServer {
         };
     }
 
+    private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
+        let filteredMsgs = this.filterThoughtFromMsgs(messages)
+        const summaryPromptMsgs: ChatMessage[] = [
+            {
+            role: 'system',
+            content: `Summarize the conversation concisely, preserving technical details and code solutions.`
+            },
+            ...filteredMsgs
+        ];
+        return {
+            "messages": summaryPromptMsgs,
+            "stream": false,
+            "temperature": 0.8,
+            "top_p": 0.95,
+            ...(model.trim() != "" && { model: model})
+        };
+    }
+
     getFIMCompletion = async (
         inputPrefix: string,
         inputSuffix: string,
@@ -285,7 +305,8 @@ export class LlamaServer {
         // else, default to llama.cpp
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
         if (!endpoint) { 
-            const shouldSelectModel = await Utils.showYesNoDialog("No completion model is selected. Do you want to select an env with completion model?")
+            const selectionMessate =  "Select an env with completion model to use code completion (code suggestions by AI)."
+            const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select Env")
             if (shouldSelectModel){
                 await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
@@ -344,8 +365,9 @@ export class LlamaServer {
         return response.status === STATUS_OK ? response.data : undefined;
     };
 
-    getToolsCompletion = async (
-        messages: ChatMessage[]
+    getAgentCompletion = async (
+        messages: ChatMessage[],
+        isSummarization = false
     ): Promise<LlamaToolsResponse | undefined> => {
         let selectedModel: LlmModel = this.app.menu.getToolsModel();
         let model = this.app.configuration.ai_model;
@@ -368,7 +390,11 @@ export class LlamaServer {
         }
         
         let uri = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
-        let request = this.createToolsRequestPayload(messages, model);
+        let request: any;
+        
+        if (isSummarization) request = this.createGetSummaryRequestPayload(messages, model);
+        else request = this.createToolsRequestPayload(messages, model);
+
         const response = await axios.post<LlamaToolsResponse>(
             uri,
             request,
@@ -545,6 +571,38 @@ export class LlamaServer {
         }
     }
 
+    executeCommandWithTerminalFeedback = async (
+        command: string
+    ): Promise<{ stdout: string; stderr: string }> => {
+        const exec = util.promisify(cp.exec);
+        this.killCommandCmd();
+        // Create terminal for user feedback
+        // const terminal = vscode.window.createTerminal(terminalName);
+        // if (!this.vsCodeCommandTerminal){
+            this.vsCodeCommandTerminal = vscode.window.createTerminal({
+                name: 'llama-vscode Command Terminal'
+            });
+        // }
+        
+        this.vsCodeCommandTerminal.show(true);
+        this.vsCodeCommandTerminal.sendText(`echo "Executing: ${command}"`);
+        try {
+            // Execute command programmatically for reliable output
+            const { stdout, stderr } = await exec(command);
+            // Show output in   terminal
+            this.vsCodeCommandTerminal.sendText(`echo "Command completed successfully"`);
+            this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
+            
+            return { stdout, stderr };
+        } catch (error: any) {
+            this.vsCodeCommandTerminal.sendText(`echo "Command failed: ${error.message}"`);
+            return { stdout: "", stderr: error.message };
+        } finally {
+            // Keep terminal open for a bit, then dispose
+            // setTimeout(() => terminal.dispose(), 5000);
+        }
+    }
+
     killFimCmd = (): void => {
         if (this.vsCodeFimTerminal) {
             this.vsCodeFimTerminal.dispose();
@@ -587,11 +645,17 @@ export class LlamaServer {
     }
 
     killTrainCmd = (): void => {
-        if (this.vsCodeTrainTerminal) this.vsCodeTrainTerminal.dispose();
+        if (this.vsCodeTrainTerminal) {
+            this.vsCodeTrainTerminal.dispose();
+            this.vsCodeChatTerminal = undefined;
+        }
     }
 
     killCommandCmd = (): void => {
-        if (this.vsCodeCommandTerminal) this.vsCodeCommandTerminal.dispose();
+        if (this.vsCodeCommandTerminal) {
+            this.vsCodeCommandTerminal.dispose();
+            this.vsCodeCommandTerminal = undefined;
+        }
     }
     
     killToolsCmd = (): void => {

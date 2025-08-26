@@ -53,8 +53,8 @@ export class Tools {
             commandOutput = "The user doesn't give a permission to execute this command.";
 
         } else {
-            let resultOneCall = await Utils.executeTerminalCommand(command);
-            commandOutput = resultOneCall.slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
+            let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
+            commandOutput = (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
         }
         return commandOutput;
     }

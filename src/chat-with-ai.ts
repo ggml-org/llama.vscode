@@ -58,8 +58,8 @@ export class ChatWithAi {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
-        if (!targetUrl) { 
-            const shouldSelectModel = await Utils.showYesNoDialog("No chat model is selected. Do you want to select an env with chat model?")
+        if (!targetUrl) {
+            const shouldSelectModel = await Utils.showUserChoiceDialog("Select an env with chat model to chat with AI.","Select Env")
             if (shouldSelectModel){
                 await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) // .selectStartModel(chatTypeDetails);
                 vscode.window.showInformationMessage("After the chat model is loaded, try again opening Chat with AI.")

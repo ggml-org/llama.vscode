@@ -854,7 +854,7 @@
           },
           "default": [
             {
-              "name": "Local, full package - min, gpt-oss 20B ( > 20GB VRAM | HD: 16 GB)",
+              "name": "Local, full package - min, gpt-oss 20B ( > 24GB VRAM | HD: 16 GB)",
               "description": "Everything local, gpt-oss 20B for agent",
               "completion": {
                 "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
@@ -1575,6 +1575,26 @@
           "type": "number",
           "default": 20,
           "description": "Max number of iterations with AI when working with tools. If you are working with paid AI providers, big number here could result in higher costs."
+        },
+        "llama-vscode.chats_max_history": {
+          "type": "number",
+          "default": 50,
+          "description": "Max number of chats to store in history. An old chat is removed if needed on adding a new chat"
+        },
+        "llama-vscode.chats_max_chars": {
+          "type": "number",
+          "default": 64000,
+          "description": "Max number of chars per chat (1 token ~4 chars). If the chat is longer, the initial part will be summarized."
+        },
+        "llama-vscode.chats_summarize_old_msgs": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true - summarizes the old messages (keeps total chats_msgs_keep), when the chats_max_chars limit is reached, to reduce the context size. After the summarization, the first request could be very slow as the whole chat should be processed again (no chache reuse)."
+        },
+        "llama-vscode.chats_msgs_keep": {
+          "type": "number",
+          "default": 50,
+          "description": "The number of messages to keep summarizing a chat."
         },
         "llama-vscode.tools_log_calls": {
           "type": "boolean",

@@ -31,6 +31,20 @@ export interface Agent {
     tools?: string[]
 }
 
+export interface chatMessage {
+    "role": string,
+    "content": string
+}
+
+export interface Chat {
+    name: string,
+    description?: string,
+    id: string,
+    messages?: chatMessage[],
+    log?: string,
+    defaultAgent?: Agent
+}
+
 export interface HuggingfaceFile {
     type: string // file or directory
     size: number // in bytes

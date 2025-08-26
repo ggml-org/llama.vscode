@@ -165,4 +165,9 @@ export const translations: string[][] = [
     ["Delete agent...", "Изтрий агент...", "Agent löschen...", "Удалить агента...", "Eliminar agente...", "删除代理...", "Supprimer l'agent..."],
     ["Export agent...", "Експортирай агент...", "Agent exportieren...", "Экспортировать агента...", "Exportar agente...", "导出代理...", "Exporter l'agent..."],
     ["Import agent...", "Импортирай агент...", "Agent importieren...", "Импортировать агента...", "Importar agente...", "导入代理...", "Importer l'agent..."],
+    ["Chats...", "Чатове...", "Chats...", "Чаты...", "Chats...", "聊天...", "Chats..."],
+    ["Select/start chat...", "Избери/започни чат...", "Chat auswählen/starten...", "Выбрать/начать чат...", "Seleccionar/iniciar chat...", "选择/开始聊天...", "Sélectionner/démarrer le chat..."],
+    ["Delete chat...", "Изтрий чат...", "Chat löschen...", "Удалить чат...", "Eliminar chat...", "删除聊天...", "Supprimer le chat..."],
+    ["Export chat...", "Експортиране на чат...", "Chat exportieren...", "Экспорт чата...", "Exportar chat...", "导出聊天...", "Exporter le chat..."],
+    ["Import chat...", "Импортирай чат...", "Chat importieren...", "Импортировать чат...", "Importar chat...", "导入聊天...", "Importer le chat..."],
   ];

@@ -2,6 +2,8 @@ import {Application} from "./application";
 import { ChatMessage } from "./llama-server";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
+import { Chat } from "./types"
+
 
 interface Step {
     id: string | number;
@@ -17,6 +19,7 @@ export class LlamaAgent {
     private messages: ChatMessage[] = []
     private logText = ""
     public contexProjectFiles: Map<string,string> = new Map();
+    public sentContextFiles: Map<string,string> = new Map();
 
     constructor(application: Application) {
         this.app = application;
@@ -26,19 +29,37 @@ export class LlamaAgent {
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
         if (this.app.menu.isAgentSelected()) systemPromt = this.app.menu.getAgent().systemInstruction.join("\n")
-       
+        let worspaceFolder = "";
+        if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
+            worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
+        }
+        let projectContext = "  \n\n" + worspaceFolder;
         this.messages = [
                             {
                                 "role": "system",
-                                "content": systemPromt
+                                "content": systemPromt + projectContext
                             }
                         ];
         this.logText = "";
     }
 
+    selectChat = (chat: Chat) => {
+        if (chat && chat.defaultAgent) this.app.menu.selectAgent(chat.defaultAgent);
+        this.resetMessages();
+
+        if (chat){
+            const currentChat = this.app.menu.getChat();
+            this.messages = chat.messages??[];
+            this.logText = chat.log??"";
+         }
+         this.app.llamaWebviewProvider.logInUi(this.logText);
+         this.resetContextProjectFiles();
+    }
+
     resetContextProjectFiles = () => {
         this.contexProjectFiles.clear();
         this.app.llamaWebviewProvider.updateContextFilesInfo();
+        this.sentContextFiles.clear();
     }
 
     addContextProjectFile = (fileLongName: string, fileShortName: string) => {
@@ -49,12 +70,81 @@ export class LlamaAgent {
         this.contexProjectFiles.delete(fileLongName);
     }
 
-    getContextProjectFile = () => {
+    getContextProjectFiles = () => {
         return this.contexProjectFiles;
     }
 
     run = async (query:string) => {
         await this.askAgent(query);
+    }
+
+    private async summarize(): Promise<void> {
+        if (this.messages.length <= this.app.configuration.chats_msgs_keep) {
+            return; // Not enough messages to summarize
+        }
+
+        // Preserve system messages and recent messages
+        const systemMessages = this.messages.filter(m => m.role === 'system');
+        const recentMessages = this.messages.slice(-this.app.configuration.chats_msgs_keep);
+        const oldMessages = this.messages.slice(
+            systemMessages.length, 
+            -this.app.configuration.chats_msgs_keep
+        );
+
+        if (oldMessages.length === 0) {
+            return; // Nothing to summarize
+        }
+
+        try {
+            const summary = await this.generateSummary(oldMessages);
+            
+            // Replace old messages with the summary
+            this.messages = [
+                ...systemMessages,
+                {
+                role: 'system' as const,
+                content: `Earlier conversation summary: ${summary}`
+                },
+                ...recentMessages
+            ];
+
+        } catch (error) {
+            console.error('Failed to generate summary:', error);
+            // Fallback: just keep recent messages and remove older ones
+            this.messages = [...systemMessages, ...recentMessages];
+        }
+    }
+
+    private async generateSummary(messages: ChatMessage[]): Promise<string> {
+        // const summaryPrompt: ChatMessage[] = [
+        //     {
+        //     role: 'system',
+        //     content: `Summarize the conversation concisely, preserving technical details and code solutions.`
+        //     },
+        //     ...messages
+        // ];
+
+        // const response = await fetch('https://api.openai.com/v1/chat/completions', {
+        //     method: 'POST',
+        //     headers: {
+        //     'Content-Type': 'application/json',
+        //     'Authorization': `Bearer ${this.apiKey}`
+        //     },
+        //     body: JSON.stringify({
+        //     model: this.modelName,
+        //     messages: summaryPrompt,
+        //     max_tokens: 500,
+        //     temperature: 0.3
+        //     })
+        // });
+
+        // if (!response.ok) {
+        //     throw new Error(`API request failed: ${response.statusText}`);
+        // }
+
+        let data = await this.app.llamaServer.getAgentCompletion(messages, true)
+
+        return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
     }
 
     askAgent = async (query:string): Promise<string> => {
@@ -69,17 +159,23 @@ export class LlamaAgent {
                 return "Tools model is not selected"
             }
             
-             let worspaceFolder = "";
-            if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
-                worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
+            if (this.app.configuration.chats_summarize_old_msgs 
+                && JSON.stringify(this.messages).length > this.app.configuration.chats_max_chars) {
+                this.summarize();
             }
-            let projectContext = "  \n" + worspaceFolder;
+            // let worspaceFolder = "";
+            // if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
+            //     worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
+            // }
+            // let projectContext = "  \n" + worspaceFolder;
             
-            query = projectContext + "\n\n" + query;
+            // query = projectContext + "\n\n" + query;
             
             if (this.contexProjectFiles.size > 0){
                 query += "\n\nBelow is the content of some files, which the user has attached as a context."
                 for (const [key, value] of this.contexProjectFiles) {
+                    if (this.sentContextFiles.has(key)) continue // send only not sent files (parts)
+                    const filePath = key.split("|")[0]
                     const document = await vscode.workspace.openTextDocument(vscode.Uri.file(key));
                     let parts = value.split("|")
                     if (parts.length == 1) {
@@ -90,6 +186,7 @@ export class LlamaAgent {
                         let fileContent = document.getText().split(/\r?\n/).slice(firstLine - 1, lastLine).join("\n");
                         query += "\n\nFile " + key + " content from line " + firstLine + " to line " + lastLine + " (one based):\n\n" + fileContent.slice(0, this.app.configuration.rag_max_context_file_chars)
                     }
+                    this.sentContextFiles.set(key, value);
                 }                   
             }
 
@@ -123,7 +220,7 @@ export class LlamaAgent {
                 }
                 iterationsCount++;
                 try {
-                    let data:any = await this.app.llamaServer.getToolsCompletion(this.messages);
+                    let data:any = await this.app.llamaServer.getAgentCompletion(this.messages);
                     if (!data) {
                         this.logText += "No response from AI" + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
@@ -211,6 +308,15 @@ export class LlamaAgent {
             this.logText += "  \nAgent session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")
+            let chat = this.app.menu.getChat()
+            if (!this.app.menu.isChatSelected()){
+                chat.name = this.logText.slice(0, 25);
+                chat.id = Date.now().toString(36);
+                chat.description = new Date().toLocaleString() + " " + this.logText.slice(0,150)
+            }
+            chat.messages = this.messages;
+            chat.log = this.logText;
+            await this.app.menu.selectUpdateChat(chat)
             return response;
         }  
         

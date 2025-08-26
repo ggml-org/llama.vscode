@@ -1,8 +1,7 @@
 // TODO
 // Идеи
-// - Използване на агенти (?)
-// - използване lSP
-// - използване на MCP
+// - Използване на групи от агенти
+// - използване lSP и linters
 import * as vscode from 'vscode';
 import {Application} from "./application";
 import {LlamaWebviewProvider} from './llama-webview-provider'
@@ -23,6 +22,21 @@ export class Architect {
             this.app.menu.showHowToUseLlamaVscode();
             this.app.persistence.setGlobalValue("isFirstStart", false)
         }
+        let result = await Utils.executeTerminalCommand("llama-server --version")
+        if (result.includes("command not found") || result.includes("is not recognized")){
+            let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension."
+            if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted."
+            let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm")
+            if (shouldInstall)  
+            {
+                await this.app.menu.installLlamacpp();
+            }
+            if (process.platform == 'win32') {
+                setTimeout(() => {
+                    vscode.commands.executeCommand('workbench.action.reloadWindow');
+                }, 2000);
+            }
+        }
         if (this.app.configuration.env_start_last_used){
             let lastEnv = this.app.persistence.getValue("selectedEnv")
             if (lastEnv) {
@@ -39,6 +53,8 @@ export class Architect {
 
             }
         }
+        let lastChat = this.app.persistence.getValue("selectedChat")
+        if (lastChat) this.app.menu.selectUpdateChat(lastChat)
         this.app.tools.init()
     }
 
@@ -388,9 +404,10 @@ export class Architect {
         // Register command to show the webview
         const showWebviewCommand = vscode.commands.registerCommand(
             'extension.showLlamaWebview',
-            () => {
+            async () => {
+                let isModelAvailable = await this.app.menu.checkForToolsModel();
+                if (!isModelAvailable) return;
                 // Focus the webview in the Explorer panel
-                
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
                 this.app.llamaWebviewProvider.setView("agent")
                 const editor = vscode.window.activeTextEditor;
@@ -400,7 +417,7 @@ export class Architect {
                     let fileShortName = parts[parts.length - 1]
                     if (!editor.selection.isEmpty){
                         let sel = editor.selection;
-                        this.app.llamaAgent.addContextProjectFile(fileLongName, fileShortName + "|" + (sel.start.line + 1) + "|" + (sel.end.line + 1))
+                        this.app.llamaAgent.addContextProjectFile(fileLongName + "|" + (sel.start.line + 1) + "|" + (sel.end.line + 1), fileShortName + "|" + (sel.start.line + 1) + "|" + (sel.end.line + 1))
                     } else {
                         this.app.llamaAgent.addContextProjectFile(fileLongName, fileShortName)
                     }
@@ -412,7 +429,7 @@ export class Architect {
                         this.app.llamaWebviewProvider.webview.webview.postMessage({
                             command: 'focusTextarea'
                         });
-                        const contextFiles = this.app.llamaAgent.getContextProjectFile();
+                        const contextFiles = this.app.llamaAgent.getContextProjectFiles();
                         this.app.llamaWebviewProvider.webview.webview.postMessage({
                             command: 'updateContextFiles',
                             files: Array.from(contextFiles.entries())

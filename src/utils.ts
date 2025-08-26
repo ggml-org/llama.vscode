@@ -8,6 +8,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
 
+
 interface BM25Stats {
     avgDocLength: number;
     docFreq: Record<string, number>;
@@ -18,6 +19,7 @@ interface BM25Stats {
 
 export class Utils {
     static MSG_NO_UESR_PERMISSION = "The user doesn't give a permission to execute the request!";
+    static EMPTY_CHAT = {name: "", id: ""}
 
     static getLeadingSpaces = (input: string): string => {
         // Match the leading spaces using a regular expression
@@ -204,6 +206,8 @@ export class Utils {
         });
     }
 
+    
+
     static isModifyingCommand = (command: string): boolean => {
         if (!command || typeof command !== 'string') {
             return false;
@@ -314,6 +318,16 @@ export class Utils {
         );
 
         return choice === 'Yes';
+    }
+
+    static showUserChoiceDialog = async (message: string, acceptLable: string): Promise<boolean> => {
+        const choice = await vscode.window.showInformationMessage(
+            "llama-vscode \n\n" + message,
+            { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
+            acceptLable
+        );
+
+        return choice === acceptLable;
     }
 
     static showYesYesdontaskNoDialog = async (message: string): Promise<[boolean, boolean]> => {

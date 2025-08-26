@@ -1,6 +1,6 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
-import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env, Agent } from "./types";
+import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env, Agent, Chat } from "./types";
 import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
@@ -15,6 +15,7 @@ export class Menu {
     private selectedToolsModel: LlmModel = {name: ""}
     private selectedEnv: Env = {name: ""}
     private selectedAgent: Agent = {name: "", systemInstruction: []}
+    private selectedChat: Chat = {name:"", id:""}
     private readonly startModelDetail = "Selects the model and if local also downloads the model (if not yet done) and starts a llama-server with it.";
 
     constructor(application: Application) {
@@ -86,6 +87,9 @@ export class Menu {
             },
             {
                 label: this.app.configuration.getUiText('Agents...'),
+            },
+            {
+                label: this.app.configuration.getUiText('Chats...'),
             },
             {
                 label: this.app.configuration.getUiText("Maintenance"),
@@ -173,25 +177,18 @@ export class Menu {
                 this.app.askAi.showChatWithAi(false, context, await Utils.getExtensionHelp())
                 break;
             case this.app.configuration.getUiText("Show Llama Agent") + " (Ctrl+Shif+A)":
-                let toolsModel = this.app.menu.getToolsModel();
-                let targetUrl = this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
-                if (toolsModel && toolsModel.endpoint) {
-                    const toolsEndpoint = Utils.trimTrailingSlash(toolsModel.endpoint)
-                    targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
+                let isModelAvailable = await this.checkForToolsModel();
+                if (isModelAvailable) {
+                    vscode.commands.executeCommand('extension.showLlamaWebview');
+                    this.app.llamaWebviewProvider.updateLlamaView()
+                    setTimeout(() => {
+                        if (this.app.llamaWebviewProvider.webview) {
+                            this.app.llamaWebviewProvider.webview.webview.postMessage({
+                                command: 'focusTextarea'
+                            });
+                        }
+                    }, 100);
                 }
-                if (!targetUrl) { 
-                    const shouldSelectEnv = await Utils.showYesNoDialog("No tools model is selected. Do you want to select an env with tools model?")
-                    if (shouldSelectEnv){
-                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name))
-                        vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.")
-                        return;
-                    } else {
-                        vscode.window.showErrorMessage("No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools. ")
-                        return
-                    }
-                }
-                vscode.commands.executeCommand('extension.showLlamaWebview');
-                this.app.llamaWebviewProvider.updateLlamaView()
                 break;
             case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
                 if (this.app.configuration.rag_enabled){
@@ -236,6 +233,11 @@ export class Menu {
                 let agentsActions: vscode.QuickPickItem[] = this.getAgentActions();
                 let actionSelected = await vscode.window.showQuickPick(agentsActions);
                 if (actionSelected) this.processAgentsActions(actionSelected);
+                break;
+            case this.app.configuration.getUiText('Chats...')??"":
+                let chatsActions: vscode.QuickPickItem[] = this.getChatActions();
+                let chatSelected = await vscode.window.showQuickPick(chatsActions);
+                if (chatSelected) this.processChatActions(chatSelected);
                 break;
             case "$(gear) " +  this.app.configuration.getUiText("Edit Settings..."):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
@@ -303,6 +305,57 @@ export class Menu {
         }
     }
 
+    selectChatFromList = async (chatList: Chat[]) => {
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList);
+        const chat = await vscode.window.showQuickPick(chatsItems);
+        if (chat) {
+            let futureChat: Chat;
+            futureChat = chatList[parseInt(chat.label.split(". ")[0], 10) - 1]
+            if(!futureChat){
+                vscode.window.showWarningMessage("No chat selected.");
+                return;
+            }
+            await this.selectUpdateChat(futureChat)
+        }
+    }
+
+    selectUpdateChat = async (chatToSelect: Chat) => {
+        if (chatToSelect.id != this.selectedChat.id){
+            await this.updateChatHistory();
+            this.selectedChat = chatToSelect;
+            await this.app.persistence.setValue("selectedChat", this.selectedChat);
+            this.app.llamaAgent.selectChat(this.selectedChat);
+            this.app.llamaWebviewProvider.updateLlamaView();
+        } else {
+            this.selectedChat = chatToSelect;
+            await this.app.persistence.setValue("selectedChat", this.selectedChat);
+        }       
+    }
+
+    deleteChatFromList = async (chatList: Chat[]) => {
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList);
+        const chat = await vscode.window.showQuickPick(chatsItems);
+        if (chat) {
+            const shoulDeleteChat = await Utils.showYesNoDialog("Are you sure you want to delete the chat below? \n\n"+
+                "name: " + chat.label + 
+                "\ndescription: " + chat.description
+            );
+            if (shoulDeleteChat) {
+                let chatToDelIndex = parseInt(chat.label.split(". ")[0], 10) - 1
+                chatList.splice(chatToDelIndex, 1);
+                await this.app.persistence.setChats(chatList);  
+                vscode.window.showInformationMessage("The chat is deleted: " + chat.label)          
+            }
+        }
+    }
+
+    updateChatHistory = async () => {
+        // if chat exists - update it, otherwise, just add it
+        if (this.isChatSelected()){
+            let chatToAdd = this.selectedChat;
+            await this.addChatToHistory(chatToAdd);
+        }
+    }
     
     selectAgentFromList = async (agentsList: Agent[]) => {
         const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
@@ -313,12 +366,13 @@ export class Menu {
             let futureAgent: Agent;
             if (agent.label.includes("Last used agent")){
                 futureAgent = lastUsedAgent;
-                if(!futureAgent){
-                    vscode.window.showWarningMessage("No envoronment selected. There is no last used agent.");
-                    return;
-                }
+                
             } else {
                 futureAgent = agentsList[parseInt(agent.label.split(". ")[0], 10) - 1]
+            }
+            if(!futureAgent){
+                vscode.window.showWarningMessage("No agent selected. There is no last used agent.");
+                return;
             }
             this.selectedAgent = futureAgent;
             this.selectAgent(futureAgent)
@@ -359,6 +413,39 @@ export class Menu {
             
             await this.activateModel(modelType.selModelPropName, modelType.killCmd, modelType.shellCmd);
         }
+    }
+
+    private async addChatToHistory(chatToAdd: Chat) {
+        let chats = this.app.persistence.getChats();
+        if (!chats) chats = [];
+        const index = chats.findIndex((ch: Chat) => ch.id === chatToAdd.id);
+        if (index !== -1) {
+            chats.splice(index, 1);
+        }
+        chats.push(chatToAdd);
+        if (chats.length > this.app.configuration.chats_max_history) chats.shift();
+        await this.app.persistence.setChats(chats);
+        vscode.window.showInformationMessage("The chat '" + chatToAdd.name + "' is added/updated.");
+    }
+
+    public async checkForToolsModel() {
+        let toolsModel = this.app.menu.getToolsModel();
+        let targetUrl = this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
+        if (toolsModel && toolsModel.endpoint) {
+            const toolsEndpoint = Utils.trimTrailingSlash(toolsModel.endpoint);
+            targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
+        }
+        if (!targetUrl) {
+            const shouldSelectEnv = await Utils.showUserChoiceDialog("Select an env with tools model to use Llama Model.", "Select Env");
+            if (shouldSelectEnv) {
+                await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));
+                vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.");
+            } else {
+                vscode.window.showErrorMessage("No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools. ");
+            }
+            return false;
+        }
+        else return true;
     }
 
     public async selectEnv(futureEnv: Env, askConfirm: boolean) {
@@ -407,7 +494,8 @@ export class Menu {
         } else {
             await this.app.llamaServer.killCommandCmd();
             let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : "";
-            await this.app.llamaServer.shellCommandCmd(terminalCommand);
+            // await this.app.llamaServer.shellCommandCmd(terminalCommand);
+            await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand)
         }
     }
 
@@ -501,6 +589,23 @@ export class Menu {
             },
             {
                 label: this.app.configuration.getUiText('Import agent...') ?? ""
+            },
+        ];
+    }
+
+    private getChatActions(): vscode.QuickPickItem[] {
+        return [
+            {
+                label: this.app.configuration.getUiText("Select/start chat...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Delete chat...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Export chat...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Import chat...') ?? ""
             },
         ];
     }
@@ -990,16 +1095,39 @@ export class Menu {
                 },
             });
 
-            if (!uris || uris.length === 0) {
-                return;
-            }
+        if (!uris || uris.length === 0) {
+            return;
+        }
 
-            const filePath = uris[0].fsPath;
-            
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-            const newAgent = JSON.parse(fileContent);
+        const filePath = uris[0].fsPath;
+        
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const newAgent = JSON.parse(fileContent);
 
         await this.persistAgentToSetting(newAgent, agentList, settingName);
+    }
+
+    private async importChatToList() {
+        let name = "";
+        const uris = await vscode.window.showOpenDialog({
+                canSelectMany: false,
+                openLabel: 'Import Chat',
+                filters: {
+                    'Chat Files': ['json'],
+                    'All Files': ['*']
+                },
+            });
+
+        if (!uris || uris.length === 0) {
+            return;
+        }
+
+        const filePath = uris[0].fsPath;
+        
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const newChat = JSON.parse(fileContent);
+
+        await this.addChatToHistory(newChat);
     }
 
     private async deleteEnvFromList(envsList: any[], settingName: string) {
@@ -1190,6 +1318,38 @@ export class Menu {
             }
         }
     }
+
+    private async exportChatFromList(chatsList: any[]) {
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList);
+        let chat = await vscode.window.showQuickPick(chatsItems);
+        if (chat) {
+            let modelIndex = parseInt(chat.label.split(". ")[0], 10) - 1;
+            let selectedChat =  chatsList[modelIndex];
+            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following chat? \n\n" +
+                "name: " + chat.label +
+                "\ndescription: " + chat.description
+            );
+
+            if (shouldExport){
+                const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedChat.name+'.json')),
+                        filters: {
+                            'Chat Files': ['json'],
+                            'All Files': ['*']
+                        },
+                        saveLabel: 'Export Caht'
+                    });
+
+                if (!uri) {
+                    return;
+                }
+
+                const jsonContent = JSON.stringify(selectedChat, null, 2);
+                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
+                vscode.window.showInformationMessage("Chat is saved.")
+            }
+        }
+    }
     
 
     private async addApiKey(model: LlmModel) {
@@ -1223,17 +1383,17 @@ export class Menu {
         return complModelsItems;
     }
 
-    private getStandardQpList(envsFromProperty:any[]) {
-        const complEnvsItems: QuickPickItem[] = [];
+    private getStandardQpList(list:any[]) {
+        const items: QuickPickItem[] = [];
         let i = 0
-        for (let env of envsFromProperty) {
+        for (let elem of list) {
             i++;
-            complEnvsItems.push({
-                label: i + ". " + env.name,
-                description: env.description,
+            items.push({
+                label: i + ". " + elem.name,
+                description: elem.description,
             });
         }
-        return complEnvsItems;
+        return items;
     }  
     
     public async setCompletion(enabled: boolean){
@@ -1292,6 +1452,10 @@ export class Menu {
         return this.selectedAgent;
     }
 
+    getChat = (): Chat => {
+        return this.selectedChat;
+    }
+
     isComplModelSelected = (): boolean => {
         return this.selectedComplModel != undefined && this.selectedComplModel.name. trim() != "";
     }
@@ -1314,6 +1478,10 @@ export class Menu {
 
     isAgentSelected = (): boolean => {
         return this.selectedAgent != undefined && this.selectedAgent.name.trim() != "";
+    }
+
+    isChatSelected = (): boolean => {
+        return this.selectedChat != undefined && this.selectedChat.name.trim() != "";
     }
 
     processComplModelsActions = async (selected:vscode.QuickPickItem) => {
@@ -1493,6 +1661,23 @@ export class Menu {
                 break;
             case this.app.configuration.getUiText('Import agent...'):
                 await this.importAgentToList(this.app.configuration.agents_list, "agents_list")
+                break;
+        }
+    }
+
+    processChatActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText("Select/start chat..."):
+                await this.selectChatFromList(this.app.persistence.getChats());
+                break;
+            case this.app.configuration.getUiText('Delete chat...'):
+                await this.deleteChatFromList(this.app.persistence.getChats());
+                break;
+            case this.app.configuration.getUiText('Export chat...'):
+                await this.exportChatFromList(this.app.persistence.getChats())
+                break;
+            case this.app.configuration.getUiText('Import chat...'):
+                await this.importChatToList()
                 break;
         }
     }

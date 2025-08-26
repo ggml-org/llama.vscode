@@ -3,6 +3,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { Application } from './application';
 import { LlmModel, Env } from './types';
+import { Utils } from './utils';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -47,6 +48,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'clearText':
                         this.app.llamaAgent.resetMessages();
                         this.app.llamaAgent.resetContextProjectFiles()
+                        await this.app.menu.selectUpdateChat({name:"", id:""})
                         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
                             command: 'updateText',
                             text: ''
@@ -104,7 +106,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'addContextProjectFile':
                         let fileNames = message.fileLongName.split("|");
                         this.app.llamaAgent.addContextProjectFile(fileNames[1].trim(),fileNames[0].trim());
-                        const contextFiles = this.app.llamaAgent.getContextProjectFile();
+                        const contextFiles = this.app.llamaAgent.getContextProjectFiles();
                         webviewView.webview.postMessage({
                             command: 'updateContextFiles',
                             files: Array.from(contextFiles.entries())
@@ -112,7 +114,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'removeContextProjectFile':
                         this.app.llamaAgent.removeContextProjectFile(message.fileLongName);
-                        const updatedContextFiles = this.app.llamaAgent.getContextProjectFile();
+                        const updatedContextFiles = this.app.llamaAgent.getContextProjectFiles();
                         webviewView.webview.postMessage({
                             command: 'updateContextFiles',
                             files: Array.from(updatedContextFiles.entries())
@@ -140,7 +142,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             this.updateLlamaView();
 
             // Send initial context files
-            const contextFiles = this.app.llamaAgent.getContextProjectFile();
+            const contextFiles = this.app.llamaAgent.getContextProjectFiles();
             webviewView.webview.postMessage({
                 command: 'updateContextFiles',
                 files: Array.from(contextFiles.entries())

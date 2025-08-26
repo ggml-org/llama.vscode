@@ -1,11 +1,13 @@
 import * as crypto from 'crypto';
 import { Application } from './application';
 import * as vscode from "vscode"
+import { Chat } from './types';
 
 
 export class Persistence {
     private uniquePrefix: string = "llama.vscode.";
     private apiKeysMapPrefix: string = "apiKeys.";
+    private chatsName: string = "chats";
     private context: vscode.ExtensionContext;
     private app: Application
 
@@ -41,6 +43,18 @@ export class Persistence {
 
     getValue = (key: string): any => {
         return this.context.workspaceState.get(this.uniquePrefix + key);
+    }
+
+    setChats = async (value: Chat[]) => {
+        try {
+            await this.context.workspaceState.update(this.uniquePrefix + this.chatsName, value);
+        } catch (error){
+            console.log(error)
+        }
+    }
+
+    getChats = (): any => {
+        return this.context.workspaceState.get<Chat[]>(this.uniquePrefix + this.chatsName);
     }
 
     deleteValue = (key: string) => {
