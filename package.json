@@ -111,7 +111,8 @@
           "id": "llama-vscode.webview",
           "name": "llama-vscode",
           "when": "true",
-          "type": "webview"
+          "type": "webview",
+          "icon": "resources/llama-sidebar.svg"
         }
       ]
     },

@@ -56,7 +56,58 @@ Every change in the editor will trigger a completion request to the server.
 - Accept the first line with Shift+Tab
 - Acept the next word by Ctrl+right arrow
 
+
+
+https://github.com/user-attachments/assets/97bb1418-dcea-4a49-8332-13b2ab4da661
+
+
+
 ![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok) 
+ 
+## Custom eval tool
+
+### Overview
+llama-vscode provides to the users the posibility to partially create their own tool. Custom eval tool is a simple one - has one parameters and and uses the provided by the user javascript function to calculate the result.
+
+### How to use it
+Configure the description of the tool, the parameter description and provide a javascript function (one parameter, returns string) to be called when the tool is used.
+
+
+Settings:
+- Tool_custom_tool_eval_description: Description of the tool. This description will be used by the AI to decide if this tool should be used. Example: "Use this tool to check if a number is perfect."
+- Tool_custom_eval_tool_property_description: Description of the tool only parameter. This description will be used by the AI to decide what to provide as parameter when using this tool. Example: "a natural number to check if it is perfect or not"
+- Tool_custom_eval_tool_code: javascript function with one parameter, which returns string. Could be a path to a file with javascript function. Example: C:\temp\perfectNimber.js
+
+
+
+https://github.com/user-attachments/assets/fb12d56f-61e8-409b-b888-0a524167e116
+
+
+https://github.com/user-attachments/assets/7e928fc3-da14-4834-a414-0f8e23593155
+
+
+ 
+ 
+## Custom tool
+
+### Overview
+llama-vscode provides to the users the posibility to partially create their own tool. Custom tool is a simple one - has not parameters and returns always the same result.
+
+### How to use it
+Configure the description of the tool and the returned result, enable the tool and ask the agent questions related to the tool.
+
+
+Settings:
+- Tool_custom_tool_description: Description of the tool. This description will be used by the AI to decide if this tool should be used. Example: "Use this tool for information about llama.cpp and llama-server - how to build it, how to use it, options, etc."
+- Custom_tool_source: What should be returned by the tool. Could be file or a web page. Eample:  https://blog.steelph0enix.dev/posts/llama-cpp-guide/ ​The tool returns the content of the file or the web page.
+
+
+https://github.com/user-attachments/assets/46602f8c-bd45-4794-9f5c-6ebe262c396a
+
+
+https://github.com/user-attachments/assets/50baa8c3-f426-4901-a443-8882da644800
+
+ 
  
 ## Delete models  
 
@@ -87,6 +138,9 @@ You could delete the GGUF files from this folder. If they are missing, but are n
 - Press enter - a diff panel will be shown with the changes on the right window
 - press Tab to accept or Esc to discard the changes
 
+https://github.com/user-attachments/assets/887d0b88-717b-4765-b565-d4c54673bde8
+
+
 ![Edit with AI](https://github.com/user-attachments/assets/d7aef6a8-8c29-4278-b91f-9b3031c8cbd5) 
  
 ## Env
@@ -97,8 +151,6 @@ Env (short for environment) is a group of models. Env makes it easier for the us
 ### How to use it
 Select env for your needs from llama-vscode menu, "Select/start env..." or from Llama Agent, button "Select Env". This will select the models inside an env (and start the corresponding local servers)
 Deselect env fromllama-vscode menu, "Deselect/stop env..." or from Llama Agent, button "Deselect Env". This deselect all models (and stops the locally running servers, started by llama-vscode).
-
-If you want the last selected (used) env to be started automatically on startup, you can enable setting Env_start_last_used. With this setting checked (enabled), on each startup of the project, the last selected env will be started. Last selected env is project specific. You could start automatically different envs for different projects.
  
  
 ## Generate a commit message  
@@ -112,11 +164,12 @@ This generate a commit message, based on the current changes.
 
 ![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3) 
  
-## Version 0.0.16 is released (14.08.2025)
+## Version 0.0.19 is released (18.08.2025)
 ## What is new
-* Llama Agent UI improved
-* Chat with AI about llama.vscode added (select it from llama-vscode menu)
-* Envs (environments) with local usage of gpt-oss 20B (for agent) are added. Please wait several days until llama.cpp delivers a version with a good support for gpt-oss for agent usage (in week 18-24 of August, 2025) and then upgrade llama.cpp (for example from llama-vscode menu).
+* llama.cpp already supports gpt-oss with tools! If you have 20+ VRAM available, you could select env "Local, full package - min, gpt-oss 20B" and use all AI features, including Llama Agent, only with local models.
+* Llama agent UI now shows tables correctly
+* Auto select/start last used env if desired - setting Env_start_last_usedEnv_start_last_used
+* Agent (system prompt + default tools) selection is now possible ("Agents..." -> "Select/start agent" from llama-vscode menu). All agents details are stored in setting agents_list. Export/import agents is also possible, i.e. they could be shared.
 
 ## Setup instructions for llama.cpp server
 
@@ -211,7 +264,7 @@ Llama agent asks for permission for executing terminal command. However, if the 
 ### How to use it 
 The best wey to prepare the environment for the agent is by selecting an Env (group of models). So, below is the standard workflow:
 1. Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A to show Llama Agent. 
-2. Click "Select Env" button (visible if there is no selected env) and select env. Only envs, which support agent, will be shown. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
+2. Click "Select Env" button (visible if there is no selected env) and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
 3. Write your request and send it with Enter or the "Send" button.
 
 Optional
@@ -223,16 +276,12 @@ Optional
 Click button "Deselect Env" (vislble if there is a selected env with agent model) to deselect the env and selected models and stop the servers, which were started by llama-vscode. 
 Click button "Selected Models" to show details about the selected models
 
-https://github.com/user-attachments/assets/72029f04-0ec0-4087-8ec3-316de88092c8
+
+
+https://github.com/user-attachments/assets/dd9da21a-6f57-477d-a55c-e4ff60b1ecb8
 
 
 
-
-https://github.com/user-attachments/assets/d7da8610-ebca-4d1f-b412-82d58e81a43e
-
-
-
-https://github.com/user-attachments/assets/78596474-d8ef-4d29-9b36-59cbc5308116
 
  
  
@@ -248,7 +297,13 @@ llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . M
 4. Click "Select" button and select a model to run (not needed if the model is already started in the previous step)
 5. Click "Chat" button - a web page for chat with AI will be shown in VS Code
 
-Enjoy talking with local AI
+Enjoy talking with local AI.
+
+
+
+
+https://github.com/user-attachments/assets/e75e96de-878b-43db-a45b-47cc0c554697
+
  
  
 ## Manage envs 
@@ -257,30 +312,32 @@ Enjoy talking with local AI
 - No servers required
 
 ### Overview
-Agent is a system prompt + default tools. In future a model will be added, but for now the agent will use the selected tools model.
+Agent is combination of system prompt and tools. If an agent is selected, it will be used by the Llama Agent UI. On slecting and agent, the selected llama-vscode tools are updated.
 
-Agent configurations could be added/deleted/viewed/selected/deselected/exported/imported
+They have properties: name, description, syste prompt, tools. 
+
+Agent could be added/deleted/viewed/selected/deselected/exported/imported
 
 ### How to use it 
-Select "Agent..." from llama-vscode menu  
+Select "Agents..." from llama-vscode menu  
 
 - Add agent...
-Shows a message that agent could be added from property agents_list. Will be improved in the future.
+Adds an agent
 
 - Delete agent...  
-Shows a message that agent could be deleted from property agents_list. Will be improved in the future.
+Deletes an agent
 
 - View agent...
 Select an agent from the list to view all the details for this agent
 
 - Select/Start agent...  
-Select agent from the list. Only one agent could be selected at a time. After the selection, the llama-vscode tools (enabled/disabled)  will be updated accordingly. If an agent is selected, it will be used as default for the agent sessions.
+Select agent from the list. Only one agent could be selected at a time. If an agent is selected, the selected tools are updated and Llama Agent starts using it.
 
-- Deselect/stop agent...
-Deselect the currently selected agent. If no agent is selected, the default system prompt will be used.
+- Deselect/stop env...
+Deselect the currently selected agent. The default agent will be used by Llama Agent
 
 - Export  
-An env could be exported as a .json files. This file could be shared with other users, modified if needed, and imported again. Select an agent to export it.
+An agent could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select an agent to export it.
 
 - Import  
 An agent could be imported from a .json file - select a file to import it.
@@ -323,10 +380,37 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
 
 - Export  
-A model could be exported as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
 
 - Import  
 A model could be imported from a .json file - select a file to import it. 
+ 
+## Manage envs 
+
+### Requred servers
+- No servers required
+
+### Overview
+Chat is a coversation between the user and an AI. Chats are created and added to the history automatically. The history stores the last chats_max_history (setting with default 50) chats.
+If a chat is selected, it is loaded in the Llama Agent UI. If a the loaded chat is long, the first request to AI could take long (no cache available on first request)
+
+Chats could be manually deleted/selected/exported/imported
+
+### How to use it 
+Select "Chats..." from llama-vscode menu  
+
+- Select chat...  
+Selects a chat and loads it in Llama Agent
+
+- Delete chat...  
+Deletes a chat
+
+- Export  
+A chat could be exported as a .json file. This file could be shared with other users, modified if needed and imported again. Select a chat to export it.
+
+- Import  
+A chat could be imported from a .json file - select a file to import it.
+ 
  
 ## Manage completion models 
 
@@ -366,7 +450,7 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
 
 - Export  
-A model could be exported as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
 
 - Import  
 A model could be imported from a .json file - select a file to import it. 
@@ -409,7 +493,7 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
 
 - Export  
-A model could be exported as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+A model could be exported as a .json files. This file could be shared with others used, modified if needed and imported again. Select a model to export it.
 
 - Import  
 A model could be imported from a .json file - select a file to import it. 
@@ -433,6 +517,7 @@ Select "Env..." from llama-vscode menu
 - Add Env...
 Opens a llama view with buttons for selecting envs.The button "Add Env" creates an env with the currently selected models (i.e. current environment).
 
+
 - Delete env...  
 Select the env you want to delete from the list and delete it.
 
@@ -446,12 +531,21 @@ Select env from the list. Only one Env could be selected at a time. If an env is
 Deselect the currently selected env. All models from this env will be also deselected and the local ones, started by llama-vscode will be stopped.
 
 - Export  
-An env could be exported as a .json files. This file could be shared with other users, modified if needed, and imported again. Select an env to export it.
+An env could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select an env to export it.
 
 - Import  
 An env could be imported from a .json file - select a file to import it.
 
-There is also a menu item "Download/upload envs online", which opens a web page where envs could be downloaded/uploaded 
+There is also a menu item "Download/upload envs online", which opens a web page where envs could be downloaded/uploaded
+
+
+https://github.com/user-attachments/assets/3fb864ad-a010-4d19-97d8-fd7c9ce60494
+
+
+https://github.com/user-attachments/assets/3b8dffcc-bcdc-4981-b181-ffc52fe43075
+
+
+ 
  
 ## Manage tools models 
 
@@ -491,7 +585,7 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
 
 - Export  
-A model could be export as a .json files. This file could be shared with other used, modified if needed and imported again. Select a model to export it.
+A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
 
 - Import  
 A model could be imported from a .json file - select a file to import it. 
@@ -529,7 +623,10 @@ llama-vscode could use the the tools from the MCP servers, which are installed i
 OR 
 - Ctrl+Shift+M
 
-![Menu](https://github.com/user-attachments/assets/84f5f1a9-de6a-46eb-a337-2871a612cb69)
+
+
+https://github.com/user-attachments/assets/9895924d-1948-4f3c-b52e-2cce453645c8
+
  
  
 ## Model selection
@@ -557,8 +654,9 @@ There are different ways to select a model
 - View statistics
 - Click on "llama-vscode" status bar to show llama-vscode menu
 
-![Statusbar](https://github.com/user-attachments/assets/62562aab-93b5-4334-928f-f2a4efcf8b46)
 
+
+https://github.com/user-attachments/assets/8f0b4575-104f-471c-be3f-f3d5b58aeee1
 
  
  
