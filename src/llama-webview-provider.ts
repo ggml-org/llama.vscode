@@ -54,6 +54,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                             text: ''
                         });
                         break;
+                    case 'showChatsHistory':
+                        this.app.menu.selectChatFromList();
+                        break;
                     case 'configureTools':
                         await this.app.tools.selectTools()
                         break;

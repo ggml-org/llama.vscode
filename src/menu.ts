@@ -305,7 +305,8 @@ export class Menu {
         }
     }
 
-    selectChatFromList = async (chatList: Chat[]) => {
+    selectChatFromList = async () => {
+        let chatList = this.app.persistence.getChats()
         const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList);
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
@@ -1668,7 +1669,7 @@ export class Menu {
     processChatActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start chat..."):
-                await this.selectChatFromList(this.app.persistence.getChats());
+                await this.selectChatFromList();
                 break;
             case this.app.configuration.getUiText('Delete chat...'):
                 await this.deleteChatFromList(this.app.persistence.getChats());

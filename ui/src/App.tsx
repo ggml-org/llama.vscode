@@ -306,15 +306,20 @@ const App: React.FC<AppProps> = () => {
 
 
   const handleClearText = () => {
-    console.log('New Chat button clicked - clearing text');
     // Clear the display text locally
     setDisplayText('');
     // Also send command to extension to clear text
     vscode.postMessage({
       command: 'clearText'
     });
-    console.log('Sent clearText command to extension');
   };
+
+  const handleChatsHistory = () => {
+    vscode.postMessage({
+      command: 'showChatsHistory'
+    });
+  };
+  
 
   const handleFileSelect = (fileLongName: string) => {
     // Send the selected file to the extension
@@ -430,6 +435,13 @@ const App: React.FC<AppProps> = () => {
                 title="New Chat"
               >
                 New Chat
+              </button>
+              <button
+                onClick={handleChatsHistory}
+                className="header-btn secondary"
+                title="View Chats History And Load Old Chats"
+              >
+                Chats History
               </button>
 
               <button
