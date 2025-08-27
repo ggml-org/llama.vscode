@@ -17,6 +17,15 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "llama-vscode-sidebar",
+          "title": "llama-vscode",
+          "icon": "resources/llama-sidebar.svg"
+        }
+      ]
+    },
     "languages": [
       {
         "id": "plaintext",
@@ -97,10 +106,11 @@
       }
     ],
     "views": {
-      "explorer": [
+      "llama-vscode-sidebar": [
         {
           "id": "llama-vscode.webview",
           "name": "llama-vscode",
+          "when": "true",
           "type": "webview"
         }
       ]
@@ -1581,10 +1591,10 @@
           "default": 50,
           "description": "Max number of chats to store in history. An old chat is removed if needed on adding a new chat"
         },
-        "llama-vscode.chats_max_chars": {
+        "llama-vscode.chats_max_tokens": {
           "type": "number",
           "default": 64000,
-          "description": "Max number of chars per chat (1 token ~4 chars). If the chat is longer, the initial part will be summarized."
+          "description": "Max number of tokens per chat (1 token ~4 chars). If the chat is longer, the initial part will be summarized. This is approximate - the detection is by counting the chars in a chat (assuming 1 token is 4 chars)."
         },
         "llama-vscode.chats_summarize_old_msgs": {
           "type": "boolean",

@@ -89,7 +89,7 @@ export class Configuration {
     tools_max_iterations = 50;
     tools_log_calls = false;
     chats_max_history = 50;
-    chats_max_chars = 64000;
+    chats_max_tokens = 64000;
     chats_summarize_old_msgs = false;
     chats_msgs_keep = 50
     complition_models_list = new Array();
@@ -231,7 +231,7 @@ export class Configuration {
         this.tools_max_iterations = Number(config.get<number>("tools_max_iterations"));
         this.tools_log_calls = Boolean(config.get<boolean>("tools_log_calls"));
         this.chats_max_history = Number(config.get<number>("chats_max_history"));
-        this.chats_max_chars = Number(config.get<number>("chats_max_chars"));
+        this.chats_max_tokens = Number(config.get<number>("chats_max_tokens"));
         this.chats_summarize_old_msgs = Boolean(config.get<boolean>("chats_summarize_old_msgs"));
         this.chats_msgs_keep = Number(config.get<number>("chats_msgs_keep"));
         this.language = String(config.get<string>("language"));

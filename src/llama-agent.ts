@@ -116,32 +116,6 @@ export class LlamaAgent {
     }
 
     private async generateSummary(messages: ChatMessage[]): Promise<string> {
-        // const summaryPrompt: ChatMessage[] = [
-        //     {
-        //     role: 'system',
-        //     content: `Summarize the conversation concisely, preserving technical details and code solutions.`
-        //     },
-        //     ...messages
-        // ];
-
-        // const response = await fetch('https://api.openai.com/v1/chat/completions', {
-        //     method: 'POST',
-        //     headers: {
-        //     'Content-Type': 'application/json',
-        //     'Authorization': `Bearer ${this.apiKey}`
-        //     },
-        //     body: JSON.stringify({
-        //     model: this.modelName,
-        //     messages: summaryPrompt,
-        //     max_tokens: 500,
-        //     temperature: 0.3
-        //     })
-        // });
-
-        // if (!response.ok) {
-        //     throw new Error(`API request failed: ${response.statusText}`);
-        // }
-
         let data = await this.app.llamaServer.getAgentCompletion(messages, true)
 
         return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
@@ -160,16 +134,9 @@ export class LlamaAgent {
             }
             
             if (this.app.configuration.chats_summarize_old_msgs 
-                && JSON.stringify(this.messages).length > this.app.configuration.chats_max_chars) {
+                && JSON.stringify(this.messages).length > this.app.configuration.chats_max_tokens*4) {
                 this.summarize();
             }
-            // let worspaceFolder = "";
-            // if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
-            //     worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
-            // }
-            // let projectContext = "  \n" + worspaceFolder;
-            
-            // query = projectContext + "\n\n" + query;
             
             if (this.contexProjectFiles.size > 0){
                 query += "\n\nBelow is the content of some files, which the user has attached as a context."
