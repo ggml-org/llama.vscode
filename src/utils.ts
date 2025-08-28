@@ -559,7 +559,9 @@ export class Utils {
 
         for (const block of editBlocks) {
             if (block.length === 3) {
-                const filePath = block[0].trim();
+                let filePath = block[0].trim();
+                if (filePath.startsWith("<file_path>")) filePath = filePath.slice("<file_path>".length);
+                if (filePath.endsWith("</file_path>")) filePath = filePath.slice(0,-"</file_path>".length)
                 let searchText = block[1].trim();
                 // Make sure only \n is used for new line
                 searchText = searchText.split(/\r?\n/).join("\n");

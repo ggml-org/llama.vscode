@@ -30,11 +30,11 @@ export class Architect {
             if (shouldInstall)  
             {
                 await this.app.menu.installLlamacpp();
-            }
-            if (process.platform == 'win32') {
+                if (process.platform == 'win32') {
                 setTimeout(() => {
                     vscode.commands.executeCommand('workbench.action.reloadWindow');
                 }, 2000);
+            }
             }
         }
         if (this.app.configuration.env_start_last_used){

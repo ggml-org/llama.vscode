@@ -306,12 +306,16 @@ export class Menu {
     }
 
     selectChatFromList = async () => {
-        let chatList = this.app.persistence.getChats()
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList);
+        let chatsList = this.app.persistence.getChats()
+        if (!chatsList || chatsList.length == 0){
+            vscode.window.showInformationMessage("No chats in the history.")
+            return;
+        }
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList);
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let futureChat: Chat;
-            futureChat = chatList[parseInt(chat.label.split(". ")[0], 10) - 1]
+            futureChat = chatsList[parseInt(chat.label.split(". ")[0], 10) - 1]
             if(!futureChat){
                 vscode.window.showWarningMessage("No chat selected.");
                 return;

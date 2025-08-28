@@ -49,9 +49,14 @@ export class Tools {
         if (command == undefined) return "The terminal command is not provided."
 
         let commandOutput = "";
-        if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command)) && !await Utils.showYesNoDialog("Do you give a permission to execute the terminal command:\n" + command)) {
-            commandOutput = "The user doesn't give a permission to execute this command.";
-
+        if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
+            let [yesApply, yesDontAsk] = await Utils.showYesYesdontaskNoDialog("Do you give a permission to execute the terminal command:\n" + command + 
+                "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
+            if (yesDontAsk) {
+                this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
+                vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
+            }
+            if (!yesApply) return "The user doesn't give a permission to execute this command.";;
         } else {
             let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
             commandOutput = (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
@@ -221,8 +226,14 @@ export class Tools {
         if (params.input == undefined) return "The input is not provided."
 
         try {
-            if (!this.app.configuration.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you agree to apply the following change? \n\n" + params.input)) {
-                return Utils.MSG_NO_UESR_PERMISSION;
+            if (!this.app.configuration.tool_permit_file_changes){
+                let filePath = this.getFilePath(params.input);
+                let [yesApply, yesDontAsk] = await Utils.showYesYesdontaskNoDialog("Do you permit file " + filePath + " to be changed?")
+                if (yesDontAsk) {
+                    this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
+                    vscode.window.showInformationMessage("Setting tool_permit_file_changes is set to true.")
+                }
+                if (!yesApply) return Utils.MSG_NO_UESR_PERMISSION;
             }
             await Utils.applyEdits(changes)
             return "The file is updated ";
@@ -234,16 +245,10 @@ export class Tools {
 
     public editFileDesc = async (args: string) => {
         let params = JSON.parse(args);
-        let filePath = ""
         let diffText = params.input;
         if (!diffText) return "EditFile Desc - parameter input not found."
-        const blocks = diffText.split("```diff")
-        if (blocks.slice(1).length > 0){
-            let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0])
-            if (blockParts.length === 3) {
-                    filePath = blockParts[0].trim();
-            }
-        }
+        
+        let filePath = this.getFilePath(diffText);
         
         return "Edited file " + filePath;
     }
@@ -668,6 +673,19 @@ export class Tools {
             }
 
         }
+    }
+
+    private getFilePath(diffText: string) {
+        let filePath = "";
+        const blocks = diffText.split("```diff")
+        if (blocks.slice(1).length > 0) {
+            let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0]);
+            filePath = blockParts[0].trim();
+        } else {
+            if (diffText.length > 0) filePath = Utils.extractConflictParts("```diff\n" + diffText)[0].trim()
+            else return "";
+        }
+        return filePath;
     }
 
     private async indexFilesIfNeeded() {
