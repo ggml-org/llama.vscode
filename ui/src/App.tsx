@@ -466,7 +466,7 @@ const App: React.FC<AppProps> = () => {
               >
                 Select Env
               </button>
-              Select an env (group of LLMs) with tools model to start using Llama Agent.
+              Select an env (group of LLMs) with a tools model to start using Llama Agent.
               </div>)}
 
               {!currentToolsModel.includes(noModelSelected) && (<button
