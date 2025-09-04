@@ -2,8 +2,8 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Application } from './application';
-import { LlmModel, Env } from './types';
-import { Utils } from './utils';
+import { LlmModel, Env, Agent } from './types';
+import { Configuration } from './configuration';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -78,7 +78,41 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'selectModelForCompletion':
                         let complTypeDetails = this.app.menu.getComplTypeDetails()
                         await this.app.menu.selectStartModel(complTypeDetails);    
-                        break
+                        break;
+                    case 'deselectCompletionModel':
+                        await this.app.menu.deselectStopModel(this.app.menu.getComplTypeDetails())
+                        break;
+                    case 'deselectChatModel':
+                        await this.app.menu.deselectStopModel(this.app.menu.getChatTypeDetails())
+                        break;
+                    case 'deselectEmbsModel':
+                        await this.app.menu.deselectStopModel(this.app.menu.getEmbsTypeDetails())
+                        break;
+                    case 'deselectToolsModel':
+                        await this.app.menu.deselectStopModel(this.app.menu.getToolsTypeDetails())
+                        break;
+                    case 'deselectAgent':
+                        await this.app.menu.deselectAgent();
+                        break;
+                    case 'showCompletionModel':
+                        this.app.menu.showModelDetails(this.app.menu.getComplModel())
+                        break;
+                    case 'showChatModel':
+                        this.app.menu.showModelDetails(this.app.menu.getChatModel())
+                        break;
+                    case 'showEmbsModel':
+                        this.app.menu.showModelDetails(this.app.menu.getEmbeddingsModel())
+                        break;
+                    case 'showToolsModel':
+                        this.app.menu.showModelDetails(this.app.menu.getToolsModel())
+                        break;
+                    case 'showAgentDetails':
+                        this.app.menu.showAgentDetails(this.app.menu.getAgent())
+                        break;
+                    case 'selectAgent':
+                        let agentsList = this.app.configuration.agents_list
+                        await this.app.menu.selectAgentFromList(agentsList)
+                        break;
                     case 'chatWithAI':
                         this.app.askAi.closeChatWithAi(false);
                         this.app.askAi.showChatWithAi(false, this.context);
@@ -91,10 +125,16 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.menu.addHuggingfaceModelToList(chatTypeDetailsHf);
                         break;
                     case 'selectEnv':
-                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));    
+                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list);    
                         break;
                     case 'stopEnv':
                         await this.app.menu.stopEnv();    
+                        break;
+                    case 'showEnvView':
+                        this.app.menu.showEnvView();
+                        break;
+                    case 'showAgentView':
+                        this.app.menu.showAgentView();
                         break;
                     case 'showSelectedModels':
                         await this.app.menu.showCurrentEnv();    
@@ -131,6 +171,19 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'addEnv':
                         this.app.menu.addEnvToList(this.app.configuration.envs_list, "envs_list")
                         break;
+                    case 'toggleCompletionsEnabled':
+                        this.app.configuration.updateConfigValue("enabled", message.enabled)
+                        break;
+                    case 'toggleRagEnabled':
+                        this.app.configuration.updateConfigValue("rag_enabled", message.enabled)
+                        break;
+                    case 'toggleAutoStartEnv':
+                        this.app.configuration.updateConfigValue("env_start_last_used", message.enabled)
+                        break;
+                    case 'getVscodeSetting':
+                        const settingValue = this.app.configuration[message.key as keyof Configuration];
+                        this.updateSettingInEnvView(message.key, settingValue);
+                        break;
                 }
             }
         );
@@ -151,6 +204,20 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 files: Array.from(contextFiles.entries())
             });
         }, 1000);
+    }
+
+    private updateSettingInEnvView(key: string, settingValue: any) {
+         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'vscodeSettingValue',
+            key: key,
+            value: settingValue
+        });
+    }
+
+    private updateSettingsInView(){
+        this.updateSettingInEnvView('enabled', this.app.configuration.enabled);
+        this.updateSettingInEnvView('rag_enabled', this.app.configuration.rag_enabled);
+        this.updateSettingInEnvView('env_start_last_used', this.app.configuration.env_start_last_used);
     }
 
     private updateEmbsModel() {
@@ -185,6 +252,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
+    private updateAgent() {
+        const currentAgent: Agent = this.app.menu.getAgent();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateAgent',
+            agent: currentAgent.name || 'No agent selected'
+        });
+    }
+
     private updateEnv() {
         const currentEnv: Env = this.app.menu.getEnv();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
@@ -214,13 +289,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
+    public set(view: string) {
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateView',
+            text: view
+        });
+    }
+
     public updateLlamaView() {
         this.updateToolsModel();
         this.updateChatModel();
         this.updateEmbsModel();
         this.updateComplsModel();
+        this.updateAgent();
         this.updateEnv();
-        // TODO update with the selected agent
+        this.updateSettingsInView();
     }
 
     public updateContextFilesInfo() {

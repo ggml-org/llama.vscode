@@ -177,18 +177,7 @@ export class Menu {
                 this.app.askAi.showChatWithAi(false, context, await Utils.getExtensionHelp())
                 break;
             case this.app.configuration.getUiText("Show Llama Agent") + " (Ctrl+Shif+A)":
-                let isModelAvailable = await this.checkForToolsModel();
-                if (isModelAvailable) {
-                    vscode.commands.executeCommand('extension.showLlamaWebview');
-                    this.app.llamaWebviewProvider.updateLlamaView()
-                    setTimeout(() => {
-                        if (this.app.llamaWebviewProvider.webview) {
-                            this.app.llamaWebviewProvider.webview.webview.postMessage({
-                                command: 'focusTextarea'
-                            });
-                        }
-                    }, 100);
-                }
+                await this.showAgentView();
                 break;
             case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
                 if (this.app.configuration.rag_enabled){
@@ -380,8 +369,9 @@ export class Menu {
                 return;
             }
             this.selectedAgent = futureAgent;
-            this.selectAgent(futureAgent)
-            // TODO when model is added to the agent type - select it
+            await this.selectAgent(futureAgent)
+            this.app.llamaWebviewProvider.updateLlamaView();
+            // TODO ? when model is added to the agent type - select it
         }
     }
 
@@ -395,6 +385,7 @@ export class Menu {
         }
         await this.app.persistence.setValue("selectedAgent", this.selectedAgent);
         this.app.llamaWebviewProvider.updateLlamaView();
+        if (agent.name) vscode.window.showInformationMessage("Agent " + agent.name + " is selected.")
     }
 
     selectStartModel = async (modelType: ModelTypeDetails) => {
@@ -420,6 +411,21 @@ export class Menu {
         }
     }
 
+    public async showAgentView() {
+        let isModelAvailable = await this.checkForToolsModel();
+        if (isModelAvailable) {
+            vscode.commands.executeCommand('extension.showLlamaWebview');
+            this.app.llamaWebviewProvider.updateLlamaView();
+            setTimeout(() => {
+                if (this.app.llamaWebviewProvider.webview) {
+                    this.app.llamaWebviewProvider.webview.webview.postMessage({
+                        command: 'focusTextarea'
+                    });
+                }
+            }, 100);
+        }
+    }
+
     private async addChatToHistory(chatToAdd: Chat) {
         let chats = this.app.persistence.getChats();
         if (!chats) chats = [];
@@ -441,9 +447,10 @@ export class Menu {
             targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            const shouldSelectEnv = await Utils.showUserChoiceDialog("Select an env with tools model to use Llama Model.", "Select Env");
+            const shouldSelectEnv = await Utils.showUserChoiceDialog("Select a tools model or an env with tools model to use Llama Agent.", "Select");
             if (shouldSelectEnv) {
-                await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));
+                // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));
+                this.showEnvView()
                 vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.");
             } else {
                 vscode.window.showErrorMessage("No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools. ");
@@ -489,6 +496,11 @@ export class Menu {
             this.selectedToolsModel = this.selectedEnv.tools ?? { name: "" };
             if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
             await this.addApiKey(this.selectedToolsModel);
+
+            if (this.selectedEnv.agent) this.selectAgent(this.selectedEnv.agent)
+            if (this.selectedEnv.ragEnabled != undefined) this.app.configuration.updateConfigValue("rag_enabled", this.selectedEnv.ragEnabled)
+            if (this.selectedEnv.envStartLastUsed != undefined) this.app.configuration.updateConfigValue("env_start_last_used", this.selectedEnv.envStartLastUsed)
+            if (this.selectedEnv.complEnabled != undefined) this.app.configuration.updateConfigValue("enabled", this.selectedEnv.complEnabled)
         }
         this.app.llamaWebviewProvider.updateLlamaView();
     }
@@ -661,14 +673,17 @@ export class Menu {
         if (model) {
             let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
             let selectedModel =  modelsList[modelIndex];
-            Utils
-            await Utils.showOkDialog("Model details: " +
+            await this.showModelDetails(selectedModel);
+        }
+    }
+
+    public async showModelDetails(selectedModel: any) {
+        await Utils.showOkDialog("Model details: " +
             "\nname: " + selectedModel.name +
             "\nlocal start command: " + selectedModel.localStartCommand +
             "\nendpoint: " + selectedModel.endpoint +
             "\nmodel name for provider: " + selectedModel.aiModel +
             "\napi key required: " + selectedModel.isKeyRequired);
-        }
     }
 
     private async viewAgentFromList(agentsList: any[]) {
@@ -677,10 +692,14 @@ export class Menu {
         if (agent) {
             let agentIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
             let selectedAgent =  agentsList[agentIndex];
-            await Utils.showOkDialog(
-                this.getAgentDetailsAsString(selectedAgent)
-            )
+            await this.showAgentDetails(selectedAgent);
         }
+    }
+
+    public async showAgentDetails(selectedAgent: any) {
+        await Utils.showOkDialog(
+            this.getAgentDetailsAsString(selectedAgent)
+        );
     }
 
     private getAgentDetailsAsString(selectedAgent: Agent): string {
@@ -998,7 +1017,11 @@ export class Menu {
             completion: this.selectedComplModel,
             chat: this.selectedChatModel,
             embeddings: this.selectedEmbeddingsModel,
-            tools: this.selectedToolsModel
+            tools: this.selectedToolsModel,
+            agent: this.selectedAgent,
+            ragEnabled: this.app.configuration.rag_enabled,
+            envStartLastUsed: this.app.configuration.env_start_last_used,
+            complEnabled: this.app.configuration.enabled
         };
 
         await this.persistEnvToSetting(newEnv, envList, settingName);
@@ -1508,7 +1531,7 @@ export class Menu {
                 await this.viewModelFromList(this.app.configuration.complition_models_list)
                 break;
             case this.app.configuration.getUiText("Deselect/stop completion model"):
-                await this.deselectStopModel(this.app.llamaServer.killFimCmd, "selectedComplModel");
+                await this.deselectStopModel(compleModelType);
                 break;
             case this.app.configuration.getUiText('Export completion model...'):
                 await this.exportModelFromList(this.app.configuration.complition_models_list)
@@ -1538,7 +1561,7 @@ export class Menu {
                 await this.viewModelFromList(this.app.configuration.chat_models_list)
                 break;
             case this.app.configuration.getUiText("Deselect/stop chat model"):
-                await this.deselectStopModel(this.app.llamaServer.killChatCmd, "selectedChatModel");    
+                await this.deselectStopModel(chatTypeDetails);    
                 break;
             case this.app.configuration.getUiText('Export chat model...'):
                 await this.exportModelFromList(this.app.configuration.chat_models_list)
@@ -1568,7 +1591,7 @@ export class Menu {
                 await this.viewModelFromList(this.app.configuration.embeddings_models_list)
                 break;
             case this.app.configuration.getUiText("Deselect/stop embeddings model"):
-                await this.deselectStopModel(this.app.llamaServer.killEmbeddingsCmd, "selectedEmbeddingsModel");
+                await this.deselectStopModel(embsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Export embeddings model...'):
                 await this.exportModelFromList(this.app.configuration.embeddings_models_list)
@@ -1598,7 +1621,7 @@ export class Menu {
                 await this.viewModelFromList(this.app.configuration.tools_models_list)
                 break;
             case this.app.configuration.getUiText("Deselect/stop tools model"):
-                await this.deselectStopModel(this.app.llamaServer.killToolsCmd, "selectedToolsModel");
+                await this.deselectStopModel(toolsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Export tools model...'):
                 await this.exportModelFromList(this.app.configuration.tools_models_list)
@@ -1615,8 +1638,7 @@ export class Menu {
                 this.selectEnvFromList(this.app.configuration.envs_list);
                 break;
             case this.app.configuration.getUiText('Add env...'):
-                vscode.commands.executeCommand('extension.showLlamaWebview');
-                this.app.llamaWebviewProvider.setView("addenv")
+                this.showEnvView();
                 // await this.addEnvToList(this.app.configuration.envs_list, "envs_list");
                 break;
             case this.app.configuration.getUiText('Delete env...'):
@@ -1727,9 +1749,14 @@ export class Menu {
         }
     }
 
-    private async deselectStopModel(killCmd: () => void, selModelPropName: string) {
-        await killCmd();
-        this[selModelPropName as keyof Menu] = { name: "", localStartCommand: "" } as any;
+    public showEnvView() {
+        vscode.commands.executeCommand('extension.showLlamaWebview');
+        this.app.llamaWebviewProvider.setView("addenv");
+    }
+
+    public async deselectStopModel(modelTypeDetails: ModelTypeDetails) {
+        await modelTypeDetails.killCmd();
+        this[modelTypeDetails.selModelPropName as keyof Menu] = { name: "", localStartCommand: "" } as any;
         this.app.llamaWebviewProvider.updateLlamaView();
     }
 
@@ -1742,9 +1769,10 @@ export class Menu {
         this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killToolsCmd();
         this.selectedToolsModel = { name: "", localStartCommand: "" };
+        this.deselectAgent();
         this.selectedEnv = { name: "" };
         this.app.llamaWebviewProvider.updateLlamaView();
-        vscode.window.showInformationMessage("Env and models are deselected.")
+        vscode.window.showInformationMessage("Env, models and agent are deselected.")
     }
 
     getChatTypeDetails = (): ModelTypeDetails => {
@@ -1797,5 +1825,23 @@ export class Menu {
             killCmd: this.app.llamaServer.killToolsCmd,
             shellCmd: this.app.llamaServer.shellToolsCmd
         };
+    }
+
+    public deselectAgent() {
+        this.selectAgent({
+            name: "",
+            systemInstruction: [],
+            tools: [
+                "run_terminal_command",
+                "search_source",
+                "read_file",
+                "list_directory",
+                "regex_search",
+                "delete_file",
+                "get_diff",
+                "edit_file",
+                "ask_user"
+            ]
+        });
     }
 }

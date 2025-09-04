@@ -129,7 +129,6 @@ body {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
   min-height: 0; /* Allow content to shrink */
 }
 
@@ -390,13 +389,22 @@ body {
 }
 
 /* Model Selection Frame */
-.model-selection-frame {
+.single-button-frame {
   position: relative;
   border: 1px solid var(--vscode-input-border);
   border-radius: 8px;
   padding: 16px;
   margin-top: 12px;
   background-color: var(--vscode-editor-background);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.model-text {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 13px;
+  font-weight: 500;
 }
 
 .frame-label {
@@ -413,9 +421,7 @@ body {
 
 /* LLM Model Selection Buttons */
 .llm-buttons {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: block;
   margin: 0;
   padding: 0;
 }
@@ -627,7 +633,6 @@ body {
   border: 1px solid var(--vscode-panel-border);
   border-radius: 8px;
   margin: 0 20px 20px 20px;
-  overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   /* Ensure proper sizing */
   display: flex;

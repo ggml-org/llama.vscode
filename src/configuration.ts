@@ -267,6 +267,12 @@ export class Configuration {
         if (event.affectsConfiguration("llama-vscode.env_start_last_used")) this.updateConfigValue("env_start_last_used_confirm", true);
     };
 
+    isEnvViewSettingChanged = (event: vscode.ConfigurationChangeEvent) => {
+         return event.affectsConfiguration("llama-vscode.enabled")
+            || event.affectsConfiguration("llama-vscode.rag_enabled")
+            || event.affectsConfiguration("llama-vscode.env_start_last_used");
+    }
+
     isRagConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
         return event.affectsConfiguration("llama-vscode.rag_chunk_max_chars")
         || event.affectsConfiguration("llama-vscode.rag_max_lines_per_chunk")

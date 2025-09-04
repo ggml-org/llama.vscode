@@ -353,6 +353,18 @@
             ]
           },
           "default": [
+           {
+              "name": "llama-vscode help",
+              "description": "This is an agent for helping how to use llama-vscode.",
+              "systemInstruction": [
+                  "You are an agent for helping the user how to use llama-vscode.",
+                  "Use the available tools to get the help documentation for llama-vscode and answer the questions from the user.",
+                  "Base your answers on the help documentation from the tools."
+              ],
+              "tools": [
+                  "llama_vscode_help"
+              ]
+            },
             {
               "name": "default",
               "description": "This is the default agent.",
@@ -535,17 +547,17 @@
           "default": [
             {
               "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
               "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
               "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
@@ -562,7 +574,7 @@
             },
             {
               "name": "OpenAI gpt-oss 20B",
-              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8011",
+              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8011",
               "endpoint": "http://localhost:8011",
               "aiModel": "",
               "isKeyRequired": false
@@ -712,7 +724,7 @@
             },
             {
               "name": "OpenAI gpt-oss 20B (LOCAL)",
-              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
               "endpoint": "http://localhost:8009",
               "aiModel": "",
               "isKeyRequired": false
@@ -860,6 +872,52 @@
                 "required": [
                   "name"
                 ]
+              },
+              "agent": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name for this agent to be shown to the user"
+                  },
+                  "description": {
+                    "type": "string",
+                    "description": "Description of the model - for what purposes should be used, what are his strengths, etc."
+                  },
+                  "systemInstruction": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "The system instructions for this agent",
+                    "default": ""
+                  },
+                  "tools": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tools, which will be used by default by this agent",
+                    "default": []
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              },
+              "ragEnabled": {
+                "type": "boolean",
+                "default": true
+              },       
+              "envStartLastUsed": {
+                "type": "boolean",
+                "default": false,
+                "description": "If true - starts the last used env on startup."
+              },
+              "complEnabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "Enable/disable completions"
               }
             }
           },
@@ -876,7 +934,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -886,7 +944,7 @@
               },
               "tools": {
                 "name": "OpenAI gpt-oss 20B",
-                "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+                "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
                 "endpoint": "http://localhost:8009",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -904,7 +962,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -914,7 +972,7 @@
               },
               "tools": {
                 "name": "OpenAI gpt-oss 20B",
-                "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+                "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
                 "endpoint": "http://localhost:8009",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -932,7 +990,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -942,7 +1000,7 @@
               },
               "tools": {
                 "name": "OpenAI gpt-oss 20B",
-                "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 -fa --jinja --reasoning-format none -np 2 --port 8009",
+                "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
                 "endpoint": "http://localhost:8009",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -1106,7 +1164,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1128,7 +1186,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1149,7 +1207,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1171,7 +1229,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1198,7 +1256,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1225,7 +1283,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1252,7 +1310,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -1276,7 +1334,7 @@
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {

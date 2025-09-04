@@ -2,7 +2,7 @@ import vscode, { Uri } from "vscode";
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { ChunkEntry } from './types'
+import { ChunkEntry, Env, LlmModel } from './types'
 import pm from 'picomatch'
 import * as https from 'https';
 import * as http from 'http';
@@ -780,5 +780,29 @@ export class Utils {
 
     static getExtensionHelp = async () => {
         return Utils.readExtensionFile("resources/help.md")
+    }
+
+    static removeFaOption = (input: string): string => {
+        return input.replace(/-fa[^-]*/g, '');
+    }
+
+    static removeFaOptionFromModels = (chatModels: LlmModel[]) => {
+        for (let model of chatModels) {
+            if (model.localStartCommand) model.localStartCommand = Utils.removeFaOption(model.localStartCommand);
+        }
+    }
+
+    static removeFaOptionFromEnvs = (envs: Env[]) => {
+        for (let env of envs) {
+            if (env.chat && env.chat.localStartCommand) env.chat.localStartCommand = Utils.removeFaOption(env.chat.localStartCommand);
+            if (env.tools && env.tools.localStartCommand) env.tools.localStartCommand = Utils.removeFaOption(env.tools.localStartCommand);
+        }
+    }
+
+    static is24HoursLater = (date1: Date, date2: Date): boolean => {
+        const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        const timeDifference = date2.getTime() - date1.getTime();
+        
+        return timeDifference >= twentyFourHoursInMs;
     }
 }

@@ -6,6 +6,8 @@ import * as vscode from 'vscode';
 import {Application} from "./application";
 import {LlamaWebviewProvider} from './llama-webview-provider'
 import { Utils } from './utils';
+import { Env, LlmModel } from './types';
+import { env } from 'process';
 
 export class Architect {
     private app: Application
@@ -31,11 +33,38 @@ export class Architect {
             {
                 await this.app.menu.installLlamacpp();
                 if (process.platform == 'win32') {
-                setTimeout(() => {
-                    vscode.commands.executeCommand('workbench.action.reloadWindow');
-                }, 2000);
+                    setTimeout(() => {
+                        vscode.commands.executeCommand('workbench.action.reloadWindow');
+                    }, 2000);
+                }
             }
-            }
+        } else {
+            // Upgrade llama.cpp only if not upgraded at least 24:00 hours
+            let lastUpgradeDateStr = this.app.persistence.getGlobalValue("last_llama_cpp")
+            if (!lastUpgradeDateStr || Utils.is24HoursLater(new Date(lastUpgradeDateStr), new Date())) {
+                let questionInstall = "Do you want to upgrade llama.cpp (used for running local models)? (recommended)."
+                let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm") //yes, don't ask again
+                if (shouldInstall)  
+                {
+                    await this.app.menu.installLlamacpp();
+                    this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString())
+                    // Ако не е първо пускане на лама вскоде и не е направно до сега - махни -fa от командите
+                    if (!isFirstStart && !lastUpgradeDateStr){
+                        let chatModels = this.app.configuration.chat_models_list as LlmModel[];
+                        let toolsModels = this.app.configuration.tools_models_list as LlmModel[];
+                        let envs = this.app.configuration.envs_list as Env[];
+
+                        Utils.removeFaOptionFromModels(chatModels);
+                        Utils.removeFaOptionFromModels(toolsModels);
+                        Utils.removeFaOptionFromEnvs(envs)
+
+                        this.app.configuration.updateConfigValue("chat_models_list", chatModels);
+                        this.app.configuration.updateConfigValue("tools_models_list", toolsModels);
+                        this.app.configuration.updateConfigValue("envs_list", envs);
+                    }
+                }
+            } 
+            
         }
         if (this.app.configuration.env_start_last_used){
             let lastEnv = this.app.persistence.getValue("selectedEnv")
@@ -55,6 +84,8 @@ export class Architect {
         }
         let lastChat = this.app.persistence.getValue("selectedChat")
         if (lastChat) this.app.menu.selectUpdateChat(lastChat)
+        let lastAgent = this.app.persistence.getValue("selectedAgent")
+        if (lastAgent) this.app.menu.selectAgent(lastAgent)
         this.app.tools.init()
     }
 
@@ -100,6 +131,7 @@ export class Architect {
             this.app.configuration.updateOnEvent(event, config);
             if (this.app.configuration.isRagConfigChanged(event)) this.init();
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
+            if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
             vscode.window.showInformationMessage(this.app.configuration.getUiText(`llama-vscode extension is updated.`)??"");
         });
         context.subscriptions.push(configurationChangeDisp);
@@ -405,8 +437,6 @@ export class Architect {
         const showWebviewCommand = vscode.commands.registerCommand(
             'extension.showLlamaWebview',
             async () => {
-                let isModelAvailable = await this.app.menu.checkForToolsModel();
-                if (!isModelAvailable) return;
                 // Focus the webview in the Explorer panel
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
                 this.app.llamaWebviewProvider.setView("agent")
@@ -457,7 +487,6 @@ export class Architect {
         );
         context.subscriptions.push(postMessageCommand);
     }
-    
 
     private indexWorspaceFiles() {
         if (this.app.configuration.rag_enabled) {

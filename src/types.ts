@@ -21,7 +21,11 @@ export interface Env {
     completion?: LlmModel,
     chat?: LlmModel,
     embeddings?: LlmModel,
-    tools?: LlmModel
+    tools?: LlmModel,
+    agent?: Agent,
+    ragEnabled?: boolean,
+    envStartLastUsed?: boolean,
+    complEnabled?: boolean
 }
 
 export interface Agent {
