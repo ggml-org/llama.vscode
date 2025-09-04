@@ -286,8 +286,8 @@ const AgentView: React.FC<AgentViewProps> = ({
     }
   };
 
-  return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    return (
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
       {/* Modern Header */}
       <div className="header">
         <div className="header-content">
@@ -328,21 +328,21 @@ const AgentView: React.FC<AgentViewProps> = ({
         </div>
       </div>
 
-             {/* Main Content */}
-       {!currentToolsModel.includes('No model selected') && (
-         <div className="content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-          {/* Chat Display Area */}
-          {/* Markdown Display Area */}
-          {displayText && (
-            <div className="markdown-container" ref={markdownContainerRef} style={{ flex: 1, minHeight: 0, maxHeight: '60vh' }}>
-              <div className="markdown-content">
-                <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
-              </div>
-            </div>
-          )}
+              {/* Main Content */}
+        {!currentToolsModel.includes('No model selected') && (
+          <div className="content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+           {/* Chat Display Area */}
+           {/* Markdown Display Area */}
+           {displayText && (
+             <div className="markdown-container" ref={markdownContainerRef} style={{ flex: 1, minHeight: 0, maxHeight: '50vh' }}>
+               <div className="markdown-content" style={{ height: '100%', overflowY: 'auto' }}>
+                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+               </div>
+             </div>
+           )}
 
-          {/* Input Section - Moved to bottom */}
-          <div className="input-section">
+           {/* Input Section - Moved to bottom */}
+           <div className="input-section" style={{ flexShrink: 0 }}>
             <div className="input-container">
               {/* Context Files */}
               {contextFiles.size > 0 && (
