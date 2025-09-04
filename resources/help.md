@@ -146,11 +146,16 @@ https://github.com/user-attachments/assets/887d0b88-717b-4765-b565-d4c54673bde8
 ## Env
 
 ### What is env
-Env (short for environment) is a group of models. Env makes it easier for the users to prepare the environment for their needs. Selecting an env with a given intent will make sure all needed servers are available. One env could contain up to 4 different models - for completions, chat, embeddings, tools. If the user wants to use only code completions functionality, he/she could select an env with only one model for completions. If the user wants to use wants to use all the functionality from llama-vscode, he/she could select an env with full package of models.
+Env (short for environment) is a group of models, agent and settings. Env makes it easier for the users to prepare the environment for their needs. Selecting an env with a given intent will make sure all needed servers are available. One env could contain up to 4 different models - for completions, chat, embeddings, tools. Env could also contain an agent and settings for enabling/disabling completions, rag and starting last selected env on startup. If the user wants to use only code completions functionality, he/she could select an env with only one model for completions. If the user wants to use all the functionality from llama-vscode, he/she could select an env with full package of models.
 
 ### How to use it
-Select env for your needs from llama-vscode menu, "Select/start env..." or from Llama Agent, button "Select Env". This will select the models inside an env (and start the corresponding local servers)
-Deselect env fromllama-vscode menu, "Deselect/stop env..." or from Llama Agent, button "Deselect Env". This deselect all models (and stops the locally running servers, started by llama-vscode).
+Select env for your needs from llama-vscode ui or from llama-vscode menu, "Select/start env...". This will select the models inside an env (and start the corresponding local servers), agent aand set the settings.
+Deselect env from llama-vscode ui or from llama-vscode menu, "Deselect/stop env...". This deselect all models and agent (and stops the locally running servers, started by llama-vscode). The settings will not be changed.
+
+There is a page in llama-vscode UI with the current environment details. From there it is possible to change the current environment and also save it (i.e. create a new env)
+
+<img width="540" height="996" alt="image" src="https://github.com/user-attachments/assets/b1a78d7a-8602-451a-b304-fc967fb66696" />
+
  
  
 ## Generate a commit message  
@@ -515,7 +520,7 @@ Env configurations could be added/deleted/viewed/selected/deselected/exported/im
 Select "Env..." from llama-vscode menu  
 
 - Add Env...
-Opens a llama view with buttons for selecting envs.The button "Add Env" creates an env with the currently selected models (i.e. current environment).
+Opens a llama-vscode ui page with the current environment details. The button "Save As New Env" creates an env with the currently selected models, actor and settings (i.e. current environment).
 
 
 - Delete env...  
@@ -538,6 +543,7 @@ An env could be imported from a .json file - select a file to import it.
 
 There is also a menu item "Download/upload envs online", which opens a web page where envs could be downloaded/uploaded
 
+<img width="540" height="996" alt="image" src="https://github.com/user-attachments/assets/b1a78d7a-8602-451a-b304-fc967fb66696" />
 
 https://github.com/user-attachments/assets/3fb864ad-a010-4d19-97d8-fd7c9ce60494
 

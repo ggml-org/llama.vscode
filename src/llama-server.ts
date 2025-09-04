@@ -305,10 +305,11 @@ export class LlamaServer {
         // else, default to llama.cpp
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
         if (!endpoint) { 
-            const selectionMessate =  "Select an env with completion model to use code completion (code suggestions by AI)."
+            const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
             const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select Env")
             if (shouldSelectModel){
-                await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
+                // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
+                this.app.menu.showEnvView();
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
                 return;
             } else {

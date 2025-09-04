@@ -1212,7 +1212,13 @@ export class Menu {
             "\nlocal start command: " + selectedEnv.tools?.localStartCommand +
             "\nendpoint: " + selectedEnv.tools?.endpoint +
             "\nmodel name for provider: " + selectedEnv.tools?.aiModel +
-            "\napi key required: " + selectedEnv.tools?.isKeyRequired;
+            "\napi key required: " + selectedEnv.tools?.isKeyRequired +
+            "\n\nagent: " +
+            "\nname: " + selectedEnv.agent?.name +
+            "\ndescription: " + selectedEnv.agent?.description +
+            "\n\ncompletions enabled: " + selectedEnv.complEnabled +
+            "\n\nrag enabled: " + selectedEnv.ragEnabled +
+            "\n\nenv start last: " + selectedEnv.envStartLastUsed
     }
 
     private getModelDetailsAsString(model: LlmModel){
