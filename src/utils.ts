@@ -799,8 +799,8 @@ export class Utils {
         }
     }
 
-    static is24HoursLater = (date1: Date, date2: Date): boolean => {
-        const twentyFourHoursInMs = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+    static isTimeToUpgrade = (date1: Date, date2: Date, interval: number): boolean => {
+        const twentyFourHoursInMs = interval  * 60 * 60 * 1000; // 24 hours in milliseconds
         const timeDifference = date2.getTime() - date1.getTime();
         
         return timeDifference >= twentyFourHoursInMs;

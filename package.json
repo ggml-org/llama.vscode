@@ -1390,6 +1390,16 @@
           "default": false,
           "description": "If true - starts the last used env on startup."
         },
+        "llama-vscode.ask_install_llamacpp": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, on starting VS Code - installation of llama.cpp will be suggested."
+        },
+        "llama-vscode.ask_upgrade_llamacpp_hours": {
+          "type": "number",
+          "default": 24,
+          "description": "How offen to ask the user to upgrade llama.cpp in hours."
+        },
         "llama-vscode.env_start_last_used_confirm": {
           "type": "boolean",
           "default": true,

@@ -24,48 +24,7 @@ export class Architect {
             this.app.menu.showHowToUseLlamaVscode();
             this.app.persistence.setGlobalValue("isFirstStart", false)
         }
-        let result = await Utils.executeTerminalCommand("llama-server --version")
-        if (result.includes("command not found") || result.includes("is not recognized")){
-            let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension."
-            if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted."
-            let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm")
-            if (shouldInstall)  
-            {
-                await this.app.menu.installLlamacpp();
-                if (process.platform == 'win32') {
-                    setTimeout(() => {
-                        vscode.commands.executeCommand('workbench.action.reloadWindow');
-                    }, 2000);
-                }
-            }
-        } else {
-            // Upgrade llama.cpp only if not upgraded at least 24:00 hours
-            let lastUpgradeDateStr = this.app.persistence.getGlobalValue("last_llama_cpp")
-            if (!lastUpgradeDateStr || Utils.is24HoursLater(new Date(lastUpgradeDateStr), new Date())) {
-                let questionInstall = "Do you want to upgrade llama.cpp (used for running local models)? (recommended)."
-                let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm") //yes, don't ask again
-                if (shouldInstall)  
-                {
-                    await this.app.menu.installLlamacpp();
-                    this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString())
-                    // Ако не е първо пускане на лама вскоде и не е направно до сега - махни -fa от командите
-                    if (!isFirstStart && !lastUpgradeDateStr){
-                        let chatModels = this.app.configuration.chat_models_list as LlmModel[];
-                        let toolsModels = this.app.configuration.tools_models_list as LlmModel[];
-                        let envs = this.app.configuration.envs_list as Env[];
-
-                        Utils.removeFaOptionFromModels(chatModels);
-                        Utils.removeFaOptionFromModels(toolsModels);
-                        Utils.removeFaOptionFromEnvs(envs)
-
-                        this.app.configuration.updateConfigValue("chat_models_list", chatModels);
-                        this.app.configuration.updateConfigValue("tools_models_list", toolsModels);
-                        this.app.configuration.updateConfigValue("envs_list", envs);
-                    }
-                }
-            } 
-            
-        }
+        await this.installUpgradeLlamaCpp(isFirstStart);
         if (this.app.configuration.env_start_last_used){
             let lastEnv = this.app.persistence.getValue("selectedEnv")
             if (lastEnv) {
@@ -486,6 +445,61 @@ export class Architect {
             }
         );
         context.subscriptions.push(postMessageCommand);
+    }
+
+    private async installUpgradeLlamaCpp(isFirstStart: any) {
+        if (!this.app.configuration.ask_install_llamacpp) return;
+        let result = await Utils.executeTerminalCommand("llama-server --version");
+        if (result.includes("command not found") || result.includes("is not recognized")) {
+            let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension.";
+            if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted.";
+            let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm");
+            if (shouldInstall) {
+                await this.app.menu.installLlamacpp();
+                this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
+                if (process.platform == 'win32') {
+                    setTimeout(() => {
+                        vscode.commands.executeCommand('workbench.action.reloadWindow');
+                    }, 2000);
+                }
+            } else {
+                let questionStopAskingLlamaCppInstall = "Do you prefer to stop getting a suggestion to install llama.cpp?"
+                let shouldStopAsking = await Utils.showUserChoiceDialog(questionStopAskingLlamaCppInstall, "Yes");
+                if (shouldStopAsking) this.app.configuration.updateConfigValue("ask_install_llamacpp", false);
+            }
+        } else {
+            // Upgrade llama.cpp only if not upgraded at ask_upgrade_llamacpp_hours hours
+            let lastUpgradeDateStr = this.app.persistence.getGlobalValue("last_llama_cpp");
+            if (!lastUpgradeDateStr || Utils.isTimeToUpgrade(new Date(lastUpgradeDateStr), new Date(), this.app.configuration.ask_upgrade_llamacpp_hours)) {
+                let questionInstall = "Do you want to upgrade llama.cpp (used for running local models)? (recommended).";
+                let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm"); //yes, don't ask again
+                if (shouldInstall) {
+                    await this.app.menu.installLlamacpp();
+                    this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
+                    // Ако не е първо пускане на лама вскоде и не е направно до сега - махни -fa от командите
+                    if (!isFirstStart && !lastUpgradeDateStr) {
+                        let chatModels = this.app.configuration.chat_models_list as LlmModel[];
+                        let toolsModels = this.app.configuration.tools_models_list as LlmModel[];
+                        let envs = this.app.configuration.envs_list as Env[];
+
+                        Utils.removeFaOptionFromModels(chatModels);
+                        Utils.removeFaOptionFromModels(toolsModels);
+                        Utils.removeFaOptionFromEnvs(envs);
+
+                        this.app.configuration.updateConfigValue("chat_models_list", chatModels);
+                        this.app.configuration.updateConfigValue("tools_models_list", toolsModels);
+                        this.app.configuration.updateConfigValue("envs_list", envs);
+                    }
+                } else {
+                    let questionStopAskingLlamaCppUpgrade = "Do you prefer to stop getting a suggestion to upgrade llama.cpp?"
+                    let shouldStopAsking = await Utils.showUserChoiceDialog(questionStopAskingLlamaCppUpgrade, "Yes");
+                    if (shouldStopAsking){
+                        if (!lastUpgradeDateStr) this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
+                        this.app.configuration.updateConfigValue("ask_upgrade_llamacpp_hours", 72000); // more than 8 years
+                    }
+                }
+            }
+        }
     }
 
     private indexWorspaceFiles() {

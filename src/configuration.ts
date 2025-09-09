@@ -99,6 +99,8 @@ export class Configuration {
     envs_list = new Array();
     env_start_last_used = false;
     env_start_last_used_confirm = true;
+    ask_install_llamacpp = true;
+    ask_upgrade_llamacpp_hours = 24;
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     agents_list = new Array();
@@ -246,6 +248,8 @@ export class Configuration {
         this.agents_list = config.get("agents_list")??new Array();
         this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
         this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
+        this.ask_install_llamacpp = Boolean(config.get<boolean>("ask_install_llamacpp", true));
+        this.ask_upgrade_llamacpp_hours = Number(config.get<number>("ask_upgrade_llamacpp_hours"));
     };
 
     getUiText = (uiText: string): string | undefined => {
