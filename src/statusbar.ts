@@ -1,5 +1,5 @@
 import {Application} from "./application";
-import {LlamaResponse} from "./llama-server";
+import { LlamaResponse } from "./types";
 import vscode from "vscode";
 
 export class Statusbar {

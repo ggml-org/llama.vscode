@@ -1,5 +1,5 @@
 import {Application} from "./application";
-import { ChatMessage } from "./llama-server";
+import { ChatMessage } from "./types";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"

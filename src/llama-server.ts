@@ -1,37 +1,12 @@
 import axios from "axios";
 import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
-import { LlmModel } from "./types";
+import { LlmModel, LlamaChatResponse, LlamaResponse, ChatMessage } from "./types";
 import { Utils } from "./utils";
 import * as cp from 'child_process';
 import * as util from 'util';
 
 const STATUS_OK = 200;
-
-export interface LlamaResponse {
-    content?: string;
-    generation_settings?: any;
-    tokens_cached?: number;
-    truncated?: boolean;
-    timings?: {
-        prompt_n?: number;
-        prompt_ms?: number;
-        prompt_per_second?: number;
-        predicted_n?: number;
-        predicted_ms?: number;
-        predicted_per_second?: number;
-    };
-}
-
-export interface ChatMessage {
-  role: string; // or just 'string' if you need more roles
-  content: string;
-  tool_call_id?: string
-}
-
-export interface LlamaChatResponse {
-    choices: [{message:{content?: string}}];
-}
 
 export interface LlamaToolsResponse {
     choices: [{

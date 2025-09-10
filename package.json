@@ -190,7 +190,7 @@
       {
         "command": "extension.acceptTextEdit",
         "key": "tab",
-        "when": "editorTextFocus && textEditSuggestionVisible"
+        "when": "editorTextFocus && textEditSuggestionVisible && resourceScheme == 'llama-suggestion'"
       },
       {
         "command": "extension.killAgent",
@@ -200,7 +200,7 @@
       {
         "command": "extension.rejectTextEdit",
         "key": "escape",
-        "when": "editorTextFocus && textEditSuggestionVisible"
+        "when": "editorTextFocus && textEditSuggestionVisible && resourceScheme == 'llama-suggestion'"
       }
     ],
     "configuration": {

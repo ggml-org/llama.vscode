@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { Application } from './application';
 import { Utils } from './utils';
+import { LlamaChatResponse } from "./types";
 
 export class TextEditor {
     private app: Application;
@@ -13,6 +14,8 @@ export class TextEditor {
     private currentEditor: vscode.TextEditor | undefined;
     private tempDoc: vscode.TextDocument | undefined;
     private registration: vscode.Disposable | undefined;
+    private suggestionUri: vscode.Uri = vscode.Uri.parse("");
+    private diffTitle = 'Text Edit Suggestion';
 
     constructor(application: Application) {
         this.app = application;
@@ -73,15 +76,20 @@ export class TextEditor {
         }
 
         this.app.statusbar.showThinkingInfo();
-
+        let data: LlamaChatResponse | undefined
         try {
-            const data = await this.app.llamaServer.getChatEditCompletion(
-                prompt,
-                this.selectedText,
-                context,
-                this.app.extraContext.chunks,
-                0
-            );
+            try {
+                data = await this.app.llamaServer.getChatEditCompletion(
+                    prompt,
+                    this.selectedText,
+                    context,
+                    this.app.extraContext.chunks,
+                    0
+                );
+            } catch (error) {
+                vscode.window.showErrorMessage('Error getting suggestions. Please check if llama.cpp server is running.');
+                return;
+            }
 
             if (!data || !data.choices[0].message.content) {
                 vscode.window.showInformationMessage('No suggestions available');
@@ -137,7 +145,7 @@ export class TextEditor {
 
         // Create a temporary document for the suggestion using a custom scheme
         const extension = editor.document.uri.toString().split('.').pop();
-        const uri = vscode.Uri.parse('llama-suggestion:suggestion.' + extension);
+        this.suggestionUri = vscode.Uri.parse('llama-suggestion:suggestion.' + extension);
 
         // Register a content provider for our custom scheme
         const provider = new class implements vscode.TextDocumentContentProvider {
@@ -150,9 +158,7 @@ export class TextEditor {
         // Register the provider
         const registration = vscode.workspace.registerTextDocumentContentProvider('llama-suggestion', provider);
 
-        // Create a diff editor with read-only content
-        const diffTitle = 'Text Edit Suggestion';
-        await vscode.commands.executeCommand('vscode.diff', editor.document.uri, uri, diffTitle);
+        await vscode.commands.executeCommand('vscode.diff', editor.document.uri, this.suggestionUri, this.diffTitle);
         setTimeout(async () => {
             try {
                 // Navigate to the first difference
@@ -167,6 +173,12 @@ export class TextEditor {
     }
 
     async acceptSuggestion() {
+        // Only accept the suggestion if the diff view is currently active
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor || activeEditor.document.uri.toString() !== this.suggestionUri.toString()) {
+            return;
+        }
+
         if (!this.currentSuggestion || !this.currentEditor || !this.selection) {
             return;
         }
@@ -179,6 +191,12 @@ export class TextEditor {
     }
 
     async rejectSuggestion() {
+        // Only reject the suggestion if the diff view is currently active
+        const activeEditor = vscode.window.activeTextEditor;
+        if (!activeEditor || activeEditor.document.uri.toString() !== this.suggestionUri.toString()) {
+            return;
+        }
+        
         if (!this.currentSuggestion || !this.currentEditor || !this.selection) {
             return;
         }
