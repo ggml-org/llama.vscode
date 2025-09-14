@@ -232,12 +232,12 @@ export class LlamaServer {
           };
     }
 
-    private createToolsRequestPayload(messages: ChatMessage[], model: string) {
+    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false) {
         this.app.tools.addSelectedTools();
         let filteredMsgs = this.filterThoughtFromMsgs(messages)
         return {
             "messages": filteredMsgs,
-            "stream": false,
+            "stream": stream,
             "temperature": 0.8,
             "top_p": 0.95,
             ...(model.trim() != "" && { model: model}),
@@ -283,7 +283,6 @@ export class LlamaServer {
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
             const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select Env")
             if (shouldSelectModel){
-                // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.completion != undefined && item.completion.name)) // .selectStartModel(chatTypeDetails);
                 this.app.menu.showEnvView();
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
                 return;
@@ -343,7 +342,9 @@ export class LlamaServer {
 
     getAgentCompletion = async (
         messages: ChatMessage[],
-        isSummarization = false
+        isSummarization = false,
+        onDelta?: (delta: string) => void,
+        abortSignal?: AbortSignal
     ): Promise<LlamaToolsResponse | undefined> => {
         let selectedModel: LlmModel = this.app.menu.getToolsModel();
         let model = this.app.configuration.ai_model;
@@ -368,16 +369,115 @@ export class LlamaServer {
         let uri = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
         let request: any;
         
-        if (isSummarization) request = this.createGetSummaryRequestPayload(messages, model);
-        else request = this.createToolsRequestPayload(messages, model);
+        if (isSummarization) {
+            request = this.createGetSummaryRequestPayload(messages, model);
+            const response = await axios.post<LlamaToolsResponse>(
+                uri,
+                request,
+                { ...requestConfig, signal: abortSignal }
+            );
+            return response.status === STATUS_OK ? response.data : undefined;
+        }
 
-        const response = await axios.post<LlamaToolsResponse>(
-            uri,
-            request,
-            requestConfig
-        );
+        // Streaming branch for tools/agent calls
+        request = this.createToolsRequestPayload(messages, model, true);
 
-        return response.status === STATUS_OK ? response.data : undefined;
+        try {
+            const streamResponse = await axios.post<any>(
+                uri,
+                request,
+                { ...requestConfig, responseType: 'stream' as const, signal: abortSignal }
+            );
+
+            return await new Promise<LlamaToolsResponse | undefined>((resolve) => {
+                const readable = streamResponse.data as NodeJS.ReadableStream;
+                let buffer = "";
+                let fullContent = "";
+                let finishReason: string | undefined = undefined;
+                const toolCalls: any[] = [];
+                const message: any = { role: 'assistant', content: null as string | null };
+
+                const finalize = () => {
+                    message.content = fullContent || null;
+                    if (toolCalls.length > 0) message.tool_calls = toolCalls;
+                    resolve({
+                        choices: [{
+                            message,
+                            finish_reason: finishReason,
+                        }]
+                    });
+                };
+
+                // Handle abort signal
+                if (abortSignal) {
+                    abortSignal.addEventListener('abort', () => {
+                        (readable as any).destroy?.();
+                        resolve(undefined);
+                    });
+                }
+
+                readable.on('data', (chunk: Buffer) => {
+                    buffer += chunk.toString('utf8');
+                    const lines = buffer.split(/\r?\n/);
+                    buffer = lines.pop() || "";
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (!trimmed) continue;
+                        if (!trimmed.startsWith('data:')) continue;
+                        const payload = trimmed.slice(5).trim();
+                        if (payload === '[DONE]') {
+                            finalize();
+                            readable.removeAllListeners();
+                            return;
+                        }
+                        try {
+                            const json = JSON.parse(payload);
+                            const choice = json.choices && json.choices[0] ? json.choices[0] : undefined;
+                            if (!choice) continue;
+
+                            // Finish reason may appear on a later chunk
+                            if (choice.finish_reason) finishReason = choice.finish_reason;
+
+                            const delta = choice.delta || choice.message || {};
+                            if (delta.role && !message.role) message.role = delta.role;
+
+                            if (typeof delta.content === 'string') {
+                                fullContent += delta.content;
+                                if (onDelta) onDelta(delta.content);
+                            }
+
+                            if (Array.isArray(delta.tool_calls)) {
+                                for (const tc of delta.tool_calls) {
+                                    const idx = typeof tc.index === 'number' ? tc.index : 0;
+                                    if (!toolCalls[idx]) {
+                                        toolCalls[idx] = { id: tc.id, type: 'function', function: { name: '', arguments: '' } };
+                                    }
+                                    const tgt = toolCalls[idx];
+                                    if (tc.id) tgt.id = tc.id;
+                                    if (tc.function) {
+                                        if (tc.function.name) tgt.function.name = tc.function.name;
+                                        if (tc.function.arguments) tgt.function.arguments = (tgt.function.arguments || '') + tc.function.arguments;
+                                    }
+                                }
+                            }
+                        } catch (e) {
+                            // Ignore malformed chunks
+                        }
+                    }
+                });
+
+                readable.on('end', () => {
+                    if (!finishReason) finishReason = 'stop';
+                    finalize();
+                });
+
+                readable.on('error', () => {
+                    resolve(undefined);
+                });
+            });
+        } catch (err) {
+            return undefined;
+        }
     };
 
     

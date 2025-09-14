@@ -1,8 +1,10 @@
 import {Application} from "./application";
-import { ChatMessage } from "./types";
+import { ChatMessage, ContextCustom } from "./types";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"
+import { Plugin } from './plugin';
+import * as fs from 'fs';
 
 
 interface Step {
@@ -20,6 +22,7 @@ export class LlamaAgent {
     private logText = ""
     public contexProjectFiles: Map<string,string> = new Map();
     public sentContextFiles: Map<string,string> = new Map();
+    private abortController: AbortController | null = null;
 
     constructor(application: Application) {
         this.app = application;
@@ -116,7 +119,7 @@ export class LlamaAgent {
     }
 
     private async generateSummary(messages: ChatMessage[]): Promise<string> {
-        let data = await this.app.llamaServer.getAgentCompletion(messages, true)
+        let data = await this.app.llamaServer.getAgentCompletion(messages, true, undefined, this.abortController?.signal)
 
         return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
     }
@@ -139,22 +142,22 @@ export class LlamaAgent {
             }
             
             if (this.contexProjectFiles.size > 0){
-                query += "\n\nBelow is the content of some files, which the user has attached as a context."
+                query += "\n\nBelow is a context, attached by the user.\n"
                 for (const [key, value] of this.contexProjectFiles) {
                     if (this.sentContextFiles.has(key)) continue // send only not sent files (parts)
-                    const filePath = key.split("|")[0]
-                    const document = await vscode.workspace.openTextDocument(vscode.Uri.file(key));
-                    let parts = value.split("|")
-                    if (parts.length == 1) {
-                        query += "\n\nFile " + key + ":\n\n" + document.getText().slice(0, this.app.configuration.rag_max_context_file_chars) 
+                    let itemContext: string;
+                    let contextCustom = this.app.configuration.context_custom as ContextCustom
+                    if (contextCustom && contextCustom.get_item_context) {
+                        if (fs.existsSync(contextCustom.get_item_context)) {
+                            let toolFunction = Utils.getFunctionFromFile(contextCustom.get_item_context);
+                            itemContext = toolFunction(key, value)
+                        } else itemContext = (await Plugin.execute(contextCustom.get_item_context as keyof typeof Plugin.methods, key, value)) as string;
                     } else {
-                        let firstLine = parseInt(parts[1]);
-                        let lastLine = parseInt(parts[2]);
-                        let fileContent = document.getText().split(/\r?\n/).slice(firstLine - 1, lastLine).join("\n");
-                        query += "\n\nFile " + key + " content from line " + firstLine + " to line " + lastLine + " (one based):\n\n" + fileContent.slice(0, this.app.configuration.rag_max_context_file_chars)
+                        itemContext = await this.getItemContext(key, value);
                     }
+                    query += itemContext
                     this.sentContextFiles.set(key, value);
-                }                   
+                }                  
             }
 
             let filesFromQuery = this.app.chatContext.getFilesFromQuery(query)
@@ -176,6 +179,10 @@ export class LlamaAgent {
             let currentCycleStartTime = Date.now();
             const changedFiles = new Set<string>
             const deletedFiles = new Set<string>
+            
+            // Create new AbortController for this session
+            this.abortController = new AbortController();
+            
             while (iterationsCount < this.app.configuration.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
@@ -187,7 +194,12 @@ export class LlamaAgent {
                 }
                 iterationsCount++;
                 try {
-                    let data:any = await this.app.llamaServer.getAgentCompletion(this.messages);
+                    let streamed = "";
+                    let data:any = await this.app.llamaServer.getAgentCompletion(this.messages, false, (delta: string) => {
+                        streamed += delta;
+                        this.logText += delta;
+                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                    }, this.abortController?.signal);
                     if (!data) {
                         this.logText += "No response from AI" + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
@@ -196,7 +208,10 @@ export class LlamaAgent {
                     }
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
-                    this.logText += response + "  \n" + "Total iterations: " + iterationsCount + "  \n"
+                    if (!streamed && response) {
+                        this.logText += response + "  \n";
+                    }
+                    this.logText += "  \nTotal iterations: " + iterationsCount + "  \n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
                         this.app.statusbar.showTextInfo("agent stopped");
@@ -284,11 +299,19 @@ export class LlamaAgent {
             chat.messages = this.messages;
             chat.log = this.logText;
             await this.app.menu.selectUpdateChat(chat)
+            
+            // Clean up AbortController
+            this.abortController = null;
+            
             return response;
         }  
         
     stopAgent = () => {
         this.lastStopRequestTime = Date.now();
+        if (this.abortController) {
+            this.abortController.abort();
+            this.abortController = null;
+        }
     }
 
     getStepContext = (plan: Step[]) => {
@@ -309,5 +332,20 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
+    }
+
+    private async getItemContext(key: string, value: string) {
+        let itemContext = "";
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(key));
+        let parts = value.split("|");
+        if (parts.length == 1) {
+            itemContext += "\n\nFile " + key + ":\n\n" + document.getText().slice(0, this.app.configuration.rag_max_context_file_chars);
+        } else {
+            let firstLine = parseInt(parts[1]);
+            let lastLine = parseInt(parts[2]);
+            let fileContent = document.getText().split(/\r?\n/).slice(firstLine - 1, lastLine).join("\n");
+            itemContext += "\n\nFile " + key + " content from line " + firstLine + " to line " + lastLine + " (one based):\n\n" + fileContent.slice(0, this.app.configuration.rag_max_context_file_chars);
+        }
+        return itemContext;
     }
 }

@@ -2,8 +2,10 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Application } from './application';
-import { LlmModel, Env, Agent } from './types';
+import { LlmModel, Env, Agent, ContextCustom } from './types';
 import { Configuration } from './configuration';
+import { Plugin } from './plugin';
+import { Utils } from './utils';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -140,7 +142,16 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.menu.showCurrentEnv();    
                         break;
                     case 'getFileList':
-                        const fileKeys = this.app.chatContext.getProjectFiles();
+                        let fileKeys: string[]
+                        let contextCustom = this.app.configuration.context_custom as ContextCustom
+                        if (contextCustom && contextCustom.get_list) {
+                            if (fs.existsSync(contextCustom.get_list)) {
+                                let toolFunction = await Utils.getFunctionFromFile(contextCustom.get_list);
+                                fileKeys = toolFunction()
+                            } else fileKeys = (await Plugin.execute(contextCustom.get_list as keyof typeof Plugin.methods)) as string[];
+                        } else {
+                            fileKeys = await this.app.chatContext.getProjectFiles();
+                        }
                         webviewView.webview.postMessage({
                             command: 'updateFileList',
                             files: fileKeys

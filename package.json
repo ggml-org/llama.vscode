@@ -1550,6 +1550,125 @@
           "default": true,
           "description": "Enable/disable tool run_terminal_command"
         },
+        "llama-vscode.tools_custom": {
+          "type": "array",
+          "description": "Array of tool definitions for REST requests to LLM",
+          "items": {
+            "type": "object",
+            "description": "Tool details",
+            "properties": {
+              "enabled": {
+                "type": "boolean",
+                "default": true,
+                "description": "If the tool is enabled or not"
+              },
+              "tool_function": {
+                "type": "string",
+                "default": "",
+                "description": "The function, which will be executed on calling the tool."
+              },
+              "tool_function_desc": {
+                "type": "string",
+                "default": "",
+                "description": "The function, which will generate the description to show when the tools is executed"
+              },
+              "tool": {
+                "type": "object",
+                "description": "Tool definition",
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "description": "Type of the tool",
+                    "enum": ["function"]
+                  },
+                  "function": {
+                    "type": "object",
+                    "description": "Function definition",
+                    "properties": {
+                      "name": {
+                        "type": "string",
+                        "description": "Name of the function"
+                      },
+                      "description": {
+                        "type": "string",
+                        "description": "Description of the function"
+                      },
+                      "parameters": {
+                        "type": "object",
+                        "description": "Function parameters schema",
+                        "properties": {
+                          "type": {
+                            "type": "string",
+                            "description": "Type of parameters object",
+                            "enum": ["object"]
+                          },
+                          "properties": {
+                            "type": "object",
+                            "description": "Function properties definition",
+                            "additionalProperties": true
+                          },
+                          "required": {
+                            "type": "array",
+                            "description": "Required properties",
+                            "items": {
+                              "type": "string"
+                            }
+                          }
+                        },
+                        "required": ["type", "properties"]
+                      },
+                      "strict": {
+                        "type": "boolean",
+                        "description": "Whether to use strict validation"
+                      }
+                    },
+                    "required": ["name", "description", "parameters"]
+                  }
+                },
+                "required": ["type", "function"]
+              }
+            }
+          },
+          "default": [
+            {
+              "enabled": true,
+              "tool_function": "this.llamaVscodeHelp",
+              "tool_function_desc": "this.llamaVscodeHelpDesc",
+              "tool": {
+                "type": "function",
+                "function": {
+                    "name": "help",
+                    "description": "Returns a help text for llama-vscode in .md format. Use this tool for information about llama-vscode (synonim: llama.vscode) extension: how to use it, what are chat, completion, embeddings and tools models, what is orchestra, how to add/edit/remove them, how to select them, etc.",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                        "required": []
+                    },
+                    "strict": true
+                }
+            }
+            }
+          ]
+        },
+        "llama-vscode.context_custom": {
+          "type": "object",
+          "properties": {
+            "get_list": {
+              "type": "string",
+              "default": "",
+              "description": "The function to be executed to get the list of context objects (value | key). Function of type () => string[] "
+            },
+            "get_item_context": {
+              "type": "string",
+              "default": "",
+              "description": "The function to get the item context from the stored item key/value. Async function of type (k:string, v:string) => string"
+            }
+          },
+          "default": {
+            "get_list": "",
+            "get_item_context": ""
+          }
+        },
         "llama-vscode.tool_permit_some_terminal_commands": {
           "type": "boolean",
           "default": false,

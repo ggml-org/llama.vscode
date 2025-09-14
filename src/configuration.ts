@@ -104,6 +104,8 @@ export class Configuration {
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     agents_list = new Array();
+    tools_custom = new Array();
+    context_custom:object = {};
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
@@ -246,6 +248,8 @@ export class Configuration {
         this.tools_models_list = config.get("tools_models_list")??new Array();
         this.envs_list = config.get("envs_list")??new Array();
         this.agents_list = config.get("agents_list")??new Array();
+        this.tools_custom = config.get("tools_custom")??new Array();
+        this.context_custom = config.get("context_custom")??{};
         this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
         this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
         this.ask_install_llamacpp = Boolean(config.get<boolean>("ask_install_llamacpp", true));
@@ -304,6 +308,7 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_property_description")
         || event.affectsConfiguration("llama-vscode.tool_update_task_enabled")
         || event.affectsConfiguration("llama-vscode.tool_save_plan_enabled")
+        || event.affectsConfiguration("llama-vscode.tools_custom")
     }
 
     setLlamaRequestConfig = () => {

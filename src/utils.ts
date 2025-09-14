@@ -805,4 +805,11 @@ export class Utils {
         
         return timeDifference >= twentyFourHoursInMs;
     }
+
+    static getFunctionFromFile = (filePath: string) => {
+        let functionCode = fs.readFileSync(filePath, 'utf-8');
+        const functionString = '(' + functionCode + ')';
+        const toolFunction = eval(functionString);
+        return toolFunction;
+    }
 }

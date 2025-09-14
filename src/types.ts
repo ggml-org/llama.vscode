@@ -104,3 +104,8 @@ export interface ModelTypeDetails {
     shellCmd: (message: string) => void
 }
 
+export interface ContextCustom {
+    get_list: string
+    get_item_context: string
+}
+

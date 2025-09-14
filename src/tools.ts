@@ -3,6 +3,7 @@ import * as vscode from 'vscode';
 import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
+import { Plugin } from './plugin';
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -602,17 +603,45 @@ export class Tools {
                 }
             }
             ] : []),
-        ]        
+        ] 
+        
+        for (let tool of this.app.configuration.tools_custom){
+            if (tool.enabled) {
+                this.tools.push(tool.tool)
+                if (tool.tool_function && fs.existsSync(tool.tool_function)) {
+                    let toolFunction = Utils.getFunctionFromFile(tool.tool_function);
+                    this.toolsFunc.set(tool.tool.function.name, toolFunction as (...args: any[]) => any )
+                } else {                   
+                    this.toolsFunc.set(tool.tool.function.name, Plugin.getFunction(tool.tool_function) as (...args: any[]) => any )
+                }
+                if (tool.tool_function_desc && fs.existsSync(tool.tool_function_desc)) {
+                    let toolFunction = Utils.getFunctionFromFile(tool.tool_function_desc);
+                    this.toolsFuncDesc.set(tool.tool.function.name, toolFunction as (...args: any[]) => any )
+                } else {
+                    this.toolsFuncDesc.set(tool.tool.function.name, Plugin.getFunction(tool.tool_function_desc) as (...args: any[]) => any )
+                }
+            }
+        }
+        
     }
 
     selectTools = async () => {
         // Define items with initial selection state
         const toolItems: vscode.QuickPickItem[] = []
+        let customToolsNames: string[] = []
         const appPrefix = "llama.vscode_"
-        const config = this.app.configuration.config;
-        for (let internalTool of this.toolsFunc.keys()){
-            toolItems.push({ label: appPrefix + internalTool, description: "", picked: (this.app.configuration as { [key: string]: any; })[this.getToolEnabledPropertyName(internalTool)]})
+
+        for (let customTool of this.app.configuration.tools_custom){
+            toolItems.push({ label: appPrefix + customTool.tool.function.name, description: "", picked: customTool.enabled})
+            customToolsNames.push(customTool.tool.function.name)
         }
+
+        for (let internalTool of this.toolsFunc.keys()){
+            if (!customToolsNames.includes(internalTool)) {
+                toolItems.push({ label: appPrefix + internalTool, description: "", picked: (this.app.configuration as { [key: string]: any; })[this.getToolEnabledPropertyName(internalTool)]})
+            }
+        }
+
         for (let tool of vscode.lm.tools){
             toolItems.push({ label: tool.name, description: tool.description, picked: this.vscodeToolsSelected.has(tool.name) })
         }
@@ -627,13 +656,22 @@ export class Tools {
         if (selection) {
             const selectedLabels = selection.map(item => item.label);
             this.vscodeToolsSelected = new Map()
-            for (let toolName of  this.toolsFunc.keys()){
-                await config.update(this.getToolEnabledPropertyName(toolName), false, true);
+            
+            let toolsCustom = this.app.configuration.tools_custom
+            for (let customTool of toolsCustom){
+                customTool.enabled = selectedLabels.includes(appPrefix + customTool.tool.function.name)
             }
+            await this.app.configuration.updateConfigValue("tools_custom", toolsCustom);
+            
+            for (let toolName of this.toolsFunc.keys()){
+                if (!customToolsNames.includes(toolName)){
+                    let newEnabledValue = selectedLabels.includes(appPrefix + toolName)
+                    await this.app.configuration.updateConfigValue(this.getToolEnabledPropertyName(toolName), newEnabledValue);
+                }
+            }
+            
             for (let toolName of  selectedLabels){
-                if (toolName.startsWith(appPrefix)){
-                    await config.update(this.getToolEnabledPropertyName(toolName.slice(appPrefix.length)), true, true);
-                } else {
+                if (!toolName.startsWith(appPrefix)){
                     this.vscodeToolsSelected.set(toolName, true)
                 }
             }
