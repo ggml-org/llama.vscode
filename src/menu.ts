@@ -714,9 +714,9 @@ export class Menu {
         const hostEndpoint = "http://" + modelTypeDetails.newModelHost
         const modelListToLocalCommand = new Map([ 
             ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
-            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost], 
+            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost], 
             ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],  
-            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost] ]);
+            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost] ]);
         let name = "";
         while (name.trim() === "") {
             name = (await vscode.window.showInputBox({
@@ -784,9 +784,9 @@ export class Menu {
         const modelPlaceholder = "<model_name>";
         const modelListToLocalCommand = new Map([ 
             ["complition_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost],
-            ["chat_models_list", 'llama-server -hf ' + modelPlaceholder + ' -ngl 99 -fa -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + typeDetails.newModelPort + " --host " + typeDetails.newModelHost], 
+            ["chat_models_list", 'llama-server -hf ' + modelPlaceholder + ' -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + typeDetails.newModelPort + " --host " + typeDetails.newModelHost], 
             ["embeddings_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost],  
-            ["tools_models_list", "llama-server -hf " + modelPlaceholder + " --jinja  -ngl 99 -c 0 -fa -ub 1024 -b 1024 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost] ]);
+            ["tools_models_list", "llama-server -hf " + modelPlaceholder + " --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost] ]);
         
         const searchWords = await vscode.window.showInputBox({
             placeHolder: 'keywords for searching a model from huggingface',

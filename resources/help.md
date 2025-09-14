@@ -798,11 +798,11 @@ The instructions below are left for a reference, but now it is possible to do it
 2. Download the LLM model and run llama.cpp server (combined in one command)  
 - If you have more than 16GB VRAM:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 - If you have less than 16GB VRAM:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 If the file is not available (first time) it will be downloaded (this could take some time) and after that llama.cpp server will be started. 
 
