@@ -1630,24 +1630,6 @@
             }
           },
           "default": [
-            {
-              "enabled": true,
-              "tool_function": "this.llamaVscodeHelp",
-              "tool_function_desc": "this.llamaVscodeHelpDesc",
-              "tool": {
-                "type": "function",
-                "function": {
-                    "name": "help",
-                    "description": "Returns a help text for llama-vscode in .md format. Use this tool for information about llama-vscode (synonim: llama.vscode) extension: how to use it, what are chat, completion, embeddings and tools models, what is orchestra, how to add/edit/remove them, how to select them, etc.",
-                    "parameters": {
-                        "type": "object",
-                        "properties": {},
-                        "required": []
-                    },
-                    "strict": true
-                }
-            }
-            }
           ]
         },
         "llama-vscode.context_custom": {

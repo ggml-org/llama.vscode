@@ -87,7 +87,7 @@ export class TextEditor {
                     0
                 );
             } catch (error) {
-                vscode.window.showErrorMessage('Error getting suggestions. Please check if llama.cpp server is running.');
+                vscode.window.showErrorMessage('Error getting suggestions. Please check if the server with chat model is running.');
                 return;
             }
 

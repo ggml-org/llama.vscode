@@ -564,7 +564,10 @@ export class Menu {
                 label: this.app.configuration.getUiText("Deselect/stop "+modelType+" model") ?? ""
             },
             {
-                label: this.app.configuration.getUiText("Add "+modelType+" model...") ?? ""
+                label: this.app.configuration.getUiText("Add local "+modelType+" model...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText("Add external "+modelType+" model...") ?? ""
             },
             {
                 label: this.app.configuration.getUiText("Add "+modelType+" model from huggingface...") ?? ""
@@ -710,10 +713,10 @@ export class Menu {
             "\n\ntools: " + (selectedAgent.tools ? selectedAgent.tools.join(", ") : "");
     }
 
-    private async addModelToList(modelTypeDetails: ModelTypeDetails) {
+    private async addLocalModelToList(modelTypeDetails: ModelTypeDetails) {
         const hostEndpoint = "http://" + modelTypeDetails.newModelHost
         const modelListToLocalCommand = new Map([ 
-            ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
+            ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
             ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost], 
             ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],  
             ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost] ]);
@@ -725,28 +728,88 @@ export class Menu {
                 value: ''
             })) ?? "";
         }
-        const localStartCommand = await vscode.window.showInputBox({
-            placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port '+ modelTypeDetails.newModelPort + '. ',
-            prompt: 'Enter a command to start the model locally (leave emtpy if external server is used). If not empty, the command will be run on selecting the model.',
-            value: modelListToLocalCommand.get(modelTypeDetails.modelsListSettingName)
-        });
+        
+        let localStartCommand = "";
+        while (localStartCommand.trim() === "") {
+            localStartCommand = await vscode.window.showInputBox({
+                placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port '+ modelTypeDetails.newModelPort + '. (required)',
+                prompt: 'Enter a command to start the model locally (leave emtpy if external server is used). If not empty, the command will be run on selecting the model. (required)',
+                value: modelListToLocalCommand.get(modelTypeDetails.modelsListSettingName)
+            })??"";
+        }
+        
         let endpoint = "";
         while (endpoint.trim() === "") {
             endpoint = await vscode.window.showInputBox({
                 placeHolder: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' (required)' ,
+                prompt: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' (required)',
+                value: hostEndpoint + ':' + modelTypeDetails.newModelPort
+            }) ?? "";
+        }
+        const isKeyRequired = await Utils.showYesNoDialog("Is API key required for this endpint (" + endpoint + ")?");
+        let newModel: LlmModel = {
+            name: name,
+            localStartCommand: localStartCommand,
+            endpoint: endpoint,
+            aiModel: "",
+            isKeyRequired: isKeyRequired
+        };
+
+        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: " +
+            "\nname: " + name +
+            "\nlocal start command: " + localStartCommand +
+            "\nendpoint: " + endpoint +
+            "\nmodel name for provider: " + 
+            "\napi key required: " + isKeyRequired +
+            "\nDo you want to add a model with these properties?");
+
+        if (shouldAddModel){
+            let shouldOverwrite = false;
+            [newModel.name, shouldOverwrite] =  await this.getUniqueModelName(modelTypeDetails.modelsList, newModel);
+            if (!newModel.name){
+                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
+                return;
+            }
+            if (shouldOverwrite) {
+                const index = modelTypeDetails.modelsList.findIndex(model => model.name === newModel.name);
+                if (index !== -1) {
+                    modelTypeDetails.modelsList.splice(index, 1);
+                }
+            }
+            modelTypeDetails.modelsList.push(newModel);
+            this.app.configuration.updateConfigValue(modelTypeDetails.modelsListSettingName, modelTypeDetails.modelsList);
+            vscode.window.showInformationMessage("The model is added.")
+        }
+    }
+
+    private async addExternalModelToList(modelTypeDetails: ModelTypeDetails) {
+        const hostEndpoint = "http://" + modelTypeDetails.newModelHost
+        let name = "";
+        while (name.trim() === "") {
+            name = (await vscode.window.showInputBox({
+                placeHolder: 'Enter a user fiendly name for your model (required)',
+                prompt: 'name for your model (required)',
+                value: ''
+            })) ?? "";
+        }
+        
+        let endpoint = "";
+        while (endpoint.trim() === "") {
+            endpoint = await vscode.window.showInputBox({
+                placeHolder: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' or https://openrouter.ai/api (required)' ,
                 prompt: 'Endpoint for your model (required)',
                 value: ''
             }) ?? "";
         }
         const aiModel = await vscode.window.showInputBox({
             placeHolder: 'Model name, exactly as expected by the provider, i.e. kimi-latest ',
-            prompt: 'Enter model name as expected by the provider (leave empty if local llama-server is used)',
+            prompt: 'Enter model name as expected by the provider (leave empty if llama-server is used)',
             value: ''
         });
         const isKeyRequired = await Utils.showYesNoDialog("Is API key required for this endpint (" + endpoint + ")?");
         let newModel: LlmModel = {
             name: name,
-            localStartCommand: localStartCommand,
+            localStartCommand: "",
             endpoint: endpoint,
             aiModel: aiModel,
             isKeyRequired: isKeyRequired
@@ -754,7 +817,7 @@ export class Menu {
 
         const shouldAddModel = await Utils.showYesNoDialog("You have enterd: " +
             "\nname: " + name +
-            "\nlocal start command: " + localStartCommand +
+            "\nlocal start command: " + 
             "\nendpoint: " + endpoint +
             "\nmodel name for provider: " + aiModel +
             "\napi key required: " + isKeyRequired +
@@ -1524,8 +1587,11 @@ export class Menu {
             case this.app.configuration.getUiText("Select/start completion model..."):  
                 await this.selectStartModel(compleModelType);
                 break;
-            case this.app.configuration.getUiText('Add completion model...'):
-                await this.addModelToList(compleModelType)
+            case this.app.configuration.getUiText('Add local completion model...'):
+                await this.addLocalModelToList(compleModelType)
+                break;
+            case this.app.configuration.getUiText('Add external completion model...'):
+                await this.addExternalModelToList(compleModelType)
                 break;
             case this.app.configuration.getUiText('Add completion model from huggingface...'):
                 await this.addHuggingfaceModelToList(compleModelType);
@@ -1554,8 +1620,11 @@ export class Menu {
             case this.app.configuration.getUiText("Select/start chat model..."):
                 await this.selectStartModel(chatTypeDetails);
                 break;
-            case this.app.configuration.getUiText('Add chat model...')??"":
-                await this.addModelToList(chatTypeDetails);
+            case this.app.configuration.getUiText('Add local chat model...')??"":
+                await this.addLocalModelToList(chatTypeDetails);
+                break;
+            case this.app.configuration.getUiText('Add external chat model...')??"":
+                await this.addExternalModelToList(chatTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add chat model from huggingface...')??"":
                 await this.addHuggingfaceModelToList(chatTypeDetails);
@@ -1584,8 +1653,11 @@ export class Menu {
             case this.app.configuration.getUiText("Select/start embeddings model..."):
                 await this.selectStartModel(embsTypeDetails);
                 break;
-            case this.app.configuration.getUiText('Add embeddings model...'):
-                await this.addModelToList(embsTypeDetails);
+            case this.app.configuration.getUiText('Add local embeddings model...'):
+                await this.addLocalModelToList(embsTypeDetails);
+                break;
+            case this.app.configuration.getUiText('Add external embeddings model...'):
+                await this.addExternalModelToList(embsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add embeddings model from huggingface...')??"":
                 await this.addHuggingfaceModelToList(embsTypeDetails);
@@ -1614,8 +1686,11 @@ export class Menu {
             case this.app.configuration.getUiText("Select/start tools model..."):
                 await this.selectStartModel(toolsTypeDetails);
                 break;
-            case this.app.configuration.getUiText('Add tools model...'):
-                await this.addModelToList(toolsTypeDetails);
+            case this.app.configuration.getUiText('Add local tools model...'):
+                await this.addLocalModelToList(toolsTypeDetails);
+                break;
+            case this.app.configuration.getUiText('Add external tools model...'):
+                await this.addExternalModelToList(toolsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Add tools model from huggingface...')??"":
                 await this.addHuggingfaceModelToList(toolsTypeDetails);

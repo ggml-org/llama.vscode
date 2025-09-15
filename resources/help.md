@@ -12,7 +12,7 @@ The first time it could take longer to answer. The following questions will be a
  
 ## Chat with AI with project context 
 
-### Requred servers
+### Required servers
 - Chat server
 - Embeddings server
 
@@ -95,7 +95,6 @@ llama-vscode provides to the users the posibility to partially create their own 
 
 ### How to use it
 Configure the description of the tool and the returned result, enable the tool and ask the agent questions related to the tool.
-
 
 Settings:
 - Tool_custom_tool_description: Description of the tool. This description will be used by the AI to decide if this tool should be used. Example: "Use this tool for information about llama.cpp and llama-server - how to build it, how to use it, options, etc."
@@ -364,10 +363,15 @@ Chat models configurations could be added/deleted/viewed/selected/deselected/add
 ### How to use it 
 Select "Chat models..." from llama-vscode menu  
 
-- Add models  
+- Add local model  
 Enter the requested properties.  
-For local models name, local start command and endpoint are required  
-For external servers name and endpoint are required  
+Name, local start command and endpoint are required  
+Use models, which support text completion, usually with "Instruct" in the name (for example i.e. Qwen2.5-Coder-1.5B-Instruct)
+
+- Add external model    
+Enter the requested properties.  
+Name and endpoint are required.
+Use models, which support text completion, usually with "Instruct" in the name.  
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -433,11 +437,15 @@ Completion models configurations could be added/deleted/viewed/selected/deselect
 ### How to use it 
 Select "Completion models..." from llama-vscode menu  
 
-- Add models  
+- Add local model  
 Enter the requested properties.  
-For local models name, local start command and endpoint are required  
-For external servers name and endpoint are required  
-Use models, which support FIM (Fill In the Middle), for example Qwen2.5-Coder-1.5B-Q8_0-GGUF
+Name, local start command and endpoint are required  
+Use models, which support FIM (Fill In the Middle), for example Qwen2.5-Coder-1.5B-Q8_0-GGUF  
+
+- Add external model    
+Enter the requested properties.  
+Name and endpoint are required.  
+Use models, which support FIM (Fill In the Middle)  
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -476,11 +484,15 @@ Embeddings models configurations could be added/deleted/viewed/selected/deselect
 ### How to use it 
 Select "Embeddings models..." from llama-vscode menu  
 
-- Add models  
+- Add local model  
 Enter the requested properties.  
-For local models name, local start command and endpoint are required  
-For external servers name and endpoint are required  
-Use models, which support embeddings, for example Nomic-Embed-Text-V2-GGUF
+Name, local start command and endpoint are required.  
+Use models, which support embeddings, for example Nomic-Embed-Text-V2-GGUF.
+
+- Add external model    
+Enter the requested properties.  
+Name and endpoint are required.   
+Use models, which support embeddings.
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -569,11 +581,15 @@ Tools models configurations could be added/deleted/viewed/selected/deselected/ad
 ### How to use it 
 Select "Tools models..." from llama-vscode menu  
 
-- Add models  
+- Add local model  
 Enter the requested properties.  
-For local models name, local start command and endpoint are required  
-For external servers name and endpoint are required  
+Name, local start command and endpoint are required  
 Use models, which support tools usage, for example gpt-oss-20b-GGUF
+
+- Add external model    
+Enter the requested properties.  
+Name and endpoint are required.  
+Use models, which support tools usage
 
 - Delete models  
 Select the model you want to delete from the list and delete it.
@@ -798,11 +814,11 @@ The instructions below are left for a reference, but now it is possible to do it
 2. Download the LLM model and run llama.cpp server (combined in one command)  
 - If you have more than 16GB VRAM:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 - If you have less than 16GB VRAM:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 If the file is not available (first time) it will be downloaded (this could take some time) and after that llama.cpp server will be started. 
 
