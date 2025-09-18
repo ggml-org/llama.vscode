@@ -281,7 +281,7 @@ export class LlamaServer {
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
         if (!endpoint) { 
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
-            const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select Env")
+            const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select")
             if (shouldSelectModel){
                 this.app.menu.showEnvView();
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")

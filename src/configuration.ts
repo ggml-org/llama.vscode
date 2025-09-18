@@ -104,6 +104,8 @@ export class Configuration {
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     agents_list = new Array();
+    agent_rules = ""
+    agent_commands = new Array();
     tools_custom = new Array();
     context_custom:object = {};
     // additional configs`
@@ -248,6 +250,9 @@ export class Configuration {
         this.tools_models_list = config.get("tools_models_list")??new Array();
         this.envs_list = config.get("envs_list")??new Array();
         this.agents_list = config.get("agents_list")??new Array();
+        this.agent_rules = String(config.get<string>("agent_rules"));
+        this.agent_commands = config.get("agent_commands")??new Array();
+        this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
         this.tools_custom = config.get("tools_custom")??new Array();
         this.context_custom = config.get("context_custom")??{};
         this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));

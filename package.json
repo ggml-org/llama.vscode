@@ -444,6 +444,64 @@
           ],
           "description": "The list of the agents, which could be selected"
         },
+        "llama-vscode.agent_commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name for this agent to be shown to the user"
+              },
+              "description": {
+                "type": "string",
+                "description": "Description of the model - for what purposes should be used, what are his strengths, etc."
+              },
+              "prompt": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "The prompt to be sent to the agent",
+                "default": ""
+              },
+              "context": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Key words, which will be transformed to additional context for the agent",
+                "default": []
+              }
+            },
+            "required": [
+              "name",
+              "prompt"
+            ]
+          },
+          "default": [
+           {
+              "name": "about",
+              "description": "Reviews the project and provides information about it.",
+              "prompt": [
+                  "What is this project about?",
+                  "Provide an overview of the project - purpose, architecture, language, etc."
+              ],
+              "context": [
+              ]
+            },
+            {
+              "name": "explain",
+              "description": "Explains the attached code/file.",
+              "prompt": [
+                "Explain the provided source code."
+              ],
+              "context": [
+              ]
+            }
+          ],
+          "description": "The list of agent commands, which could be selected by the user"
+        },
         "llama-vscode.complition_models_list": {
           "type": "array",
           "items": {
@@ -1384,6 +1442,11 @@
             }
           ],
           "description": "The list of envs, which could be selected"
+        },
+        "llama-vscode.agent_rules": {
+          "type": "string",
+          "default": "",
+          "description": "Path to a file (md format or plain text) with user defined rules for the agent, which will be appended to the system instructions. Path could be absolute or relative to the workspace root. Example: coding-rules.md (provided the file is in the project root) or /home/user/coding-rules.md"
         },
         "llama-vscode.env_start_last_used": {
           "type": "boolean",

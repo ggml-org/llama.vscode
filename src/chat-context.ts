@@ -39,7 +39,7 @@ export class ChatContext {
 
     public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Extracting keywords from query..."))
-        let query = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
+        let query = this.app.prompts.replaceOnePlaceholder(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
         if (!data || !data.choices[0].message.content) {
             vscode.window.showInformationMessage('No suggestions available');

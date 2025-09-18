@@ -446,7 +446,7 @@ export class Utils {
 
     static deleteFile = (filePath: string): string => {
         try {
-            const absolutePath = this.getAbsolutFilePath(filePath);
+            const absolutePath = Utils.getAbsolutFilePath(filePath);
             if (!fs.existsSync(absolutePath)) {
                 return `File not found at ${filePath}`;
             }

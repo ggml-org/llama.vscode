@@ -1,6 +1,6 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
-import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env, Agent, Chat } from "./types";
+import { HuggingfaceFile, HuggingfaceModel, LlmModel, ModelTypeDetails, Env, Agent, Chat, AgentCommand } from "./types";
 import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
@@ -87,6 +87,9 @@ export class Menu {
             },
             {
                 label: this.app.configuration.getUiText('Agents...'),
+            },
+            {
+                label: this.app.configuration.getUiText('Agent commands...'),
             },
             {
                 label: this.app.configuration.getUiText('Chats...'),
@@ -222,6 +225,11 @@ export class Menu {
                 let agentsActions: vscode.QuickPickItem[] = this.getAgentActions();
                 let actionSelected = await vscode.window.showQuickPick(agentsActions);
                 if (actionSelected) this.processAgentsActions(actionSelected);
+                break;
+            case this.app.configuration.getUiText('Agent commands...')??"":
+                let agentCommandsActions: vscode.QuickPickItem[] = this.getAgentCommandsActions();
+                let agentCommandSelected = await vscode.window.showQuickPick(agentCommandsActions);
+                if (agentCommandSelected) this.processAgentCommandsActions(agentCommandSelected);
                 break;
             case this.app.configuration.getUiText('Chats...')??"":
                 let chatsActions: vscode.QuickPickItem[] = this.getChatActions();
@@ -613,6 +621,27 @@ export class Menu {
         ];
     }
 
+        private getAgentCommandsActions(): vscode.QuickPickItem[] {
+        return [
+            {
+                label: this.app.configuration.getUiText("Add agent command...") ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('View agent command details...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Delete agent command...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Export agent command...') ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText('Import agent command...') ?? ""
+            },
+        ];
+    }
+    
+
     private getChatActions(): vscode.QuickPickItem[] {
         return [
             {
@@ -711,6 +740,46 @@ export class Menu {
             "\ndescription: " + selectedAgent.description +
             "\nsystem prompt: \n" + selectedAgent.systemInstruction.join("\n") +
             "\n\ntools: " + (selectedAgent.tools ? selectedAgent.tools.join(", ") : "");
+    }
+
+    private async viewAgentCommandFromList(agentCommands: any[]) {
+        const agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        let agentCommand = await vscode.window.showQuickPick(agentComandItems);
+        if (agentCommand) {
+            let agentCommandIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
+            let selectedAgentCommand =  agentCommands[agentCommandIndex];
+            await this.showAgentCommandDetails(selectedAgentCommand);
+        }
+    }
+
+    private async deleteAgentCommandFromList(agentCommands: AgentCommand[], settingName: string) {
+        const modelsItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        const model = await vscode.window.showQuickPick(modelsItems);
+        if (model) {
+            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
+            const shoulDeleteModel = await Utils.showYesNoDialog("Are you sure you want to delete the agent command below? \n\n"+
+                this.getAgentCommandDetailsAsString(agentCommands[modelIndex])
+            );
+            if (shoulDeleteModel) {
+                agentCommands.splice(modelIndex, 1);
+                this.app.configuration.updateConfigValue(settingName, agentCommands);
+                vscode.window.showInformationMessage("The agent command is deleted.")
+            }
+        }
+    }
+
+    public async showAgentCommandDetails(selectedAgentCommand: any) {
+        await Utils.showOkDialog(
+            this.getAgentCommandDetailsAsString(selectedAgentCommand)
+        );
+    }
+
+    private getAgentCommandDetailsAsString(selectedAgentCommand: AgentCommand): string {
+        return "Agent command details: " +
+            "\nname: " + selectedAgentCommand.name +
+            "\ndescription: " + selectedAgentCommand.description +
+            "\nprompt: \n" + selectedAgentCommand.prompt.join("\n") +
+            "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
 
     private async addLocalModelToList(modelTypeDetails: ModelTypeDetails) {
@@ -1129,6 +1198,19 @@ export class Menu {
         }
     }
 
+    private async persistAgentCommandToSetting(newAgentCommand: AgentCommand, agentCommands: any[], settingName: string) {
+        let modelDetails = this.getAgentCommandDetailsAsString(newAgentCommand);
+        const shouldAddModel = await Utils.showYesNoDialog("A new agent command will be added. \n\n" +
+            modelDetails +
+            "\n\nDo you want to add the agent command?");
+
+        if (shouldAddModel) {
+            agentCommands.push(newAgentCommand);
+            this.app.configuration.updateConfigValue(settingName, agentCommands);
+            vscode.window.showInformationMessage("The agent command is added.");
+        }
+    }
+
     private async importEnvToList(envList: any[], settingName: string) {
         let name = "";
         const uris = await vscode.window.showOpenDialog({
@@ -1197,6 +1279,30 @@ export class Menu {
 
         await this.persistAgentToSetting(newAgent, agentList, settingName);
     }
+
+    private async importAgentCommandToList(agentCommands: any[], settingName: string) {
+        let name = "";
+        const uris = await vscode.window.showOpenDialog({
+                canSelectMany: false,
+                openLabel: 'Import Agent Command',
+                filters: {
+                    'Agent Command Files': ['json'],
+                    'All Files': ['*']
+                },
+            });
+
+        if (!uris || uris.length === 0) {
+            return;
+        }
+
+        const filePath = uris[0].fsPath;
+        
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const newAgent = JSON.parse(fileContent);
+
+        await this.persistAgentCommandToSetting(newAgent, agentCommands, settingName);
+    }
+    
 
     private async importChatToList() {
         let name = "";
@@ -1392,7 +1498,7 @@ export class Menu {
             let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
             let selectedAgent =  agentsList[modelIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent? \n\n" +
-            this.getAgentDetailsAsString(selectedAgent)
+            this.getAgentCommandDetailsAsString(selectedAgent)
             );
 
             if (shouldExport){
@@ -1412,6 +1518,37 @@ export class Menu {
                 const jsonContent = JSON.stringify(selectedAgent, null, 2);
                 fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
                 vscode.window.showInformationMessage("Agent is saved.")
+            }
+        }
+    }
+
+    private async exportAgentCommandFromList(agentCommands: any[]) {
+        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        let agent = await vscode.window.showQuickPick(agentsItems);
+        if (agent) {
+            let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
+            let selectedAgentCommand =  agentCommands[modelIndex];
+            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent command? \n\n" +
+            this.getAgentCommandDetailsAsString(selectedAgentCommand)
+            );
+
+            if (shouldExport){
+                const uri = await vscode.window.showSaveDialog({
+                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedAgentCommand.name+'.json')),
+                        filters: {
+                            'Agent Command Files': ['json'],
+                            'All Files': ['*']
+                        },
+                        saveLabel: 'Export Agent Command'
+                    });
+
+                if (!uri) {
+                    return;
+                }
+
+                const jsonContent = JSON.stringify(selectedAgentCommand, null, 2);
+                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
+                vscode.window.showInformationMessage("Agent command is saved.")
             }
         }
     }
@@ -1769,6 +1906,28 @@ export class Menu {
                 break;
             case this.app.configuration.getUiText('Import agent...'):
                 await this.importAgentToList(this.app.configuration.agents_list, "agents_list")
+                break;
+        }
+    }
+
+    processAgentCommandsActions = async (selected:vscode.QuickPickItem) => {
+        switch (selected.label) {
+            case this.app.configuration.getUiText('Add agent command...'):
+                // await this.addModelToList(toolsTypeDetails);
+                Utils.showOkDialog("You could add an agent command in setting agent_commands")
+                break;
+            case this.app.configuration.getUiText('Delete agent command...'):
+                await this.deleteAgentCommandFromList(this.app.configuration.agent_commands, "agent_commands");
+                // Utils.showOkDialog("You could delete an agent command in setting agent_commands")
+                break;
+            case this.app.configuration.getUiText('View agent command details...'):
+                await this.viewAgentCommandFromList(this.app.configuration.agent_commands)
+                break;
+            case this.app.configuration.getUiText('Export agent command...'):
+                await this.exportAgentCommandFromList(this.app.configuration.agent_commands)
+                break;
+            case this.app.configuration.getUiText('Import agent command...'):
+                await this.importAgentCommandToList(this.app.configuration.agent_commands, "agent_commands")
                 break;
         }
     }

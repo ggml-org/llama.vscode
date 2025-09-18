@@ -98,7 +98,7 @@ export class Tools {
 
         try {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
-            if (absolutePath == "") "File not found: " + filePath
+            if (absolutePath == "") return "File not found: " + filePath
             uri = vscode.Uri.file(absolutePath);
             const document = await vscode.workspace.openTextDocument(uri)
             if (params.should_read_entire_file) return document.getText()

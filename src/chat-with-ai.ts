@@ -59,7 +59,7 @@ export class ChatWithAi {
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat model or an env with chat model to chat with AI.","Select Env")
+            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat model or an env with chat model to chat with AI.","Select")
             if (shouldSelectModel){
                 // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) // .selectStartModel(chatTypeDetails);
                 this.app.menu.showEnvView();

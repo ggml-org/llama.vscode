@@ -1,5 +1,6 @@
 import { Application } from "./application";
 import vscode from "vscode";
+import { Utils } from "./utils";
 
 
 export class Git {
@@ -10,6 +11,25 @@ export class Git {
     }
 
     generateCommitMessage = async (): Promise<void> => {
+        let chatUrl = this.app.configuration.endpoint_chat
+        let chatModel = this.app.menu.getChatModel();    
+        if (chatModel.endpoint) {
+            const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
+            chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
+        }
+        if (!chatUrl) {
+            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat model or an env with chat model to generate a commit message.","Select")
+            if (shouldSelectModel){
+                this.app.menu.showEnvView();
+                vscode.window.showInformationMessage("After the chat model is loaded, try again generating commit message.")
+                return;
+            } 
+            else {
+                vscode.window.showErrorMessage("No endpoint for the chat model. Select a chat model or an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
+                return;
+            }
+        }
+
         const gitExtension = vscode.extensions.getExtension('vscode.git')?.exports;
         const git = gitExtension?.getAPI(1);
         if (!git) {
@@ -36,7 +56,7 @@ export class Git {
                 vscode.window.showWarningMessage('git staged change is empty, using unstaged change');
             }
 
-            const prompt = this.app.prompts.replaceOnePlaceholders(this.app.prompts.CREATE_GIT_DIFF_COMMIT, "diff", diff);
+            const prompt = this.app.prompts.replaceOnePlaceholder(this.app.prompts.CREATE_GIT_DIFF_COMMIT, "diff", diff);
             vscode.window.withProgress({
                 location: vscode.ProgressLocation.SourceControl,
                 title: 'llama.vscode is generating a commit message...',

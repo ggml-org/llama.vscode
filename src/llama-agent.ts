@@ -1,5 +1,5 @@
 import {Application} from "./application";
-import { ChatMessage, ContextCustom } from "./types";
+import { AgentCommand, ChatMessage, ContextCustom } from "./types";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"
@@ -37,12 +37,24 @@ export class LlamaAgent {
             worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
         let projectContext = "  \n\n" + worspaceFolder;
+        if (this.app.configuration.agent_rules && this.app.configuration.agent_rules.trim().length > 0){
+            const absolutePath = Utils.getAbsolutFilePath(this.app.configuration.agent_rules);
+            if (fs.existsSync(absolutePath)) {
+                projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(this.app.configuration.agent_rules.trim(), "utf-8");    
+            } else {
+                vscode.window.showErrorMessage(`File with the user defined rules not found: ${this.app.configuration.agent_rules}`);
+            }
+        } else {
+            const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
+            if (fs.existsSync(absolutePath)) projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            else vscode.window.showErrorMessage(`File with the user defined rules not found: ${this.app.configuration.agent_rules}`);
+        }
         this.messages = [
-                            {
-                                "role": "system",
-                                "content": systemPromt + projectContext
-                            }
-                        ];
+            {
+                "role": "system",
+                "content": systemPromt + projectContext
+            }
+        ];
         this.logText = "";
     }
 
@@ -77,8 +89,9 @@ export class LlamaAgent {
         return this.contexProjectFiles;
     }
 
-    run = async (query:string) => {
-        await this.askAgent(query);
+    run = async (query:string, agentCommand?:string) => {
+        
+        await this.askAgent(query, agentCommand);
     }
 
     private async summarize(): Promise<void> {
@@ -124,11 +137,12 @@ export class LlamaAgent {
         return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
     }
 
-    askAgent = async (query:string): Promise<string> => {
+    askAgent = async (query:string, agentCommand?:string): Promise<string> => {
             let response = ""
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
-            this.logText += "***" + query + "***" + "\n\n";
+            this.logText += "***" + query.replace("\n", "  \n") + "***" + "\n\n"; // Make sure markdown shows new lines correctly
+
             
             if (!this.app.menu.isToolsModelSelected()) {
                 vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or orchestra with tools model) if you want to to use Llama Agent.")
@@ -140,7 +154,7 @@ export class LlamaAgent {
                 && JSON.stringify(this.messages).length > this.app.configuration.chats_max_tokens*4) {
                 this.summarize();
             }
-            
+
             if (this.contexProjectFiles.size > 0){
                 query += "\n\nBelow is a context, attached by the user.\n"
                 for (const [key, value] of this.contexProjectFiles) {
@@ -160,10 +174,16 @@ export class LlamaAgent {
                 }                  
             }
 
-            let filesFromQuery = this.app.chatContext.getFilesFromQuery(query)
-            for (const fileName of filesFromQuery){
-                let absPath = await Utils.getAbsolutePath(fileName);
-                if (absPath != undefined) query = query.replace("@" + fileName, absPath)
+            // let filesFromQuery = this.app.chatContext.getFilesFromQuery(query)
+            // for (const fileName of filesFromQuery){
+            //     let absPath = await Utils.getAbsolutePath(fileName);
+            //     if (absPath != undefined) query = query.replace("@" + fileName, absPath)
+            // }
+
+            if (agentCommand) {
+                const commands = this.app.configuration.agent_commands as AgentCommand[];
+                const commandDetails = commands.find( cmd => cmd.name === agentCommand)                 
+                if (commandDetails) query += "\n\n " + commandDetails.prompt
             }
 
             this.messages.push(

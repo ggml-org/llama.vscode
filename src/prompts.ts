@@ -212,7 +212,7 @@ constructor(application: Application) {
         return template.replace(/{(\w+)}/g, (_, key) => replacements[key] || "");
     }
 
-    public replaceOnePlaceholders(template: string, key: string, replacement: string): string {
+    public replaceOnePlaceholder(template: string, key: string, replacement: string): string {
         return template.replace("{"+key+"}", replacement);
     }
 }

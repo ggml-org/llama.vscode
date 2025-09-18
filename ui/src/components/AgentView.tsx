@@ -143,13 +143,14 @@ const AgentView: React.FC<AgentViewProps> = ({
     }
   };
 
-  const handleAddSource = () => {
-    console.log('@ button clicked - requesting file list');
-    console.log('Current showFileSelector state:', showFileSelector);
+  const handleAddFileSource = () => {
+    handleAddSource('getFileList');
+  }
 
+  const handleAddSource = (command: string) => {
     // Request file list from extension
     vscode.postMessage({
-      command: 'getFileList'
+      command: command
     });
   };
 
@@ -187,15 +188,31 @@ const AgentView: React.FC<AgentViewProps> = ({
 
   const handleFileSelect = (fileLongName: string) => {
     // Send the selected file to the extension
-    vscode.postMessage({
-      command: 'addContextProjectFile',
-      fileLongName: fileLongName
-    });
     setShowFileSelector(false);
     setFileFilter('');
+    if (inputText.endsWith('@')){
+      setInputText(inputText + fileLongName.split('|')[0].trim()); 
+      vscode.postMessage({
+        command: 'addContextProjectFile',
+        fileLongName: fileLongName
+      });
+    } else if (inputText.endsWith('/')){
+      vscode.postMessage({
+        command: 'sendAgentCommand',
+        text: inputText + fileLongName.split('|')[0].trim(), 
+        agentCommand: fileLongName.split('|')[0].trim()
+      });
+      setInputText('');
+      setCurrentState('AI is working...');
+    }
+    
     if (textareaRef.current) {
       textareaRef.current.focus();
     }
+    // if (inputText.endsWith('@') || inputText.endsWith('/')) {
+    //   setInputText(inputText + fileLongName.split('|')[0].trim()); 
+    // }
+    
   };
 
   const handleCancelFileSelect = () => {
@@ -384,6 +401,10 @@ const AgentView: React.FC<AgentViewProps> = ({
                       e.preventDefault();
                       handleSendText();
                     }
+                  } else if (e.key === '@' || (e.key === '2' && e.shiftKey)) {
+                    handleAddSource('getFileList');
+                  } else if (e.key === '/') {
+                    handleAddSource("getAgentCommands");
                   }
                 }}
               />
@@ -407,7 +428,7 @@ const AgentView: React.FC<AgentViewProps> = ({
                     {currentState.includes('working') ? '⏹' : '➤'}
                   </button>
                   <button
-                    onClick={handleAddSource}
+                    onClick={handleAddFileSource}
                     className="modern-btn secondary"
                     title="Add file to context"
                   >
@@ -425,13 +446,13 @@ const AgentView: React.FC<AgentViewProps> = ({
         <div className="file-selector-overlay">
           <div className="file-selector-dialog">
             <div className="file-selector-header">
-              <h3>Select a file to add to context (Debug: {showFileSelector ? 'Visible' : 'Hidden'})</h3>
+              <h3>Select an item to add to context</h3>
               <button onClick={handleCancelFileSelect} className="close-btn">×</button>
             </div>
             <div className="file-selector-search">
               <input
                 type="text"
-                placeholder="Filter files..."
+                placeholder="Filter ..."
                 value={fileFilter}
                 onChange={(e) => setFileFilter(e.target.value)}
                 onKeyDown={handleSearchKeyDown}

@@ -60,6 +60,13 @@ export interface Agent {
     tools?: string[]
 }
 
+export interface AgentCommand {
+    name: string,
+    description?: string,
+    prompt: string[]
+    context?: string[]
+}
+
 export interface chatMessage {
     "role": string,
     "content": string

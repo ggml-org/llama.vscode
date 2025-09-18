@@ -174,4 +174,10 @@ export const translations: string[][] = [
     ["Add external embeddings model...", "Добавяне на външен embeddings модел...", "Externes Embeddings-Modell hinzufügen...", "Добавить внешнюю модель эмбеддингов...", "Añadir modelo de embeddings externo...", "添加外部嵌入模型...", "Ajouter un modèle d'incorporations externe..."],
     ["Add local tools model...", "Добавяне на локален модел за инструменти...", "Lokales Werkzeuge-Modell hinzufügen...", "Добавить локальную модель инструментов...", "Añadir modelo de herramientas local...", "添加本地工具模型...", "Ajouter un modèle d'outils local..."],
     ["Add external tools model...", "Добавяне на външен модел за инструменти...", "Externes Werkzeuge-Modell hinzufügen...", "Добавить внешнюю модель инструментов...", "Añadir modelo de herramientas externo...", "添加外部工具模型...", "Ajouter un modèle d'outils externe..."],
+    ["Agent commands...", "Команди на агента...", "Agentenbefehle...", "Команды агента...", "Comandos de agente...", "代理命令...", "Commandes de l'agent..."],
+    ["Add agent command...", "Добавяне на команда на агент...", "Agentenbefehl hinzufügen...", "Добавить команду агента...", "Agregar comando de agente...", "添加代理命令...", "Ajouter une commande d'agent..."],
+    ["View agent command details...", "Преглед на детайлите на командата на агента...", "Details des Agentenbefehls anzeigen...", "Просмотр деталей команды агента...", "Ver detalles del comando del agente...", "查看代理命令详情...", "Afficher les détails de la commande de l'agent..."],
+    ["Delete agent command...", "Изтриване на команда на агент...", "Agentenbefehl löschen...", "Удалить команду агента...", "Eliminar comando de agente...", "删除代理命令...", "Supprimer la commande de l'agent..."],
+    ["Export agent command...", "Експортиране на команда на агент...", "Agentenbefehl exportieren...", "Экспорт команды агента...", "Exportar comando de agente...", "导出代理命令...", "Exporter la commande de l'agent..."],
+    ["Import agent command...", "Импортиране на команда на агент...", "Agentenbefehl importieren...", "Импорт команды агента...", "Importar comando de agente...", "导入代理命令...", "Importer la commande de l'agent..."],
   ];

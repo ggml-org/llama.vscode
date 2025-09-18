@@ -47,6 +47,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'sendText':
                         this.app.llamaAgent.run(message.text);
                         break;
+                    case 'sendAgentCommand':
+                        this.app.llamaAgent.run(message.text, message.agentCommand);
+                        break;
                     case 'clearText':
                         this.app.llamaAgent.resetMessages();
                         this.app.llamaAgent.resetContextProjectFiles()
@@ -155,6 +158,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         webviewView.webview.postMessage({
                             command: 'updateFileList',
                             files: fileKeys
+                        });
+                        break;
+                    case 'getAgentCommands':
+                        let agentCommands =     this.app.configuration.agent_commands.map(cmd => cmd.name +  " | " + cmd.description)
+                        webviewView.webview.postMessage({
+                            command: 'updateFileList',
+                            files: agentCommands
                         });
                         break;
                     case 'addContextProjectFile':
