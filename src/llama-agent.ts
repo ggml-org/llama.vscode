@@ -174,12 +174,6 @@ export class LlamaAgent {
                 }                  
             }
 
-            // let filesFromQuery = this.app.chatContext.getFilesFromQuery(query)
-            // for (const fileName of filesFromQuery){
-            //     let absPath = await Utils.getAbsolutePath(fileName);
-            //     if (absPath != undefined) query = query.replace("@" + fileName, absPath)
-            // }
-
             if (agentCommand) {
                 const commands = this.app.configuration.agent_commands as AgentCommand[];
                 const commandDetails = commands.find( cmd => cmd.name === agentCommand)                 
@@ -356,7 +350,7 @@ export class LlamaAgent {
 
     private async getItemContext(key: string, value: string) {
         let itemContext = "";
-        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(key));
+        const document = await vscode.workspace.openTextDocument(vscode.Uri.file(key.split("|")[0]));
         let parts = value.split("|");
         if (parts.length == 1) {
             itemContext += "\n\nFile " + key + ":\n\n" + document.getText().slice(0, this.app.configuration.rag_max_context_file_chars);

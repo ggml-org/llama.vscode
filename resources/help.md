@@ -1,3 +1,19 @@
+## Agent commands
+
+### What are agent commands
+Agent commands are a way to reuse often used prompts. They could be used to describe complex workflows or for simple instructions.   
+In future they could be extended with additional context, specificatlly prepared by llama-vscode for each command.
+
+### How to use them
+Prerequisite: tools model is selected.
+
+In agent prompt text area press "/" - the available agent commands will be shown and could be selected. When selected, the command name is replaced with the longer prompt for this command and is sent to the AI model.  
+Example:  
+1. Select several lines of source code
+2. Press Ctrl+Shift+A (or right click and select "llama-vscode: Show Llama Agent") - this will attach the selected lines to the prompt
+3. Inside the agent prompt press "/" and select "explain"
+The agent will explain the selected code. 
+ 
 ## Chat with AI about llama-vscode  
 
 ### Requred servers
@@ -272,7 +288,7 @@ The best wey to prepare the environment for the agent is by selecting an Env (gr
 3. Write your request and send it with Enter or the "Send" button.
 
 Optional
-- You could add files to the context with the @ button. 
+- You could add files to the context with the @ button or just by entering "@". 
 - Activating an agent (Ctrl+Shift+A or from llama-vscodd menu) adds the open file to the agent context
 - You could select source code and activate the agent (Ctrl+Shift+A or from llama-vscodd menu) to attach the selected lines to the context
 - You could choose the tools to be used from "Select Tools" button (on the right side of "New Chat" button). If you have installed and started MCP Servers in VS Code, their tools will be available for selection too. Don't forget to click the OK button after changing the tool selection.
@@ -664,6 +680,20 @@ There are different ways to select a model
 - In Llama Agent click the button for selecting a model (completion, chat, embeddings, tools)
 - In llama-vscode menu select "Completion models..." (or chat, embeddings, tools)
 - Select an env. This will select the models, which are part of the env
+ 
+ 
+## Rules
+
+### What are rules
+Rules are additional user instructions that are added to the system prompt when an agent request is sent to the AI model. They are stored in a file, created by the user in a plain text or markdown format.
+As llama-vscode provides the possibility to change the system prompt for the agents, additional instructions can be added to the system prompt and the result will be the same. The difference is that the rules from a file will be added to each agent system prompt on the fly.
+
+### How to use them
+The rules are optional. You could use rules file to add instructions to the system prompt - code writing conventions, code formatting, additional information about the project, etc.
+
+There are two ways to configure rules:
+- Create a new rules file under name llama-vscode-rules.md in the root of the project.
+- In llama-vscode setting Agent_rules enter a path to a rules file. It could be relative to the project root or absolute path. If this is specified, the file llama-vscode-rules.md will be ignored.
  
  
 ## Statusbar  

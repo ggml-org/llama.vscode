@@ -208,11 +208,7 @@ const AgentView: React.FC<AgentViewProps> = ({
     
     if (textareaRef.current) {
       textareaRef.current.focus();
-    }
-    // if (inputText.endsWith('@') || inputText.endsWith('/')) {
-    //   setInputText(inputText + fileLongName.split('|')[0].trim()); 
-    // }
-    
+    }    
   };
 
   const handleCancelFileSelect = () => {
