@@ -48,11 +48,6 @@ export class Menu {
                 label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
                 description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)`)
             },
-            
-            {
-                label: (this.app.configuration.getUiText("Chat with AI with project context") ?? "") + " (Ctrl+Shift+;)",
-                description: this.app.configuration.getUiText(`Opens a chat with AI window with project context inside VS Code using the selected chat model (or setting endpoint_chat)`)
-            },
             {
                 label: this.app.configuration.getUiText("Show selected models"),
                 description: this.app.configuration.getUiText("Displays a list of currently selected models")
@@ -1887,7 +1882,7 @@ export class Menu {
                 break;
             case this.app.configuration.getUiText('Add agent...'):
                 // await this.addModelToList(toolsTypeDetails);
-                Utils.showOkDialog("You could add an agent in setting agents_list")
+                Utils.showOkDialog("You could add an agent in setting agents_list or use export, modify and import.")
                 break;
             case this.app.configuration.getUiText('Delete agent...'):
                 // await this.deleteModelFromList(this.app.configuration.tools_models_list, "tools_models_list");
@@ -1914,7 +1909,7 @@ export class Menu {
         switch (selected.label) {
             case this.app.configuration.getUiText('Add agent command...'):
                 // await this.addModelToList(toolsTypeDetails);
-                Utils.showOkDialog("You could add an agent command in setting agent_commands")
+                Utils.showOkDialog("You could add an agent command in setting agent_commands or use export, modify and import.")
                 break;
             case this.app.configuration.getUiText('Delete agent command...'):
                 await this.deleteAgentCommandFromList(this.app.configuration.agent_commands, "agent_commands");
