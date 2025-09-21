@@ -502,7 +502,7 @@
           ],
           "description": "The list of agent commands, which could be selected by the user"
         },
-        "llama-vscode.complition_models_list": {
+        "llama-vscode.completion_models_list": {
           "type": "array",
           "items": {
             "type": "object",
@@ -719,6 +719,34 @@
           },
           "default": [
             {
+              "name": "OpenAI gpt-oss 20B (LOCAL) (> 19GB VRAM)",
+              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
+            {
+              "name": "xAI: Grok 4 Fast (free for limited period), context: 2 000 000",
+              "localStartCommand": "",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "x-ai/grok-4-fast:free"
+            },
+            {
+              "name": "Sonoma Sky - 2,000,000 context $0/M input tokens $0/M output tokens as of 19.09.25 (OpenRouter)",
+              "localStartCommand": "",
+              "endpoint": "https://openrouter.ai/api",
+              "aiModel": "openrouter/sonoma-sky-alpha",
+              "isKeyRequired": true
+            },
+            {
+              "name": "Sonoma Dusk - 2,000,000 context $0/M input tokens $0/M output tokens as of 19.09.25 (OpenRouter)",
+              "localStartCommand": "",
+              "endpoint": "https://openrouter.ai/api",
+              "aiModel": "openrouter/sonoma-dusk-alpha",
+              "isKeyRequired": true
+            },
+            {
               "name": "Z.AI: GLM 4.5 - 128000 context $0.60/M input tokens $2.20/M output tokens (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
@@ -779,13 +807,6 @@
               "endpoint": "https://openrouter.ai/api",
               "aiModel": "openai/gpt-oss-120b",
               "isKeyRequired": true
-            },
-            {
-              "name": "OpenAI gpt-oss 20B (LOCAL)",
-              "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
-              "endpoint": "http://localhost:8009",
-              "aiModel": "",
-              "isKeyRequired": false
             }
           ],
           "description": "The list of tools models, which could be selected"

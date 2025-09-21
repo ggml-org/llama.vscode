@@ -396,7 +396,6 @@ export class Architect {
         const showWebviewCommand = vscode.commands.registerCommand(
             'extension.showLlamaWebview',
             async () => {
-                // Focus the webview in the Explorer panel
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
                 this.app.llamaWebviewProvider.setView("agent")
                 const editor = vscode.window.activeTextEditor;

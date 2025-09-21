@@ -9,7 +9,7 @@ interface AgentViewProps {
   inputText: string;
   setInputText: (text: string) => void;
   currentToolsModel: string;
-  currentEnv: string;
+  currentAgent: string;
   currentState: string;
   setCurrentState: (state: string) => void;
   contextFiles: Map<string, string>;
@@ -22,7 +22,7 @@ const AgentView: React.FC<AgentViewProps> = ({
   inputText,
   setInputText,
   currentToolsModel,
-  currentEnv,
+  currentAgent,
   currentState,
   setCurrentState,
   contextFiles,
@@ -145,6 +145,18 @@ const AgentView: React.FC<AgentViewProps> = ({
 
   const handleAddFileSource = () => {
     handleAddSource('getFileList');
+  }
+
+  const handleSelectToolsModel = () => {
+    vscode.postMessage({
+      command: 'selectModelWithTools'
+    });
+  };
+  
+  const handleSelectAgent = () => {
+    vscode.postMessage({
+      command: 'selectAgent'
+    });
   }
 
   const handleAddSource = (command: string) => {
@@ -328,16 +340,22 @@ const AgentView: React.FC<AgentViewProps> = ({
               >
                 🔧
               </button>
+              <button
+                onClick={handleSelectToolsModel}
+                className="header-btn secondary"
+                title={`Select Tools Model (Selected: ${currentToolsModel})`}
+              >
+                Tools Model
+              </button>
+              <button
+                onClick={handleSelectAgent}
+                className="header-btn secondary"
+                title={`Select Agent (Selected: ${currentAgent})`}
+              >
+                Agent
+              </button>
             </div>
           )}
-          <div className="header-actions">
-            {/* Environment Status Line */}
-            {!currentToolsModel.includes('No model selected') && (
-              <div className="env-status-line" style={{ marginLeft: '20px' }}>
-                {`Env: ${currentEnv}`}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 

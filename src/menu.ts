@@ -6,6 +6,7 @@ import { Configuration } from "./configuration";
 import * as fs from 'fs';
 import * as path from 'path';
 import axios from "axios";
+import { ModelType, LOCAL_MODEL_TEMPLATES, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG, AGENT_NAME } from "./constants";
 
 export class Menu {
     private app: Application
@@ -20,7 +21,11 @@ export class Menu {
 
     constructor(application: Application) {
         this.app = application;
+        // Cache UI texts (assumes Configuration has getAllUiTexts() returning Record<string, string>)
+        // this.uiCache = this.app.configuration.getAllUiTexts();
     }
+
+    private uiCache: Record<string, string> = {};
 
     createMenuItems = (currentLanguage: string | undefined, isLanguageEnabled: boolean): vscode.QuickPickItem[] => {
         let menuItems = [
@@ -172,7 +177,8 @@ export class Menu {
                 this.app.askAi.showChatWithAi(false, context);
                 break;
             case this.app.configuration.getUiText("Chat with AI about llama-vscode"):
-                this.app.askAi.showChatWithAi(false, context, await Utils.getExtensionHelp())
+                this.selectAgent(this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp));
+                this.showAgentView();
                 break;
             case this.app.configuration.getUiText("Show Llama Agent") + " (Ctrl+Shif+A)":
                 await this.showAgentView();
@@ -287,7 +293,7 @@ export class Menu {
             if (env.label.includes("Last used env")){
                 futureEnv = lastUsedEnv;
                 if(!futureEnv){
-                    vscode.window.showWarningMessage("No envoronment selected. There is no last used env.");
+                    vscode.window.showWarningMessage("No environment selected. There is no last used environment.");
                     return;
                 }
             } else {
@@ -780,14 +786,14 @@ export class Menu {
     private async addLocalModelToList(modelTypeDetails: ModelTypeDetails) {
         const hostEndpoint = "http://" + modelTypeDetails.newModelHost
         const modelListToLocalCommand = new Map([ 
-            ["complition_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
+            ["completion_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
             ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost], 
             ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],  
             ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost] ]);
         let name = "";
         while (name.trim() === "") {
             name = (await vscode.window.showInputBox({
-                placeHolder: 'Enter a user fiendly name for your model (required)',
+                placeHolder: 'Enter a user friendly name for your model (required)',
                 prompt: 'name for your model (required)',
                 value: ''
             })) ?? "";
@@ -851,7 +857,7 @@ export class Menu {
         let name = "";
         while (name.trim() === "") {
             name = (await vscode.window.showInputBox({
-                placeHolder: 'Enter a user fiendly name for your model (required)',
+                placeHolder: 'Enter a user friendly name for your model (required)',
                 prompt: 'name for your model (required)',
                 value: ''
             })) ?? "";
@@ -907,13 +913,12 @@ export class Menu {
     }
 
     public async addHuggingfaceModelToList(typeDetails: ModelTypeDetails) {
-        const hostEndpoint = "http://" + typeDetails.newModelHost
-        const modelPlaceholder = "<model_name>";
-        const modelListToLocalCommand = new Map([ 
-            ["complition_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost],
-            ["chat_models_list", 'llama-server -hf ' + modelPlaceholder + ' -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + typeDetails.newModelPort + " --host " + typeDetails.newModelHost], 
-            ["embeddings_models_list", "llama-server -hf " + modelPlaceholder + " -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost],  
-            ["tools_models_list", "llama-server -hf " + modelPlaceholder + " --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + typeDetails.newModelPort + " --host " + typeDetails.newModelHost] ]);
+        const modelType = SETTING_TO_MODEL_TYPE[typeDetails.modelsListSettingName];
+        const template = HF_MODEL_TEMPLATES[modelType]
+            .replace('MODEL_PLACEHOLDER', '<model_name>')
+            .replace('PORT_PLACEHOLDER', typeDetails.newModelPort.toString())
+            .replace('HOST_PLACEHOLDER', typeDetails.newModelHost);
+        const hostEndpoint = "http://" + typeDetails.newModelHost;
         
         const searchWords = await vscode.window.showInputBox({
             placeHolder: 'keywords for searching a model from huggingface',
@@ -927,7 +932,7 @@ export class Menu {
         }
         let hfModelName = await this.getDownloadModelName(searchWords);
         if (hfModelName == "") return;
-        const localStartCommand = modelListToLocalCommand.get(typeDetails.modelsListSettingName)?.replace(modelPlaceholder, hfModelName)
+        const localStartCommand = template.replace('<model_name>', hfModelName);
         
         let endpoint = hostEndpoint +":" + typeDetails.newModelPort;
         const aiModel = ""
@@ -1126,7 +1131,7 @@ export class Menu {
         let name = "";
         while (name.trim() === "") {
             name = (await vscode.window.showInputBox({
-                placeHolder: 'Enter a user fiendly name for your env (required)',
+                placeHolder: 'Enter a user friendly name for your env (required)',
                 prompt: 'name for your env (required)',
                 value: ''
             })) ?? "";
@@ -1240,16 +1245,17 @@ export class Menu {
                 },
             });
 
-            if (!uris || uris.length === 0) {
-                return;
-            }
+        if (!uris || uris.length === 0) {
+            return;
+        }
 
-            const filePath = uris[0].fsPath;
-            
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-            const newModel = JSON.parse(fileContent);
+        const filePath = uris[0].fsPath;
+        
+        const fileContent = fs.readFileSync(filePath, 'utf8');
+        const newModel = JSON.parse(fileContent);
 
         await this.persistModelToSetting(newModel, modelList, settingName);
+        vscode.window.showInformationMessage("Model imported: " + newModel.name);
     }
 
     private async importAgentToList(agentList: any[], settingName: string) {
@@ -1566,7 +1572,7 @@ export class Menu {
                             'Chat Files': ['json'],
                             'All Files': ['*']
                         },
-                        saveLabel: 'Export Caht'
+                        saveLabel: 'Export Chat'
                     });
 
                 if (!uri) {
@@ -1714,7 +1720,7 @@ export class Menu {
     }
 
     processComplModelsActions = async (selected:vscode.QuickPickItem) => {
-        let compleModelType = this.getComplTypeDetails()
+        let compleModelType = this.getTypeDetails(ModelType.Completion);
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start completion model..."):  
                 await this.selectStartModel(compleModelType);
@@ -1729,25 +1735,25 @@ export class Menu {
                 await this.addHuggingfaceModelToList(compleModelType);
                 break;
             case this.app.configuration.getUiText('Delete completion model...'):
-                await this.deleteModelFromList(this.app.configuration.complition_models_list, "complition_models_list");
+                await this.deleteModelFromList(compleModelType.modelsList, compleModelType.modelsListSettingName);
                 break;
             case this.app.configuration.getUiText('View completion model details...'):
-                await this.viewModelFromList(this.app.configuration.complition_models_list)
+                await this.viewModelFromList(compleModelType.modelsList)
                 break;
             case this.app.configuration.getUiText("Deselect/stop completion model"):
                 await this.deselectStopModel(compleModelType);
                 break;
             case this.app.configuration.getUiText('Export completion model...'):
-                await this.exportModelFromList(this.app.configuration.complition_models_list)
+                await this.exportModelFromList(compleModelType.modelsList)
                 break;
             case this.app.configuration.getUiText('Import completion model...'):
-                await this.importModelToList(this.app.configuration.complition_models_list, "complition_models_list")
+                await this.importModelToList(compleModelType.modelsList, compleModelType.modelsListSettingName)
                 break;
         }
     }
 
     processChatModelsActions = async (selected:vscode.QuickPickItem) => {
-        let chatTypeDetails = this.getChatTypeDetails()
+        let chatTypeDetails = this.getTypeDetails(ModelType.Chat);
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start chat model..."):
                 await this.selectStartModel(chatTypeDetails);
@@ -1762,25 +1768,25 @@ export class Menu {
                 await this.addHuggingfaceModelToList(chatTypeDetails);
                 break;
             case this.app.configuration.getUiText('Delete chat model...')??"":
-                await this.deleteModelFromList(this.app.configuration.chat_models_list, "chat_models_list");
+                await this.deleteModelFromList(chatTypeDetails.modelsList, chatTypeDetails.modelsListSettingName);
                 break;
             case this.app.configuration.getUiText('View chat model details...')??"":
-                await this.viewModelFromList(this.app.configuration.chat_models_list)
+                await this.viewModelFromList(chatTypeDetails.modelsList)
                 break;
             case this.app.configuration.getUiText("Deselect/stop chat model"):
                 await this.deselectStopModel(chatTypeDetails);    
                 break;
             case this.app.configuration.getUiText('Export chat model...'):
-                await this.exportModelFromList(this.app.configuration.chat_models_list)
+                await this.exportModelFromList(chatTypeDetails.modelsList)
                 break;
             case this.app.configuration.getUiText('Import chat model...'):
-                await this.importModelToList(this.app.configuration.chat_models_list, "chat_models_list")
+                await this.importModelToList(chatTypeDetails.modelsList, chatTypeDetails.modelsListSettingName)
                 break;
         }
     }
 
     processEmbsModelsActions = async (selected:vscode.QuickPickItem) => {
-        let embsTypeDetails = this.getEmbsTypeDetails()
+        let embsTypeDetails = this.getTypeDetails(ModelType.Embeddings);
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start embeddings model..."):
                 await this.selectStartModel(embsTypeDetails);
@@ -1795,25 +1801,25 @@ export class Menu {
                 await this.addHuggingfaceModelToList(embsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Delete embeddings model...'):
-                await this.deleteModelFromList(this.app.configuration.embeddings_models_list, "embeddings_models_list");
+                await this.deleteModelFromList(embsTypeDetails.modelsList, embsTypeDetails.modelsListSettingName);
                 break;
             case this.app.configuration.getUiText('View embeddings model details...'):
-                await this.viewModelFromList(this.app.configuration.embeddings_models_list)
+                await this.viewModelFromList(embsTypeDetails.modelsList)
                 break;
             case this.app.configuration.getUiText("Deselect/stop embeddings model"):
                 await this.deselectStopModel(embsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Export embeddings model...'):
-                await this.exportModelFromList(this.app.configuration.embeddings_models_list)
+                await this.exportModelFromList(embsTypeDetails.modelsList)
                 break;
             case this.app.configuration.getUiText('Import embeddings model...'):
-                await this.importModelToList(this.app.configuration.embeddings_models_list, "embeddings_models_list")
+                await this.importModelToList(embsTypeDetails.modelsList, embsTypeDetails.modelsListSettingName)
                 break;
         }
     }
 
     processToolsModelsActions = async (selected:vscode.QuickPickItem) => {
-        let toolsTypeDetails = this.getToolsTypeDetails();
+        let toolsTypeDetails = this.getTypeDetails(ModelType.Tools);
         switch (selected.label) {
             case this.app.configuration.getUiText("Select/start tools model..."):
                 await this.selectStartModel(toolsTypeDetails);
@@ -1828,19 +1834,19 @@ export class Menu {
                 await this.addHuggingfaceModelToList(toolsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Delete tools model...'):
-                await this.deleteModelFromList(this.app.configuration.tools_models_list, "tools_models_list");
+                await this.deleteModelFromList(toolsTypeDetails.modelsList, toolsTypeDetails.modelsListSettingName);
                 break;
             case this.app.configuration.getUiText('View tools model details...'):
-                await this.viewModelFromList(this.app.configuration.tools_models_list)
+                await this.viewModelFromList(toolsTypeDetails.modelsList)
                 break;
             case this.app.configuration.getUiText("Deselect/stop tools model"):
                 await this.deselectStopModel(toolsTypeDetails);
                 break;
             case this.app.configuration.getUiText('Export tools model...'):
-                await this.exportModelFromList(this.app.configuration.tools_models_list)
+                await this.exportModelFromList(toolsTypeDetails.modelsList)
                 break;
             case this.app.configuration.getUiText('Import tools model...'):
-                await this.importModelToList(this.app.configuration.tools_models_list, "tools_models_list")
+                await this.importModelToList(toolsTypeDetails.modelsList, toolsTypeDetails.modelsListSettingName)
                 break;
         }
     }
@@ -2010,57 +2016,41 @@ export class Menu {
         vscode.window.showInformationMessage("Env, models and agent are deselected.")
     }
 
-    getChatTypeDetails = (): ModelTypeDetails => {
+    // getChatTypeDetails = (): ModelTypeDetails => {
+    //     return {
+    //         modelsList: this.app.configuration.chat_models_list,
+    //         modelsListSettingName: "chat_models_list",
+    //         newModelPort: this.app.configuration.new_chat_model_port,
+    //         newModelHost: this.app.configuration.new_chat_model_host,
+    //         selModelPropName: "selectedChatModel",
+    //         launchSettingName: "launch_chat",
+    //         killCmd: this.app.llamaServer.killChatCmd,
+    //         shellCmd: this.app.llamaServer.shellChatCmd
+    //     };
+    // }
+
+    // Generic method using constants
+    private getTypeDetails(type: ModelType): ModelTypeDetails {
+        const config = MODEL_TYPE_CONFIG[type];
         return {
-            modelsList: this.app.configuration.chat_models_list,
-            modelsListSettingName: "chat_models_list",
-            newModelPort: this.app.configuration.new_chat_model_port,
-            newModelHost: this.app.configuration.new_chat_model_host,
-            selModelPropName: "selectedChatModel",
-            launchSettingName: "launch_chat",
-            killCmd: this.app.llamaServer.killChatCmd,
-            shellCmd: this.app.llamaServer.shellChatCmd
+            modelsList: (this.app.configuration as any)[config.settingName],
+            modelsListSettingName: config.settingName,
+            newModelPort: (this.app.configuration as any)[config.portSetting],
+            newModelHost: (this.app.configuration as any)[config.hostSetting],
+            selModelPropName: config.propName,
+            launchSettingName: config.launchSetting,
+            killCmd: (this.app.llamaServer as any)[config.killCmdName],
+            shellCmd: (this.app.llamaServer as any)[config.shellCmdName]
         };
     }
 
-    getComplTypeDetails = (): ModelTypeDetails => {
-        return {
-            modelsList: this.app.configuration.complition_models_list,
-            modelsListSettingName: "complition_models_list",
-            newModelPort: this.app.configuration.new_completion_model_port,
-            newModelHost: this.app.configuration.new_completion_model_host,
-            selModelPropName: "selectedComplModel",
-            launchSettingName: "launch_completion",
-            killCmd: this.app.llamaServer.killFimCmd,
-            shellCmd: this.app.llamaServer.shellFimCmd
-        };
-    }
+    // Legacy methods for backward compatibility (can be removed in later phases)
+    getComplTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Completion);
+    getChatTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Chat);
+    getEmbsTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Embeddings);
+    getToolsTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Tools);
 
-    getEmbsTypeDetails = (): ModelTypeDetails => {
-        return {
-            modelsList: this.app.configuration.embeddings_models_list,
-            modelsListSettingName: "embeddings_models_list",
-            newModelPort: this.app.configuration.new_embeddings_model_port,
-            newModelHost: this.app.configuration.new_embeddings_model_host,
-            selModelPropName: "selectedEmbeddingsModel",
-            launchSettingName: "launch_embeddings",
-            killCmd: this.app.llamaServer.killEmbeddingsCmd,
-            shellCmd: this.app.llamaServer.shellEmbeddingsCmd
-        };
-    }
-
-    getToolsTypeDetails = (): ModelTypeDetails => {
-        return {
-            modelsList: this.app.configuration.tools_models_list,
-            modelsListSettingName: "tools_models_list",
-            newModelPort: this.app.configuration.new_tools_model_port,
-            newModelHost: this.app.configuration.new_tools_model_host,
-            selModelPropName: "selectedToolsModel",
-            launchSettingName: "launch_tools",
-            killCmd: this.app.llamaServer.killToolsCmd,
-            shellCmd: this.app.llamaServer.shellToolsCmd
-        };
-    }
+    
 
     public deselectAgent() {
         this.selectAgent({

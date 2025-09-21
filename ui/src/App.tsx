@@ -180,7 +180,7 @@ const App: React.FC<AppProps> = () => {
             inputText={inputText}
             setInputText={setInputText}
             currentToolsModel={currentToolsModel}
-            currentEnv={currentEnv}
+            currentAgent={currentAgent}
             currentState={currentState}
             setCurrentState={setCurrentState}
             contextFiles={contextFiles}

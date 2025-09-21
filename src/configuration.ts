@@ -92,7 +92,7 @@ export class Configuration {
     chats_max_tokens = 64000;
     chats_summarize_old_msgs = false;
     chats_msgs_keep = 50
-    complition_models_list = new Array();
+    completion_models_list = new Array();
     embeddings_models_list = new Array();
     tools_models_list = new Array();
     chat_models_list = new Array();
@@ -244,7 +244,7 @@ export class Configuration {
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));
         this.languageSettings = config.get<Record<string, boolean>>('languageSettings') || {};
-        this.complition_models_list = config.get("complition_models_list")??new Array();
+        this.completion_models_list = config.get("completion_models_list")??new Array();
         this.chat_models_list = config.get("chat_models_list")??new Array();
         this.embeddings_models_list = config.get("embeddings_models_list")??new Array(); 
         this.tools_models_list = config.get("tools_models_list")??new Array();
