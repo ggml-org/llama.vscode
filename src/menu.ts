@@ -126,7 +126,7 @@ export class Menu {
             },
             {
                 label: (this.app.configuration.getUiText("Chat with AI about llama-vscode") ?? ""),
-                description: this.app.configuration.getUiText(`Opens a chat with AI window with llama-vscode help docu context inside VS Code using the selected chat model (or setting endpoint_chat)`)
+                description: this.app.configuration.getUiText(`Selects llama-vscode help agent and opens llama agent view for asking ai about llama-vscode`)
             },
             {
                 label: this.app.configuration.getUiText('How to delete models'),

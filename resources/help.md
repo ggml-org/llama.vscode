@@ -2,6 +2,7 @@
 
 ### What are agent commands
 Agent commands are a way to reuse often used prompts. They could be used to describe complex workflows or for simple instructions.   
+Agent commands are stored in setting agent_commands and llama-vscode menu item "Agent commands..." could be used to manage them.
 In future they could be extended with additional context, specificatlly prepared by llama-vscode for each command.
 
 ### How to use them
@@ -17,34 +18,17 @@ The agent will explain the selected code.
 ## Chat with AI about llama-vscode  
 
 ### Requred servers
-- Chat server
+- Tools server
 
 ### How to use it 
-This is a conversation with the local AI about llama-vscode, something like help how to use llama-vscode.
-- From llama-vscode menu select "Chat with AI about llama-vscode" -> a window will be opened (the conversation history overlays the actual chat window, but just click on the chat window)
+This is a conversation with the llama-vscode help agent AI about llama-vscode, something like help how to use llama-vscode.
+- From llama-vscode menu select "Chat with AI about llama-vscode" -> the agent will be opened
 - Enter your question about llama-vscode
-The first time it could take longer to answer. The following questions will be answered faster as the input will be cached.
+The first time it could take longer to answer. The following questions will be answered faster as the help information will be cached.
  
  
 ## Chat with AI with project context 
-
-### Required servers
-- Chat server
-- Embeddings server
-
-### How to use it
-This is a conversation with the local AI. It uses the project information and therefore is slower than Chat with AI, but could answer questions related to the project.
-- Press Ctrl+Shift+; inside an editor (or select from llama.vscode menu Chat with AI with project context) 
-- Enter your question
-- llama-vscode collects a relevant context information from the project and sends it to the AI together with your question
-- Project context information is sent to the AI only if the question is entered with Ctrl+Shift+;. If the question is written directly in the chat window - no new context information is sent to the AI.
-- If the AI answers too slowly - close the VS Code chat window and open a new one with Ctrl+Shift+;
-- Press Esc if you want to return from the chat to the editor  
-  
-It is possible to configure rag_* settings to adjust the rag search according to models and hardware ressources
-
-
-![Chat with AI with project context](https://github.com/user-attachments/assets/d5753717-1d85-4e4e-a093-53b0ed5f51dc)
+This is removed. Chat with AI with project context is equal to using agent with the tool search_source. The agent has many other tools and is therefore a better choice.
  
  
 ## Chat with AI  
@@ -56,7 +40,6 @@ It is possible to configure rag_* settings to adjust the rag search according to
 This is a conversation with the local AI. Mainly for asking questions for reference instead of searching with google. It doesn't use the project information and therefore is fast.
 - Press Ctrl+; inside an editor (or select from llama.vscode menu Chat with AI) - A chat window will open inside VS Code
 - Enter your message and start the chat
-- Press Esc if you want to return from the chat to the editor
 
 ![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
  
@@ -184,12 +167,12 @@ This generate a commit message, based on the current changes.
 
 ![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3) 
  
-## Version 0.0.19 is released (18.08.2025)
+## Version 0.0.27 is released (21.09.2025)
 ## What is new
-* llama.cpp already supports gpt-oss with tools! If you have 20+ VRAM available, you could select env "Local, full package - min, gpt-oss 20B" and use all AI features, including Llama Agent, only with local models.
-* Llama agent UI now shows tables correctly
-* Auto select/start last used env if desired - setting Env_start_last_usedEnv_start_last_used
-* Agent (system prompt + default tools) selection is now possible ("Agents..." -> "Select/start agent" from llama-vscode menu). All agents details are stored in setting agents_list. Export/import agents is also possible, i.e. they could be shared.
+- xAI Grog4 free (from OpenRouter) added to the initial models
+- Chat with AI with project context removed (agent does it better)
+- Chat with AI about llama-vscode is now with agent, not using webui
+- Agent - new buttons "Tools Model" and "Agent" -  possibility to view the selected model and agent and to change them.
 
 ## Setup instructions for llama.cpp server
 
@@ -214,8 +197,6 @@ This generate a commit message, based on the current changes.
 ### [Chat with AI about llama vscode](https://github.com/ggml-org/llama.vscode/wiki/Chat-with-AI-about-llama-vscode)
 
 ### [Chat with AI](https://github.com/ggml-org/llama.vscode/wiki/Chat-with-AI) 
-
-### [Chat with AI with project context](https://github.com/ggml-org/llama.vscode/wiki/Chat-with-AI-with-project-context) 
 
 ### [Generate commit message](https://github.com/ggml-org/llama.vscode/wiki/Generate-commit-message) 
 
@@ -284,14 +265,19 @@ Llama agent asks for permission for executing terminal command. However, if the 
 ### How to use it 
 The best wey to prepare the environment for the agent is by selecting an Env (group of models). So, below is the standard workflow:
 1. Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A to show Llama Agent. 
-2. Click "Select Env" button (visible if there is no selected env) and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
+2. Click "Select Env" button and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
 3. Write your request and send it with Enter or the "Send" button.
+
+You could also use the agent only with tools model selected. In this case the tool search_source will not work (requires chat and embeddins server)
 
 Optional
 - You could add files to the context with the @ button or just by entering "@". 
+- You could select a command (predefined prompt) by pressin "/". The commands could be added frim llama-vscdoe menu - Agent commands...
 - Activating an agent (Ctrl+Shift+A or from llama-vscodd menu) adds the open file to the agent context
 - You could select source code and activate the agent (Ctrl+Shift+A or from llama-vscodd menu) to attach the selected lines to the context
-- You could choose the tools to be used from "Select Tools" button (on the right side of "New Chat" button). If you have installed and started MCP Servers in VS Code, their tools will be available for selection too. Don't forget to click the OK button after changing the tool selection.
+- You could choose the tools to be used from "Select Tools" button (on the right side of "New Chat" button). If you have installed and started MCP Servers in VS Code, their tools will be available for selection too. Don't forget to click the OK button after changing the tool selection.  
+- View the selected tools model from the tool tip of the "Tools Model" button and select a new tools model by clicking it.  
+- View the selected agent from the tool tip of the "Agent" button and select a new agent by clicking it
 
 Click button "Deselect Env" (vislble if there is a selected env with agent model) to deselect the env and selected models and stop the servers, which were started by llama-vscode. 
 Click button "Selected Models" to show details about the selected models
