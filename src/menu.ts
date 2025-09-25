@@ -2172,7 +2172,7 @@ export class Menu {
     private sanitizeCommand(command: string): string {
         if (!command) return '';
         // Escape common shell metacharacters to prevent injection
-        return command.trim().replace(/[ `#$&*;\<>\?\\|~!{}()[\]^"]/g, '\\$&');
+        return command.trim().replace(/[`#$&*;\<>\?\\|~!{}()[\]^"]/g, '\\$&');
     }
 
     private sanitizeInput(input: string): string {
