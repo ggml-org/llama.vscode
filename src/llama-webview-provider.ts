@@ -6,6 +6,7 @@ import { LlmModel, Env, Agent, ContextCustom } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
+import { ModelType } from './constants';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -69,47 +70,43 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.llamaAgent.stopAgent();
                         break;
                     case 'selectModelWithTools':
-                        let toolsTypeDetails = this.app.menu.getToolsTypeDetails();
-                        await this.app.menu.selectStartModel(toolsTypeDetails);
+                        await this.app.menu.selectAndSetModel(ModelType.Tools, this.app.configuration.tools_models_list);
                         break;
                     case 'selectModelForChat':
-                        let chatTypeDetails = this.app.menu.getChatTypeDetails();
-                        await this.app.menu.selectStartModel(chatTypeDetails);
+                        await this.app.menu.selectAndSetModel(ModelType.Chat, this.app.configuration.chat_models_list);
                         break;
                     case 'selectModelForEmbeddings':
-                        let embsTypeDetails = this.app.menu.getEmbsTypeDetails()
-                        await this.app.menu.selectStartModel(embsTypeDetails);
+                        await this.app.menu.selectAndSetModel(ModelType.Embeddings, this.app.configuration.embeddings_models_list);
                         break;
                     case 'selectModelForCompletion':
-                        let complTypeDetails = this.app.menu.getComplTypeDetails()
-                        await this.app.menu.selectStartModel(complTypeDetails);    
+                        await this.app.menu.selectAndSetModel(ModelType.Completion, this.app.configuration.completion_models_list);
                         break;
                     case 'deselectCompletionModel':
-                        await this.app.menu.deselectStopModel(this.app.menu.getComplTypeDetails())
+                        await this.app.menu.deselectAndClearModel(ModelType.Completion);
                         break;
                     case 'deselectChatModel':
-                        await this.app.menu.deselectStopModel(this.app.menu.getChatTypeDetails())
+                        await this.app.menu.deselectAndClearModel(ModelType.Chat);
                         break;
                     case 'deselectEmbsModel':
-                        await this.app.menu.deselectStopModel(this.app.menu.getEmbsTypeDetails())
+                        await this.app.menu.deselectAndClearModel(ModelType.Embeddings);
                         break;
                     case 'deselectToolsModel':
-                        await this.app.menu.deselectStopModel(this.app.menu.getToolsTypeDetails())
+                        await this.app.menu.deselectAndClearModel(ModelType.Tools);
                         break;
                     case 'deselectAgent':
                         await this.app.menu.deselectAgent();
                         break;
                     case 'showCompletionModel':
-                        this.app.menu.showModelDetails(this.app.menu.getComplModel())
+                        this.app.modelService.showModelDetails(this.app.menu.getComplModel());
                         break;
                     case 'showChatModel':
-                        this.app.menu.showModelDetails(this.app.menu.getChatModel())
+                       this.app.modelService.showModelDetails(this.app.menu.getChatModel());
                         break;
                     case 'showEmbsModel':
-                        this.app.menu.showModelDetails(this.app.menu.getEmbeddingsModel())
+                        this.app.modelService.showModelDetails(this.app.menu.getEmbeddingsModel());
                         break;
                     case 'showToolsModel':
-                        this.app.menu.showModelDetails(this.app.menu.getToolsModel())
+                        this.app.modelService.showModelDetails(this.app.menu.getToolsModel());
                         break;
                     case 'showAgentDetails':
                         this.app.menu.showAgentDetails(this.app.menu.getAgent())
@@ -126,8 +123,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.menu.installLlamacpp();
                         break;
                     case 'addHuggingfaceModel':
-                        let chatTypeDetailsHf = this.app.menu.getChatTypeDetails();
-                        await this.app.menu.addHuggingfaceModelToList(chatTypeDetailsHf);
+                        await this.app.modelService.addModel(ModelType.Chat, "hf");
                         break;
                     case 'selectEnv':
                         await this.app.menu.selectEnvFromList(this.app.configuration.envs_list);    

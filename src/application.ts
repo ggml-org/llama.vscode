@@ -18,6 +18,10 @@ import {LlamaWebviewProvider} from "./llama-webview-provider"
 import * as vscode from "vscode"
 import path from "path";
 import { Persistence } from "./persistence";
+import { ModelService } from "./services/model-service";
+import { HfModelStrategy } from "./services/hf-model-strategy";
+import { LocalModelStrategy } from "./services/local-model-strategy";
+import { ExternalModelStrategy } from "./services/external-model-strategy";
 
 export class Application {
     private static instance: Application;
@@ -39,6 +43,10 @@ export class Application {
     public llamaAgent: LlamaAgent
     public llamaWebviewProvider: LlamaWebviewProvider
     public persistence: Persistence
+    public modelService: ModelService
+    public hfModelStrategy: HfModelStrategy
+    public localModelStrategy: LocalModelStrategy
+    public externalModelStrategy: ExternalModelStrategy
 
     private constructor(context: vscode.ExtensionContext) {
         this.configuration = new Configuration()
@@ -59,6 +67,11 @@ export class Application {
         this.llamaAgent = new LlamaAgent(this)
         this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this, context)
         this.persistence = new Persistence(this, context)
+        // strategies should be initialized before modelService constructor as they are needed there.
+        this.hfModelStrategy = new HfModelStrategy(this)
+        this.localModelStrategy = new LocalModelStrategy(this)
+        this.externalModelStrategy = new ExternalModelStrategy(this)
+        this.modelService = new ModelService(this)
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {

@@ -225,10 +225,11 @@ export class Tools {
         let changes = params.input;
 
         if (params.input == undefined) return "The input is not provided."
-
+        let filePath = this.getFilePath(params.input);
+        if (!filePath) return "The file is not provided.";
+        if (!fs.existsSync(filePath)) return "The  does not exist: " + filePath;
         try {
-            if (!this.app.configuration.tool_permit_file_changes){
-                let filePath = this.getFilePath(params.input);
+            if (!this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await Utils.showYesYesdontaskNoDialog("Do you permit file " + filePath + " to be changed?")
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)

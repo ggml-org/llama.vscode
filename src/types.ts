@@ -1,3 +1,7 @@
+export interface IAddStrategy {
+    add(details: ModelTypeDetails): Promise<void>;
+}
+
 export interface ChatMessage {
   role: string; // or just 'string' if you need more roles
   content: string;
