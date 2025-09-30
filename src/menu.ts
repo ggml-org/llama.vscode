@@ -5,15 +5,16 @@ import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
 import * as path from 'path';
-import axios from "axios";
-import { ModelType, LOCAL_MODEL_TEMPLATES, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG, AGENT_NAME } from "./constants";
+import { ModelType, LOCAL_MODEL_TEMPLATES, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG, AGENT_NAME, UI_TEXT_KEYS, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from "./constants";
+import { PREDEFINED_LISTS } from "./lists";
 
 export class Menu {
+    private static readonly emptyModel = {name: ""};
     private app: Application
-    private selectedComplModel: LlmModel = {name: ""}
-    private selectedChatModel: LlmModel = {name: ""} 
-    private selectedEmbeddingsModel: LlmModel = {name: ""}
-    private selectedToolsModel: LlmModel = {name: ""}
+    private selectedComplModel: LlmModel = Menu.emptyModel
+    private selectedModel: LlmModel = Menu.emptyModel 
+    private selectedEmbeddingsModel: LlmModel = Menu.emptyModel
+    private selectedToolsModel: LlmModel = Menu.emptyModel
     private selectedEnv: Env = {name: ""}
     private selectedAgent: Agent = {name: "", systemInstruction: []}
     private selectedChat: Chat = {name:"", id:""}
@@ -30,72 +31,72 @@ export class Menu {
     createMenuItems = (currentLanguage: string | undefined, isLanguageEnabled: boolean): vscode.QuickPickItem[] => {
         let menuItems = [
             {
-                label: this.app.configuration.getUiText("Actions"),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.actions),
                 kind: vscode.QuickPickItemKind.Separator
             },
             {
-                label: this.app.configuration.getUiText('Select/start env...')??"",
-                description: this.app.configuration.getUiText(`Stops the currently running models and starts the selected env - (a predefined group of models for completion, chat, embeddings and tools).`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv) ?? "",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.envSelectDescription)
             },
             {
-                label: this.app.configuration.getUiText('Deselect/stop env and models'),
-                description: this.app.configuration.getUiText('Deselects/stops env, completion, chat, embeddings and tools models')
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnvDescription)
             },
             {
-                label: this.app.configuration.getUiText('Show selected env'),
-                description: this.app.configuration.getUiText(`Shows details about the selected env`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedEnv),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedEnvDescription)
             },
             {
-                label: (this.app.configuration.getUiText("Show Llama Agent") ?? "") + " (Ctrl+Shif+A)",
-                description: this.app.configuration.getUiText(`Shows Llama Agent panel`)
+                label: (this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgent) ?? "") + " (Ctrl+Shif+A)",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgentDescription)
             },
             {
-                label: (this.app.configuration.getUiText("Chat with AI") ?? "") + " (Ctrl+;)",
-                description: this.app.configuration.getUiText(`Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)`)
+                label: (this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAI) ?? "") + " (Ctrl+;)",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIDescription)
             },
             {
-                label: this.app.configuration.getUiText("Show selected models"),
-                description: this.app.configuration.getUiText("Displays a list of currently selected models")
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedModels),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedModelsDescription)
             },
             {
-                label: this.app.configuration.getUiText("Use as local AI runner"),
-                description: this.app.configuration.getUiText("Download models automatically from Huggingface and chat with them (as LM Studio, Ollama, etc.)")
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.localAIRunnerDescription)
             },
             {
-                label: this.app.configuration.getUiText("Entities"),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.entities),
                 kind: vscode.QuickPickItemKind.Separator
             },
             {
-                label: this.app.configuration.getUiText('Envs...')??"",
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.envs) ?? "",
             },
             
             {
-                label: this.app.configuration.getUiText('Completion models...')??""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.completionModels) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Chat models...')??""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.chatModels) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Embeddings models...')??""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.embeddingsModels) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Tools models...')??""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.toolsModels) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('API keys...'),
-                description: this.app.configuration.getUiText(`Edit or remove API keys. New API keys are added on first use of an endpoint.`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.apiKeys),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.apiKeysDescription)
             },
             {
-                label: this.app.configuration.getUiText('Agents...'),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.agents),
             },
             {
-                label: this.app.configuration.getUiText('Agent commands...'),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.agentCommands),
             },
             {
-                label: this.app.configuration.getUiText('Chats...'),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.chats),
             },
             {
-                label: this.app.configuration.getUiText("Maintenance"),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.maintenance),
                 kind: vscode.QuickPickItemKind.Separator
             },
             {
@@ -103,59 +104,59 @@ export class Menu {
                 description: "Installs/upgrades llama.cpp server"
             },
             {
-                label: `${this.app.configuration.enabled ?  this.app.configuration.getUiText('Disable') :  this.app.configuration.getUiText('Enable')} ${this.app.configuration.getUiText("All Completions")}`,
-                description: `${this.app.configuration.enabled ? this.app.configuration.getUiText('Turn off completions globally') : this.app.configuration.getUiText('Turn on completions globally')}`
+                label: `${this.app.configuration.enabled ?  this.app.configuration.getUiText(UI_TEXT_KEYS.disable) :  this.app.configuration.getUiText(UI_TEXT_KEYS.enable)} ${this.app.configuration.getUiText(UI_TEXT_KEYS.allCompletions)}`,
+                description: `${this.app.configuration.enabled ? this.app.configuration.getUiText(UI_TEXT_KEYS.turnOffCompletionsGlobally) : this.app.configuration.getUiText(UI_TEXT_KEYS.turnOnCompletionsGlobally)}`
             },
             currentLanguage ? {
-                label: `${isLanguageEnabled ?  this.app.configuration.getUiText('Disable') :  this.app.configuration.getUiText('Enable')} ${ this.app.configuration.getUiText("Completions for")} ${currentLanguage}`,
-                description: `${ this.app.configuration.getUiText("Currently")} ${isLanguageEnabled ?  this.app.configuration.getUiText('enabled') :  this.app.configuration.getUiText('disabled')}`
+                label: `${isLanguageEnabled ?  this.app.configuration.getUiText(UI_TEXT_KEYS.disable) :  this.app.configuration.getUiText(UI_TEXT_KEYS.enable)} ${ this.app.configuration.getUiText(UI_TEXT_KEYS.completionsFor)} ${currentLanguage}`,
+                description: `${ this.app.configuration.getUiText(UI_TEXT_KEYS.currently)} ${isLanguageEnabled ?  this.app.configuration.getUiText(UI_TEXT_KEYS.enabled) :  this.app.configuration.getUiText(UI_TEXT_KEYS.disabled)}`
             } : null,
             {
-                label: `${this.app.configuration.rag_enabled ?  this.app.configuration.getUiText('Disable') :  this.app.configuration.getUiText('Enable')} RAG`,
-                description: `${this.app.configuration.rag_enabled ? this.app.configuration.getUiText('Turn off RAG related features like Chat with AI with project context') : this.app.configuration.getUiText('Turn on RAG related features like Chat with AI with project context')}`
+                label: `${this.app.configuration.rag_enabled ?  this.app.configuration.getUiText(UI_TEXT_KEYS.disable) :  this.app.configuration.getUiText(UI_TEXT_KEYS.enable)} ${this.app.configuration.getUiText(UI_TEXT_KEYS.rag)}`,
+                description: `${this.app.configuration.rag_enabled ? this.app.configuration.getUiText(UI_TEXT_KEYS.turnOffRAG) : this.app.configuration.getUiText(UI_TEXT_KEYS.turnOnRAG)}`
             },
             {
-                label: "$(gear) " + this.app.configuration.getUiText("Edit Settings..."),
+                label: "$(gear) " + this.app.configuration.getUiText(UI_TEXT_KEYS.editSettings),
             },
             {
-                label: this.app.configuration.getUiText("Help"),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.help),
                 kind: vscode.QuickPickItemKind.Separator
             },
             {
-                label: this.app.configuration.getUiText("How to use llama-vscode"),
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.howToUseLlamaVscode),
             },
             {
-                label: (this.app.configuration.getUiText("Chat with AI about llama-vscode") ?? ""),
-                description: this.app.configuration.getUiText(`Selects llama-vscode help agent and opens llama agent view for asking ai about llama-vscode`)
+                label: (this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscode) ?? ""),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscodeDescription)
             },
             {
-                label: this.app.configuration.getUiText('How to delete models'),
-                description: this.app.configuration.getUiText(`Explains how to delete the downloaded models`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModels),
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModelsDescription)
             },
             {
-                label: "$(book) " + this.app.configuration.getUiText("View Documentation..."),
+                label: "$(book) " + this.app.configuration.getUiText(UI_TEXT_KEYS.viewDocumentation),
             },
             ]                          
 
         if (this.app.configuration.launch_training_completion.trim() != "") {
             menuItems.push(
             {
-                label: this.app.configuration.getUiText("Start training completion model")??"",
-                description: this.app.configuration.getUiText(`Runs the command from property launch_training_completion`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.startTrainingCompletionModel) ?? "",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.launchTrainingCompletionDescription)
             })
         }
         if (this.app.configuration.launch_training_chat.trim() != "") {
                 menuItems.push(
             {
-                label: this.app.configuration.getUiText("Start training chat model")??"",
-                description: this.app.configuration.getUiText(`Runs the command from property launch_training_chat`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.startTrainingChatModel) ?? "",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.launchTrainingChatDescription)
             })
         }
         if (this.app.configuration.launch_training_completion.trim() != "" || this.app.configuration.launch_training_chat.trim() != "") {
             menuItems.push(
             {
-                label: this.app.configuration.getUiText("Stop training")??"",
-                description: this.app.configuration.getUiText(`Stops training if it was started from llama.vscode menu`)
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.stopTraining) ?? "",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.stopTrainingDescription)
             })
         }
 
@@ -164,112 +165,104 @@ export class Menu {
 
     handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
         switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start env..."):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv):
                 this.selectEnvFromList(this.app.configuration.envs_list);
                 break;
-            case this.app.configuration.getUiText('Deselect/stop env and models'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv):
                 await this.stopEnv()
                 break;
-            case this.app.configuration.getUiText('Show selected env'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedEnv):
                 this.showCurrentEnv();
                 break;
-             case this.app.configuration.getUiText("Chat with AI") + " (Ctrl+;)":
+             case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAI) + " (Ctrl+;)":
                 this.app.askAi.showChatWithAi(false, context);
                 break;
-            case this.app.configuration.getUiText("Chat with AI about llama-vscode"):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscode):
                 this.selectAgent(this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp));
                 this.showAgentView();
                 break;
-            case this.app.configuration.getUiText("Show Llama Agent") + " (Ctrl+Shif+A)":
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgent) + " (Ctrl+Shif+A)":
                 await this.showAgentView();
                 break;
-            case this.app.configuration.getUiText("Chat with AI with project context") + " (Ctrl+Shift+;)":
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIWithProjectContext) + " (Ctrl+Shift+;)":
                 if (this.app.configuration.rag_enabled){
                     this.app.askAi.showChatWithAi(true, context)
                 } else {
                     vscode.window.showInformationMessage("RAG is not enabled. Please enable it from llama-vscode before using this feature.")
                 }
                 break;
-            case this.app.configuration.getUiText('Show selected models'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedModels):
                 this.showCurrentEnv();
                 break;
-            case this.app.configuration.getUiText("Use as local AI runner"):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner):
                 vscode.commands.executeCommand('extension.showLlamaWebview');
                 this.app.llamaWebviewProvider.setView("airunner")
                 break;
-            case this.app.configuration.getUiText('Completion models...')??"":
-                let complModelActions: vscode.QuickPickItem[] = this.getModelActions("completion");
-                let complModelSelected = await vscode.window.showQuickPick(complModelActions);
-                if (complModelSelected) this.processComplModelsActions(complModelSelected);
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.completionModels) ?? "":
+                await this.processModelActions(ModelType.Completion);
                 break;
-            case this.app.configuration.getUiText('Chat models...')??"":
-                let chatModelActions: vscode.QuickPickItem[] = this.getModelActions("chat");
-                let chatModelSelected = await vscode.window.showQuickPick(chatModelActions);
-                if (chatModelSelected) this.processChatModelsActions(chatModelSelected);
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatModels) ?? "":
+                await this.processModelActions(ModelType.Chat);
                 break;
-            case this.app.configuration.getUiText('Embeddings models...')??"":
-                let embsModelActions: vscode.QuickPickItem[] = this.getModelActions("embeddings")
-                let embsModelSelected = await vscode.window.showQuickPick(embsModelActions);
-                if (embsModelSelected) this.processEmbsModelsActions(embsModelSelected);
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.embeddingsModels) ?? "":
+                await this.processModelActions(ModelType.Embeddings);
                 break;
-            case this.app.configuration.getUiText('Tools models...')??"":
-                let toolsModelActions: vscode.QuickPickItem[] = this.getModelActions("tools");
-                let toolsActionSelected = await vscode.window.showQuickPick(toolsModelActions);
-                if (toolsActionSelected) this.processToolsModelsActions(toolsActionSelected);
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.toolsModels) ?? "":
+                await this.processModelActions(ModelType.Tools);
                 break;
-            case this.app.configuration.getUiText('Envs...')??"":
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.envs) ?? "":
                 let envsActions: vscode.QuickPickItem[] = this.getEnvActions()
                 let envSelected = await vscode.window.showQuickPick(envsActions);
                 if (envSelected) this.processEnvActions(envSelected);
                 break;
-            case this.app.configuration.getUiText('Agents...')??"":
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.agents) ?? "":
                 let agentsActions: vscode.QuickPickItem[] = this.getAgentActions();
                 let actionSelected = await vscode.window.showQuickPick(agentsActions);
                 if (actionSelected) this.processAgentsActions(actionSelected);
                 break;
-            case this.app.configuration.getUiText('Agent commands...')??"":
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.agentCommands) ?? "":
                 let agentCommandsActions: vscode.QuickPickItem[] = this.getAgentCommandsActions();
                 let agentCommandSelected = await vscode.window.showQuickPick(agentCommandsActions);
                 if (agentCommandSelected) this.processAgentCommandsActions(agentCommandSelected);
                 break;
-            case this.app.configuration.getUiText('Chats...')??"":
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.chats) ?? "":
                 let chatsActions: vscode.QuickPickItem[] = this.getChatActions();
                 let chatSelected = await vscode.window.showQuickPick(chatsActions);
                 if (chatSelected) this.processChatActions(chatSelected);
                 break;
-            case "$(gear) " +  this.app.configuration.getUiText("Edit Settings..."):
+            case "$(gear) " +  this.app.configuration.getUiText(UI_TEXT_KEYS.editSettings):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
-            case this.app.configuration.getUiText('Start training completion model'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.startTrainingCompletionModel):
                 await this.app.llamaServer.killTrainCmd();
-                await this.app.llamaServer.shellTrainCmd(this.app.configuration.launch_training_completion);
+                await this.app.llamaServer.shellTrainCmd(this.app.modelService.sanitizeCommand(this.app.configuration.launch_training_completion));
                 break;
-            case this.app.configuration.getUiText('Start training chat model'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.startTrainingChatModel):
                 await this.app.llamaServer.killTrainCmd();
-                await this.app.llamaServer.shellTrainCmd(this.app.configuration.launch_training_chat);
+                await this.app.llamaServer.shellTrainCmd(this.app.modelService.sanitizeCommand(this.app.configuration.launch_training_chat));
                 break;
-            case this.app.configuration.getUiText("Stop training"):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.stopTraining):
                 await this.app.llamaServer.killTrainCmd();
                 break;
-            case this.app.configuration.getUiText('API keys...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.apiKeys):
                 let apiKeysActions: vscode.QuickPickItem[] = [
                     {
-                        label: this.app.configuration.getUiText("Add API key...")??""
+                        label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAPIKey) ?? ""
                     },
                     {
-                        label: this.app.configuration.getUiText("Edit/delete API key...")??""
+                        label: this.app.configuration.getUiText(UI_TEXT_KEYS.editDeleteAPIKey) ?? ""
                     },
                 ]
                 let apiKeyActionSelected = await vscode.window.showQuickPick(apiKeysActions);
                 if (apiKeyActionSelected) this.processApiKeyActions(apiKeyActionSelected);
                 break;
-            case this.app.configuration.getUiText('How to delete models'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModels):
                 Utils.showOkDialog("The automatically downloaded models (llama-server started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\<user_name>\\AppData\\Local\\llama.cpp. \nIn Mac or Linux the folder could be /users/<user_name>/Library/Caches/llama.cpp. \nYou could delete them from the folder.")
                 break;
-            case this.app.configuration.getUiText("How to use llama-vscode"):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.howToUseLlamaVscode):
                 this.showHowToUseLlamaVscode();
                 break;
-            case "$(book) " + this.app.configuration.getUiText("View Documentation..."):
+            case "$(book) " + this.app.configuration.getUiText(UI_TEXT_KEYS.viewDocumentation):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/wiki'));
                 break;
             case "Install/upgrade llama.cpp":
@@ -284,8 +277,10 @@ export class Menu {
     }
 
     selectEnvFromList = async (envsList: Env[]) => {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
-        let lastUsedEnv = this.app.persistence.getValue("selectedEnv")
+        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
+        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
+        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
+        let lastUsedEnv = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_ENV)
         if (lastUsedEnv) envsItems.push({ label: (envsItems.length+1) + ". Last used env", description: lastUsedEnv.name });
         const env = await vscode.window.showQuickPick(envsItems);
         if (env) {
@@ -297,7 +292,7 @@ export class Menu {
                     return;
                 }
             } else {
-                futureEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
+                futureEnv = allEnvs[parseInt(env.label.split(". ")[0], 10) - 1]
             }
             await this.selectEnv(futureEnv, true);
         }
@@ -309,7 +304,7 @@ export class Menu {
             vscode.window.showInformationMessage("No chats in the history.")
             return;
         }
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList);
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let futureChat: Chat;
@@ -326,22 +321,21 @@ export class Menu {
         if (chatToSelect.id != this.selectedChat.id){
             await this.updateChatHistory();
             this.selectedChat = chatToSelect;
-            await this.app.persistence.setValue("selectedChat", this.selectedChat);
+            await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_CHAT, this.selectedChat);
             this.app.llamaAgent.selectChat(this.selectedChat);
             this.app.llamaWebviewProvider.updateLlamaView();
         } else {
             this.selectedChat = chatToSelect;
-            await this.app.persistence.setValue("selectedChat", this.selectedChat);
+            await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_CHAT, this.selectedChat);
         }       
     }
 
     deleteChatFromList = async (chatList: Chat[]) => {
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList);
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
-            const shoulDeleteChat = await Utils.showYesNoDialog("Are you sure you want to delete the chat below? \n\n"+
-                "name: " + chat.label + 
-                "\ndescription: " + chat.description
+            const shoulDeleteChat = await Utils.confirmAction("Are you sure you want to delete the chat below?", 
+                "name: " + chat.label + "\ndescription: " + chat.description
             );
             if (shoulDeleteChat) {
                 let chatToDelIndex = parseInt(chat.label.split(". ")[0], 10) - 1
@@ -361,7 +355,9 @@ export class Menu {
     }
     
     selectAgentFromList = async (agentsList: Agent[]) => {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
         let lastUsedAgent = this.app.persistence.getValue("selectedAgent")
         if (lastUsedAgent) agentsItems.push({ label: (agentsItems.length+1) + ". Last used agent", description: lastUsedAgent.name });
         const agent = await vscode.window.showQuickPick(agentsItems);
@@ -371,7 +367,7 @@ export class Menu {
                 futureAgent = lastUsedAgent;
                 
             } else {
-                futureAgent = agentsList[parseInt(agent.label.split(". ")[0], 10) - 1]
+                futureAgent = allAgents[parseInt(agent.label.split(". ")[0], 10) - 1]
             }
             if(!futureAgent){
                 vscode.window.showWarningMessage("No agent selected. There is no last used agent.");
@@ -392,33 +388,20 @@ export class Menu {
             let toolName = toolFunc[0];
             this.app.configuration.updateConfigValue("tool_" + toolName + "_enabled", agent.tools.includes(toolName))
         }
-        await this.app.persistence.setValue("selectedAgent", this.selectedAgent);
+        await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_AGENT, this.selectedAgent);
         this.app.llamaWebviewProvider.updateLlamaView();
         if (agent.name) vscode.window.showInformationMessage("Agent " + agent.name + " is selected.")
     }
 
-    selectStartModel = async (modelType: ModelTypeDetails) => {
-        const modelsItems: QuickPickItem[] = this.getModels(modelType.modelsList);
-        const launchToEndpoint = new Map([ ["launch_completion", "endpoint"], ["launch_chat", "endpoint_chat"],  ["launch_embeddings", "endpoint_embeddings"],  ["launch_tools", "endpoint_tools"] ]);
-        modelsItems.push({ label: (modelsItems.length+1) + ". Use settings", description: "" });
-        const selectedModel = await vscode.window.showQuickPick(modelsItems);
-        if (selectedModel) {
-            if (parseInt(selectedModel.label.split(". ")[0], 10) == modelsItems.length){
-                // Last in the list => use settings
-                this[modelType.selModelPropName as keyof Menu] = {
-                    name: "Use settings", 
-                    aiModel: this.app.configuration.ai_model,
-                    isKeyRequired: false,
-                    endpoint: this.app.configuration[launchToEndpoint.get(modelType.launchSettingName) as keyof Configuration],
-                    localStartCommand: this.app.configuration[modelType.launchSettingName as keyof Configuration]
-                } as any
-            } else {
-                this[modelType.selModelPropName as keyof Menu] = modelType.modelsList[parseInt(selectedModel.label.split(". ")[0], 10) - 1] as any
-            }
-            
-            await this.activateModel(modelType.selModelPropName, modelType.killCmd, modelType.shellCmd);
+    private async processModelActions(modelType: ModelType) {
+        let modelActions: vscode.QuickPickItem[] = this.app.modelService.getActions(modelType);
+        let actionSelected = await vscode.window.showQuickPick(modelActions);
+        if (actionSelected) {
+            await this.app.modelService.processActions(modelType, actionSelected);
         }
     }
+
+    // selectStartModel removed, handled by ModelService
 
     public async showAgentView() {
         let isModelAvailable = await this.checkForToolsModel();
@@ -473,38 +456,37 @@ export class Menu {
         await this.app.llamaServer.killFimCmd();
         this.selectedComplModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killChatCmd();
-        this.selectedChatModel = { name: "", localStartCommand: "" };
+        this.selectedModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killEmbeddingsCmd();
         this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
          await this.app.llamaServer.killToolsCmd();
         this.selectedToolsModel = { name: "", localStartCommand: "" };
         let shouldSelect = true;
         if (askConfirm){
-           shouldSelect = await Utils.showYesNoDialog("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
-                this.getEnvDetailsAsString(futureEnv) +
-                "\n\n Do you want to continue?"
+           shouldSelect = await Utils.confirmAction("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started.\n\n Do you want to continue?", 
+                this.getEnvDetailsAsString(futureEnv)
             );
         }
 
         if (shouldSelect && futureEnv) {
             this.selectedEnv = futureEnv;
-            await this.app.persistence.setValue('selectedEnv', this.selectedEnv);
+            await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_ENV, this.selectedEnv);
 
             this.selectedComplModel = this.selectedEnv.completion ?? { name: "" };
-            if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.selectedComplModel.localStartCommand);
-            await this.addApiKey(this.selectedComplModel);
+            if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.app.modelService.sanitizeCommand(this.selectedComplModel.localStartCommand));
+            await this.app.modelService.addApiKey(this.selectedComplModel);
 
-            this.selectedChatModel = this.selectedEnv.chat ?? { name: "" };
-            if (this.selectedChatModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.selectedChatModel.localStartCommand);
-            await this.addApiKey(this.selectedChatModel);
+            this.selectedModel = this.selectedEnv.chat ?? { name: "" };
+            if (this.selectedModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.app.modelService.sanitizeCommand(this.selectedModel.localStartCommand));
+            await this.app.modelService.addApiKey(this.selectedModel);
 
             this.selectedEmbeddingsModel = this.selectedEnv.embeddings ?? { name: "" };
-            if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.selectedEmbeddingsModel.localStartCommand);
-            await this.addApiKey(this.selectedEmbeddingsModel);
+            if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.app.modelService.sanitizeCommand(this.selectedEmbeddingsModel.localStartCommand));
+            await this.app.modelService.addApiKey(this.selectedEmbeddingsModel);
 
             this.selectedToolsModel = this.selectedEnv.tools ?? { name: "" };
-            if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.selectedToolsModel.localStartCommand);
-            await this.addApiKey(this.selectedToolsModel);
+            if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.app.modelService.sanitizeCommand(this.selectedToolsModel.localStartCommand));
+            await this.app.modelService.addApiKey(this.selectedToolsModel);
 
             if (this.selectedEnv.agent) this.selectAgent(this.selectedEnv.agent)
             if (this.selectedEnv.ragEnabled != undefined) this.app.configuration.updateConfigValue("rag_enabled", this.selectedEnv.ragEnabled)
@@ -527,97 +509,67 @@ export class Menu {
 
     private async activateModel(selModelPropName: string, killCmd: () => void, shellCmd: (message: string) => void) {
         let selModel = this[selModelPropName as keyof Menu] as LlmModel
-        this.addApiKey(selModel);
+        this.app.modelService.addApiKey(selModel);
         await this.app.persistence.setValue(selModelPropName, selModel);
         await killCmd();
-        if (selModel.localStartCommand) await shellCmd(selModel.localStartCommand ?? "");
+        if (selModel.localStartCommand) await shellCmd(this.app.modelService.sanitizeCommand(selModel.localStartCommand ?? ""));
         this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     private getEnvActions(): vscode.QuickPickItem[] {
         return [
             {
-                label: this.app.configuration.getUiText("Select/start env...") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv) ?? ""
             },
             {
-                label: this.app.configuration.getUiText("Deselect/stop env and models") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Add env...') ?? "",
-                description: this.app.configuration.getUiText('Opens a panel for adding an env.') ?? "",
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addEnv) ?? "",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.addEnvDescription) ?? "",
             },
             {
-                label: this.app.configuration.getUiText('View env details...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewEnvDetails) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Delete env...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Export env...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportEnv) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Import env...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importEnv) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Download/upload envs online') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.downloadUploadEnvsOnline) ?? ""
             },
         ];
     }
 
-    private getModelActions(modelType: string): vscode.QuickPickItem[] {
-        return [
-            {
-                label: this.app.configuration.getUiText("Select/start "+modelType+" model...") ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText("Deselect/stop "+modelType+" model") ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText("Add local "+modelType+" model...") ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText("Add external "+modelType+" model...") ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText("Add "+modelType+" model from huggingface...") ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText('View '+modelType+' model details...') ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText('Delete '+modelType+' model...') ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText('Export '+modelType+' model...') ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText('Import '+modelType+' model...') ?? ""
-            },
-        ];
-    }
+    // getModelActions removed, handled by ModelService
 
     private getAgentActions(): vscode.QuickPickItem[] {
         return [
             {
-                label: this.app.configuration.getUiText("Select/start agent...") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartAgent) ?? ""
             },
             {
-                label: this.app.configuration.getUiText("Deselect/stop agent...") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopAgent) ?? ""
             },
             {
-                label: this.app.configuration.getUiText("Add agent...") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAgent) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('View agent details...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentDetails) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Delete agent...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgent) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Export agent...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgent) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Import agent...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importAgent) ?? ""
             },
         ];
     }
@@ -625,19 +577,19 @@ export class Menu {
         private getAgentCommandsActions(): vscode.QuickPickItem[] {
         return [
             {
-                label: this.app.configuration.getUiText("Add agent command...") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAgentCommand) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('View agent command details...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentCommandDetails) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Delete agent command...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgentCommand) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Export agent command...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgentCommand) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Import agent command...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importAgentCommand) ?? ""
             },
         ];
     }
@@ -646,16 +598,16 @@ export class Menu {
     private getChatActions(): vscode.QuickPickItem[] {
         return [
             {
-                label: this.app.configuration.getUiText("Select/start chat...") ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartChat) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Delete chat...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteChat) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Export chat...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportChat) ?? ""
             },
             {
-                label: this.app.configuration.getUiText('Import chat...') ?? ""
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importChat) ?? ""
             },
         ];
     }
@@ -684,47 +636,14 @@ export class Menu {
         );
     }
 
-    private async deleteModelFromList(modelsList: LlmModel[], settingName: string) {
-        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
-        const model = await vscode.window.showQuickPick(modelsItems);
-        if (model) {
-            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            const shoulDeleteModel = await Utils.showYesNoDialog("Are you sure you want to delete model below? \n\n"+
-                this.getModelDetailsAsString(modelsList[modelIndex])
-            );
-            if (shoulDeleteModel) {
-                modelsList.splice(modelIndex, 1);
-                this.app.configuration.updateConfigValue(settingName, modelsList);
-                vscode.window.showInformationMessage("The model is deleted.")
-            }
-        }
-    }
-
-    private async viewModelFromList(modelsList: any[]) {
-        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
-        let model = await vscode.window.showQuickPick(modelsItems);
-        if (model) {
-            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedModel =  modelsList[modelIndex];
-            await this.showModelDetails(selectedModel);
-        }
-    }
-
-    public async showModelDetails(selectedModel: any) {
-        await Utils.showOkDialog("Model details: " +
-            "\nname: " + selectedModel.name +
-            "\nlocal start command: " + selectedModel.localStartCommand +
-            "\nendpoint: " + selectedModel.endpoint +
-            "\nmodel name for provider: " + selectedModel.aiModel +
-            "\napi key required: " + selectedModel.isKeyRequired);
-    }
-
     private async viewAgentFromList(agentsList: any[]) {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
         let agent = await vscode.window.showQuickPick(agentsItems);
         if (agent) {
             let agentIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgent =  agentsList[agentIndex];
+            let selectedAgent =  allAgents[agentIndex];
             await this.showAgentDetails(selectedAgent);
         }
     }
@@ -744,21 +663,23 @@ export class Menu {
     }
 
     private async viewAgentCommandFromList(agentCommands: any[]) {
-        const agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[])
+        let agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands, "");
+        agentComandItems = agentComandItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[], "(predefined) ", agentCommands.length));
         let agentCommand = await vscode.window.showQuickPick(agentComandItems);
         if (agentCommand) {
             let agentCommandIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
-            let selectedAgentCommand =  agentCommands[agentCommandIndex];
+            let selectedAgentCommand =  allAgentCommands[agentCommandIndex];
             await this.showAgentCommandDetails(selectedAgentCommand);
         }
     }
 
     private async deleteAgentCommandFromList(agentCommands: AgentCommand[], settingName: string) {
-        const modelsItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        const modelsItems: QuickPickItem[] = this.getStandardQpList(agentCommands, "");
         const model = await vscode.window.showQuickPick(modelsItems);
         if (model) {
             let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            const shoulDeleteModel = await Utils.showYesNoDialog("Are you sure you want to delete the agent command below? \n\n"+
+            const shoulDeleteModel = await Utils.confirmAction("Are you sure you want to delete the agent command below?", 
                 this.getAgentCommandDetailsAsString(agentCommands[modelIndex])
             );
             if (shoulDeleteModel) {
@@ -783,371 +704,34 @@ export class Menu {
             "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
 
-    private async addLocalModelToList(modelTypeDetails: ModelTypeDetails) {
-        const hostEndpoint = "http://" + modelTypeDetails.newModelHost
-        const modelListToLocalCommand = new Map([ 
-            ["completion_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],
-            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost], 
-            ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost],  
-            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + modelTypeDetails.newModelPort + " --host " + modelTypeDetails.newModelHost] ]);
-        let name = "";
-        while (name.trim() === "") {
-            name = (await vscode.window.showInputBox({
-                placeHolder: 'Enter a user friendly name for your model (required)',
-                prompt: 'name for your model (required)',
-                value: ''
-            })) ?? "";
-        }
-        
-        let localStartCommand = "";
-        while (localStartCommand.trim() === "") {
-            localStartCommand = await vscode.window.showInputBox({
-                placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port '+ modelTypeDetails.newModelPort + '. (required)',
-                prompt: 'Enter a command to start the model locally (leave emtpy if external server is used). If not empty, the command will be run on selecting the model. (required)',
-                value: modelListToLocalCommand.get(modelTypeDetails.modelsListSettingName)
-            })??"";
-        }
-        
-        let endpoint = "";
-        while (endpoint.trim() === "") {
-            endpoint = await vscode.window.showInputBox({
-                placeHolder: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' (required)' ,
-                prompt: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' (required)',
-                value: hostEndpoint + ':' + modelTypeDetails.newModelPort
-            }) ?? "";
-        }
-        const isKeyRequired = await Utils.showYesNoDialog("Is API key required for this endpint (" + endpoint + ")?");
-        let newModel: LlmModel = {
-            name: name,
-            localStartCommand: localStartCommand,
-            endpoint: endpoint,
-            aiModel: "",
-            isKeyRequired: isKeyRequired
-        };
-
-        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: " +
-            "\nname: " + name +
-            "\nlocal start command: " + localStartCommand +
-            "\nendpoint: " + endpoint +
-            "\nmodel name for provider: " + 
-            "\napi key required: " + isKeyRequired +
-            "\nDo you want to add a model with these properties?");
-
-        if (shouldAddModel){
-            let shouldOverwrite = false;
-            [newModel.name, shouldOverwrite] =  await this.getUniqueModelName(modelTypeDetails.modelsList, newModel);
-            if (!newModel.name){
-                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
-                return;
-            }
-            if (shouldOverwrite) {
-                const index = modelTypeDetails.modelsList.findIndex(model => model.name === newModel.name);
-                if (index !== -1) {
-                    modelTypeDetails.modelsList.splice(index, 1);
-                }
-            }
-            modelTypeDetails.modelsList.push(newModel);
-            this.app.configuration.updateConfigValue(modelTypeDetails.modelsListSettingName, modelTypeDetails.modelsList);
-            vscode.window.showInformationMessage("The model is added.")
-        }
-    }
-
-    private async addExternalModelToList(modelTypeDetails: ModelTypeDetails) {
-        const hostEndpoint = "http://" + modelTypeDetails.newModelHost
-        let name = "";
-        while (name.trim() === "") {
-            name = (await vscode.window.showInputBox({
-                placeHolder: 'Enter a user friendly name for your model (required)',
-                prompt: 'name for your model (required)',
-                value: ''
-            })) ?? "";
-        }
-        
-        let endpoint = "";
-        while (endpoint.trim() === "") {
-            endpoint = await vscode.window.showInputBox({
-                placeHolder: 'Endpoint for accessing your model, i.e. ' + hostEndpoint + ':' + modelTypeDetails.newModelPort + ' or https://openrouter.ai/api (required)' ,
-                prompt: 'Endpoint for your model (required)',
-                value: ''
-            }) ?? "";
-        }
-        const aiModel = await vscode.window.showInputBox({
-            placeHolder: 'Model name, exactly as expected by the provider, i.e. kimi-latest ',
-            prompt: 'Enter model name as expected by the provider (leave empty if llama-server is used)',
-            value: ''
-        });
-        const isKeyRequired = await Utils.showYesNoDialog("Is API key required for this endpint (" + endpoint + ")?");
-        let newModel: LlmModel = {
-            name: name,
-            localStartCommand: "",
-            endpoint: endpoint,
-            aiModel: aiModel,
-            isKeyRequired: isKeyRequired
-        };
-
-        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: " +
-            "\nname: " + name +
-            "\nlocal start command: " + 
-            "\nendpoint: " + endpoint +
-            "\nmodel name for provider: " + aiModel +
-            "\napi key required: " + isKeyRequired +
-            "\nDo you want to add a model with these properties?");
-
-        if (shouldAddModel){
-            let shouldOverwrite = false;
-            [newModel.name, shouldOverwrite] =  await this.getUniqueModelName(modelTypeDetails.modelsList, newModel);
-            if (!newModel.name){
-                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
-                return;
-            }
-            if (shouldOverwrite) {
-                const index = modelTypeDetails.modelsList.findIndex(model => model.name === newModel.name);
-                if (index !== -1) {
-                    modelTypeDetails.modelsList.splice(index, 1);
-                }
-            }
-            modelTypeDetails.modelsList.push(newModel);
-            this.app.configuration.updateConfigValue(modelTypeDetails.modelsListSettingName, modelTypeDetails.modelsList);
-            vscode.window.showInformationMessage("The model is added.")
-        }
-    }
-
-    public async addHuggingfaceModelToList(typeDetails: ModelTypeDetails) {
-        const modelType = SETTING_TO_MODEL_TYPE[typeDetails.modelsListSettingName];
-        const template = HF_MODEL_TEMPLATES[modelType]
-            .replace('MODEL_PLACEHOLDER', '<model_name>')
-            .replace('PORT_PLACEHOLDER', typeDetails.newModelPort.toString())
-            .replace('HOST_PLACEHOLDER', typeDetails.newModelHost);
-        const hostEndpoint = "http://" + typeDetails.newModelHost;
-        
-        const searchWords = await vscode.window.showInputBox({
-            placeHolder: 'keywords for searching a model from huggingface',
-            prompt: 'Enter keywords to search for models in huggingface',
-            value: ""
-        });
-        
-        if (!searchWords){
-              vscode.window.showInformationMessage("No huggingface model selected.")
-              return;
-        }
-        let hfModelName = await this.getDownloadModelName(searchWords);
-        if (hfModelName == "") return;
-        const localStartCommand = template.replace('<model_name>', hfModelName);
-        
-        let endpoint = hostEndpoint +":" + typeDetails.newModelPort;
-        const aiModel = ""
-        const isKeyRequired = false;
-        let name = "hf: " + hfModelName;
-        let newHfModel: LlmModel = {
-            name: name,
-            localStartCommand: localStartCommand,
-            endpoint: endpoint,
-            aiModel: aiModel,
-            isKeyRequired: isKeyRequired
-        };
-
-        
-        const shouldAddModel = await Utils.showYesNoDialog("You have enterd: \n\n" +
-            this.getModelDetailsAsString(newHfModel) +
-            "\nDo you want to add a model with these properties?");
-
-        if (shouldAddModel){
-            let shouldOverwrite = false;
-            [newHfModel.name, shouldOverwrite] =  await this.getUniqueModelName(typeDetails.modelsList, newHfModel);
-            if (!newHfModel.name){
-                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
-                return;
-            }
-            if (shouldOverwrite) {
-                const index = typeDetails.modelsList.findIndex(model => model.name === newHfModel.name);
-                if (index !== -1) {
-                    typeDetails.modelsList.splice(index, 1);
-                }
-            }
-            typeDetails.modelsList.push(newHfModel);
-            this.app.configuration.updateConfigValue(typeDetails.modelsListSettingName, typeDetails.modelsList);
-            vscode.window.showInformationMessage("The model is added: " + newHfModel.name)
-            const shouldSelct = await Utils.showYesNoDialog("Do you want to select/start the newly added model?")
-            if (shouldSelct) {
-                this[typeDetails.selModelPropName as keyof Menu] = newHfModel as any
-                this.activateModel(typeDetails.selModelPropName, typeDetails.killCmd, typeDetails.shellCmd);
-            }
-        }
-    }
-
-    private async getUniqueModelName(modelsList: LlmModel[], newModel: LlmModel): Promise<[string, boolean]> {
-        let uniqueName = newModel.name;
-        let shouldOverwrite = false;
-        let modelSameName = modelsList.find(model => model.name === uniqueName);
-        while (uniqueName && !shouldOverwrite && modelSameName !== undefined) {
-            shouldOverwrite = await Utils.showYesNoDialog("A model with the same name already exists: \n\n" +
-                " Existing model: \n" +
-                this.getModelDetailsAsString(modelSameName) +
-                "\n\n New model: \n" +
-                this.getModelDetailsAsString(newModel) +
-                "\n\nDo you want to overwrite the existing model?");
-            if (!shouldOverwrite) {
-                uniqueName = (await vscode.window.showInputBox({
-                    placeHolder: 'a unique name for your new model',
-                    prompt: 'Enter a unique name for your new model. Leave empty to cancel entering.',
-                    value: newModel.name
-                })) ?? "";
-            if (uniqueName) modelSameName = modelsList.find(model => model.name === uniqueName);
-            }
-        }
-
-        return [uniqueName, shouldOverwrite]
-    }
-
-    private async getDownloadModelName(searchWords: string) {
-        const foundModels = await this.getHfModels(searchWords ?? "");
-        let hfModelName = "";
-        if (foundModels && foundModels.length > 0) {
-            const hfModelsQp: QuickPickItem[] = [];
-            for (let hfModel of foundModels) {
-                if (!hfModel.private) {
-                    hfModelsQp.push({
-                        label: hfModel.modelId,
-                        description: "created: " + hfModel.createdAt + " | downloads: " + hfModel.downloads + " | likes: " + hfModel.likes + 
-                        " | pipeline: " + hfModel.pipeline_tag + " | tags: " + hfModel.tags 
-                    });
-                }
-            }
-            const selModel = await vscode.window.showQuickPick(hfModelsQp);
-            if (selModel && selModel.label) {
-                let modelFiles = await this.getHfModelFiles(selModel.label);
-                if (modelFiles && modelFiles.length > 0) {
-                    const hfModelsFilesQp: QuickPickItem[] = await this.getFilesOfModel(selModel, modelFiles);
-                    if (hfModelsFilesQp.length <= 0) {
-                        vscode.window.showInformationMessage("No files found for model " + selModel.label + " or the files are with are with unexpected naming conventions.");
-                        return "";
-                    } else {
-                        let selFile = await vscode.window.showQuickPick(hfModelsFilesQp);
-                        if (!selFile) {
-                            vscode.window.showInformationMessage("No files selected for model " + selModel.label + ".");
-                            return "";
-                        }
-                        if (hfModelsFilesQp.length == 1) hfModelName = selModel.label??"";
-                        else hfModelName = selFile?.label ?? "";
-                    }
-                } else {
-                    vscode.window.showInformationMessage("No files found for model " + selModel.label);
-                    return "";
-                }
-            }
-            else {
-                vscode.window.showInformationMessage("No huggingface model selected.");
-                return '';
-            }
-        } else {
-            vscode.window.showInformationMessage("No model selected.");
-            return "";
-        }
-        return hfModelName;
-    }
-
-    private async getFilesOfModel(selModel: vscode.QuickPickItem, modelFiles: HuggingfaceFile[]) {
-        const hfModelsFilesQp: QuickPickItem[] = [];
-        const ggufSuffix = ".gguf";
-        let cleanModelName = selModel.label.split("/")[1].replace(/-gguf/gi, "");
-        let arePartsOfOneFile = true;
-        let multiplePartsSize = 0;
-        let multiplePartsCount = 0;
-        for (let file of modelFiles) {
-            if (file.type == "file"
-                && file.path.toLowerCase().endsWith(ggufSuffix)
-                && file.path.toLowerCase().startsWith(cleanModelName.toLowerCase())) {
-                let quantization = file.path.slice(cleanModelName.length + 1, -ggufSuffix.length);
-                if (arePartsOfOneFile && !this.isOneOfMany(quantization.slice(-14))) arePartsOfOneFile = false;
-                if (!arePartsOfOneFile) {
-                    hfModelsFilesQp.push({
-                        label: selModel.label + (quantization? ":" + quantization : ""),
-                        description: "size: " + (Math.round((file.size / 1000000000) * 100) / 100) + "GB"
-                    });
-                } else {
-                    multiplePartsSize += file.size;
-                    multiplePartsCount++;
-                }
-            }
-            if (file.type == "directory") {
-                let subfolderFiles = await this.getHfModelSubforlderFiles(selModel.label, file.path);
-                let totalSize = 0;
-                let totalFiles = 0;
-                for (let file of subfolderFiles) {
-                    if (file.path.toLowerCase().endsWith(ggufSuffix)) {
-                        totalSize += file.size;
-                        totalFiles++;
-                    }
-                }
-                hfModelsFilesQp.push({
-                    label: selModel.label + ":" + file.path,
-                    description: "size: " + (Math.round((totalSize / 1000000000) * 100) / 100) + " GB | files: " + totalFiles
-                });
-            }
-        }
-        if (arePartsOfOneFile) {
-            hfModelsFilesQp.push({
-                label: selModel.label,
-                description: "size: " + (Math.round((multiplePartsSize / 1073741824) * 100) / 100) + " GB | files: " + multiplePartsCount
-            });
-        }
-        return hfModelsFilesQp;
-    }
-
-    private isOneOfMany(input: string): boolean {
-        const regex = /^\d{5}-of-\d{5}$/;
-        return regex.test(input);
-    }
-
-    private async getHfModels(searchWords: string): Promise<HuggingfaceModel[]> {
-        let hfEndpoint = "https://huggingface.co/api/models?limit=1500&search="+ "GGUF+" + searchWords.replace(" ", "+");
-        let result = await axios.get(
-            `${Utils.trimTrailingSlash(hfEndpoint)}`
-        );
-
-        if (result && result.data) return result.data as HuggingfaceModel[]
-        else return [];
-    }
-
-    private async getHfModelFiles(modelId: string): Promise<HuggingfaceFile[]> {
-        let hfEndpoint = "https://huggingface.co/api/models/" + modelId + "/tree/main";
-        let result = await axios.get(
-            `${Utils.trimTrailingSlash(hfEndpoint)}`
-        );
-        if (result && result.data) return result.data as HuggingfaceFile[]
-        else return [];
-    }
-
-    private async getHfModelSubforlderFiles(modelId: string, subfolder: string): Promise<HuggingfaceFile[]> {
-        let hfEndpoint = "https://huggingface.co/api/models/" + modelId + "/tree/main/" + subfolder;
-        let result = await axios.get(
-            `${Utils.trimTrailingSlash(hfEndpoint)}`
-        );
-        if (result && result.data) return result.data as HuggingfaceFile[]
-        else return [];
-    }
-
     public async addEnvToList(envList: any[], settingName: string) {
-        let name = "";
-        while (name.trim() === "") {
-            name = (await vscode.window.showInputBox({
+        let name = await Utils.getValidatedInput(
+            'name for your env (required)',
+            (input) => input.trim() !== '',
+            5,
+            {
                 placeHolder: 'Enter a user friendly name for your env (required)',
-                prompt: 'name for your env (required)',
                 value: ''
-            })) ?? "";
+            }
+        );
+        if (name === undefined) {
+            vscode.window.showInformationMessage("Env addition cancelled.");
+            return;
         }
+        name = this.app.modelService.sanitizeInput(name);
 
-        const description = await vscode.window.showInputBox({
+        let description = await vscode.window.showInputBox({
             placeHolder: 'description for the env - what is the purpose, when to select etc. ',
             prompt: 'Enter description for the env.',
             value: ''
         });
+        description = this.app.modelService.sanitizeInput(description || '');
         
         let newEnv: Env = {
-            name: name,
+            name: name??"",
             description: description,
             completion: this.selectedComplModel,
-            chat: this.selectedChatModel,
+            chat: this.selectedModel,
             embeddings: this.selectedEmbeddingsModel,
             tools: this.selectedToolsModel,
             agent: this.selectedAgent,
@@ -1161,9 +745,7 @@ export class Menu {
 
     private async persistEnvToSetting(newEnv: Env, envList: any[], settingName: string) {
         let envDetails = this.getEnvDetailsAsString(newEnv);
-        const shouldAddEnv = await Utils.showYesNoDialog("A new env will be added. \n\n" +
-            envDetails +
-            "\n\nDo you want to add the env?");
+        const shouldAddEnv = await Utils.confirmAction("A new env will be added. Do you want to add the env?", envDetails);
 
         if (shouldAddEnv) {
             envList.push(newEnv);
@@ -1172,24 +754,11 @@ export class Menu {
         }
     }
 
-    private async persistModelToSetting(newModel: LlmModel, modelList: any[], settingName: string) {
-        let modelDetails = this.getModelDetailsAsString(newModel);
-        const shouldAddModel = await Utils.showYesNoDialog("A new model will be added. \n\n" +
-            modelDetails +
-            "\n\nDo you want to add the model?");
-
-        if (shouldAddModel) {
-            modelList.push(newModel);
-            this.app.configuration.updateConfigValue(settingName, modelList);
-            vscode.window.showInformationMessage("The model is added.");
-        }
-    }
+    // persistModelToSetting removed, handled by ModelService
 
     private async persistAgentToSetting(newAgent: Agent, agentsList: any[], settingName: string) {
         let modelDetails = this.getAgentDetailsAsString(newAgent);
-        const shouldAddModel = await Utils.showYesNoDialog("A new agent will be added. \n\n" +
-            modelDetails +
-            "\n\nDo you want to add the agent?");
+        const shouldAddModel = await Utils.confirmAction("A new agent will be added. Do you want to add the agent?", modelDetails);
 
         if (shouldAddModel) {
             agentsList.push(newAgent);
@@ -1200,9 +769,7 @@ export class Menu {
 
     private async persistAgentCommandToSetting(newAgentCommand: AgentCommand, agentCommands: any[], settingName: string) {
         let modelDetails = this.getAgentCommandDetailsAsString(newAgentCommand);
-        const shouldAddModel = await Utils.showYesNoDialog("A new agent command will be added. \n\n" +
-            modelDetails +
-            "\n\nDo you want to add the agent command?");
+        const shouldAddModel = await Utils.confirmAction("A new agent command will be added. Do you want to add the agent command?", modelDetails);
 
         if (shouldAddModel) {
             agentCommands.push(newAgentCommand);
@@ -1230,33 +797,34 @@ export class Menu {
             
             const fileContent = fs.readFileSync(filePath, 'utf8');
             const newEnv = JSON.parse(fileContent);
+            // Sanitize imported data
+            if (newEnv.name) newEnv.name = this.app.modelService.sanitizeInput(newEnv.name);
+            if (newEnv.description) newEnv.description = this.app.modelService.sanitizeInput(newEnv.description);
+            if (newEnv.completion?.name) newEnv.completion.name = this.app.modelService.sanitizeInput(newEnv.completion.name);
+            if (newEnv.completion?.localStartCommand) newEnv.completion.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.completion.localStartCommand);
+            if (newEnv.completion?.endpoint) newEnv.completion.endpoint = this.app.modelService.sanitizeInput(newEnv.completion.endpoint);
+            if (newEnv.completion?.aiModel) newEnv.completion.aiModel = this.app.modelService.sanitizeInput(newEnv.completion.aiModel);
+            // Similarly for chat, embeddings, tools...
+            if (newEnv.chat?.name) newEnv.chat.name = this.app.modelService.sanitizeInput(newEnv.chat.name);
+            if (newEnv.chat?.localStartCommand) newEnv.chat.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.chat.localStartCommand);
+            if (newEnv.chat?.endpoint) newEnv.chat.endpoint = this.app.modelService.sanitizeInput(newEnv.chat.endpoint);
+            if (newEnv.chat?.aiModel) newEnv.chat.aiModel = this.app.modelService.sanitizeInput(newEnv.chat.aiModel);
+            if (newEnv.embeddings?.name) newEnv.embeddings.name = this.app.modelService.sanitizeInput(newEnv.embeddings.name);
+            if (newEnv.embeddings?.localStartCommand) newEnv.embeddings.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.embeddings.localStartCommand);
+            if (newEnv.embeddings?.endpoint) newEnv.embeddings.endpoint = this.app.modelService.sanitizeInput(newEnv.embeddings.endpoint);
+            if (newEnv.embeddings?.aiModel) newEnv.embeddings.aiModel = this.app.modelService.sanitizeInput(newEnv.embeddings.aiModel);
+            if (newEnv.tools?.name) newEnv.tools.name = this.app.modelService.sanitizeInput(newEnv.tools.name);
+            if (newEnv.tools?.localStartCommand) newEnv.tools.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.tools.localStartCommand);
+            if (newEnv.tools?.endpoint) newEnv.tools.endpoint = this.app.modelService.sanitizeInput(newEnv.tools.endpoint);
+            if (newEnv.tools?.aiModel) newEnv.tools.aiModel = this.app.modelService.sanitizeInput(newEnv.tools.aiModel);
+            if (newEnv.agent?.name) newEnv.agent.name = this.app.modelService.sanitizeInput(newEnv.agent.name);
+            if (newEnv.agent?.description) newEnv.agent.description = this.app.modelService.sanitizeInput(newEnv.agent.description);
+            if (newEnv.agent?.systemInstruction) newEnv.agent.systemInstruction = newEnv.agent.systemInstruction.map((s: string) => this.app.modelService.sanitizeInput(s));
 
         await this.persistEnvToSetting(newEnv, envList, settingName);
     }
 
-    private async importModelToList(modelList: any[], settingName: string) {
-        let name = "";
-        const uris = await vscode.window.showOpenDialog({
-                canSelectMany: false,
-                openLabel: 'Import Model',
-                filters: {
-                    'Model Files': ['json'],
-                    'All Files': ['*']
-                },
-            });
-
-        if (!uris || uris.length === 0) {
-            return;
-        }
-
-        const filePath = uris[0].fsPath;
-        
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const newModel = JSON.parse(fileContent);
-
-        await this.persistModelToSetting(newModel, modelList, settingName);
-        vscode.window.showInformationMessage("Model imported: " + newModel.name);
-    }
+    // importModelToList removed, handled by ModelService
 
     private async importAgentToList(agentList: any[], settingName: string) {
         let name = "";
@@ -1277,6 +845,10 @@ export class Menu {
         
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const newAgent = JSON.parse(fileContent);
+        // Sanitize imported agent
+        if (newAgent.name) newAgent.name = this.app.modelService.sanitizeInput(newAgent.name);
+        if (newAgent.description) newAgent.description = this.app.modelService.sanitizeInput(newAgent.description);
+        if (newAgent.systemInstruction) newAgent.systemInstruction = newAgent.systemInstruction.map((s: string) => this.app.modelService.sanitizeInput(s));
 
         await this.persistAgentToSetting(newAgent, agentList, settingName);
     }
@@ -1300,6 +872,11 @@ export class Menu {
         
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const newAgent = JSON.parse(fileContent);
+        // Sanitize imported agent command
+        if (newAgent.name) newAgent.name = this.app.modelService.sanitizeInput(newAgent.name);
+        if (newAgent.description) newAgent.description = this.app.modelService.sanitizeInput(newAgent.description);
+        if (newAgent.prompt) newAgent.prompt = newAgent.prompt.map((s: string) => this.app.modelService.sanitizeInput(s));
+        if (newAgent.context) newAgent.context = newAgent.context.map((s: string) => this.app.modelService.sanitizeInput(s));
 
         await this.persistAgentCommandToSetting(newAgent, agentCommands, settingName);
     }
@@ -1324,17 +901,28 @@ export class Menu {
         
         const fileContent = fs.readFileSync(filePath, 'utf8');
         const newChat = JSON.parse(fileContent);
+        // Sanitize imported chat
+        if (newChat.name) newChat.name = this.app.modelService.sanitizeInput(newChat.name);
+        if (newChat.description) newChat.description = this.app.modelService.sanitizeInput(newChat.description);
+        if (newChat.messages) {
+            newChat.messages = newChat.messages.map((msg: any) => ({
+                ...msg,
+                content: this.app.modelService.sanitizeInput(msg.content || ''),
+                role: this.app.modelService.sanitizeInput(msg.role || '')
+            }));
+        }
 
         await this.addChatToHistory(newChat);
     }
 
     private async deleteEnvFromList(envsList: any[], settingName: string) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
+        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
         const env = await vscode.window.showQuickPick(envsItems);
         if (env) {
             let envIndex = parseInt(env.label.split(". ")[0], 10) - 1;
-            const shoulDeleteEnv = await Utils.showYesNoDialog("Are you sure you want to delete the following env? \n\n" 
-                + this.getEnvDetailsAsString(envsList[envIndex]));
+            const shoulDeleteEnv = await Utils.confirmAction("Are you sure you want to delete the following env?", 
+                this.getEnvDetailsAsString(envsList[envIndex])
+            );
             if (shoulDeleteEnv) {
                 envsList.splice(envIndex, 1);
                 this.app.configuration.updateConfigValue(settingName, envsList);
@@ -1344,11 +932,13 @@ export class Menu {
     }
 
     private async viewEnvFromList(envsList: any[]) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
+        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
+        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
+        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
         let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
             let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedEnv =  envsList[envIndex];
+            let selectedEnv =  allEnvs[envIndex];
             let envDetails = this.getEnvDetailsAsString(selectedEnv);
             await Utils.showOkDialog(envDetails);
             
@@ -1391,15 +981,6 @@ export class Menu {
             "\n\nenv start last: " + selectedEnv.envStartLastUsed
     }
 
-    private getModelDetailsAsString(model: LlmModel){
-        return "model: " +
-            "\nname: " + model.name +
-            "\nlocal start command: " + model.localStartCommand +
-            "\nendpoint: " + model.endpoint +
-            "\nmodel name for provider: " + model.aiModel +
-            "\napi key required: " + model.isKeyRequired
-    }
-
     private getSelectionsAsString() {
         return "Selected env and models: " +
             "\nenv: " + this.selectedEnv.name +
@@ -1411,11 +992,11 @@ export class Menu {
             "\nmodel name for provider: " + this.selectedComplModel.aiModel +
             "\napi key required: " + this.selectedComplModel.isKeyRequired +
             "\n\nchat model: " +
-            "\nname: " + this.selectedChatModel.name +
-            "\nlocal start command: " + this.selectedChatModel.localStartCommand +
-            "\nendpoint: " + this.selectedChatModel.endpoint +
-            "\nmodel name for provider: " + this.selectedChatModel.aiModel +
-            "\napi key required: " + this.selectedChatModel.isKeyRequired +
+            "\nname: " + this.selectedModel.name +
+            "\nlocal start command: " + this.selectedModel.localStartCommand +
+            "\nendpoint: " + this.selectedModel.endpoint +
+            "\nmodel name for provider: " + this.selectedModel.aiModel +
+            "\napi key required: " + this.selectedModel.isKeyRequired +
             "\n\nembeddings model: " +
             "\nname: " + this.selectedEmbeddingsModel.name +
             "\nlocal start command: " + this.selectedEmbeddingsModel.localStartCommand +
@@ -1431,11 +1012,13 @@ export class Menu {
     }
 
     private async exportEnvFromList(envsList: any[]) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
+        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
+        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
+        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
         let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
             let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedEnv =  envsList[envIndex];
+            let selectedEnv =  allEnvs[envIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following env? \n\n" +
             this.getEnvDetailsAsString(selectedEnv)
             );
@@ -1461,43 +1044,16 @@ export class Menu {
         }
     }
 
-    private async exportModelFromList(modelsList: any[]) {
-        const modelsItems: QuickPickItem[] = this.getStandardQpList(modelsList);
-        let model = await vscode.window.showQuickPick(modelsItems);
-        if (model) {
-            let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedmodel =  modelsList[modelIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following model? \n\n" +
-            this.getModelDetailsAsString(selectedmodel)
-            );
-
-            if (shouldExport){
-                const uri = await vscode.window.showSaveDialog({
-                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedmodel.name+'.json')),
-                        filters: {
-                            'Model Files': ['json'],
-                            'All Files': ['*']
-                        },
-                        saveLabel: 'Export Model'
-                    });
-
-                if (!uri) {
-                    return;
-                }
-
-                const jsonContent = JSON.stringify(selectedmodel, null, 2);
-                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
-                vscode.window.showInformationMessage("Model is saved.")
-            }
-        }
-    }
+    // exportModelFromList removed, handled by ModelService
 
     private async exportAgentFromList(agentsList: any[]) {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
         let agent = await vscode.window.showQuickPick(agentsItems);
         if (agent) {
             let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgent =  agentsList[modelIndex];
+            let selectedAgent =  allAgents[modelIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent? \n\n" +
             this.getAgentCommandDetailsAsString(selectedAgent)
             );
@@ -1524,11 +1080,13 @@ export class Menu {
     }
 
     private async exportAgentCommandFromList(agentCommands: any[]) {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
-        let agent = await vscode.window.showQuickPick(agentsItems);
-        if (agent) {
-            let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgentCommand =  agentCommands[modelIndex];
+        let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[])
+        let agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands, "");
+        agentComandItems = agentComandItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[], "(predefined) ", agentCommands.length));
+        let agentCommand = await vscode.window.showQuickPick(agentComandItems);
+        if (agentCommand) {
+            let modelIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
+            let selectedAgentCommand =  allAgentCommands[modelIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent command? \n\n" +
             this.getAgentCommandDetailsAsString(selectedAgentCommand)
             );
@@ -1555,7 +1113,7 @@ export class Menu {
     }
 
     private async exportChatFromList(chatsList: any[]) {
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList);
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList, "");
         let chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let modelIndex = parseInt(chat.label.split(". ")[0], 10) - 1;
@@ -1587,44 +1145,13 @@ export class Menu {
     }
     
 
-    private async addApiKey(model: LlmModel) {
-        if (model.isKeyRequired) {
-            const apiKey = this.app.persistence.getApiKey(model.endpoint ?? "");
-            if (!apiKey) {
-                const result = await vscode.window.showInputBox({
-                    placeHolder: 'Enter your api key for ' + model.endpoint,
-                    prompt: 'your api key for ' + model.endpoint,
-                    value: ''
-                });
-                if (result) {
-                    this.app.persistence.setApiKey(model.endpoint ?? "", result);
-                    vscode.window.showInformationMessage("Your API key for "+ model.endpoint + " was saved.")
-                }
-            }
-        }
-    }
-
-    private getModels(modelsFromProperty:any[]) {
-        const complModelsItems: QuickPickItem[] = [];
-        let i = 0
-        for (let model of modelsFromProperty) {
-            i++;
-            complModelsItems.push({
-                label: i + ". " +model.name,
-                description: model.localStartCommand,
-                detail: this.startModelDetail
-            });
-        }
-        return complModelsItems;
-    }
-
-    private getStandardQpList(list:any[]) {
+    private getStandardQpList(list:any[], prefix: string, lastModelNumber: number = 0) {
         const items: QuickPickItem[] = [];
-        let i = 0
+        let i = lastModelNumber;
         for (let elem of list) {
             i++;
             items.push({
-                label: i + ". " + elem.name,
+                label: i + ". " + prefix + elem.name,
                 description: elem.description,
             });
         }
@@ -1636,7 +1163,7 @@ export class Menu {
     }
 
     private async handleCompletionToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
-        if (label.includes(this.app.configuration.getUiText('All Completions')??"")) {
+        if (label.includes(this.app.configuration.getUiText(UI_TEXT_KEYS.allCompletions)??"")) {
             await this.app.configuration.updateConfigValue('enabled', !this.app.configuration.enabled);
         } else if (currentLanguage && label.includes(currentLanguage)) {
             const isLanguageEnabled = languageSettings[currentLanguage] ?? true;
@@ -1646,7 +1173,7 @@ export class Menu {
     }
 
     private async handleRagToggle(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>) {
-        if (label.includes("RAG")) {
+        if (label.includes(this.app.configuration.getUiText(UI_TEXT_KEYS.rag)??"")) {
             await this.app.configuration.updateConfigValue('rag_enabled', !this.app.configuration.rag_enabled);
         } 
     }
@@ -1672,11 +1199,58 @@ export class Menu {
     }
 
     getChatModel = (): LlmModel => {
-        return this.selectedChatModel;
+        return this.selectedModel;
     }
 
     getEmbeddingsModel = (): LlmModel => {
         return this.selectedEmbeddingsModel;
+    }
+
+    clearModel = (type: ModelType) => {
+        switch (type) {
+            case ModelType.Completion:
+                this.selectedComplModel = Menu.emptyModel;
+                break;
+            case ModelType.Chat:
+                this.selectedModel = Menu.emptyModel;
+                break;
+            case ModelType.Embeddings:
+                this.selectedEmbeddingsModel = Menu.emptyModel;
+                break;
+            case ModelType.Tools:
+                this.selectedToolsModel = Menu.emptyModel;
+                break;
+        }
+        this.app.llamaWebviewProvider.updateLlamaView();
+    }
+
+    public async deselectAndClearModel(modelType: ModelType) {
+        await this.app.modelService.deselectModel(modelType, this.app.modelService.getTypeDetails(modelType));
+        this.app.menu.clearModel(modelType);
+        this.app.llamaWebviewProvider.updateLlamaView();
+    }
+
+    setSelectedModel = (type: ModelType, model: LlmModel | undefined) => {
+        switch (type) {
+            case ModelType.Completion:
+                this.selectedComplModel = model??Menu.emptyModel;
+                break;
+            case ModelType.Chat:
+                this.selectedModel = model??Menu.emptyModel;
+                break;
+            case ModelType.Embeddings:
+                this.selectedEmbeddingsModel = model??Menu.emptyModel;
+                break;
+            case ModelType.Tools:
+                this.selectedToolsModel = model??Menu.emptyModel;
+                break;
+        }
+        this.app.llamaWebviewProvider.updateLlamaView();
+    }
+
+    public async selectAndSetModel(modelType: ModelType, modelsList: LlmModel[]) {
+        let model = await this.app.modelService.selectModel(modelType, modelsList);
+        this.app.menu.setSelectedModel(modelType, model);
     }
 
     getEnv = (): Env => {
@@ -1696,7 +1270,7 @@ export class Menu {
     }
 
     isChatModelSelected = (): boolean => {
-        return this.selectedChatModel != undefined && this.selectedChatModel.name. trim() != "";
+        return this.selectedModel != undefined && this.selectedModel.name. trim() != "";
     }
 
     isToolsModelSelected = (): boolean => {
@@ -1719,163 +1293,33 @@ export class Menu {
         return this.selectedChat != undefined && this.selectedChat.name.trim() != "";
     }
 
-    processComplModelsActions = async (selected:vscode.QuickPickItem) => {
-        let compleModelType = this.getTypeDetails(ModelType.Completion);
-        switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start completion model..."):  
-                await this.selectStartModel(compleModelType);
-                break;
-            case this.app.configuration.getUiText('Add local completion model...'):
-                await this.addLocalModelToList(compleModelType)
-                break;
-            case this.app.configuration.getUiText('Add external completion model...'):
-                await this.addExternalModelToList(compleModelType)
-                break;
-            case this.app.configuration.getUiText('Add completion model from huggingface...'):
-                await this.addHuggingfaceModelToList(compleModelType);
-                break;
-            case this.app.configuration.getUiText('Delete completion model...'):
-                await this.deleteModelFromList(compleModelType.modelsList, compleModelType.modelsListSettingName);
-                break;
-            case this.app.configuration.getUiText('View completion model details...'):
-                await this.viewModelFromList(compleModelType.modelsList)
-                break;
-            case this.app.configuration.getUiText("Deselect/stop completion model"):
-                await this.deselectStopModel(compleModelType);
-                break;
-            case this.app.configuration.getUiText('Export completion model...'):
-                await this.exportModelFromList(compleModelType.modelsList)
-                break;
-            case this.app.configuration.getUiText('Import completion model...'):
-                await this.importModelToList(compleModelType.modelsList, compleModelType.modelsListSettingName)
-                break;
-        }
-    }
-
-    processChatModelsActions = async (selected:vscode.QuickPickItem) => {
-        let chatTypeDetails = this.getTypeDetails(ModelType.Chat);
-        switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start chat model..."):
-                await this.selectStartModel(chatTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add local chat model...')??"":
-                await this.addLocalModelToList(chatTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add external chat model...')??"":
-                await this.addExternalModelToList(chatTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add chat model from huggingface...')??"":
-                await this.addHuggingfaceModelToList(chatTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Delete chat model...')??"":
-                await this.deleteModelFromList(chatTypeDetails.modelsList, chatTypeDetails.modelsListSettingName);
-                break;
-            case this.app.configuration.getUiText('View chat model details...')??"":
-                await this.viewModelFromList(chatTypeDetails.modelsList)
-                break;
-            case this.app.configuration.getUiText("Deselect/stop chat model"):
-                await this.deselectStopModel(chatTypeDetails);    
-                break;
-            case this.app.configuration.getUiText('Export chat model...'):
-                await this.exportModelFromList(chatTypeDetails.modelsList)
-                break;
-            case this.app.configuration.getUiText('Import chat model...'):
-                await this.importModelToList(chatTypeDetails.modelsList, chatTypeDetails.modelsListSettingName)
-                break;
-        }
-    }
-
-    processEmbsModelsActions = async (selected:vscode.QuickPickItem) => {
-        let embsTypeDetails = this.getTypeDetails(ModelType.Embeddings);
-        switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start embeddings model..."):
-                await this.selectStartModel(embsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add local embeddings model...'):
-                await this.addLocalModelToList(embsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add external embeddings model...'):
-                await this.addExternalModelToList(embsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add embeddings model from huggingface...')??"":
-                await this.addHuggingfaceModelToList(embsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Delete embeddings model...'):
-                await this.deleteModelFromList(embsTypeDetails.modelsList, embsTypeDetails.modelsListSettingName);
-                break;
-            case this.app.configuration.getUiText('View embeddings model details...'):
-                await this.viewModelFromList(embsTypeDetails.modelsList)
-                break;
-            case this.app.configuration.getUiText("Deselect/stop embeddings model"):
-                await this.deselectStopModel(embsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Export embeddings model...'):
-                await this.exportModelFromList(embsTypeDetails.modelsList)
-                break;
-            case this.app.configuration.getUiText('Import embeddings model...'):
-                await this.importModelToList(embsTypeDetails.modelsList, embsTypeDetails.modelsListSettingName)
-                break;
-        }
-    }
-
-    processToolsModelsActions = async (selected:vscode.QuickPickItem) => {
-        let toolsTypeDetails = this.getTypeDetails(ModelType.Tools);
-        switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start tools model..."):
-                await this.selectStartModel(toolsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add local tools model...'):
-                await this.addLocalModelToList(toolsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add external tools model...'):
-                await this.addExternalModelToList(toolsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Add tools model from huggingface...')??"":
-                await this.addHuggingfaceModelToList(toolsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Delete tools model...'):
-                await this.deleteModelFromList(toolsTypeDetails.modelsList, toolsTypeDetails.modelsListSettingName);
-                break;
-            case this.app.configuration.getUiText('View tools model details...'):
-                await this.viewModelFromList(toolsTypeDetails.modelsList)
-                break;
-            case this.app.configuration.getUiText("Deselect/stop tools model"):
-                await this.deselectStopModel(toolsTypeDetails);
-                break;
-            case this.app.configuration.getUiText('Export tools model...'):
-                await this.exportModelFromList(toolsTypeDetails.modelsList)
-                break;
-            case this.app.configuration.getUiText('Import tools model...'):
-                await this.importModelToList(toolsTypeDetails.modelsList, toolsTypeDetails.modelsListSettingName)
-                break;
-        }
-    }
+    // process*ModelsActions removed, handled by ModelService.processActions
 
     processEnvActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start env..."):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv):
                 this.selectEnvFromList(this.app.configuration.envs_list);
                 break;
-            case this.app.configuration.getUiText('Add env...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.addEnv):
                 this.showEnvView();
                 // await this.addEnvToList(this.app.configuration.envs_list, "envs_list");
                 break;
-            case this.app.configuration.getUiText('Delete env...'):
-                await this.deleteEnvFromList(this.app.configuration.envs_list, "envs_list");
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv):
+                await this.deleteEnvFromList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS);
                 break;
-            case this.app.configuration.getUiText('View env details...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.viewEnvDetails):
                 await this.viewEnvFromList(this.app.configuration.envs_list)
                 break;
-            case this.app.configuration.getUiText("Deselect/stop env and models"):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv):
                 await this.stopEnv();
                 break;
-            case this.app.configuration.getUiText('Export env...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.exportEnv):
                 await this.exportEnvFromList(this.app.configuration.envs_list)
                 break;
-            case this.app.configuration.getUiText('Import env...'):
-                await this.importEnvToList(this.app.configuration.envs_list, "envs_list")
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.importEnv):
+                await this.importEnvToList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
                 break;
-            case this.app.configuration.getUiText('Download/upload env online'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.downloadUploadEnvsOnline):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/discussions'));
                 break;
         }
@@ -1883,51 +1327,51 @@ export class Menu {
 
     processAgentsActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start agent..."):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartAgent):
                 await this.selectAgentFromList(this.app.configuration.agents_list);
                 break;
-            case this.app.configuration.getUiText('Add agent...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.addAgent):
                 // await this.addModelToList(toolsTypeDetails);
                 Utils.showOkDialog("You could add an agent in setting agents_list or use export, modify and import.")
                 break;
-            case this.app.configuration.getUiText('Delete agent...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgent):
                 // await this.deleteModelFromList(this.app.configuration.tools_models_list, "tools_models_list");
                 Utils.showOkDialog("You could delete an agent in setting agents_list")
                 break;
-            case this.app.configuration.getUiText('View agent details...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentDetails):
                 await this.viewAgentFromList(this.app.configuration.agents_list)
                 break;
-            case this.app.configuration.getUiText("Deselect/stop agent"):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopAgent):
                 // await this.deselectStopModel(this.app.llamaServer.killToolsCmd, "selectedToolsModel");
                 this.selectedAgent = {name: "", systemInstruction: []};
                 vscode.window.showInformationMessage("The agent is deselected.")
                 break;
-            case this.app.configuration.getUiText('Export agent...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgent):
                 await this.exportAgentFromList(this.app.configuration.agents_list)
                 break;
-            case this.app.configuration.getUiText('Import agent...'):
-                await this.importAgentToList(this.app.configuration.agents_list, "agents_list")
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.importAgent):
+                await this.importAgentToList(this.app.configuration.agents_list, SETTING_NAME_FOR_LIST.AGENTS)
                 break;
         }
     }
 
     processAgentCommandsActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
-            case this.app.configuration.getUiText('Add agent command...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.addAgentCommand):
                 // await this.addModelToList(toolsTypeDetails);
                 Utils.showOkDialog("You could add an agent command in setting agent_commands or use export, modify and import.")
                 break;
-            case this.app.configuration.getUiText('Delete agent command...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgentCommand):
                 await this.deleteAgentCommandFromList(this.app.configuration.agent_commands, "agent_commands");
                 // Utils.showOkDialog("You could delete an agent command in setting agent_commands")
                 break;
-            case this.app.configuration.getUiText('View agent command details...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentCommandDetails):
                 await this.viewAgentCommandFromList(this.app.configuration.agent_commands)
                 break;
-            case this.app.configuration.getUiText('Export agent command...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgentCommand):
                 await this.exportAgentCommandFromList(this.app.configuration.agent_commands)
                 break;
-            case this.app.configuration.getUiText('Import agent command...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.importAgentCommand):
                 await this.importAgentCommandToList(this.app.configuration.agent_commands, "agent_commands")
                 break;
         }
@@ -1935,16 +1379,16 @@ export class Menu {
 
     processChatActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
-            case this.app.configuration.getUiText("Select/start chat..."):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartChat):
                 await this.selectChatFromList();
                 break;
-            case this.app.configuration.getUiText('Delete chat...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteChat):
                 await this.deleteChatFromList(this.app.persistence.getChats());
                 break;
-            case this.app.configuration.getUiText('Export chat...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.exportChat):
                 await this.exportChatFromList(this.app.persistence.getChats())
                 break;
-            case this.app.configuration.getUiText('Import chat...'):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.importChat):
                 await this.importChatToList()
                 break;
         }
@@ -1952,7 +1396,7 @@ export class Menu {
 
     processApiKeyActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
-            case this.app.configuration.getUiText("Edit/delete API key..."):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.editDeleteAPIKey):
                 const apiKeysMap = this.app.persistence.getAllApiKeys();
                 const apiKeysQuickPick = Array.from(apiKeysMap.entries()).map(([key, value]) => ({
                                             label: key,
@@ -1960,52 +1404,51 @@ export class Menu {
                                         }));
                 const selectedItem = await vscode.window.showQuickPick(apiKeysQuickPick);
                 if (selectedItem) {
-                    const result = await vscode.window.showInputBox({
+                    let result = await vscode.window.showInputBox({
                             placeHolder: 'Enter your new api key for ' + selectedItem.label + ". Leave empty to remove it.",
                             prompt: 'your api key',
                             value: ''
                         })
-                    if (!result || result.trim() === "") this.app.persistence.deleteApiKey(selectedItem.label);
+                    result = this.app.modelService.sanitizeInput(result || '');
+                    if (!result || result === "") this.app.persistence.deleteApiKey(selectedItem.label);
                     else this.app.persistence.setApiKey(selectedItem.label, result);
                 }
                 break;
-            case this.app.configuration.getUiText('Add API key...')??"":
-                const endpoint = await vscode.window.showInputBox({
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.addAPIKey) ?? "":
+                let endpoint = await vscode.window.showInputBox({
                             placeHolder: 'Enter the endpoint, exactly as in the model',
                             prompt: 'Endpoint (url)',
                             value: ''
                         })
-                const apiKey = await vscode.window.showInputBox({
+                endpoint = this.app.modelService.sanitizeInput(endpoint || '');
+                let apiKey = await vscode.window.showInputBox({
                             placeHolder: 'Enter your new api key for ' + endpoint,
                             prompt: 'your api key',
                             value: ''
                         })
+                apiKey = this.app.modelService.sanitizeInput(apiKey || '');
                 if (endpoint && apiKey) 
                     {
                         this.app.persistence.setApiKey(endpoint, apiKey);
                         vscode.window.showInformationMessage("Api key is added.")
                     }
-                else vscode.window.showInformationMessage("Api key is not added! Endpoint or API Key are not entered.")
+                else vscode.window.showErrorMessage("API key was not added. Please provide both endpoint and API key.")
                 break;
         }
     }
 
     public showEnvView() {
         vscode.commands.executeCommand('extension.showLlamaWebview');
-        this.app.llamaWebviewProvider.setView("addenv");
+        setTimeout(() => this.app.llamaWebviewProvider.setView("addenv"), 500);
     }
 
-    public async deselectStopModel(modelTypeDetails: ModelTypeDetails) {
-        await modelTypeDetails.killCmd();
-        this[modelTypeDetails.selModelPropName as keyof Menu] = { name: "", localStartCommand: "" } as any;
-        this.app.llamaWebviewProvider.updateLlamaView();
-    }
+    // deselectStopModel removed, handled by ModelService.deselectModel (caller sets selected)
 
     public async stopEnv() {
         await this.app.llamaServer.killFimCmd();
         this.selectedComplModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killChatCmd();
-        this.selectedChatModel = { name: "", localStartCommand: "" };
+        this.selectedModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killEmbeddingsCmd();
         this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
         await this.app.llamaServer.killToolsCmd();
@@ -2016,39 +1459,7 @@ export class Menu {
         vscode.window.showInformationMessage("Env, models and agent are deselected.")
     }
 
-    // getChatTypeDetails = (): ModelTypeDetails => {
-    //     return {
-    //         modelsList: this.app.configuration.chat_models_list,
-    //         modelsListSettingName: "chat_models_list",
-    //         newModelPort: this.app.configuration.new_chat_model_port,
-    //         newModelHost: this.app.configuration.new_chat_model_host,
-    //         selModelPropName: "selectedChatModel",
-    //         launchSettingName: "launch_chat",
-    //         killCmd: this.app.llamaServer.killChatCmd,
-    //         shellCmd: this.app.llamaServer.shellChatCmd
-    //     };
-    // }
-
-    // Generic method using constants
-    private getTypeDetails(type: ModelType): ModelTypeDetails {
-        const config = MODEL_TYPE_CONFIG[type];
-        return {
-            modelsList: (this.app.configuration as any)[config.settingName],
-            modelsListSettingName: config.settingName,
-            newModelPort: (this.app.configuration as any)[config.portSetting],
-            newModelHost: (this.app.configuration as any)[config.hostSetting],
-            selModelPropName: config.propName,
-            launchSettingName: config.launchSetting,
-            killCmd: (this.app.llamaServer as any)[config.killCmdName],
-            shellCmd: (this.app.llamaServer as any)[config.shellCmdName]
-        };
-    }
-
-    // Legacy methods for backward compatibility (can be removed in later phases)
-    getComplTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Completion);
-    getChatTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Chat);
-    getEmbsTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Embeddings);
-    getToolsTypeDetails = (): ModelTypeDetails => this.getTypeDetails(ModelType.Tools);
+    // getTypeDetails moved to ModelService
 
     
 
@@ -2069,4 +1480,6 @@ export class Menu {
             ]
         });
     }
+
+    // sanitize methods moved to ModelService where used
 }

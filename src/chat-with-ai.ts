@@ -51,22 +51,24 @@ export class ChatWithAi {
         let aiPanel  = this.askAiPanel
         let extraCont = aiInitialExtraContext ? aiInitialExtraContext + "\n\n" : "";
         let query: string|undefined = undefined
-        let targetUrl = this.app.configuration.endpoint_chat ? this.app.configuration.endpoint_chat + "/" : "";
+        let targetUrl = this.app.configuration.endpoint_chat 
+                        ? this.app.configuration.endpoint_chat + "/" 
+                        : this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
 
-        let chatModel = this.app.menu.getChatModel();    
+        let chatModel = this.app.menu.getChatModel();
+        if (!this.app.menu.isChatModelSelected()) chatModel = this.app.menu.getToolsModel();    
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat model or an env with chat model to chat with AI.","Select")
+            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model run by llama-server or an env with chat or tools model run on llama-server to chat with AI.","Select")
             if (shouldSelectModel){
-                // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.chat != undefined && item.chat.name)) // .selectStartModel(chatTypeDetails);
                 this.app.menu.showEnvView();
-                vscode.window.showInformationMessage("After the chat model is loaded, try again opening Chat with AI.")
+                vscode.window.showInformationMessage("After the chat/tools model is loaded, try again opening Chat with AI.")
                 return;
             } else {
-                vscode.window.showErrorMessage("No endpoint for the chat model. Select an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
+                vscode.window.showErrorMessage("No endpoint for the chat or tools model. Select a chat or tools model run on llama-server or an env with chat or tools model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
                 return
             }
         }

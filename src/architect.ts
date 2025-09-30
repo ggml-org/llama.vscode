@@ -8,6 +8,7 @@ import {LlamaWebviewProvider} from './llama-webview-provider'
 import { Utils } from './utils';
 import { Env, LlmModel } from './types';
 import { env } from 'process';
+import { SETTING_NAME_FOR_LIST } from './constants';
 
 export class Architect {
     private app: Application
@@ -485,9 +486,9 @@ export class Architect {
                         Utils.removeFaOptionFromModels(toolsModels);
                         Utils.removeFaOptionFromEnvs(envs);
 
-                        this.app.configuration.updateConfigValue("chat_models_list", chatModels);
-                        this.app.configuration.updateConfigValue("tools_models_list", toolsModels);
-                        this.app.configuration.updateConfigValue("envs_list", envs);
+                        this.app.configuration.updateConfigValue(SETTING_NAME_FOR_LIST.CHAT_MODELS, chatModels);
+                        this.app.configuration.updateConfigValue(SETTING_NAME_FOR_LIST.TOOLS_MODELS, toolsModels);
+                        this.app.configuration.updateConfigValue(SETTING_NAME_FOR_LIST.ENVS, envs);
                     }
                 } else {
                     let questionStopAskingLlamaCppUpgrade = "Do you prefer to stop getting a suggestion to upgrade llama.cpp?"

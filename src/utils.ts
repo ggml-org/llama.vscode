@@ -806,10 +806,40 @@ export class Utils {
         return timeDifference >= twentyFourHoursInMs;
     }
 
+    static async confirmAction(message: string, details: string = ""): Promise<boolean> {
+        const fullMessage = message + (details ? "\n\n" + details : "");
+        return Utils.showYesNoDialog(fullMessage);
+    }
+
     static getFunctionFromFile = (filePath: string) => {
         let functionCode = fs.readFileSync(filePath, 'utf-8');
         const functionString = '(' + functionCode + ')';
         const toolFunction = eval(functionString);
         return toolFunction;
+    }
+
+    static async getValidatedInput(prompt: string, validator: (input: string) => boolean, maxAttempts: number = 3, options: vscode.InputBoxOptions = {}): Promise<string | undefined> {
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const fullOptions: vscode.InputBoxOptions = {
+                prompt,
+                ...options
+            };
+            const input = await vscode.window.showInputBox(fullOptions);
+
+            if (input === undefined) {
+                return undefined; // User cancelled
+            }
+
+            if (validator(input)) {
+                return input;
+            }
+
+            if (attempt < maxAttempts) {
+                vscode.window.showWarningMessage(`Invalid input on attempt ${attempt}. ${attempt + 1 - 1} more attempts.`);
+            }
+        }
+
+        vscode.window.showErrorMessage(`Maximum attempts (${maxAttempts}) reached. Input validation failed.`);
+        return undefined;
     }
 }

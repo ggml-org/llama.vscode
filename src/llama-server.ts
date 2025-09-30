@@ -313,8 +313,8 @@ export class LlamaServer {
         chunks: any,
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
-        let selectedModel: LlmModel = this.app.menu.getChatModel();
-        let { endpoint, model, requestConfig } = this.getChatModelProperties(selectedModel);
+        
+        let { endpoint, model, requestConfig } = this.getChatModelProperties();
 
         const response = await axios.post<LlamaChatResponse>(
             `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
@@ -328,8 +328,7 @@ export class LlamaServer {
     getChatCompletion = async (
         prompt: string,
     ): Promise<LlamaChatResponse | undefined> => {
-        let selectedModel: LlmModel = this.app.menu.getChatModel();
-        let { endpoint, model, requestConfig } = this.getChatModelProperties(selectedModel);
+        let { endpoint, model, requestConfig } = this.getChatModelProperties();
 
         const response = await axios.post<LlamaChatResponse>(
             `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
@@ -742,12 +741,15 @@ export class LlamaServer {
     }
 
 
-
-    private getChatModelProperties(selectedModel: LlmModel) {
+    private getChatModelProperties() {
+        let selectedModel: LlmModel = this.app.menu.getChatModel();
+        if (!this.app.menu.isChatModelSelected()) selectedModel = this.app.menu.getToolsModel();
+        
         let model = this.app.configuration.ai_model;
         if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
 
         let endpoint = this.app.configuration.endpoint_chat;
+        if (!endpoint) endpoint = this.app.configuration.endpoint_tools;
         if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) endpoint = selectedModel.endpoint;
 
         let requestConfig = this.app.configuration.axiosRequestConfigChat;

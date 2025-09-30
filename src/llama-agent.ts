@@ -47,7 +47,6 @@ export class LlamaAgent {
         } else {
             const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
             if (fs.existsSync(absolutePath)) projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
-            else vscode.window.showErrorMessage(`File with the user defined rules not found: ${this.app.configuration.agent_rules}`);
         }
         this.messages = [
             {

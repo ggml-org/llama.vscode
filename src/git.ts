@@ -12,20 +12,22 @@ export class Git {
 
     generateCommitMessage = async (): Promise<void> => {
         let chatUrl = this.app.configuration.endpoint_chat
+        if (!chatUrl) chatUrl = this.app.configuration.endpoint_tools;
         let chatModel = this.app.menu.getChatModel();    
+        if (!this.app.menu.isChatModelSelected()) chatModel = this.app.menu.getToolsModel();
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!chatUrl) {
-            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat model or an env with chat model to generate a commit message.","Select")
+            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model or an env with chat or tools model to generate a commit message.","Select")
             if (shouldSelectModel){
                 this.app.menu.showEnvView();
-                vscode.window.showInformationMessage("After the chat model is loaded, try again generating commit message.")
+                vscode.window.showInformationMessage("After the chat/tools model is loaded, try again generating commit message.")
                 return;
             } 
             else {
-                vscode.window.showErrorMessage("No endpoint for the chat model. Select a chat model or an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
+                vscode.window.showErrorMessage("No endpoint for the chat model. Select a chat or tools model or an env with chat or tools model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
                 return;
             }
         }

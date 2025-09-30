@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import { Application } from './application';
 import { Utils } from './utils';
 import { LlamaChatResponse } from "./types";
+import { Chat } from 'openai/resources';
 
 export class TextEditor {
     private app: Application;
@@ -27,13 +28,15 @@ export class TextEditor {
 
     async showEditPrompt(editor: vscode.TextEditor) {
         let chatUrl = this.app.configuration.endpoint_chat
+        if (!chatUrl) chatUrl = this.app.configuration.endpoint_tools; 
         let chatModel = this.app.menu.getChatModel();    
+        if (!this.app.menu.isChatModelSelected()) chatModel = this.app.menu.getToolsModel();
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!chatUrl) { 
-            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat model or an env with chat model to edit code with AI.","Select")
+            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model or an env with chat or tools model to edit code with AI.","Select")
             if (shouldSelectModel){
                 this.app.menu.showEnvView();
                 vscode.window.showInformationMessage("After the chat model is loaded, try again using Edit with AI.")
