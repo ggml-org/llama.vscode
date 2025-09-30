@@ -233,3 +233,23 @@ export const PERSISTENCE_KEYS = {
   SELECTED_AGENT: 'selectedAgent' as const,
   SELECTED_ENV: 'selectedEnv' as const,
 } as const;
+
+export const SETTING_NAME_FOR_LIST = {
+  COMPLETION_MODELS: MODEL_TYPE_CONFIG[ModelType.Completion].settingName,
+  CHAT_MODELS: MODEL_TYPE_CONFIG[ModelType.Chat].settingName,
+  EMBEDDINGS_MODELS: MODEL_TYPE_CONFIG[ModelType.Embeddings].settingName,
+  TOOLS_MODELS: MODEL_TYPE_CONFIG[ModelType.Tools].settingName,
+  ENVS: 'envs_list' as const,
+  AGENTS: 'agents_list' as const,
+  AGENT_COMMANDS: 'agent_commands' as const
+} as const;
+
+export const PREDEFINED_LISTS_KEYS = {
+  COMPLETIONS: ModelType.Completion as const,
+  CHATS: ModelType.Chat as const,
+  EMBEDDINGS: ModelType.Embeddings as const,
+  TOOLS: ModelType.Tools as const,
+  ENVS: SETTING_NAME_FOR_LIST.ENVS,
+  AGENTS: SETTING_NAME_FOR_LIST.AGENTS,
+  AGENT_COMMANDS: SETTING_NAME_FOR_LIST.AGENT_COMMANDS,
+} as const;

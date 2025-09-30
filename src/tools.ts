@@ -457,7 +457,7 @@ export class Tools {
                         "properties": {
                             "include_pattern": {
                                 "type": "string",
-                                "description": "Glob pattern for files to include (e.g. '*.ts' for TypeScript files)"
+                                "description": "Glob pattern for files to include (specify file extensions only if you are absolutely sure)"
                             },
                             "exclude_pattern": {
                                 "type": "string",

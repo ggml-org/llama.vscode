@@ -741,7 +741,6 @@ export class LlamaServer {
     }
 
 
-
     private getChatModelProperties() {
         let selectedModel: LlmModel = this.app.menu.getChatModel();
         if (!this.app.menu.isChatModelSelected()) selectedModel = this.app.menu.getToolsModel();

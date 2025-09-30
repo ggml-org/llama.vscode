@@ -8,6 +8,7 @@ import { ModelType, UI_TEXT_KEYS, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MOD
 import * as path from "path";
 import * as fs from "fs";
 import { Configuration } from "../configuration";
+import { PREDEFINED_LISTS } from "../lists";
 
 export class ModelService {
     private app: Application;
@@ -102,10 +103,10 @@ export class ModelService {
                 await this.deleteModel(details.modelsList, details.modelsListSettingName);
                 break;
             case 'view':
-                await this.viewModel(details.modelsList);
+                await this.viewModel(type, details.modelsList);
                 break;
             case 'export':
-                await this.exportModel(details.modelsList);
+                await this.exportModel(type, details.modelsList);
                 break;
             case 'import':
                 await this.importModel(details.modelsList, details.modelsListSettingName);
@@ -130,14 +131,22 @@ export class ModelService {
 
     selectModel = async (type: ModelType, modelsList: LlmModel[]): Promise<LlmModel | undefined> => {
         const details = this.getTypeDetails(type);
-        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+        let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
+        let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", true);
+        modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", true, modelsList.length));
+
         const launchToEndpoint = new Map([
             ["launch_completion", "endpoint"],
             ["launch_chat", "endpoint_chat"],
             ["launch_embeddings", "endpoint_embeddings"],
             ["launch_tools", "endpoint_tools"]
         ]);
+        
+        // for (let mdl of PREDEFINED_LISTS.get(type) as LlmModel[]){
+        //     modelsItems.push({ label: (modelsItems.length + 1) + ". (predefined) " + mdl.name, description: mdl.localStartCommand ?? "" });
+        // }
         modelsItems.push({ label: (modelsItems.length + 1) + ". Use settings", description: "" });
+
         const selectedModelItem = await vscode.window.showQuickPick(modelsItems);
         if (selectedModelItem) {
             let model: LlmModel;
@@ -155,20 +164,20 @@ export class ModelService {
                 };
             } else {
                 const index = parseInt(selectedModelItem.label.split(". ")[0], 10) - 1;
-                model = modelsList[index];
+                model = allModels[index];
             }
 
-            if (parseInt(selectedModelItem.label.split(". ")[0], 10) == modelsItems.length) {
-                model = {
-                    name: "Use settings",
-                    isKeyRequired: false,
-                    endpoint: this.app.configuration[launchToEndpoint.get(details.launchSettingName) as keyof Configuration] as string,
-                    localStartCommand: this.app.configuration[details.launchSettingName as keyof Configuration ] as string
-                } as LlmModel;
-            } else {
-                const index = parseInt(selectedModelItem.label.split(". ")[0], 10) - 1;
-                model = modelsList[index] as LlmModel;
-            }
+            // if (parseInt(selectedModelItem.label.split(". ")[0], 10) == modelsItems.length) {
+            //     model = {
+            //         name: "Use settings",
+            //         isKeyRequired: false,
+            //         endpoint: this.app.configuration[launchToEndpoint.get(details.launchSettingName) as keyof Configuration] as string,
+            //         localStartCommand: this.app.configuration[details.launchSettingName as keyof Configuration ] as string
+            //     } as LlmModel;
+            // } else {
+            //     const index = parseInt(selectedModelItem.label.split(". ")[0], 10) - 1;
+            //     model = allModels[index] as LlmModel;
+            // }
             await this.selectStartModel(model, type, details);
 
             return model;
@@ -194,7 +203,7 @@ export class ModelService {
     }
 
     async deleteModel(modelsList: LlmModel[], settingName: string): Promise<void> {
-        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+        const modelsItems: QuickPickItem[] = this.getModels(modelsList, "", false);
         const modelItem = await vscode.window.showQuickPick(modelsItems);
         if (modelItem) {
             let modelIndex = parseInt(modelItem.label.split(". ")[0], 10) - 1;
@@ -209,12 +218,14 @@ export class ModelService {
         }
     }
 
-    public async viewModel(modelsList: LlmModel[]): Promise<void> {
-        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+    public async viewModel(type: ModelType , modelsList: LlmModel[]): Promise<void> {
+        let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
+        let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", false);
+        modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", false, modelsList.length));
         let modelItem = await vscode.window.showQuickPick(modelsItems);
         if (modelItem) {
             let modelIndex = parseInt(modelItem.label.split(". ")[0], 10) - 1;
-            let selectedModel = modelsList[modelIndex];
+            let selectedModel = allModels[modelIndex];
             await this.showModelDetails(selectedModel);
         }
     }
@@ -223,12 +234,14 @@ export class ModelService {
         await Utils.showOkDialog("Model details: " + this.getDetails(model));
     }
 
-    async exportModel(modelsList: LlmModel[]): Promise<void> {
-        const modelsItems: QuickPickItem[] = this.getModels(modelsList);
+    async exportModel(type: ModelType, modelsList: LlmModel[]): Promise<void> {
+        let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
+        let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", false);
+        modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", false, modelsList.length));
         let modelItem = await vscode.window.showQuickPick(modelsItems);
         if (modelItem) {
             let modelIndex = parseInt(modelItem.label.split(". ")[0], 10) - 1;
-            let selectedModel = modelsList[modelIndex];
+            let selectedModel = allModels[modelIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following model? \n\n" +
                 this.getDetails(selectedModel)
             );
@@ -300,16 +313,23 @@ export class ModelService {
             "\napi key required: " + model.isKeyRequired;
     }
 
-    private getModels(modelsFromProperty: LlmModel[]): QuickPickItem[] {
+    private getModels(models: LlmModel[], prefix: string, hasDetails: boolean, lastModelNumber: number = 0): QuickPickItem[] {
         const modelsItems: QuickPickItem[] = [];
-        let i = 0;
-        for (let model of modelsFromProperty) {
+        let i = lastModelNumber;
+        for (let model of models) {
             i++;
-            modelsItems.push({
-                label: i + ". " + model.name,
-                description: model.localStartCommand,
-                detail: "Selects the model and if local also downloads the model (if not yet done) and starts a llama-server with it."
-            });
+            if (hasDetails) {
+                modelsItems.push({
+                    label: i + ". " + prefix + model.name,
+                    description: model.localStartCommand,
+                    detail: "Selects the model" + (model.localStartCommand ? ", downloads the model (if not yet done) and starts a llama-server with it." : "")
+                });
+            } else {
+                modelsItems.push({
+                    label: i + ". " + prefix + model.name,
+                    description: model.localStartCommand
+                })
+            }
         }
         return modelsItems;
     }

@@ -5,7 +5,8 @@ import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
 import * as path from 'path';
-import { ModelType, LOCAL_MODEL_TEMPLATES, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG, AGENT_NAME, UI_TEXT_KEYS, PERSISTENCE_KEYS } from "./constants";
+import { ModelType, LOCAL_MODEL_TEMPLATES, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG, AGENT_NAME, UI_TEXT_KEYS, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from "./constants";
+import { PREDEFINED_LISTS } from "./lists";
 
 export class Menu {
     private static readonly emptyModel = {name: ""};
@@ -276,8 +277,10 @@ export class Menu {
     }
 
     selectEnvFromList = async (envsList: Env[]) => {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
-        let lastUsedEnv = this.app.persistence.getValue("selectedEnv")
+        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
+        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
+        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
+        let lastUsedEnv = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_ENV)
         if (lastUsedEnv) envsItems.push({ label: (envsItems.length+1) + ". Last used env", description: lastUsedEnv.name });
         const env = await vscode.window.showQuickPick(envsItems);
         if (env) {
@@ -289,7 +292,7 @@ export class Menu {
                     return;
                 }
             } else {
-                futureEnv = envsList[parseInt(env.label.split(". ")[0], 10) - 1]
+                futureEnv = allEnvs[parseInt(env.label.split(". ")[0], 10) - 1]
             }
             await this.selectEnv(futureEnv, true);
         }
@@ -301,7 +304,7 @@ export class Menu {
             vscode.window.showInformationMessage("No chats in the history.")
             return;
         }
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList);
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let futureChat: Chat;
@@ -328,7 +331,7 @@ export class Menu {
     }
 
     deleteChatFromList = async (chatList: Chat[]) => {
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList);
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatList, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             const shoulDeleteChat = await Utils.confirmAction("Are you sure you want to delete the chat below?", 
@@ -352,7 +355,9 @@ export class Menu {
     }
     
     selectAgentFromList = async (agentsList: Agent[]) => {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
         let lastUsedAgent = this.app.persistence.getValue("selectedAgent")
         if (lastUsedAgent) agentsItems.push({ label: (agentsItems.length+1) + ". Last used agent", description: lastUsedAgent.name });
         const agent = await vscode.window.showQuickPick(agentsItems);
@@ -362,7 +367,7 @@ export class Menu {
                 futureAgent = lastUsedAgent;
                 
             } else {
-                futureAgent = agentsList[parseInt(agent.label.split(". ")[0], 10) - 1]
+                futureAgent = allAgents[parseInt(agent.label.split(". ")[0], 10) - 1]
             }
             if(!futureAgent){
                 vscode.window.showWarningMessage("No agent selected. There is no last used agent.");
@@ -631,16 +636,14 @@ export class Menu {
         );
     }
 
-    // deleteModelFromList removed, handled by ModelService
-
-    // viewModelFromList and showModelDetails removed, handled by ModelService
-
     private async viewAgentFromList(agentsList: any[]) {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
         let agent = await vscode.window.showQuickPick(agentsItems);
         if (agent) {
             let agentIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgent =  agentsList[agentIndex];
+            let selectedAgent =  allAgents[agentIndex];
             await this.showAgentDetails(selectedAgent);
         }
     }
@@ -660,17 +663,19 @@ export class Menu {
     }
 
     private async viewAgentCommandFromList(agentCommands: any[]) {
-        const agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[])
+        let agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands, "");
+        agentComandItems = agentComandItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[], "(predefined) ", agentCommands.length));
         let agentCommand = await vscode.window.showQuickPick(agentComandItems);
         if (agentCommand) {
             let agentCommandIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
-            let selectedAgentCommand =  agentCommands[agentCommandIndex];
+            let selectedAgentCommand =  allAgentCommands[agentCommandIndex];
             await this.showAgentCommandDetails(selectedAgentCommand);
         }
     }
 
     private async deleteAgentCommandFromList(agentCommands: AgentCommand[], settingName: string) {
-        const modelsItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
+        const modelsItems: QuickPickItem[] = this.getStandardQpList(agentCommands, "");
         const model = await vscode.window.showQuickPick(modelsItems);
         if (model) {
             let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
@@ -698,20 +703,6 @@ export class Menu {
             "\nprompt: \n" + selectedAgentCommand.prompt.join("\n") +
             "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
-
-    // addLocalModelToList removed, handled by ModelService
-
-    // addExternalModelToList removed, handled by ModelService
-
-    // addHuggingfaceModelToList removed, handled by ModelService
-
-    // getUniqueModelName removed, handled by ModelService
-
-    // getDownloadModelName removed, handled by ModelService
-
-    // getFilesOfModel removed, handled by ModelService
-
-    // HF specific methods removed, handled by ModelService
 
     public async addEnvToList(envList: any[], settingName: string) {
         let name = await Utils.getValidatedInput(
@@ -925,7 +916,7 @@ export class Menu {
     }
 
     private async deleteEnvFromList(envsList: any[], settingName: string) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
+        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
         const env = await vscode.window.showQuickPick(envsItems);
         if (env) {
             let envIndex = parseInt(env.label.split(". ")[0], 10) - 1;
@@ -941,11 +932,13 @@ export class Menu {
     }
 
     private async viewEnvFromList(envsList: any[]) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
+        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
+        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
+        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
         let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
             let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedEnv =  envsList[envIndex];
+            let selectedEnv =  allEnvs[envIndex];
             let envDetails = this.getEnvDetailsAsString(selectedEnv);
             await Utils.showOkDialog(envDetails);
             
@@ -1019,11 +1012,13 @@ export class Menu {
     }
 
     private async exportEnvFromList(envsList: any[]) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList);
+        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
+        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
+        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
         let model = await vscode.window.showQuickPick(envsItems);
         if (model) {
             let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedEnv =  envsList[envIndex];
+            let selectedEnv =  allEnvs[envIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following env? \n\n" +
             this.getEnvDetailsAsString(selectedEnv)
             );
@@ -1052,11 +1047,13 @@ export class Menu {
     // exportModelFromList removed, handled by ModelService
 
     private async exportAgentFromList(agentsList: any[]) {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList);
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
         let agent = await vscode.window.showQuickPick(agentsItems);
         if (agent) {
             let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgent =  agentsList[modelIndex];
+            let selectedAgent =  allAgents[modelIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent? \n\n" +
             this.getAgentCommandDetailsAsString(selectedAgent)
             );
@@ -1083,11 +1080,13 @@ export class Menu {
     }
 
     private async exportAgentCommandFromList(agentCommands: any[]) {
-        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentCommands);
-        let agent = await vscode.window.showQuickPick(agentsItems);
-        if (agent) {
-            let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgentCommand =  agentCommands[modelIndex];
+        let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[])
+        let agentComandItems: QuickPickItem[] = this.getStandardQpList(agentCommands, "");
+        agentComandItems = agentComandItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[], "(predefined) ", agentCommands.length));
+        let agentCommand = await vscode.window.showQuickPick(agentComandItems);
+        if (agentCommand) {
+            let modelIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
+            let selectedAgentCommand =  allAgentCommands[modelIndex];
             let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent command? \n\n" +
             this.getAgentCommandDetailsAsString(selectedAgentCommand)
             );
@@ -1114,7 +1113,7 @@ export class Menu {
     }
 
     private async exportChatFromList(chatsList: any[]) {
-        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList);
+        const chatsItems: QuickPickItem[] = this.getStandardQpList(chatsList, "");
         let chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let modelIndex = parseInt(chat.label.split(". ")[0], 10) - 1;
@@ -1146,17 +1145,13 @@ export class Menu {
     }
     
 
-    // addApiKey moved to ModelService
-
-    // getModels removed, handled by ModelService
-
-    private getStandardQpList(list:any[]) {
+    private getStandardQpList(list:any[], prefix: string, lastModelNumber: number = 0) {
         const items: QuickPickItem[] = [];
-        let i = 0
+        let i = lastModelNumber;
         for (let elem of list) {
             i++;
             items.push({
-                label: i + ". " + elem.name,
+                label: i + ". " + prefix + elem.name,
                 description: elem.description,
             });
         }
@@ -1310,7 +1305,7 @@ export class Menu {
                 // await this.addEnvToList(this.app.configuration.envs_list, "envs_list");
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv):
-                await this.deleteEnvFromList(this.app.configuration.envs_list, "envs_list");
+                await this.deleteEnvFromList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.viewEnvDetails):
                 await this.viewEnvFromList(this.app.configuration.envs_list)
@@ -1322,7 +1317,7 @@ export class Menu {
                 await this.exportEnvFromList(this.app.configuration.envs_list)
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.importEnv):
-                await this.importEnvToList(this.app.configuration.envs_list, "envs_list")
+                await this.importEnvToList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.downloadUploadEnvsOnline):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/discussions'));
@@ -1355,7 +1350,7 @@ export class Menu {
                 await this.exportAgentFromList(this.app.configuration.agents_list)
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.importAgent):
-                await this.importAgentToList(this.app.configuration.agents_list, "agents_list")
+                await this.importAgentToList(this.app.configuration.agents_list, SETTING_NAME_FOR_LIST.AGENTS)
                 break;
         }
     }

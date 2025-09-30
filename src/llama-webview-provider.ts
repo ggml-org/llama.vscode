@@ -6,7 +6,7 @@ import { LlmModel, Env, Agent, ContextCustom } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
-import { ModelType } from './constants';
+import { ModelType, SETTING_NAME_FOR_LIST } from './constants';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -186,7 +186,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await vscode.window.showTextDocument(document);
                         break;
                     case 'addEnv':
-                        this.app.menu.addEnvToList(this.app.configuration.envs_list, "envs_list")
+                        this.app.menu.addEnvToList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
                         break;
                     case 'toggleCompletionsEnabled':
                         this.app.configuration.updateConfigValue("enabled", message.enabled)
