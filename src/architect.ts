@@ -31,13 +31,13 @@ export class Architect {
             if (lastEnv) {
                 if (this.app.configuration.env_start_last_used_confirm) {
                     let [shouldSelect, dontAskAgain]  = await Utils.showYesYesdontaskNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
-                                                                        this.app.menu.getEnvDetailsAsString(lastEnv) +
+                                                                        this.app.envService.getEnvDetailsAsString(lastEnv) +
                                                                         "\n\n Do you want to continue?"
                                                                         );
-                    if (shouldSelect) this.app.menu.selectEnv(lastEnv, false);
+                    if (shouldSelect) this.app.envService.selectEnv(lastEnv, false);
                     if (dontAskAgain) this.app.configuration.updateConfigValue("env_start_last_used_confirm", false);
                 } else {
-                     this.app.menu.selectEnv(lastEnv, false);
+                     this.app.envService.selectEnv(lastEnv, false);
                 }
 
             }

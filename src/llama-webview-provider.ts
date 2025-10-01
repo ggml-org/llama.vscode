@@ -126,10 +126,10 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.modelService.addModel(ModelType.Chat, "hf");
                         break;
                     case 'selectEnv':
-                        await this.app.menu.selectEnvFromList(this.app.configuration.envs_list);    
+                        await this.app.envService.selectEnv(this.app.configuration.envs_list, true);    
                         break;
                     case 'stopEnv':
-                        await this.app.menu.stopEnv();    
+                        await this.app.envService.stopEnv();    
                         break;
                     case 'showEnvView':
                         this.app.menu.showEnvView();
@@ -186,7 +186,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await vscode.window.showTextDocument(document);
                         break;
                     case 'addEnv':
-                        this.app.menu.addEnvToList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
+                        this.app.envService.addEnv(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
                         break;
                     case 'toggleCompletionsEnabled':
                         this.app.configuration.updateConfigValue("enabled", message.enabled)

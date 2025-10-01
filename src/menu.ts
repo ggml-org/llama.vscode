@@ -22,8 +22,6 @@ export class Menu {
 
     constructor(application: Application) {
         this.app = application;
-        // Cache UI texts (assumes Configuration has getAllUiTexts() returning Record<string, string>)
-        // this.uiCache = this.app.configuration.getAllUiTexts();
     }
 
     private uiCache: Record<string, string> = {};
@@ -166,10 +164,10 @@ export class Menu {
     handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
         switch (selected.label) {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv):
-                this.selectEnvFromList(this.app.configuration.envs_list);
+                await this.app.envService.selectEnv(this.app.configuration.envs_list, true);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv):
-                await this.stopEnv()
+                await this.app.envService.stopEnv();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedEnv):
                 this.showCurrentEnv();
@@ -211,9 +209,9 @@ export class Menu {
                 await this.processModelActions(ModelType.Tools);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.envs) ?? "":
-                let envsActions: vscode.QuickPickItem[] = this.getEnvActions()
+                let envsActions: vscode.QuickPickItem[] = this.app.envService.getActions();
                 let envSelected = await vscode.window.showQuickPick(envsActions);
-                if (envSelected) this.processEnvActions(envSelected);
+                if (envSelected) await this.app.envService.processActions(envSelected);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.agents) ?? "":
                 let agentsActions: vscode.QuickPickItem[] = this.getAgentActions();
@@ -276,27 +274,6 @@ export class Menu {
         this.app.statusbar.updateStatusBarText();
     }
 
-    selectEnvFromList = async (envsList: Env[]) => {
-        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
-        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
-        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
-        let lastUsedEnv = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_ENV)
-        if (lastUsedEnv) envsItems.push({ label: (envsItems.length+1) + ". Last used env", description: lastUsedEnv.name });
-        const env = await vscode.window.showQuickPick(envsItems);
-        if (env) {
-            let futureEnv: Env;
-            if (env.label.includes("Last used env")){
-                futureEnv = lastUsedEnv;
-                if(!futureEnv){
-                    vscode.window.showWarningMessage("No environment selected. There is no last used environment.");
-                    return;
-                }
-            } else {
-                futureEnv = allEnvs[parseInt(env.label.split(". ")[0], 10) - 1]
-            }
-            await this.selectEnv(futureEnv, true);
-        }
-    }
 
     selectChatFromList = async () => {
         let chatsList = this.app.persistence.getChats()
@@ -452,49 +429,7 @@ export class Menu {
         else return true;
     }
 
-    public async selectEnv(futureEnv: Env, askConfirm: boolean) {
-        await this.app.llamaServer.killFimCmd();
-        this.selectedComplModel = { name: "", localStartCommand: "" };
-        await this.app.llamaServer.killChatCmd();
-        this.selectedModel = { name: "", localStartCommand: "" };
-        await this.app.llamaServer.killEmbeddingsCmd();
-        this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
-         await this.app.llamaServer.killToolsCmd();
-        this.selectedToolsModel = { name: "", localStartCommand: "" };
-        let shouldSelect = true;
-        if (askConfirm){
-           shouldSelect = await Utils.confirmAction("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started.\n\n Do you want to continue?", 
-                this.getEnvDetailsAsString(futureEnv)
-            );
-        }
-
-        if (shouldSelect && futureEnv) {
-            this.selectedEnv = futureEnv;
-            await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_ENV, this.selectedEnv);
-
-            this.selectedComplModel = this.selectedEnv.completion ?? { name: "" };
-            if (this.selectedComplModel.localStartCommand) await this.app.llamaServer.shellFimCmd(this.app.modelService.sanitizeCommand(this.selectedComplModel.localStartCommand));
-            await this.app.modelService.addApiKey(this.selectedComplModel);
-
-            this.selectedModel = this.selectedEnv.chat ?? { name: "" };
-            if (this.selectedModel.localStartCommand) await this.app.llamaServer.shellChatCmd(this.app.modelService.sanitizeCommand(this.selectedModel.localStartCommand));
-            await this.app.modelService.addApiKey(this.selectedModel);
-
-            this.selectedEmbeddingsModel = this.selectedEnv.embeddings ?? { name: "" };
-            if (this.selectedEmbeddingsModel.localStartCommand) await this.app.llamaServer.shellEmbeddingsCmd(this.app.modelService.sanitizeCommand(this.selectedEmbeddingsModel.localStartCommand));
-            await this.app.modelService.addApiKey(this.selectedEmbeddingsModel);
-
-            this.selectedToolsModel = this.selectedEnv.tools ?? { name: "" };
-            if (this.selectedToolsModel.localStartCommand) await this.app.llamaServer.shellToolsCmd(this.app.modelService.sanitizeCommand(this.selectedToolsModel.localStartCommand));
-            await this.app.modelService.addApiKey(this.selectedToolsModel);
-
-            if (this.selectedEnv.agent) this.selectAgent(this.selectedEnv.agent)
-            if (this.selectedEnv.ragEnabled != undefined) this.app.configuration.updateConfigValue("rag_enabled", this.selectedEnv.ragEnabled)
-            if (this.selectedEnv.envStartLastUsed != undefined) this.app.configuration.updateConfigValue("env_start_last_used", this.selectedEnv.envStartLastUsed)
-            if (this.selectedEnv.complEnabled != undefined) this.app.configuration.updateConfigValue("enabled", this.selectedEnv.complEnabled)
-        }
-        this.app.llamaWebviewProvider.updateLlamaView();
-    }
+    // selectEnv moved to EnvService.selectStartEnv (with inheritance)
 
     public async installLlamacpp() {
         if (process.platform != 'darwin' && process.platform != 'win32') {
@@ -516,37 +451,7 @@ export class Menu {
         this.app.llamaWebviewProvider.updateLlamaView();
     }
 
-    private getEnvActions(): vscode.QuickPickItem[] {
-        return [
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addEnv) ?? "",
-                description: this.app.configuration.getUiText(UI_TEXT_KEYS.addEnvDescription) ?? "",
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewEnvDetails) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportEnv) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importEnv) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.downloadUploadEnvsOnline) ?? ""
-            },
-        ];
-    }
-
-    // getModelActions removed, handled by ModelService
+    
 
     private getAgentActions(): vscode.QuickPickItem[] {
         return [
@@ -704,58 +609,6 @@ export class Menu {
             "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
 
-    public async addEnvToList(envList: any[], settingName: string) {
-        let name = await Utils.getValidatedInput(
-            'name for your env (required)',
-            (input) => input.trim() !== '',
-            5,
-            {
-                placeHolder: 'Enter a user friendly name for your env (required)',
-                value: ''
-            }
-        );
-        if (name === undefined) {
-            vscode.window.showInformationMessage("Env addition cancelled.");
-            return;
-        }
-        name = this.app.modelService.sanitizeInput(name);
-
-        let description = await vscode.window.showInputBox({
-            placeHolder: 'description for the env - what is the purpose, when to select etc. ',
-            prompt: 'Enter description for the env.',
-            value: ''
-        });
-        description = this.app.modelService.sanitizeInput(description || '');
-        
-        let newEnv: Env = {
-            name: name??"",
-            description: description,
-            completion: this.selectedComplModel,
-            chat: this.selectedModel,
-            embeddings: this.selectedEmbeddingsModel,
-            tools: this.selectedToolsModel,
-            agent: this.selectedAgent,
-            ragEnabled: this.app.configuration.rag_enabled,
-            envStartLastUsed: this.app.configuration.env_start_last_used,
-            complEnabled: this.app.configuration.enabled
-        };
-
-        await this.persistEnvToSetting(newEnv, envList, settingName);
-    }
-
-    private async persistEnvToSetting(newEnv: Env, envList: any[], settingName: string) {
-        let envDetails = this.getEnvDetailsAsString(newEnv);
-        const shouldAddEnv = await Utils.confirmAction("A new env will be added. Do you want to add the env?", envDetails);
-
-        if (shouldAddEnv) {
-            envList.push(newEnv);
-            this.app.configuration.updateConfigValue(settingName, envList);
-            vscode.window.showInformationMessage("The env is added.");
-        }
-    }
-
-    // persistModelToSetting removed, handled by ModelService
-
     private async persistAgentToSetting(newAgent: Agent, agentsList: any[], settingName: string) {
         let modelDetails = this.getAgentDetailsAsString(newAgent);
         const shouldAddModel = await Utils.confirmAction("A new agent will be added. Do you want to add the agent?", modelDetails);
@@ -777,54 +630,6 @@ export class Menu {
             vscode.window.showInformationMessage("The agent command is added.");
         }
     }
-
-    private async importEnvToList(envList: any[], settingName: string) {
-        let name = "";
-        const uris = await vscode.window.showOpenDialog({
-                canSelectMany: false,
-                openLabel: 'Import Env',
-                filters: {
-                    'Env Files': ['json'],
-                    'All Files': ['*']
-                },
-            });
-
-            if (!uris || uris.length === 0) {
-                return;
-            }
-
-            const filePath = uris[0].fsPath;
-            
-            const fileContent = fs.readFileSync(filePath, 'utf8');
-            const newEnv = JSON.parse(fileContent);
-            // Sanitize imported data
-            if (newEnv.name) newEnv.name = this.app.modelService.sanitizeInput(newEnv.name);
-            if (newEnv.description) newEnv.description = this.app.modelService.sanitizeInput(newEnv.description);
-            if (newEnv.completion?.name) newEnv.completion.name = this.app.modelService.sanitizeInput(newEnv.completion.name);
-            if (newEnv.completion?.localStartCommand) newEnv.completion.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.completion.localStartCommand);
-            if (newEnv.completion?.endpoint) newEnv.completion.endpoint = this.app.modelService.sanitizeInput(newEnv.completion.endpoint);
-            if (newEnv.completion?.aiModel) newEnv.completion.aiModel = this.app.modelService.sanitizeInput(newEnv.completion.aiModel);
-            // Similarly for chat, embeddings, tools...
-            if (newEnv.chat?.name) newEnv.chat.name = this.app.modelService.sanitizeInput(newEnv.chat.name);
-            if (newEnv.chat?.localStartCommand) newEnv.chat.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.chat.localStartCommand);
-            if (newEnv.chat?.endpoint) newEnv.chat.endpoint = this.app.modelService.sanitizeInput(newEnv.chat.endpoint);
-            if (newEnv.chat?.aiModel) newEnv.chat.aiModel = this.app.modelService.sanitizeInput(newEnv.chat.aiModel);
-            if (newEnv.embeddings?.name) newEnv.embeddings.name = this.app.modelService.sanitizeInput(newEnv.embeddings.name);
-            if (newEnv.embeddings?.localStartCommand) newEnv.embeddings.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.embeddings.localStartCommand);
-            if (newEnv.embeddings?.endpoint) newEnv.embeddings.endpoint = this.app.modelService.sanitizeInput(newEnv.embeddings.endpoint);
-            if (newEnv.embeddings?.aiModel) newEnv.embeddings.aiModel = this.app.modelService.sanitizeInput(newEnv.embeddings.aiModel);
-            if (newEnv.tools?.name) newEnv.tools.name = this.app.modelService.sanitizeInput(newEnv.tools.name);
-            if (newEnv.tools?.localStartCommand) newEnv.tools.localStartCommand = this.app.modelService.sanitizeCommand(newEnv.tools.localStartCommand);
-            if (newEnv.tools?.endpoint) newEnv.tools.endpoint = this.app.modelService.sanitizeInput(newEnv.tools.endpoint);
-            if (newEnv.tools?.aiModel) newEnv.tools.aiModel = this.app.modelService.sanitizeInput(newEnv.tools.aiModel);
-            if (newEnv.agent?.name) newEnv.agent.name = this.app.modelService.sanitizeInput(newEnv.agent.name);
-            if (newEnv.agent?.description) newEnv.agent.description = this.app.modelService.sanitizeInput(newEnv.agent.description);
-            if (newEnv.agent?.systemInstruction) newEnv.agent.systemInstruction = newEnv.agent.systemInstruction.map((s: string) => this.app.modelService.sanitizeInput(s));
-
-        await this.persistEnvToSetting(newEnv, envList, settingName);
-    }
-
-    // importModelToList removed, handled by ModelService
 
     private async importAgentToList(agentList: any[], settingName: string) {
         let name = "";
@@ -915,72 +720,6 @@ export class Menu {
         await this.addChatToHistory(newChat);
     }
 
-    private async deleteEnvFromList(envsList: any[], settingName: string) {
-        const envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
-        const env = await vscode.window.showQuickPick(envsItems);
-        if (env) {
-            let envIndex = parseInt(env.label.split(". ")[0], 10) - 1;
-            const shoulDeleteEnv = await Utils.confirmAction("Are you sure you want to delete the following env?", 
-                this.getEnvDetailsAsString(envsList[envIndex])
-            );
-            if (shoulDeleteEnv) {
-                envsList.splice(envIndex, 1);
-                this.app.configuration.updateConfigValue(settingName, envsList);
-                vscode.window.showInformationMessage("The env is deleted.")
-            }
-        }
-    }
-
-    private async viewEnvFromList(envsList: any[]) {
-        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
-        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
-        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
-        let model = await vscode.window.showQuickPick(envsItems);
-        if (model) {
-            let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedEnv =  allEnvs[envIndex];
-            let envDetails = this.getEnvDetailsAsString(selectedEnv);
-            await Utils.showOkDialog(envDetails);
-            
-        }
-    }
-
-    public getEnvDetailsAsString(selectedEnv: any) {
-        return "Env details: " +
-            "\nname: " + selectedEnv.name +
-            "\ndescription: " + selectedEnv.description +
-            "\n\ncompletion model: " +
-            "\nname: " + selectedEnv.completion?.name +
-            "\nlocal start command: " + selectedEnv.completion?.localStartCommand +
-            "\nendpoint: " + selectedEnv.completion?.endpoint +
-            "\nmodel name for provider: " + selectedEnv.completion?.aiModel +
-            "\napi key required: " + selectedEnv.completion?.isKeyRequired +
-            "\n\nchat model: " +
-            "\nname: " + selectedEnv.chat?.name +
-            "\nlocal start command: " + selectedEnv.chat?.localStartCommand +
-            "\nendpoint: " + selectedEnv.chat?.endpoint +
-            "\nmodel name for provider: " + selectedEnv.chat?.aiModel +
-            "\napi key required: " + selectedEnv.chat?.isKeyRequired +
-            "\n\nembeddings model: " +
-            "\nname: " + selectedEnv.embeddings?.name +
-            "\nlocal start command: " + selectedEnv.embeddings?.localStartCommand +
-            "\nendpoint: " + selectedEnv.embeddings?.endpoint +
-            "\nmodel name for provider: " + selectedEnv.embeddings?.aiModel +
-            "\napi key required: " + selectedEnv.embeddings?.isKeyRequired +
-            "\n\ntools model: " +
-            "\nname: " + selectedEnv.tools?.name +
-            "\nlocal start command: " + selectedEnv.tools?.localStartCommand +
-            "\nendpoint: " + selectedEnv.tools?.endpoint +
-            "\nmodel name for provider: " + selectedEnv.tools?.aiModel +
-            "\napi key required: " + selectedEnv.tools?.isKeyRequired +
-            "\n\nagent: " +
-            "\nname: " + selectedEnv.agent?.name +
-            "\ndescription: " + selectedEnv.agent?.description +
-            "\n\ncompletions enabled: " + selectedEnv.complEnabled +
-            "\n\nrag enabled: " + selectedEnv.ragEnabled +
-            "\n\nenv start last: " + selectedEnv.envStartLastUsed
-    }
-
     private getSelectionsAsString() {
         return "Selected env and models: " +
             "\nenv: " + this.selectedEnv.name +
@@ -1010,41 +749,6 @@ export class Menu {
             "\nmodel name for provider: " + this.selectedToolsModel.aiModel +
             "\napi key required: " + this.selectedToolsModel.isKeyRequired;
     }
-
-    private async exportEnvFromList(envsList: any[]) {
-        let allEnvs = envsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[])
-        let envsItems: QuickPickItem[] = this.getStandardQpList(envsList, "");
-        envsItems = envsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[], "(predefined) ", envsList.length));
-        let model = await vscode.window.showQuickPick(envsItems);
-        if (model) {
-            let envIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            let selectedEnv =  allEnvs[envIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following env? \n\n" +
-            this.getEnvDetailsAsString(selectedEnv)
-            );
-
-            if (shouldExport){
-                const uri = await vscode.window.showSaveDialog({
-                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedEnv.name+'.json')),
-                        filters: {
-                            'Env Files': ['json'],
-                            'All Files': ['*']
-                        },
-                        saveLabel: 'Export Env'
-                    });
-
-                if (!uri) {
-                    return;
-                }
-
-                const jsonContent = JSON.stringify(selectedEnv, null, 2);
-                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
-                vscode.window.showInformationMessage("Env is saved.")
-            }
-        }
-    }
-
-    // exportModelFromList removed, handled by ModelService
 
     private async exportAgentFromList(agentsList: any[]) {
         let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
@@ -1253,6 +957,12 @@ export class Menu {
         this.app.menu.setSelectedModel(modelType, model);
     }
 
+    public setSelectedEnv(env: Env): void {
+        this.selectedEnv = env;
+        this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_ENV, env);
+        this.app.llamaWebviewProvider.updateLlamaView();
+    }
+
     getEnv = (): Env => {
         return this.selectedEnv;
     }
@@ -1294,36 +1004,7 @@ export class Menu {
     }
 
     // process*ModelsActions removed, handled by ModelService.processActions
-
-    processEnvActions = async (selected:vscode.QuickPickItem) => {
-        switch (selected.label) {
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv):
-                this.selectEnvFromList(this.app.configuration.envs_list);
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.addEnv):
-                this.showEnvView();
-                // await this.addEnvToList(this.app.configuration.envs_list, "envs_list");
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv):
-                await this.deleteEnvFromList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS);
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.viewEnvDetails):
-                await this.viewEnvFromList(this.app.configuration.envs_list)
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopEnv):
-                await this.stopEnv();
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.exportEnv):
-                await this.exportEnvFromList(this.app.configuration.envs_list)
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.importEnv):
-                await this.importEnvToList(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.downloadUploadEnvsOnline):
-                await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/discussions'));
-                break;
-        }
-    }
+    // processEnvActions moved to EnvService.processActions
 
     processAgentsActions = async (selected:vscode.QuickPickItem) => {
         switch (selected.label) {
@@ -1442,27 +1123,6 @@ export class Menu {
         setTimeout(() => this.app.llamaWebviewProvider.setView("addenv"), 500);
     }
 
-    // deselectStopModel removed, handled by ModelService.deselectModel (caller sets selected)
-
-    public async stopEnv() {
-        await this.app.llamaServer.killFimCmd();
-        this.selectedComplModel = { name: "", localStartCommand: "" };
-        await this.app.llamaServer.killChatCmd();
-        this.selectedModel = { name: "", localStartCommand: "" };
-        await this.app.llamaServer.killEmbeddingsCmd();
-        this.selectedEmbeddingsModel = { name: "", localStartCommand: "" };
-        await this.app.llamaServer.killToolsCmd();
-        this.selectedToolsModel = { name: "", localStartCommand: "" };
-        this.deselectAgent();
-        this.selectedEnv = { name: "" };
-        this.app.llamaWebviewProvider.updateLlamaView();
-        vscode.window.showInformationMessage("Env, models and agent are deselected.")
-    }
-
-    // getTypeDetails moved to ModelService
-
-    
-
     public deselectAgent() {
         this.selectAgent({
             name: "",
@@ -1480,6 +1140,4 @@ export class Menu {
             ]
         });
     }
-
-    // sanitize methods moved to ModelService where used
 }
