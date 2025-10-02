@@ -321,6 +321,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateAgent();
         this.updateEnv();
         this.updateSettingsInView();
+        this.logInUi(this.app.llamaAgent.getAgentLogText())
     }
 
     public updateContextFilesInfo() {

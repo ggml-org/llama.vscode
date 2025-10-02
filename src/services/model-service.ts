@@ -142,9 +142,6 @@ export class ModelService {
             ["launch_tools", "endpoint_tools"]
         ]);
         
-        // for (let mdl of PREDEFINED_LISTS.get(type) as LlmModel[]){
-        //     modelsItems.push({ label: (modelsItems.length + 1) + ". (predefined) " + mdl.name, description: mdl.localStartCommand ?? "" });
-        // }
         modelsItems.push({ label: (modelsItems.length + 1) + ". Use settings", description: "" });
 
         const selectedModelItem = await vscode.window.showQuickPick(modelsItems);
@@ -167,17 +164,6 @@ export class ModelService {
                 model = allModels[index];
             }
 
-            // if (parseInt(selectedModelItem.label.split(". ")[0], 10) == modelsItems.length) {
-            //     model = {
-            //         name: "Use settings",
-            //         isKeyRequired: false,
-            //         endpoint: this.app.configuration[launchToEndpoint.get(details.launchSettingName) as keyof Configuration] as string,
-            //         localStartCommand: this.app.configuration[details.launchSettingName as keyof Configuration ] as string
-            //     } as LlmModel;
-            // } else {
-            //     const index = parseInt(selectedModelItem.label.split(". ")[0], 10) - 1;
-            //     model = allModels[index] as LlmModel;
-            // }
             await this.selectStartModel(model, type, details);
 
             return model;
@@ -378,14 +364,11 @@ export class ModelService {
 
     sanitizeCommand = (command: string): string => {
         if (!command) return '';
-        return command.trim().replace(/[`#$&*;\<>\?\\|~!{}()[\]^"]/g, '\\$&');
+        // TODO Consider escaping some chars: return command.trim().replace(/[`#$\<>\?\\|!{}()[\]^"]/g, '\\$&');
+        return command.trim();
     }
 
     public sanitizeInput(input: string): string {
         return input ? input.trim() : '';
     }
-
-    // For selectModel, adjust to return model
-    // In the code above, I have return model; at the end of if.
-    // Yes.
 }
