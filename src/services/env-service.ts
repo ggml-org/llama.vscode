@@ -183,7 +183,7 @@ export class EnvService {
             // Set agent
             const agent = env.agent ?? currentAgent;
             if (agent) {
-                await this.app.menu.selectAgent(agent);
+                await this.app.agentService.selectAgent(agent);
             }
 
             // Set configs if specified in env
@@ -299,7 +299,7 @@ export class EnvService {
         this.app.menu.setSelectedModel(ModelType.Embeddings, { name: "", localStartCommand: "" });
         await this.app.llamaServer.killToolsCmd();
         this.app.menu.setSelectedModel(ModelType.Tools, { name: "", localStartCommand: "" });
-        this.app.menu.deselectAgent();
+        await this.app.agentService.deselectAgent();
         this.app.menu.setSelectedEnv({ name: "" });
         this.app.llamaWebviewProvider.updateLlamaView();
         vscode.window.showInformationMessage("Env, models and agent are deselected.")

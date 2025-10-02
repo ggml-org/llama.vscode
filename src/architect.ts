@@ -8,7 +8,7 @@ import {LlamaWebviewProvider} from './llama-webview-provider'
 import { Utils } from './utils';
 import { Env, LlmModel } from './types';
 import { env } from 'process';
-import { SETTING_NAME_FOR_LIST } from './constants';
+import { PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST } from './constants';
 
 export class Architect {
     private app: Application
@@ -42,10 +42,10 @@ export class Architect {
 
             }
         }
-        let lastChat = this.app.persistence.getValue("selectedChat")
+        let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) this.app.menu.selectUpdateChat(lastChat)
-        let lastAgent = this.app.persistence.getValue("selectedAgent")
-        if (lastAgent) this.app.menu.selectAgent(lastAgent)
+        let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
+        if (lastAgent) this.app.agentService.selectAgent(lastAgent)
         this.app.tools.init()
     }
 

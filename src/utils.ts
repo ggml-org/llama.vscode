@@ -576,21 +576,26 @@ export class Utils {
                     const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
                     absolutePath = path.join(workspaceRoot, filePath);
                 }
-                // Ensure only \n is used for new line
-                const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
-                if (!fileExists){
-                    await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+                try {
+                    const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
+                    if (!fileExists){
+                        await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+                        await fs.promises.writeFile(absolutePath, result);
+                    }
+                    // Ensure only \n is used for new line
+                    result = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
+                    // Handle empty search text case
+                    if (searchText.trim() === '') {
+                        result += '\n' + replaceText;
+                    } else if (result.includes(searchText)) {
+                        result = result.split(searchText).join(replaceText);
+                    }
+                    
                     await fs.promises.writeFile(absolutePath, result);
+                } catch (error) {
+                    if (error instanceof Error) return "Error edititing file " + filePath + " - " + error.message;
+                    else return "Error edititing file " + filePath + " - " + error;
                 }
-                result = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
-                // Handle empty search text case
-                if (searchText.trim() === '') {
-                    result += '\n' + replaceText;
-                } else if (result.includes(searchText)) {
-                    result = result.split(searchText).join(replaceText);
-                }
-                 
-                await fs.promises.writeFile(absolutePath, result);
             }
         }        
     }

@@ -5,7 +5,7 @@ import { Utils } from "./utils";
 import { Configuration } from "./configuration";
 import * as fs from 'fs';
 import * as path from 'path';
-import { ModelType, LOCAL_MODEL_TEMPLATES, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG, AGENT_NAME, UI_TEXT_KEYS, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from "./constants";
+import { ModelType, AGENT_NAME, UI_TEXT_KEYS, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS } from "./constants";
 import { PREDEFINED_LISTS } from "./lists";
 
 export class Menu {
@@ -18,6 +18,7 @@ export class Menu {
     private selectedEnv: Env = {name: ""}
     private selectedAgent: Agent = {name: "", systemInstruction: []}
     private selectedChat: Chat = {name:"", id:""}
+
     private readonly startModelDetail = "Selects the model and if local also downloads the model (if not yet done) and starts a llama-server with it.";
 
     constructor(application: Application) {
@@ -176,7 +177,10 @@ export class Menu {
                 this.app.askAi.showChatWithAi(false, context);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscode):
-                this.selectAgent(this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp));
+                const helpAgent = this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp);
+                if (helpAgent) {
+                    await this.app.agentService.selectAgent(helpAgent);
+                }
                 this.showAgentView();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgent) + " (Ctrl+Shif+A)":
@@ -214,9 +218,9 @@ export class Menu {
                 if (envSelected) await this.app.envService.processActions(envSelected);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.agents) ?? "":
-                let agentsActions: vscode.QuickPickItem[] = this.getAgentActions();
+                let agentsActions: vscode.QuickPickItem[] = this.app.agentService.getActions();
                 let actionSelected = await vscode.window.showQuickPick(agentsActions);
-                if (actionSelected) this.processAgentsActions(actionSelected);
+                if (actionSelected) await this.app.agentService.processActions(actionSelected);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.agentCommands) ?? "":
                 let agentCommandsActions: vscode.QuickPickItem[] = this.getAgentCommandsActions();
@@ -331,43 +335,10 @@ export class Menu {
         }
     }
     
-    selectAgentFromList = async (agentsList: Agent[]) => {
-        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
-        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
-        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
-        let lastUsedAgent = this.app.persistence.getValue("selectedAgent")
-        if (lastUsedAgent) agentsItems.push({ label: (agentsItems.length+1) + ". Last used agent", description: lastUsedAgent.name });
-        const agent = await vscode.window.showQuickPick(agentsItems);
-        if (agent) {
-            let futureAgent: Agent;
-            if (agent.label.includes("Last used agent")){
-                futureAgent = lastUsedAgent;
-                
-            } else {
-                futureAgent = allAgents[parseInt(agent.label.split(". ")[0], 10) - 1]
-            }
-            if(!futureAgent){
-                vscode.window.showWarningMessage("No agent selected. There is no last used agent.");
-                return;
-            }
-            this.selectedAgent = futureAgent;
-            await this.selectAgent(futureAgent)
-            this.app.llamaWebviewProvider.updateLlamaView();
-            // TODO ? when model is added to the agent type - select it
-        }
-    }
+    
 
-    selectAgent = async (agent: Agent) => {
+    public setSelectedAgent(agent: Agent): void {
         this.selectedAgent = agent;
-        if(!agent.tools || agent.tools.length == 0) return;
-
-        for  (let toolFunc of this.app.tools.toolsFunc){
-            let toolName = toolFunc[0];
-            this.app.configuration.updateConfigValue("tool_" + toolName + "_enabled", agent.tools.includes(toolName))
-        }
-        await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_AGENT, this.selectedAgent);
-        this.app.llamaWebviewProvider.updateLlamaView();
-        if (agent.name) vscode.window.showInformationMessage("Agent " + agent.name + " is selected.")
     }
 
     private async processModelActions(modelType: ModelType) {
@@ -377,8 +348,6 @@ export class Menu {
             await this.app.modelService.processActions(modelType, actionSelected);
         }
     }
-
-    // selectStartModel removed, handled by ModelService
 
     public async showAgentView() {
         let isModelAvailable = await this.checkForToolsModel();
@@ -453,51 +422,9 @@ export class Menu {
 
     
 
-    private getAgentActions(): vscode.QuickPickItem[] {
-        return [
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartAgent) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopAgent) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAgent) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentDetails) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgent) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgent) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importAgent) ?? ""
-            },
-        ];
-    }
+    
 
-        private getAgentCommandsActions(): vscode.QuickPickItem[] {
-        return [
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAgentCommand) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentCommandDetails) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgentCommand) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgentCommand) ?? ""
-            },
-            {
-                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importAgentCommand) ?? ""
-            },
-        ];
-    }
+        
     
 
     private getChatActions(): vscode.QuickPickItem[] {
@@ -541,31 +468,11 @@ export class Menu {
         );
     }
 
-    private async viewAgentFromList(agentsList: any[]) {
-        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
-        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
-        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
-        let agent = await vscode.window.showQuickPick(agentsItems);
-        if (agent) {
-            let agentIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgent =  allAgents[agentIndex];
-            await this.showAgentDetails(selectedAgent);
-        }
-    }
+    
 
-    public async showAgentDetails(selectedAgent: any) {
-        await Utils.showOkDialog(
-            this.getAgentDetailsAsString(selectedAgent)
-        );
-    }
+    
 
-    private getAgentDetailsAsString(selectedAgent: Agent): string {
-        return "Agent details: " +
-            "\nname: " + selectedAgent.name +
-            "\ndescription: " + selectedAgent.description +
-            "\nsystem prompt: \n" + selectedAgent.systemInstruction.join("\n") +
-            "\n\ntools: " + (selectedAgent.tools ? selectedAgent.tools.join(", ") : "");
-    }
+    
 
     private async viewAgentCommandFromList(agentCommands: any[]) {
         let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[])
@@ -609,16 +516,7 @@ export class Menu {
             "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
 
-    private async persistAgentToSetting(newAgent: Agent, agentsList: any[], settingName: string) {
-        let modelDetails = this.getAgentDetailsAsString(newAgent);
-        const shouldAddModel = await Utils.confirmAction("A new agent will be added. Do you want to add the agent?", modelDetails);
-
-        if (shouldAddModel) {
-            agentsList.push(newAgent);
-            this.app.configuration.updateConfigValue(settingName, agentsList);
-            vscode.window.showInformationMessage("The agent is added.");
-        }
-    }
+    
 
     private async persistAgentCommandToSetting(newAgentCommand: AgentCommand, agentCommands: any[], settingName: string) {
         let modelDetails = this.getAgentCommandDetailsAsString(newAgentCommand);
@@ -631,32 +529,7 @@ export class Menu {
         }
     }
 
-    private async importAgentToList(agentList: any[], settingName: string) {
-        let name = "";
-        const uris = await vscode.window.showOpenDialog({
-                canSelectMany: false,
-                openLabel: 'Import Agent',
-                filters: {
-                    'Agent Files': ['json'],
-                    'All Files': ['*']
-                },
-            });
-
-        if (!uris || uris.length === 0) {
-            return;
-        }
-
-        const filePath = uris[0].fsPath;
-        
-        const fileContent = fs.readFileSync(filePath, 'utf8');
-        const newAgent = JSON.parse(fileContent);
-        // Sanitize imported agent
-        if (newAgent.name) newAgent.name = this.app.modelService.sanitizeInput(newAgent.name);
-        if (newAgent.description) newAgent.description = this.app.modelService.sanitizeInput(newAgent.description);
-        if (newAgent.systemInstruction) newAgent.systemInstruction = newAgent.systemInstruction.map((s: string) => this.app.modelService.sanitizeInput(s));
-
-        await this.persistAgentToSetting(newAgent, agentList, settingName);
-    }
+    
 
     private async importAgentCommandToList(agentCommands: any[], settingName: string) {
         let name = "";
@@ -750,38 +623,7 @@ export class Menu {
             "\napi key required: " + this.selectedToolsModel.isKeyRequired;
     }
 
-    private async exportAgentFromList(agentsList: any[]) {
-        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
-        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
-        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
-        let agent = await vscode.window.showQuickPick(agentsItems);
-        if (agent) {
-            let modelIndex = parseInt(agent.label.split(". ")[0], 10) - 1;
-            let selectedAgent =  allAgents[modelIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent? \n\n" +
-            this.getAgentCommandDetailsAsString(selectedAgent)
-            );
-
-            if (shouldExport){
-                const uri = await vscode.window.showSaveDialog({
-                        defaultUri: vscode.Uri.file(path.join(vscode.workspace.rootPath || '', selectedAgent.name+'.json')),
-                        filters: {
-                            'Agent Files': ['json'],
-                            'All Files': ['*']
-                        },
-                        saveLabel: 'Export Agent'
-                    });
-
-                if (!uri) {
-                    return;
-                }
-
-                const jsonContent = JSON.stringify(selectedAgent, null, 2);
-                fs.writeFileSync(uri.fsPath, jsonContent, 'utf8');
-                vscode.window.showInformationMessage("Agent is saved.")
-            }
-        }
-    }
+    
 
     private async exportAgentCommandFromList(agentCommands: any[]) {
         let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as Agent[])
@@ -1001,39 +843,26 @@ export class Menu {
 
     isChatSelected = (): boolean => {
         return this.selectedChat != undefined && this.selectedChat.name.trim() != "";
-    }
+    }    
 
-    // process*ModelsActions removed, handled by ModelService.processActions
-    // processEnvActions moved to EnvService.processActions
-
-    processAgentsActions = async (selected:vscode.QuickPickItem) => {
-        switch (selected.label) {
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartAgent):
-                await this.selectAgentFromList(this.app.configuration.agents_list);
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.addAgent):
-                // await this.addModelToList(toolsTypeDetails);
-                Utils.showOkDialog("You could add an agent in setting agents_list or use export, modify and import.")
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgent):
-                // await this.deleteModelFromList(this.app.configuration.tools_models_list, "tools_models_list");
-                Utils.showOkDialog("You could delete an agent in setting agents_list")
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentDetails):
-                await this.viewAgentFromList(this.app.configuration.agents_list)
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.deselectStopAgent):
-                // await this.deselectStopModel(this.app.llamaServer.killToolsCmd, "selectedToolsModel");
-                this.selectedAgent = {name: "", systemInstruction: []};
-                vscode.window.showInformationMessage("The agent is deselected.")
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgent):
-                await this.exportAgentFromList(this.app.configuration.agents_list)
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.importAgent):
-                await this.importAgentToList(this.app.configuration.agents_list, SETTING_NAME_FOR_LIST.AGENTS)
-                break;
-        }
+    private getAgentCommandsActions(): vscode.QuickPickItem[] {
+        return [
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAgentCommand) ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentCommandDetails) ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgentCommand) ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.exportAgentCommand) ?? ""
+            },
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.importAgentCommand) ?? ""
+            },
+        ];
     }
 
     processAgentCommandsActions = async (selected:vscode.QuickPickItem) => {
@@ -1121,23 +950,5 @@ export class Menu {
     public showEnvView() {
         vscode.commands.executeCommand('extension.showLlamaWebview');
         setTimeout(() => this.app.llamaWebviewProvider.setView("addenv"), 500);
-    }
-
-    public deselectAgent() {
-        this.selectAgent({
-            name: "",
-            systemInstruction: [],
-            tools: [
-                "run_terminal_command",
-                "search_source",
-                "read_file",
-                "list_directory",
-                "regex_search",
-                "delete_file",
-                "get_diff",
-                "edit_file",
-                "ask_user"
-            ]
-        });
-    }
+    }    
 }

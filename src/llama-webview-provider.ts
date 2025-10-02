@@ -94,7 +94,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.menu.deselectAndClearModel(ModelType.Tools);
                         break;
                     case 'deselectAgent':
-                        await this.app.menu.deselectAgent();
+                        await this.app.agentService.deselectAgent();
                         break;
                     case 'showCompletionModel':
                         this.app.modelService.showModelDetails(this.app.menu.getComplModel());
@@ -109,11 +109,11 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.modelService.showModelDetails(this.app.menu.getToolsModel());
                         break;
                     case 'showAgentDetails':
-                        this.app.menu.showAgentDetails(this.app.menu.getAgent())
+                        this.app.agentService.showAgentDetails(this.app.menu.getAgent())
                         break;
                     case 'selectAgent':
                         let agentsList = this.app.configuration.agents_list
-                        await this.app.menu.selectAgentFromList(agentsList)
+                        await this.app.agentService.pickAndSelectAgent(agentsList)
                         break;
                     case 'chatWithAI':
                         this.app.askAi.closeChatWithAi(false);
