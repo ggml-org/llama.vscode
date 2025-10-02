@@ -60,7 +60,7 @@ export class LlamaAgent {
     }
 
     selectChat = (chat: Chat) => {
-        if (chat && chat.defaultAgent) this.app.menu.selectAgent(chat.defaultAgent);
+        if (chat && chat.defaultAgent) this.app.agentService.selectAgent(chat.defaultAgent);
         this.resetMessages();
 
         if (chat){

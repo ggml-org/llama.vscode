@@ -23,6 +23,7 @@ import { HfModelStrategy } from "./services/hf-model-strategy";
 import { LocalModelStrategy } from "./services/local-model-strategy";
 import { ExternalModelStrategy } from "./services/external-model-strategy";
 import { EnvService } from "./services/env-service";
+import { AgentService } from "./services/agent-service";
 
 export class Application {
     private static instance: Application;
@@ -49,6 +50,7 @@ export class Application {
     public localModelStrategy: LocalModelStrategy
     public externalModelStrategy: ExternalModelStrategy
     public envService: EnvService
+    public agentService: AgentService
 
     private constructor(context: vscode.ExtensionContext) {
         this.configuration = new Configuration()
@@ -75,6 +77,7 @@ export class Application {
         this.externalModelStrategy = new ExternalModelStrategy(this)
         this.modelService = new ModelService(this)
         this.envService = new EnvService(this)
+        this.agentService = new AgentService(this)
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {
