@@ -29,6 +29,8 @@ export class LlamaAgent {
         this.resetMessages();
     }
 
+    getAgentLogText = () => this.logText;
+
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
         if (this.app.menu.isAgentSelected()) systemPromt = this.app.menu.getAgent().systemInstruction.join("\n")
@@ -66,7 +68,7 @@ export class LlamaAgent {
             this.messages = chat.messages??[];
             this.logText = chat.log??"";
          }
-         this.app.llamaWebviewProvider.logInUi(this.logText);
+        //  this.app.llamaWebviewProvider.logInUi(this.logText);
          this.resetContextProjectFiles();
     }
 
