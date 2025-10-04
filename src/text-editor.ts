@@ -29,8 +29,8 @@ export class TextEditor {
     async showEditPrompt(editor: vscode.TextEditor) {
         let chatUrl = this.app.configuration.endpoint_chat
         if (!chatUrl) chatUrl = this.app.configuration.endpoint_tools; 
-        let chatModel = this.app.menu.getChatModel();    
-        if (!this.app.menu.isChatModelSelected()) chatModel = this.app.menu.getToolsModel();
+        let chatModel = this.app.getChatModel();    
+        if (!this.app.isChatModelSelected()) chatModel = this.app.getToolsModel();
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
@@ -38,7 +38,7 @@ export class TextEditor {
         if (!chatUrl) { 
             const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model or an env with chat or tools model to edit code with AI.","Select")
             if (shouldSelectModel){
-                this.app.menu.showEnvView();
+                this.app.llamaWebviewProvider.showEnvView();
                 vscode.window.showInformationMessage("After the chat model is loaded, try again using Edit with AI.")
                 return;
             } else {

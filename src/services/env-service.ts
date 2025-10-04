@@ -2,11 +2,10 @@
 import * as vscode from "vscode";
 import { QuickPickItem } from "vscode";
 import { Application } from "../application";
-import { Env, Agent, LlmModel, ModelTypeDetails } from "../types";
+import { Env } from "../types";
 import { Utils } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
-import { Configuration } from "../configuration";
 import { PREDEFINED_LISTS } from "../lists";
 import { ModelType, UI_TEXT_KEYS, PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, PREDEFINED_LISTS_KEYS } from "../constants";
 
@@ -53,7 +52,7 @@ export class EnvService {
                 await this.selectEnv(this.app.configuration.envs_list, true);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.addEnv):
-                this.app.menu.showEnvView();
+                this.app.llamaWebviewProvider.showEnvView();
                 break;
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv):
@@ -104,11 +103,11 @@ export class EnvService {
 
     async selectStartEnv(env: Env, confirm: boolean = false): Promise<void> {
         // Get current state for inheritance
-        const currentComplModel = this.app.menu.getComplModel();
-        const currentChatModel = this.app.menu.getChatModel();
-        const currentEmbeddingsModel = this.app.menu.getEmbeddingsModel();
-        const currentToolsModel = this.app.menu.getToolsModel();
-        const currentAgent = this.app.menu.getAgent();
+        const currentComplModel = this.app.getComplModel();
+        const currentChatModel = this.app.getChatModel();
+        const currentEmbeddingsModel = this.app.getEmbeddingsModel();
+        const currentToolsModel = this.app.getToolsModel();
+        const currentAgent = this.app.getAgent();
         const currentRagEnabled = this.app.configuration.rag_enabled;
         const currentEnvStartLastUsed = this.app.configuration.env_start_last_used;
         const currentComplEnabled = this.app.configuration.enabled;
@@ -142,7 +141,7 @@ export class EnvService {
         if (shouldSelect && env) {
             // Set completion model (inherit if not specified)
             const complModel = env.completion ?? currentComplModel;
-            this.app.menu.setSelectedModel(ModelType.Completion, complModel);
+            this.app.setSelectedModel(ModelType.Completion, complModel);
             if (complModel && complModel.name.trim() !== "") {
                 await this.app.modelService.addApiKey(complModel);
                 if (complModel.localStartCommand) {
@@ -152,7 +151,7 @@ export class EnvService {
 
             // Set chat model
             const chatModel = env.chat ?? currentChatModel;
-            this.app.menu.setSelectedModel(ModelType.Chat, chatModel);
+            this.app.setSelectedModel(ModelType.Chat, chatModel);
             if (chatModel && chatModel.name.trim() !== "") {
                 await this.app.modelService.addApiKey(chatModel);
                 if (chatModel.localStartCommand) {
@@ -162,7 +161,7 @@ export class EnvService {
 
             // Set embeddings model
             const embedModel = env.embeddings ?? currentEmbeddingsModel;
-            this.app.menu.setSelectedModel(ModelType.Embeddings, embedModel);
+            this.app.setSelectedModel(ModelType.Embeddings, embedModel);
             if (embedModel && embedModel.name.trim() !== "") {
                 await this.app.modelService.addApiKey(embedModel);
                 if (embedModel.localStartCommand) {
@@ -172,7 +171,7 @@ export class EnvService {
 
             // Set tools model
             const toolsModel = env.tools ?? currentToolsModel;
-            this.app.menu.setSelectedModel(ModelType.Tools, toolsModel);
+            this.app.setSelectedModel(ModelType.Tools, toolsModel);
             if (toolsModel && toolsModel.name.trim() !== "") {
                 await this.app.modelService.addApiKey(toolsModel);
                 if (toolsModel.localStartCommand) {
@@ -198,7 +197,7 @@ export class EnvService {
             }
 
             // Set selected env
-            this.app.menu.setSelectedEnv(env);
+            this.app.setSelectedEnv(env);
 
             this.app.llamaWebviewProvider.updateLlamaView();
         }
@@ -228,11 +227,11 @@ export class EnvService {
         description = this.app.modelService.sanitizeInput(description || '');
 
         // Inherit from current state
-        const currentComplModel = this.app.menu.getComplModel();
-        const currentChatModel = this.app.menu.getChatModel();
-        const currentEmbeddingsModel = this.app.menu.getEmbeddingsModel();
-        const currentToolsModel = this.app.menu.getToolsModel();
-        const currentAgent = this.app.menu.getAgent();
+        const currentComplModel = this.app.getComplModel();
+        const currentChatModel = this.app.getChatModel();
+        const currentEmbeddingsModel = this.app.getEmbeddingsModel();
+        const currentToolsModel = this.app.getToolsModel();
+        const currentAgent = this.app.getAgent();
 
         let newEnv: Env = {
             name: name,
@@ -292,15 +291,15 @@ export class EnvService {
 
     async stopEnv(): Promise<void> {
         await this.app.llamaServer.killFimCmd();
-        this.app.menu.setSelectedModel(ModelType.Completion, { name: "", localStartCommand: "" });
+        this.app.setSelectedModel(ModelType.Completion, { name: "", localStartCommand: "" });
         await this.app.llamaServer.killChatCmd();
-        this.app.menu.setSelectedModel(ModelType.Chat, { name: "", localStartCommand: "" });
+        this.app.setSelectedModel(ModelType.Chat, { name: "", localStartCommand: "" });
         await this.app.llamaServer.killEmbeddingsCmd();
-        this.app.menu.setSelectedModel(ModelType.Embeddings, { name: "", localStartCommand: "" });
+        this.app.setSelectedModel(ModelType.Embeddings, { name: "", localStartCommand: "" });
         await this.app.llamaServer.killToolsCmd();
-        this.app.menu.setSelectedModel(ModelType.Tools, { name: "", localStartCommand: "" });
+        this.app.setSelectedModel(ModelType.Tools, { name: "", localStartCommand: "" });
         await this.app.agentService.deselectAgent();
-        this.app.menu.setSelectedEnv({ name: "" });
+        this.app.setSelectedEnv({ name: "" });
         this.app.llamaWebviewProvider.updateLlamaView();
         vscode.window.showInformationMessage("Env, models and agent are deselected.")
     }
@@ -453,5 +452,39 @@ export class EnvService {
             });
         }
         return items;
+    }
+
+    public showCurrentEnv() {
+        Utils.showOkDialog(this.getSelectionsAsString());
+    }
+
+    private getSelectionsAsString() {
+        return "Selected env and models: " +
+            "\nenv: " + this.app.getEnv().name +
+            "\nenv description: " + this.app.getEnv().description +
+            "\n\ncompletion model: " +
+            "\nname: " + this.app.getComplModel?.name +
+            "\nlocal start command: " + this.app.getComplModel().localStartCommand +
+            "\nendpoint: " + this.app.getComplModel().endpoint +
+            "\nmodel name for provider: " + this.app.getComplModel().aiModel +
+            "\napi key required: " + this.app.getComplModel().isKeyRequired +
+            "\n\nchat model: " +
+            "\nname: " + this.app.getChatModel().name +
+            "\nlocal start command: " + this.app.getChatModel().localStartCommand +
+            "\nendpoint: " + this.app.getChatModel().endpoint +
+            "\nmodel name for provider: " + this.app.getChatModel().aiModel +
+            "\napi key required: " + this.app.getChatModel().isKeyRequired +
+            "\n\nembeddings model: " +
+            "\nname: " + this.app.getEmbeddingsModel().name +
+            "\nlocal start command: " + this.app.getEmbeddingsModel().localStartCommand +
+            "\nendpoint: " + this.app.getEmbeddingsModel().endpoint +
+            "\nmodel name for provider: " + this.app.getEmbeddingsModel().aiModel +
+            "\napi key required: " + this.app.getEmbeddingsModel().isKeyRequired +
+            "\n\ntools model: " +
+            "\nname: " + this.app.getToolsModel().name +
+            "\nlocal start command: " + this.app.getToolsModel().localStartCommand +
+            "\nendpoint: " + this.app.getToolsModel().endpoint +
+            "\nmodel name for provider: " + this.app.getToolsModel().aiModel +
+            "\napi key required: " + this.app.getToolsModel().isKeyRequired;
     }
 }

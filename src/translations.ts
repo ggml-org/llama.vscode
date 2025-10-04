@@ -180,4 +180,13 @@ export const translations: string[][] = [
     ["Delete agent command...", "Изтриване на команда на агент...", "Agentenbefehl löschen...", "Удалить команду агента...", "Eliminar comando de agente...", "删除代理命令...", "Supprimer la commande de l'agent..."],
     ["Export agent command...", "Експортиране на команда на агент...", "Agentenbefehl exportieren...", "Экспорт команды агента...", "Exportar comando de agente...", "导出代理命令...", "Exporter la commande de l'agent..."],
     ["Import agent command...", "Импортиране на команда на агент...", "Agentenbefehl importieren...", "Импорт команды агента...", "Importar comando de agente...", "导入代理命令...", "Importer la commande de l'agent..."],
+    ["Invalid agent command", "Невалидна команда за агент", "Ungültiger Agentenbefehl", "Неверная команда агента", "Comando de agente no válido", "无效的代理命令", "Commande d'agent non valide"],
+    ["Selected", "Избрано", "Ausgewählt", "Выбрано", "Seleccionado", "已选择", "Sélectionné"],
+    ["Add", "Добави", "Hinzufügen", "Добавить", "Añadir", "添加", "Ajouter"],
+    ["Delete", "Изтрий", "Löschen", "Удалить", "Eliminar", "删除", "Supprimer"],
+    ["View", "Преглед", "Anzeigen", "Просмотреть", "Ver", "查看", "Voir"],
+    ["Export", "Експортирай", "Exportieren", "Экспортировать", "Exportar", "导出", "Exporter"],
+    ["Import", "Импортирай", "Importieren", "Импортировать", "Importar", "导入", "Importer"],
+    ["Enter agent command name", "Въведете име на команда на агент", "Agentenbefehlsnamen eingeben", "Введите имя команды агента", "Ingresar nombre de comando de agente", "输入代理命令名称", "Entrer le nom de la commande de l'agent"],
+    ["RAG", "RAG", "RAG", "RAG", "RAG", "RAG", "RAG"],
   ];

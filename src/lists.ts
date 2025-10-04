@@ -83,7 +83,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
-              "name": "xAI: Grok 4 Fast (free for limited period), context: 2 000 000",
+              "name": "xAI: Grok 4 Fast (free for limited period), context: 2 000 000 (OpenRouter)",
               "localStartCommand": "",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,

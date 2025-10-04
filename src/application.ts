@@ -16,7 +16,6 @@ import { Tools } from "./tools";
 import { LlamaAgent } from "./llama-agent";
 import {LlamaWebviewProvider} from "./llama-webview-provider"
 import * as vscode from "vscode"
-import path from "path";
 import { Persistence } from "./persistence";
 import { ModelService } from "./services/model-service";
 import { HfModelStrategy } from "./services/hf-model-strategy";
@@ -24,8 +23,14 @@ import { LocalModelStrategy } from "./services/local-model-strategy";
 import { ExternalModelStrategy } from "./services/external-model-strategy";
 import { EnvService } from "./services/env-service";
 import { AgentService } from "./services/agent-service";
+import { AgentCommandService } from "./services/agent-command-service";
+import { ChatService } from "./services/chat-service";
+import { Agent, Chat, Env, LlmModel } from "./types";
+import { ModelType, PERSISTENCE_KEYS } from "./constants";
+import { ApiKeyService } from "./services/api-key-service";
 
 export class Application {
+    
     private static instance: Application;
     public configuration: Configuration;
     public extraContext: ExtraContext;
@@ -51,6 +56,17 @@ export class Application {
     public externalModelStrategy: ExternalModelStrategy
     public envService: EnvService
     public agentService: AgentService
+    public agentCommandService: AgentCommandService
+    public chatService: ChatService
+    public apiKeyService: ApiKeyService
+
+    private selectedComplModel: LlmModel = ModelService.emptyModel
+    private selectedModel: LlmModel = ModelService.emptyModel
+    private selectedEmbeddingsModel: LlmModel = ModelService.emptyModel
+    private selectedToolsModel: LlmModel = ModelService.emptyModel
+    private selectedEnv: Env = {name: ""}
+    private selectedAgent: Agent = {name: "", systemInstruction: []}
+    private selectedChat: Chat = {name: "", id: ""}
 
     private constructor(context: vscode.ExtensionContext) {
         this.configuration = new Configuration()
@@ -78,6 +94,9 @@ export class Application {
         this.modelService = new ModelService(this)
         this.envService = new EnvService(this)
         this.agentService = new AgentService(this)
+        this.agentCommandService = new AgentCommandService(this)
+        this.chatService = new ChatService(this) 
+        this.apiKeyService = new ApiKeyService(this)
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {
@@ -87,4 +106,93 @@ export class Application {
         return Application.instance;
     }
 
+    getComplModel = (): LlmModel => {
+        return this.selectedComplModel;
+    }
+
+    getToolsModel = (): LlmModel => {
+        return this.selectedToolsModel;
+    }
+
+    getChatModel = (): LlmModel => {
+        return this.selectedModel;
+    }
+
+    getEmbeddingsModel = (): LlmModel => {
+        return this.selectedEmbeddingsModel;
+    }
+
+    getEnv = (): Env => {
+        return this.selectedEnv;
+    }
+
+    getAgent = (): Agent => {
+        return this.selectedAgent;
+    }
+
+    setAgent = (agent: Agent): void => {
+        this.selectedAgent = agent;
+    }
+
+    getChat = (): Chat => {
+        return this.selectedChat;
+    }
+
+    setChat = (chat: Chat) => {
+        this.selectedChat = chat;
+    }
+
+    isComplModelSelected = (): boolean => {
+        return this.selectedComplModel != undefined && this.selectedComplModel.name. trim() != "";
+    }
+
+    isChatModelSelected = (): boolean => {
+        return this.selectedModel != undefined && this.selectedModel.name. trim() != "";
+    }
+
+    isToolsModelSelected = (): boolean => {
+        return this.selectedToolsModel != undefined && this.selectedToolsModel.name. trim() != "";
+    }
+
+    isEmbeddingsModelSelected = (): boolean => {
+        return this.selectedEmbeddingsModel != undefined && this.selectedToolsModel.name. trim() != "";
+    }
+
+    isEnvSelected = (): boolean => {
+        return this.selectedEnv != undefined && this.selectedEnv.name. trim() != "";
+    }
+
+    isAgentSelected = (): boolean => {
+        return this.selectedAgent != undefined && this.selectedAgent.name.trim() != "";
+    }
+
+    isChatSelected = (): boolean => {
+        return this.selectedChat != undefined && this.selectedChat.name.trim() != "";
+    }
+
+    
+
+    setSelectedModel = (type: ModelType, model: LlmModel | undefined) => {
+        switch (type) {
+            case ModelType.Completion:
+                this.selectedComplModel = model??ModelService.emptyModel;
+                break;
+            case ModelType.Chat:
+                this.selectedModel = model??ModelService.emptyModel;
+                break;
+            case ModelType.Embeddings:
+                this.selectedEmbeddingsModel = model??ModelService.emptyModel;
+                break;
+            case ModelType.Tools:
+                this.selectedToolsModel = model??ModelService.emptyModel;
+                break;
+        }
+        this.llamaWebviewProvider.updateLlamaView();
+    }
+
+    public setSelectedEnv(env: Env): void {
+        this.selectedEnv = env;
+        this.persistence.setValue(PERSISTENCE_KEYS.SELECTED_ENV, env);
+        this.llamaWebviewProvider.updateLlamaView();
+    } 
 }

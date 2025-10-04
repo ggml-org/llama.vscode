@@ -4,7 +4,7 @@ import { Application } from "../application";
 import { IAddStrategy, LlmModel, ModelTypeDetails } from "../types";
 import { Utils } from "../utils";
 import * as axios from "axios";
-import { ModelType, UI_TEXT_KEYS, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG } from "../constants";
+import { HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE } from "../constants";
 
 interface HuggingfaceModel {
     modelId: string;

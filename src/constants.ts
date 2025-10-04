@@ -84,6 +84,9 @@ export enum AGENT_NAME {
 }
 
 export const UI_TEXT_KEYS = {
+  // Agent command texts
+  enterName: "Enter agent command name",
+
   // Menu separators and sections
   actions: "Actions",
   entities: "Entities",

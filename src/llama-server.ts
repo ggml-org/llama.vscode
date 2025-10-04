@@ -283,7 +283,7 @@ export class LlamaServer {
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
             const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select")
             if (shouldSelectModel){
-                this.app.menu.showEnvView();
+                this.app.llamaWebviewProvider.showEnvView();
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
                 return;
             } else {
@@ -345,7 +345,7 @@ export class LlamaServer {
         onDelta?: (delta: string) => void,
         abortSignal?: AbortSignal
     ): Promise<LlamaToolsResponse | undefined> => {
-        let selectedModel: LlmModel = this.app.menu.getToolsModel();
+        let selectedModel: LlmModel = this.app.getToolsModel();
         let model = this.app.configuration.ai_model;
         if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
 
@@ -498,7 +498,7 @@ export class LlamaServer {
 
     getEmbeddings = async (text: string): Promise<LlamaEmbeddingsResponse | undefined> => {
         try {
-            let selectedModel: LlmModel = this.app.menu.getEmbeddingsModel();
+            let selectedModel: LlmModel = this.app.getEmbeddingsModel();
             let model = this.app.configuration.ai_model;
             if (selectedModel.aiModel) model = selectedModel.aiModel;
 
@@ -742,8 +742,8 @@ export class LlamaServer {
 
 
     private getChatModelProperties() {
-        let selectedModel: LlmModel = this.app.menu.getChatModel();
-        if (!this.app.menu.isChatModelSelected()) selectedModel = this.app.menu.getToolsModel();
+        let selectedModel: LlmModel = this.app.getChatModel();
+        if (!this.app.isChatModelSelected()) selectedModel = this.app.getToolsModel();
         
         let model = this.app.configuration.ai_model;
         if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
@@ -768,7 +768,7 @@ export class LlamaServer {
     }
 
     private getComplModelProperties() {
-        const selectedComplModel: LlmModel = this.app.menu.getComplModel();
+        const selectedComplModel: LlmModel = this.app.getComplModel();
         let model = this.app.configuration.ai_model;
         if (selectedComplModel?.aiModel !== undefined && selectedComplModel.aiModel) model = selectedComplModel.aiModel;
 
