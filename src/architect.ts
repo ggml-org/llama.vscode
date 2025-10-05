@@ -43,7 +43,7 @@ export class Architect {
             }
         }
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
-        if (lastChat) this.app.menu.selectUpdateChat(lastChat)
+        if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
         if (lastAgent) this.app.agentService.selectAgent(lastAgent)
         this.app.tools.init()
@@ -514,7 +514,7 @@ export class Architect {
 
     private getChatEndpoint() {
         let endpoint = this.app.configuration.endpoint_chat;
-        let chatModel = this.app.menu.getChatModel();
+        let chatModel = this.app.getChatModel();
         if (chatModel && chatModel.endpoint) endpoint = chatModel.endpoint;
         return endpoint;
     }

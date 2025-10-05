@@ -54,14 +54,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'clearText':
                         this.app.llamaAgent.resetMessages();
                         this.app.llamaAgent.resetContextProjectFiles()
-                        await this.app.menu.selectUpdateChat({name:"", id:""})
+                        await this.app.chatService.selectUpdateChat({name:"", id:""})
                         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
                             command: 'updateText',
                             text: ''
                         });
                         break;
                     case 'showChatsHistory':
-                        this.app.menu.selectChatFromList();
+                        this.app.chatService.selectChatFromList();
                         break;
                     case 'configureTools':
                         await this.app.tools.selectTools()
@@ -70,46 +70,46 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.llamaAgent.stopAgent();
                         break;
                     case 'selectModelWithTools':
-                        await this.app.menu.selectAndSetModel(ModelType.Tools, this.app.configuration.tools_models_list);
+                        await this.app.modelService.selectAndSetModel(ModelType.Tools, this.app.configuration.tools_models_list);
                         break;
                     case 'selectModelForChat':
-                        await this.app.menu.selectAndSetModel(ModelType.Chat, this.app.configuration.chat_models_list);
+                        await this.app.modelService.selectAndSetModel(ModelType.Chat, this.app.configuration.chat_models_list);
                         break;
                     case 'selectModelForEmbeddings':
-                        await this.app.menu.selectAndSetModel(ModelType.Embeddings, this.app.configuration.embeddings_models_list);
+                        await this.app.modelService.selectAndSetModel(ModelType.Embeddings, this.app.configuration.embeddings_models_list);
                         break;
                     case 'selectModelForCompletion':
-                        await this.app.menu.selectAndSetModel(ModelType.Completion, this.app.configuration.completion_models_list);
+                        await this.app.modelService.selectAndSetModel(ModelType.Completion, this.app.configuration.completion_models_list);
                         break;
                     case 'deselectCompletionModel':
-                        await this.app.menu.deselectAndClearModel(ModelType.Completion);
+                        await this.app.modelService.deselectAndClearModel(ModelType.Completion);
                         break;
                     case 'deselectChatModel':
-                        await this.app.menu.deselectAndClearModel(ModelType.Chat);
+                        await this.app.modelService.deselectAndClearModel(ModelType.Chat);
                         break;
                     case 'deselectEmbsModel':
-                        await this.app.menu.deselectAndClearModel(ModelType.Embeddings);
+                        await this.app.modelService.deselectAndClearModel(ModelType.Embeddings);
                         break;
                     case 'deselectToolsModel':
-                        await this.app.menu.deselectAndClearModel(ModelType.Tools);
+                        await this.app.modelService.deselectAndClearModel(ModelType.Tools);
                         break;
                     case 'deselectAgent':
                         await this.app.agentService.deselectAgent();
                         break;
                     case 'showCompletionModel':
-                        this.app.modelService.showModelDetails(this.app.menu.getComplModel());
+                        this.app.modelService.showModelDetails(this.app.getComplModel());
                         break;
                     case 'showChatModel':
-                       this.app.modelService.showModelDetails(this.app.menu.getChatModel());
+                       this.app.modelService.showModelDetails(this.app.getChatModel());
                         break;
                     case 'showEmbsModel':
-                        this.app.modelService.showModelDetails(this.app.menu.getEmbeddingsModel());
+                        this.app.modelService.showModelDetails(this.app.getEmbeddingsModel());
                         break;
                     case 'showToolsModel':
-                        this.app.modelService.showModelDetails(this.app.menu.getToolsModel());
+                        this.app.modelService.showModelDetails(this.app.getToolsModel());
                         break;
                     case 'showAgentDetails':
-                        this.app.agentService.showAgentDetails(this.app.menu.getAgent())
+                        this.app.agentService.showAgentDetails(this.app.getAgent())
                         break;
                     case 'selectAgent':
                         let agentsList = this.app.configuration.agents_list
@@ -132,13 +132,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         await this.app.envService.stopEnv();    
                         break;
                     case 'showEnvView':
-                        this.app.menu.showEnvView();
+                        this.showEnvView();
                         break;
                     case 'showAgentView':
-                        this.app.menu.showAgentView();
+                        this.showAgentView();
                         break;
                     case 'showSelectedModels':
-                        await this.app.menu.showCurrentEnv();    
+                        await this.app.envService.showCurrentEnv();    
                         break;
                     case 'getFileList':
                         let fileKeys: string[]
@@ -238,7 +238,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateEmbsModel() {
-        const currentEmbeddingsModel: LlmModel = this.app.menu.getEmbeddingsModel();
+        const currentEmbeddingsModel: LlmModel = this.app.getEmbeddingsModel();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateEmbeddingsModel',
             model: currentEmbeddingsModel.name || 'No model selected'
@@ -246,7 +246,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateChatModel() {
-        const currentChatModel: LlmModel = this.app.menu.getChatModel();
+        const currentChatModel: LlmModel = this.app.getChatModel();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateChatModel',
             model: currentChatModel.name || 'No model selected'
@@ -254,7 +254,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateToolsModel() {
-        const currentToolsModel: LlmModel = this.app.menu.getToolsModel();
+        const currentToolsModel: LlmModel = this.app.getToolsModel();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateToolsModel',
             model: currentToolsModel.name || 'No model selected'
@@ -262,7 +262,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateComplsModel() {
-        const currentToolsModel: LlmModel = this.app.menu.getComplModel();
+        const currentToolsModel: LlmModel = this.app.getComplModel();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateCompletionModel',
             model: currentToolsModel.name || 'No model selected'
@@ -270,7 +270,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateAgent() {
-        const currentAgent: Agent = this.app.menu.getAgent();
+        const currentAgent: Agent = this.app.getAgent();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateAgent',
             agent: currentAgent.name || 'No agent selected'
@@ -278,7 +278,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateEnv() {
-        const currentEnv: Env = this.app.menu.getEnv();
+        const currentEnv: Env = this.app.getEnv();
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateEnv',
             model: currentEnv.name || 'No env selected'
@@ -312,6 +312,26 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             text: view
         });
     }
+
+    public async showAgentView() {
+        let isModelAvailable = await this.app.modelService.checkForToolsModel();
+        if (isModelAvailable) {
+            vscode.commands.executeCommand('extension.showLlamaWebview');
+            this.updateLlamaView();
+            setTimeout(() => {
+                if (this.webview) {
+                    this.webview.webview.postMessage({
+                        command: 'focusTextarea'
+                    });
+                }
+            }, 100);
+        }
+    }
+
+    public showEnvView() {
+        vscode.commands.executeCommand('extension.showLlamaWebview');
+        setTimeout(() => this.setView("addenv"), 500);
+    } 
 
     public updateLlamaView() {
         this.updateToolsModel();

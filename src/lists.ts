@@ -83,25 +83,17 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
-              "name": "xAI: Grok 4 Fast (free for limited period), context: 2 000 000",
-              "localStartCommand": "",
+            "name": "DeepSeek V3.1 (free) 163,800 context (OpenRouter)",
+            "localStartCommand": "",
+            "endpoint": "https://openrouter.ai/api",
+            "aiModel": "deepseek/deepseek-chat-v3.1:free",
+            "isKeyRequired": true
+            },
+            {
+              "name": "Z.AI: GLM 4.5 Air (free): GLM 4.5 Air - 128.000 context (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
-              "aiModel": "x-ai/grok-4-fast:free"
-            },
-            {
-              "name": "Sonoma Sky - 2,000,000 context $0/M input tokens $0/M output tokens as of 19.09.25 (OpenRouter)",
-              "localStartCommand": "",
-              "endpoint": "https://openrouter.ai/api",
-              "aiModel": "openrouter/sonoma-sky-alpha",
-              "isKeyRequired": true
-            },
-            {
-              "name": "Sonoma Dusk - 2,000,000 context $0/M input tokens $0/M output tokens as of 19.09.25 (OpenRouter)",
-              "localStartCommand": "",
-              "endpoint": "https://openrouter.ai/api",
-              "aiModel": "openrouter/sonoma-dusk-alpha",
-              "isKeyRequired": true
+              "aiModel": "z-ai/glm-4.5-air:free"
             },
             {
               "name": "Z.AI: GLM 4.5 - 128000 context $0.60/M input tokens $2.20/M output tokens (OpenRouter)",
@@ -715,6 +707,57 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "delete_file",
                 "get_diff",
                 "edit_file",
+                "ask_user"
+              ]
+            },
+            {
+              "name": "Ask",
+              "description": "This is an agent for questions about source code without changing it.",
+              "systemInstruction": [
+                "You are an agent for answering questions about the project and software development in general - please keep going until the user’s query is completely resolved, before ending your turn and yielding back to the user.",
+                "Only terminate your turn when you are sure that the question is answered.",
+                "If you are not sure about anything pertaining to the user’s request, use your tools to read files and gather the relevant information: do NOT guess or make up an answer.",
+                "You MUST plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.",
+                "Do not change add or remove files in the project. Just review, answer questions and suggest solutions.",
+                "",
+                "# Workflow",
+                "",
+                "## High-Level Problem Solving Strategy",
+                "",
+                "1. Understand the problem deeply. Carefully read the issue and think critically about what is required.",
+                "2. Investigate the codebase. Explore relevant files, search for key functions, and gather context.",
+                "3. Develop a clear, step-by-step plan. ",
+                "7. Reflect and validate comprehensively.",
+                "",
+                "Refer to the detailed sections below for more information on each step.",
+                "",
+                "## 1. Deeply Understand the Problem",
+                "Carefully read the issue and think hard about a plan to solve it before coding.",
+                "",
+                "## 2. Codebase Investigation",
+                "- Explore relevant files and directories.",
+                "- Search for key functions, classes, or variables related to the issue.",
+                "- Read and understand relevant code snippets.",
+                "- Identify the root cause of the problem.",
+                "- Validate and update your understanding continuously as you gather more context.",
+                "",
+                "## 3. Develop a Detailed Plan",
+                "- Outline a specific, simple, and verifiable sequence of steps find and answer or a solution to the problem.",
+                "",
+                "## 4. Final Verification",
+                "- Confirm the user query is answerd.",
+                "- Review your solution for logic correctness and robustness.",
+                "- Think about potential edge cases or scenarios.",
+                "- Iterate until you are extremely confident the answer is complete.",
+                ""
+              ],
+              "tools": [
+                "run_terminal_command",
+                "search_source",
+                "read_file",
+                "list_directory",
+                "regex_search",
+                "get_diff",
                 "ask_user"
               ]
             }

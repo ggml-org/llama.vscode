@@ -353,16 +353,16 @@
             ]
           },
           "default": [
-           {
+            {
               "name": "llama-vscode help",
               "description": "This is an agent for helping how to use llama-vscode.",
               "systemInstruction": [
-                  "You are an agent for helping the user how to use llama-vscode.",
-                  "Use the available tools to get the help documentation for llama-vscode and answer the questions from the user.",
-                  "Base your answers on the help documentation from the tools."
+                "You are an agent for helping the user how to use llama-vscode.",
+                "Use the available tools to get the help documentation for llama-vscode and answer the questions from the user.",
+                "Base your answers on the help documentation from the tools."
               ],
               "tools": [
-                  "llama_vscode_help"
+                "llama_vscode_help"
               ]
             },
             {
@@ -480,15 +480,14 @@
             ]
           },
           "default": [
-           {
+            {
               "name": "about",
               "description": "Reviews the project and provides information about it.",
               "prompt": [
-                  "What is this project about?",
-                  "Provide an overview of the project - purpose, architecture, language, etc."
+                "What is this project about?",
+                "Provide an overview of the project - purpose, architecture, language, etc."
               ],
-              "context": [
-              ]
+              "context": []
             },
             {
               "name": "explain",
@@ -496,8 +495,7 @@
               "prompt": [
                 "Explain the provided source code."
               ],
-              "context": [
-              ]
+              "context": []
             }
           ],
           "description": "The list of agent commands, which could be selected by the user"
@@ -987,7 +985,7 @@
               "ragEnabled": {
                 "type": "boolean",
                 "default": true
-              },       
+              },
               "envStartLastUsed": {
                 "type": "boolean",
                 "default": false,
@@ -1663,7 +1661,9 @@
                   "type": {
                     "type": "string",
                     "description": "Type of the tool",
-                    "enum": ["function"]
+                    "enum": [
+                      "function"
+                    ]
                   },
                   "function": {
                     "type": "object",
@@ -1684,7 +1684,9 @@
                           "type": {
                             "type": "string",
                             "description": "Type of parameters object",
-                            "enum": ["object"]
+                            "enum": [
+                              "object"
+                            ]
                           },
                           "properties": {
                             "type": "object",
@@ -1699,22 +1701,31 @@
                             }
                           }
                         },
-                        "required": ["type", "properties"]
+                        "required": [
+                          "type",
+                          "properties"
+                        ]
                       },
                       "strict": {
                         "type": "boolean",
                         "description": "Whether to use strict validation"
                       }
                     },
-                    "required": ["name", "description", "parameters"]
+                    "required": [
+                      "name",
+                      "description",
+                      "parameters"
+                    ]
                   }
                 },
-                "required": ["type", "function"]
+                "required": [
+                  "type",
+                  "function"
+                ]
               }
             }
           },
-          "default": [
-          ]
+          "default": []
         },
         "llama-vscode.context_custom": {
           "type": "object",
@@ -1928,9 +1939,14 @@
     "watch": "tsc -watch -p ./",
     "build-ui": "cd ui && npm install && npm run build",
     "dev-ui": "cd ui && npm install && npm run dev",
-    "postinstall": "npm run build-ui"
+    "postinstall": "npm run build-ui",
+    "test": "node ./dist/test/runTest.js",
+    "compile": "tsc -p ./",
+    "lint": "eslint --ext .ts,.tsx .",
+    "format": "prettier --write --ignore-path .gitignore '**/*'"
   },
   "dependencies": {
+    "@vscode/test-cli": "^0.0.11",
     "axios": "^1.1.2",
     "globby": "^14.1.0",
     "ignore": "^7.0.4",
@@ -1940,11 +1956,15 @@
     "simple-git": "^3.28.0"
   },
   "devDependencies": {
-    "@types/jest": "^29.5.14",
+    "@babel/types": "^7.28.4",
     "@types/micromatch": "^4.0.9",
+    "@types/mocha": "^10.0.10",
     "@types/node": "^18.0.0",
     "@types/picomatch": "^4.0.0",
     "@types/vscode": "^1.100.0",
+    "@vscode/test-electron": "^2.5.2",
+    "glob": "^11.0.3",
+    "mocha": "^11.7.4",
     "typescript": "^4.8.0",
     "webpack": "^5.100.2",
     "webpack-cli": "^4.10.0"

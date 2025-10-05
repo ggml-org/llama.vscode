@@ -6,7 +6,6 @@ import { Agent } from "../types";
 import { Utils } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
-import { Configuration } from "../configuration";
 import { PREDEFINED_LISTS } from "../lists";
 import { UI_TEXT_KEYS, PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, PREDEFINED_LISTS_KEYS } from "../constants";
 
@@ -96,7 +95,7 @@ export class AgentService {
     }
 
     async selectAgent(agent: Agent): Promise<void> {
-        this.app.menu.setSelectedAgent(agent);
+        this.app.setAgent(agent);
         const allTools = Array.from(this.app.tools.toolsFunc.keys());
         for (let toolName of allTools) {
             this.app.configuration.updateConfigValue(`tool_${toolName}_enabled`, agent.tools?.includes(toolName) ?? false);
@@ -110,7 +109,7 @@ export class AgentService {
 
     async deselectAgent(): Promise<void> {
         const emptyAgent = { name: "", systemInstruction: [] };
-        this.app.menu.setSelectedAgent(emptyAgent);
+        this.app.setAgent(emptyAgent);
         const allTools = Array.from(this.app.tools.toolsFunc.keys());
         for (let toolName of allTools) {
             this.app.configuration.updateConfigValue(`tool_${toolName}_enabled`, true);

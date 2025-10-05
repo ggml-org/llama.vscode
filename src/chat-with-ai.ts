@@ -55,8 +55,8 @@ export class ChatWithAi {
                         ? this.app.configuration.endpoint_chat + "/" 
                         : this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
 
-        let chatModel = this.app.menu.getChatModel();
-        if (!this.app.menu.isChatModelSelected()) chatModel = this.app.menu.getToolsModel();    
+        let chatModel = this.app.getChatModel();
+        if (!this.app.isChatModelSelected()) chatModel = this.app.getToolsModel();    
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
@@ -64,7 +64,7 @@ export class ChatWithAi {
         if (!targetUrl) {
             const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model run by llama-server or an env with chat or tools model run on llama-server to chat with AI.","Select")
             if (shouldSelectModel){
-                this.app.menu.showEnvView();
+                this.app.llamaWebviewProvider.showEnvView();
                 vscode.window.showInformationMessage("After the chat/tools model is loaded, try again opening Chat with AI.")
                 return;
             } else {

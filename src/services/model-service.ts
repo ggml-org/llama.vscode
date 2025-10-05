@@ -3,14 +3,14 @@ import { QuickPickItem } from "vscode";
 import { Application } from "../application";
 import { IAddStrategy, LlmModel, ModelTypeDetails } from "../types";
 import { Utils } from "../utils";
-import * as axios from "axios";
-import { ModelType, UI_TEXT_KEYS, HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE, MODEL_TYPE_CONFIG } from "../constants";
+import { ModelType, UI_TEXT_KEYS, MODEL_TYPE_CONFIG } from "../constants";
 import * as path from "path";
 import * as fs from "fs";
 import { Configuration } from "../configuration";
 import { PREDEFINED_LISTS } from "../lists";
 
 export class ModelService {
+    public static readonly emptyModel = {name: ""};
     private app: Application;
     private strategies: Record<string, IAddStrategy>;
 
@@ -75,6 +75,14 @@ export class ModelService {
         return modelKeys.map(key => ({
             label: this.app.configuration.getUiText(key) ?? ""
         }));
+    }
+
+    public async processModelActions(modelType: ModelType) {
+        let modelActions: vscode.QuickPickItem[] = this.getActions(modelType);
+        let actionSelected = await vscode.window.showQuickPick(modelActions);
+        if (actionSelected) {
+            await this.processActions(modelType, actionSelected);
+        }
     }
 
     async processActions(type: ModelType, selected: vscode.QuickPickItem): Promise<void> {
@@ -173,7 +181,7 @@ export class ModelService {
 
     public async selectStartModel(model: LlmModel, type: ModelType, details: ModelTypeDetails) {
         await this.addApiKey(model);
-        this.app.menu.setSelectedModel(type, model);
+        this.app.setSelectedModel(type, model);
 
         await details.killCmd();
         if (model.localStartCommand) await details.shellCmd(this.sanitizeCommand(model.localStartCommand ?? ""));
@@ -288,7 +296,7 @@ export class ModelService {
 
     public async deselectModel(type: ModelType, details: ModelTypeDetails): Promise<void> {
         await details.killCmd();
-        this.app.menu.clearModel(type);
+        this.clearModel(type);
     }
 
     getDetails(model: LlmModel): string {
@@ -370,5 +378,46 @@ export class ModelService {
 
     public sanitizeInput(input: string): string {
         return input ? input.trim() : '';
+    }
+
+    clearModel = (type: ModelType) => {
+        this.app.setSelectedModel(type, ModelService.emptyModel);
+        this.app.llamaWebviewProvider.updateLlamaView();
+    }
+    
+    public async deselectAndClearModel(modelType: ModelType) {
+        await this.deselectModel(modelType, this.getTypeDetails(modelType));
+        this.clearModel(modelType);
+        this.app.llamaWebviewProvider.updateLlamaView();
+    }  
+    
+    public async selectAndSetModel(modelType: ModelType, modelsList: LlmModel[]) {
+        let model = await this.app.modelService.selectModel(modelType, modelsList);
+        this.app.setSelectedModel(modelType, model);
+    }
+
+    public getEmptyModel(): LlmModel {
+        return ModelService.emptyModel
+    }
+
+    public async checkForToolsModel() {
+        let toolsModel = this.app.getToolsModel();
+        let targetUrl = this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
+        if (toolsModel && toolsModel.endpoint) {
+            const toolsEndpoint = Utils.trimTrailingSlash(toolsModel.endpoint);
+            targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
+        }
+        if (!targetUrl) {
+            const shouldSelectEnv = await Utils.showUserChoiceDialog("Select a tools model or an env with tools model to use Llama Agent.", "Select");
+            if (shouldSelectEnv) {
+                // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));
+                this.app.llamaWebviewProvider.showEnvView()
+                vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.");
+            } else {
+                vscode.window.showErrorMessage("No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools. ");
+            }
+            return false;
+        }
+        else return true;
     }
 }

@@ -33,7 +33,7 @@ export class LlamaAgent {
 
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
-        if (this.app.menu.isAgentSelected()) systemPromt = this.app.menu.getAgent().systemInstruction.join("\n")
+        if (this.app.isAgentSelected()) systemPromt = this.app.getAgent().systemInstruction.join("\n")
         let worspaceFolder = "";
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
             worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
@@ -64,7 +64,7 @@ export class LlamaAgent {
         this.resetMessages();
 
         if (chat){
-            const currentChat = this.app.menu.getChat();
+            const currentChat = this.app.getChat();
             this.messages = chat.messages??[];
             this.logText = chat.log??"";
          }
@@ -145,7 +145,7 @@ export class LlamaAgent {
             this.logText += "***" + query.replace("\n", "  \n") + "***" + "\n\n"; // Make sure markdown shows new lines correctly
 
             
-            if (!this.app.menu.isToolsModelSelected()) {
+            if (!this.app.isToolsModelSelected()) {
                 vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or orchestra with tools model) if you want to to use Llama Agent.")
                 this.app.llamaWebviewProvider.setState("AI is stopped")
                 return "Tools model is not selected"
@@ -305,15 +305,15 @@ export class LlamaAgent {
             this.logText += "  \nAgent session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")
-            let chat = this.app.menu.getChat()
-            if (!this.app.menu.isChatSelected()){
+            let chat = this.app.getChat()
+            if (!this.app.isChatSelected()){
                 chat.name = this.logText.slice(0, 25);
                 chat.id = Date.now().toString(36);
                 chat.description = new Date().toLocaleString() + " " + this.logText.slice(0,150)
             }
             chat.messages = this.messages;
             chat.log = this.logText;
-            await this.app.menu.selectUpdateChat(chat)
+            await this.app.chatService.selectUpdateChat(chat)
             
             // Clean up AbortController
             this.abortController = null;

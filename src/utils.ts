@@ -1,4 +1,4 @@
-import vscode, { Uri } from "vscode";
+import vscode, { QuickPickItem, Uri } from "vscode";
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
@@ -543,8 +543,9 @@ export class Utils {
         return currentContent;
     }
 
-    static  applyEdits = async (diffText: string) => {
+    static  applyEdits = async (diffText: string): Promise<string> => {
         // Extract edit blocks from the diff-fenced format
+        let ret = "The file is updated";
         let editBlocks: string[][] = [];
         if (!diffText) return "Edit file: The input parameter is missing!";
         const blocks = diffText.split("```diff")
@@ -554,7 +555,7 @@ export class Utils {
 
         if (editBlocks.length === 0) {
             if (diffText.length > 0) editBlocks.push(Utils.extractConflictParts("```diff\n" + diffText))
-            else return "";
+            else return "Edit file: The input parameter is missing or incorrect format!";
         }
 
         for (const block of editBlocks) {
@@ -587,17 +588,21 @@ export class Utils {
                     // Handle empty search text case
                     if (searchText.trim() === '') {
                         result += '\n' + replaceText;
+                        await fs.promises.writeFile(absolutePath, result);
                     } else if (result.includes(searchText)) {
                         result = result.split(searchText).join(replaceText);
-                    }
-                    
-                    await fs.promises.writeFile(absolutePath, result);
+                        await fs.promises.writeFile(absolutePath, result);
+                    } else {
+                        ret = "Error edititing file " + filePath + " - " + "The search text is not found in the file.";
+                    }                    
                 } catch (error) {
-                    if (error instanceof Error) return "Error edititing file " + filePath + " - " + error.message;
-                    else return "Error edititing file " + filePath + " - " + error;
+                    if (error instanceof Error) ret = "Error edititing file " + filePath + " - " + error.message;
+                    else ret = "Error edititing file " + filePath + " - " + error;
                 }
             }
-        }        
+        }
+        
+        return ret;
     }
 
     static extractConflictParts = (input: string): [string, string, string] => {
@@ -847,4 +852,17 @@ export class Utils {
         vscode.window.showErrorMessage(`Maximum attempts (${maxAttempts}) reached. Input validation failed.`);
         return undefined;
     }
+
+    static getStandardQpList(list:any[], prefix: string, lastModelNumber: number = 0) {
+        const items: QuickPickItem[] = [];
+        let i = lastModelNumber;
+        for (let elem of list) {
+            i++;
+            items.push({
+                label: i + ". " + prefix + elem.name,
+                description: elem.description,
+            });
+        }
+        return items;
+    } 
 }
