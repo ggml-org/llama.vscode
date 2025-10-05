@@ -171,7 +171,7 @@ filename.py
 2. Format Rules: 
 - The first line must be a code fence opening marker (\`\`\`diff)  
 - The second line must contain ONLY the file path, exactly as shown to you  
-- The SEARCH block must contain the EXACT lines with correct spacingto be replaced from the file, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced!
+- The SEARCH block must contain the EXACT lines with correct number of spaces or tabs before and after the text of each line, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced!
 - The REPLACE block contains the new content  
 - End with a code fence closing marker (\`\`\`)  
 - Include enough context in the SEARCH block to uniquely identify the section to change  

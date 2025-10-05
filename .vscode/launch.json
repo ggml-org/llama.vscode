@@ -18,6 +18,21 @@
 			// "preLaunchTask": "${defaultBuildTask}",
 			"preLaunchTask": "npm: watch",
 			"sourceMaps": true
+		},
+		{
+			"name": "Debug Tests",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--extensionTestsPath=${workspaceFolder}/dist/test/suite"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "npm: compile",
+			"sourceMaps": true,
+			"console": "integratedTerminal"
 		}
 	]
 }

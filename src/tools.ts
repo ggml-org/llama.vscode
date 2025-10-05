@@ -102,21 +102,48 @@ export class Tools {
             uri = vscode.Uri.file(absolutePath);
             const document = await vscode.workspace.openTextDocument(uri)
             if (params.should_read_entire_file) return document.getText()
-            if (params.last_line_inclusive > document.lineCount) params.last_line_inclusive = document.lineCount
-            if (params.first_line < 0 || params.first_line > params.last_line_inclusive) {
+            
+            // Validate required parameters
+            if (params.first_line === undefined || params.last_line_inclusive === undefined) {
+                return "first_line and last_line_inclusive parameters are required when should_read_entire_file is false";
+            }
+            
+            // Validate parameter types
+            if (typeof params.first_line !== 'number' || typeof params.last_line_inclusive !== 'number') {
+                return "first_line and last_line_inclusive must be numbers";
+            }
+            
+            // Convert 1-based line numbers to 0-based
+            let lastLine = params.last_line_inclusive - 1
+            let firstLine = params.first_line - 1
+            
+            // Validate line numbers are positive
+            if (params.first_line < 1 || params.last_line_inclusive < 1) {
+                return "Line numbers must be positive integers starting from 1";
+            }
+            
+            // Clamp to valid document range
+            if (firstLine < 0) firstLine = 0 
+            if (lastLine >= document.lineCount) lastLine = document.lineCount-1
+            
+            // Validate line range
+            if (firstLine > lastLine || firstLine > document.lineCount - 1) {
                 return 'Invalid line range';
             }
 
-            let lastLine = Math.min(params.last_line_inclusive - 1, params.first_line + 249, document.lineCount -1)
+            // Apply 250-line limit using the converted 0-based firstLine
+            lastLine = Math.min(lastLine, firstLine + 249)
 
             // Create range from first line's start to last line's end
-            const startPos = new vscode.Position(Math.max(params.first_line -1, 0), 0);
+            const startPos = new vscode.Position(Math.max(firstLine, 0), 0);
             const endPos = new vscode.Position(lastLine, document.lineAt(lastLine).text.length);
             const range = new vscode.Range(startPos, endPos);
 
             return document.getText(range);
         } catch (error) {
-            return "File not found: " + filePath;
+            console.error('Error reading file '+ filePath + ": " + error);
+            if (error instanceof Error) return "Error reading file: " + filePath + ": " + error // error.message;
+            else return "Error reading file: " + filePath
         }
     }
 
@@ -236,8 +263,8 @@ export class Tools {
                 }
                 if (!yesApply) return Utils.MSG_NO_UESR_PERMISSION;
             }
-            await Utils.applyEdits(changes)
-            return "The file is updated ";
+            let resultEdit = await Utils.applyEdits(changes)
+            return resultEdit;
         } catch (error) {
             console.error('Error changes since last commit:', error);
             throw error;

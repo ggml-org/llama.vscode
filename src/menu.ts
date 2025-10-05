@@ -1,10 +1,7 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
-import { LlmModel, Env, Agent, Chat } from "./types";
 import { Utils } from "./utils";
-import * as fs from 'fs';
-import * as path from 'path';
-import { ModelType, AGENT_NAME, UI_TEXT_KEYS, PERSISTENCE_KEYS } from "./constants";
+import { ModelType, AGENT_NAME, UI_TEXT_KEYS } from "./constants";
 
 export class Menu {
     private app: Application
@@ -12,6 +9,18 @@ export class Menu {
     constructor(application: Application) {
         this.app = application;
     }
+
+    showMenu = async (context: vscode.ExtensionContext) => {
+        const currentLanguage = vscode.window.activeTextEditor?.document.languageId;
+        const isLanguageEnabled = currentLanguage ? this.app.configuration.isCompletionEnabled(undefined, currentLanguage) : true;
+
+        const items = this.app.menu.createMenuItems(currentLanguage, isLanguageEnabled);
+        const selected = await vscode.window.showQuickPick(items, { title: "Llama Menu" });
+
+        if (selected) {
+            await this.handleMenuSelection(selected, currentLanguage, this.app.configuration.languageSettings, context);
+        }
+    } 
 
     createMenuItems = (currentLanguage: string | undefined, isLanguageEnabled: boolean): vscode.QuickPickItem[] => {
         let allMenuItems: vscode.QuickPickItem[] = [];
@@ -22,6 +31,19 @@ export class Menu {
         allMenuItems = allMenuItems.concat(this.getTrainingMenuItems());
         
         return allMenuItems.filter(Boolean) as vscode.QuickPickItem[];
+    }
+
+    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
+        const label = selected.label;
+
+        if (await this.handleActionsMenuItems(label)) return
+        if (await this.handleEntitiesMenuItems(label)) return
+        if (await this.handleHelpMenuItems(label)) return
+        if (await this.handleTrainingMenuItems(label)) return
+        // handleMaintenanceMenuItems should be last as it contains the default case for processing enable/disable
+        await this.handleMaintenanceMenuItems(label, currentLanguage, languageSettings);
+
+        this.app.statusbar.updateStatusBarText();
     }
 
     private getActionsMenuItems = (): QuickPickItem[] => {
@@ -183,8 +205,9 @@ export class Menu {
         return menuItems;
     }
 
-    handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
-        switch (selected.label) {
+    private async handleActionsMenuItems(label: string): Promise<boolean> {
+        let isHandled = true;
+        switch (label) {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv):
                 await this.app.envService.selectEnv(this.app.configuration.envs_list, true);
                 break;
@@ -194,45 +217,29 @@ export class Menu {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedEnv):
                 this.app.envService.showCurrentEnv();
                 break;
-             case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAI) + " (Ctrl+;)":
-                this.app.askAi.showChatWithAi(false, context);
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscode):
-                const helpAgent = this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp);
-                if (helpAgent) {
-                    await this.app.agentService.selectAgent(helpAgent);
-                }
-                this.app.llamaWebviewProvider.showAgentView();
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgent) + " (Ctrl+Shif+A)":
-                await this.app.llamaWebviewProvider.showAgentView();
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIWithProjectContext) + " (Ctrl+Shift+;)":
-                if (this.app.configuration.rag_enabled){
-                    this.app.askAi.showChatWithAi(true, context)
-                } else {
-                    vscode.window.showInformationMessage("RAG is not enabled. Please enable it from llama-vscode before using this feature.")
-                }
-                break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.showSelectedModels):
                 this.app.envService.showCurrentEnv();
                 break;
+            case (this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgent) ?? "") + " (Ctrl+Shif+A)":
+                await this.app.llamaWebviewProvider.showAgentView();
+                break;
+            case (this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAI) ?? "") + " (Ctrl+;)":
+                this.app.askAi.showChatWithAi(false, undefined as any);
+                break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner):
                 vscode.commands.executeCommand('extension.showLlamaWebview');
-                this.app.llamaWebviewProvider.setView("airunner")
+                this.app.llamaWebviewProvider.setView("airunner");
                 break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.completionModels) ?? "":
-                await this.app.modelService.processModelActions(ModelType.Completion);
+            default:
+                isHandled = false;
                 break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatModels) ?? "":
-                await this.app.modelService.processModelActions(ModelType.Chat);
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.embeddingsModels) ?? "":
-                await this.app.modelService.processModelActions(ModelType.Embeddings);
-                break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.toolsModels) ?? "":
-                await this.app.modelService.processModelActions(ModelType.Tools);
-                break;
+        }
+        return isHandled;
+    }
+
+    private async handleEntitiesMenuItems(label: string): Promise<boolean> {
+        let isHandled = true;
+        switch (label) {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.envs) ?? "":
                 let envsActions: vscode.QuickPickItem[] = this.app.envService.getActions();
                 let envSelected = await vscode.window.showQuickPick(envsActions);
@@ -253,9 +260,54 @@ export class Menu {
                 let chatSelected = await vscode.window.showQuickPick(chatsActions);
                 if (chatSelected) this.app.chatService.processChatActions(chatSelected);
                 break;
-            case "$(gear) " +  this.app.configuration.getUiText(UI_TEXT_KEYS.editSettings):
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.apiKeys):
+                let apiKeysActions: vscode.QuickPickItem[] = this.app.apiKeyService.getApiKeyActions();
+                let apiKeyActionSelected = await vscode.window.showQuickPick(apiKeysActions);
+                if (apiKeyActionSelected) this.app.apiKeyService.processApiKeyActions(apiKeyActionSelected);
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.completionModels) ?? "":
+                await this.app.modelService.processModelActions(ModelType.Completion);
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatModels) ?? "":
+                await this.app.modelService.processModelActions(ModelType.Chat);
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.embeddingsModels) ?? "":
+                await this.app.modelService.processModelActions(ModelType.Embeddings);
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.toolsModels) ?? "":
+                await this.app.modelService.processModelActions(ModelType.Tools);
+                break;
+            default:
+                isHandled = false;
+                break;
+        }
+        return isHandled;
+    }
+
+    private async handleMaintenanceMenuItems(label: string, currentLanguage: string | undefined, languageSettings: Record<string, boolean>): Promise<void> {
+        switch (label) {
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.maintenance):
+                // This is a separator item, no action needed
+                break;
+            case "Install/upgrade llama.cpp":
+                await this.installLlamacpp();
+                break;
+            case `${this.app.configuration.enabled ? this.app.configuration.getUiText(UI_TEXT_KEYS.disable) + " " + this.app.configuration.getUiText(UI_TEXT_KEYS.allCompletions) : this.app.configuration.getUiText(UI_TEXT_KEYS.enable)+ " " + this.app.configuration.getUiText(UI_TEXT_KEYS.allCompletions)}`:
+                await this.app.configuration.updateConfigValue('enabled', !this.app.configuration.enabled);
+                break;
+            case "$(gear) " + this.app.configuration.getUiText(UI_TEXT_KEYS.editSettings):
                 await vscode.commands.executeCommand('workbench.action.openSettings', 'llama-vscode');
                 break;
+            default:
+                await this.handleCompletionToggle(label, currentLanguage, languageSettings);
+                await this.handleRagToggle(label, currentLanguage, languageSettings);
+                break;
+        }
+    }
+
+    private async handleTrainingMenuItems(label: string): Promise<boolean> {
+        let isHandled = true;
+        switch (label) {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.startTrainingCompletionModel):
                 await this.app.llamaServer.killTrainCmd();
                 await this.app.llamaServer.shellTrainCmd(this.app.modelService.sanitizeCommand(this.app.configuration.launch_training_completion));
@@ -267,29 +319,41 @@ export class Menu {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.stopTraining):
                 await this.app.llamaServer.killTrainCmd();
                 break;
-            case this.app.configuration.getUiText(UI_TEXT_KEYS.apiKeys):
-                let apiKeysActions: vscode.QuickPickItem[] = this.app.apiKeyService.getApiKeyActions()
-                let apiKeyActionSelected = await vscode.window.showQuickPick(apiKeysActions);
-                if (apiKeyActionSelected) this.app.apiKeyService.processApiKeyActions(apiKeyActionSelected);
-                break;            case this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModels):
-                Utils.showOkDialog("The automatically downloaded models (llama-server started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\<user_name>\\AppData\\Local\\llama.cpp. \nIn Mac or Linux the folder could be /users/<user_name>/Library/Caches/llama.cpp. \nYou could delete them from the folder.")
+            default:
+                isHandled = false;
+                break;
+        }
+        return isHandled;
+    }
+
+    private async handleHelpMenuItems(label: string): Promise<boolean> {
+        let isHandled = true;
+        switch (label) {
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.help):
+                // This is a separator item, no action needed
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.howToUseLlamaVscode):
                 this.showHowToUseLlamaVscode();
                 break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscode):
+                const helpAgent = this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp);
+                if (helpAgent) {
+                    await this.app.agentService.selectAgent(helpAgent);
+                }
+                this.app.llamaWebviewProvider.showAgentView();
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModels):
+                Utils.showOkDialog("The automatically downloaded models (llama-server started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\<user_name>\\AppData\\Local\\llama.cpp. \nIn Mac or Linux the folder could be /users/<user_name>/Library/Caches/llama.cpp. \nYou could delete them from the folder.");
+                break;
             case "$(book) " + this.app.configuration.getUiText(UI_TEXT_KEYS.viewDocumentation):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/wiki'));
                 break;
-            case "Install/upgrade llama.cpp":
-                await this.installLlamacpp();
-                break;
             default:
-                await this.handleCompletionToggle(selected.label, currentLanguage, languageSettings);
-                await this.handleRagToggle(selected.label, currentLanguage, languageSettings);
+                isHandled = false;
                 break;
         }
-        this.app.statusbar.updateStatusBarText();
-    }  
+        return isHandled;
+    }
 
     public async installLlamacpp() {
         if (process.platform != 'darwin' && process.platform != 'win32') {
@@ -340,17 +404,5 @@ export class Menu {
         if (label.includes(this.app.configuration.getUiText(UI_TEXT_KEYS.rag)??"")) {
             await this.app.configuration.updateConfigValue('rag_enabled', !this.app.configuration.rag_enabled);
         } 
-    }
-
-    showMenu = async (context: vscode.ExtensionContext) => {
-        const currentLanguage = vscode.window.activeTextEditor?.document.languageId;
-        const isLanguageEnabled = currentLanguage ? this.app.configuration.isCompletionEnabled(undefined, currentLanguage) : true;
-
-        const items = this.app.menu.createMenuItems(currentLanguage, isLanguageEnabled);
-        const selected = await vscode.window.showQuickPick(items, { title: "Llama Menu" });
-
-        if (selected) {
-            await this.handleMenuSelection(selected, currentLanguage, this.app.configuration.languageSettings, context);
-        }
-    }                 
+    }                    
 }

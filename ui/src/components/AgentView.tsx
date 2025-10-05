@@ -216,6 +216,11 @@ const AgentView: React.FC<AgentViewProps> = ({
       });
       setInputText('');
       setCurrentState('AI is working...');
+    } else {
+      vscode.postMessage({
+        command: 'addContextProjectFile',
+        fileLongName: fileLongName
+      });
     }
     
     if (textareaRef.current) {
