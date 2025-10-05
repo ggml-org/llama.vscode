@@ -1946,7 +1946,6 @@
     "format": "prettier --write --ignore-path .gitignore '**/*'"
   },
   "dependencies": {
-    "@vscode/test-cli": "^0.0.11",
     "axios": "^1.1.2",
     "globby": "^14.1.0",
     "ignore": "^7.0.4",
@@ -1956,6 +1955,7 @@
     "simple-git": "^3.28.0"
   },
   "devDependencies": {
+    "@vscode/test-cli": "^0.0.11",
     "@babel/types": "^7.28.4",
     "@types/micromatch": "^4.0.9",
     "@types/mocha": "^10.0.10",

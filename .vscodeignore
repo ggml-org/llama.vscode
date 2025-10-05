@@ -1,15 +1,50 @@
+# Exclude VCS and workspace config
+.git/**
+.github/**
 .vscode/**
-.idea/**
-.vscode-test/**
+
+# Do not ship TypeScript sources or source maps
 src/**
-.gitignore
-.yarnrc
-vsc-extension-quickstart.md
-**/tsconfig.json
-**/eslint.config.mjs
 **/*.map
 **/*.ts
-**/.vscode-test.*
-ui/node_modules/**
-ui/src/**
-**/test
+**/*.tsx
+**/*.test.*
+**/*.spec.*
+
+# VS Code testing/coverage artifacts
+.vscode-test/**
+coverage/**
+
+# Build artifacts and local packages
+*.vsix
+.vsix/**
+
+# UI workspace: keep only built assets
+ui/**
+!ui/dist/**
+
+# Keep built extension output and resources
+!dist/**
+!resources/**
+!llama.png
+!README.md
+!LICENSE
+!package.json
+
+# Node modules: keep runtime code but drop heavy non-runtime extras
+node_modules/**/test/**
+node_modules/**/tests/**
+node_modules/**/__tests__/**
+node_modules/**/benchmark/**
+node_modules/**/benchmarks/**
+node_modules/**/example/**
+node_modules/**/examples/**
+node_modules/**/doc/**
+node_modules/**/docs/**
+node_modules/**/man/**
+node_modules/**/.github/**
+node_modules/**/.vscode/**
+
+# Logs and misc
+npm-debug.log*
+yarn-error.log*
