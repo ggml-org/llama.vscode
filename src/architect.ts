@@ -8,7 +8,7 @@ import {LlamaWebviewProvider} from './llama-webview-provider'
 import { Utils } from './utils';
 import { Env, LlmModel } from './types';
 import { env } from 'process';
-import { PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST } from './constants';
+import { PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, UiView } from './constants';
 
 export class Architect {
     private app: Application
@@ -398,7 +398,8 @@ export class Architect {
             'extension.showLlamaWebview',
             async () => {
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
-                this.app.llamaWebviewProvider.setView("agent")
+                if (this.app.isToolsModelSelected() || this.app.configuration.endpoint_tools) this.app.llamaWebviewProvider.setView(UiView.Agent)
+                else this.app.llamaWebviewProvider.setView(UiView.Environment)
                 const editor = vscode.window.activeTextEditor;
                 if (editor && editor.selection) {
                     let fileLongName = editor.document.fileName;

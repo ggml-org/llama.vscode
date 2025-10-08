@@ -321,7 +321,8 @@ const AgentView: React.FC<AgentViewProps> = ({
       {/* Modern Header */}
       <div className="header">
         <div className="header-content">
-          {!currentToolsModel.includes('No model selected') && (
+          // TODO Remove this check once you are sure it works fine without it
+          {!currentToolsModel.includes('No model selected...') && (
             <div className="header-left">
               <button
                 onClick={handleClearText}
@@ -365,7 +366,7 @@ const AgentView: React.FC<AgentViewProps> = ({
       </div>
 
               {/* Main Content */}
-        {!currentToolsModel.includes('No model selected') && (
+        {!currentToolsModel.includes('No model selected...') && (
           <div className="content" style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
            {/* Chat Display Area */}
            {/* Markdown Display Area */}

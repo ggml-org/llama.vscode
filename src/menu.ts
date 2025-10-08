@@ -1,7 +1,7 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
 import { Utils } from "./utils";
-import { ModelType, AGENT_NAME, UI_TEXT_KEYS } from "./constants";
+import { ModelType, AGENT_NAME, UI_TEXT_KEYS, UiView } from "./constants";
 
 export class Menu {
     private app: Application
@@ -228,7 +228,7 @@ export class Menu {
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner):
                 vscode.commands.executeCommand('extension.showLlamaWebview');
-                this.app.llamaWebviewProvider.setView("airunner");
+                this.app.llamaWebviewProvider.setView(UiView.AiRunner);
                 break;
             default:
                 isHandled = false;

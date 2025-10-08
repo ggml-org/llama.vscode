@@ -7,6 +7,7 @@ import pm from 'picomatch'
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
+import { Application } from "./application";
 
 
 interface BM25Stats {
@@ -865,4 +866,14 @@ export class Utils {
         }
         return items;
     } 
+
+    static suggestModelSelection = async (choiceMsg: string, yesMsg: string, noMsg: string, app: Application) => {
+        const shouldSelectModel = await Utils.showUserChoiceDialog(choiceMsg, "Select");
+        if (shouldSelectModel) {
+            app.llamaWebviewProvider.showEnvView();
+            vscode.window.showInformationMessage(yesMsg);
+        } else {
+            vscode.window.showErrorMessage(noMsg);
+        }
+    }
 }
