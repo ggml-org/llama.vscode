@@ -83,13 +83,6 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
-            "name": "DeepSeek V3.1 (free) 163,800 context (OpenRouter)",
-            "localStartCommand": "",
-            "endpoint": "https://openrouter.ai/api",
-            "aiModel": "deepseek/deepseek-chat-v3.1:free",
-            "isKeyRequired": true
-            },
-            {
               "name": "Z.AI: GLM 4.5 Air (free): GLM 4.5 Air - 128.000 context (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,

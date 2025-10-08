@@ -6,6 +6,13 @@ export enum ModelType {
   Tools = 'tools'
 }
 
+export enum UiView {
+  Agent = 'agent',
+  Environment = 'addenv',
+  Embeddings = 'embeddings',
+  AiRunner = 'airunner'
+}
+
 export enum Action {
   Select = 'select',
   AddLocal = 'addLocal',

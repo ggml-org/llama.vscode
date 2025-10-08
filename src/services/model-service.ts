@@ -408,14 +408,13 @@ export class ModelService {
             targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            const shouldSelectEnv = await Utils.showUserChoiceDialog("Select a tools model or an env with tools model to use Llama Agent.", "Select");
-            if (shouldSelectEnv) {
-                // await this.app.menu.selectEnvFromList(this.app.configuration.envs_list.filter(item => item.tools != undefined && item.tools.name));
-                this.app.llamaWebviewProvider.showEnvView()
-                vscode.window.showInformationMessage("After the tools model is loaded, try again opening llama agent.");
-            } else {
-                vscode.window.showErrorMessage("No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools. ");
-            }
+            await Utils.suggestModelSelection(
+                "Select a tools model or an env with tools model to use Llama Agent.",
+                "After the tools model is loaded, try again opening llama agent.",
+                "No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools.",
+                this.app
+            );
+
             return false;
         }
         else return true;

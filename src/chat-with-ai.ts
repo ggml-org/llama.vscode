@@ -56,21 +56,19 @@ export class ChatWithAi {
                         : this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
 
         let chatModel = this.app.getChatModel();
-        if (!this.app.isChatModelSelected()) chatModel = this.app.getToolsModel();    
+        if (!this.app.isChatModelSelected() && !this.app.configuration.endpoint_chat) chatModel = this.app.getToolsModel();    
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model run by llama-server or an env with chat or tools model run on llama-server to chat with AI.","Select")
-            if (shouldSelectModel){
-                this.app.llamaWebviewProvider.showEnvView();
-                vscode.window.showInformationMessage("After the chat/tools model is loaded, try again opening Chat with AI.")
-                return;
-            } else {
-                vscode.window.showErrorMessage("No endpoint for the chat or tools model. Select a chat or tools model run on llama-server or an env with chat or tools model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
-                return
-            }
+            await Utils.suggestModelSelection(
+                "Select a chat or tools model run by llama-server or an env with chat or tools model run on llama-server to chat with AI.",
+                "After the chat/tools model is loaded, try again opening Chat with AI.",
+                "No endpoint for the chat or tools model. Select a chat or tools model run on llama-server or an env with chat or tools model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ",
+                this.app
+            );
+            return
         }
 
         if (withContext){

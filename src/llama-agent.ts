@@ -145,8 +145,8 @@ export class LlamaAgent {
             this.logText += "***" + query.replace("\n", "  \n") + "***" + "\n\n"; // Make sure markdown shows new lines correctly
 
             
-            if (!this.app.isToolsModelSelected()) {
-                vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or orchestra with tools model) if you want to to use Llama Agent.")
+            if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
+                vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.")
                 this.app.llamaWebviewProvider.setState("AI is stopped")
                 return "Tools model is not selected"
             }

@@ -36,15 +36,13 @@ export class TextEditor {
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!chatUrl) { 
-            const shouldSelectModel = await Utils.showUserChoiceDialog("Select a chat or tools model or an env with chat or tools model to edit code with AI.","Select")
-            if (shouldSelectModel){
-                this.app.llamaWebviewProvider.showEnvView();
-                vscode.window.showInformationMessage("After the chat model is loaded, try again using Edit with AI.")
-                return;
-            } else {
-                vscode.window.showErrorMessage("No endpoint for the chat model. Select an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ")
-                return
-            }
+            await Utils.suggestModelSelection(
+                "Select a chat or tools model or an env with chat or tools model to edit code with AI.",
+                "After the chat model is loaded, try again using Edit with AI.",
+                "No endpoint for the chat model. Select an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat.",
+                this.app
+            );
+            return
         }
 
         if (editor.selection.isEmpty) {

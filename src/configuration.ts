@@ -346,7 +346,7 @@ export class Configuration {
             };
         }
 
-        this.axiosRequestConfigTools = {};
+        this.axiosRequestConfigTools = {};  
         if (this.api_key_tools != undefined && this.api_key_tools.trim() != "") {
             this.axiosRequestConfigTools = {
                 headers: {

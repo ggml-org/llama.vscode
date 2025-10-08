@@ -743,27 +743,31 @@ export class LlamaServer {
 
     private getChatModelProperties() {
         let selectedModel: LlmModel = this.app.getChatModel();
-        if (!this.app.isChatModelSelected()) selectedModel = this.app.getToolsModel();
-        
-        let model = this.app.configuration.ai_model;
-        if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
+        if (!this.app.isChatModelSelected() && !this.app.configuration.endpoint_chat) selectedModel = this.app.getToolsModel();
 
         let endpoint = this.app.configuration.endpoint_chat;
-        if (!endpoint) endpoint = this.app.configuration.endpoint_tools;
-        if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) endpoint = selectedModel.endpoint;
-
+        let model = this.app.configuration.ai_model;
         let requestConfig = this.app.configuration.axiosRequestConfigChat;
-        if (selectedModel?.isKeyRequired !== undefined && selectedModel.isKeyRequired) {
-            const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
-            if (apiKey) {
-                requestConfig = {
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                    },
-                };
+        if (!endpoint) { 
+            endpoint = this.app.configuration.endpoint_tools;
+            requestConfig = this.app.configuration.axiosRequestConfigTools;
+        }
+        if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) {
+            endpoint = selectedModel.endpoint;
+            if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
+            if (selectedModel?.isKeyRequired !== undefined && selectedModel.isKeyRequired) {
+                const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
+                if (apiKey) {
+                    requestConfig = {
+                        headers: {
+                            Authorization: `Bearer ${apiKey}`,
+                            "Content-Type": "application/json",
+                        },
+                    };
+                }
             }
         }
+
         return { endpoint, model, requestConfig };
     }
 

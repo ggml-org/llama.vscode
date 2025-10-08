@@ -56,7 +56,7 @@ export class ChatContext {
         if ((this.app.getEmbeddingsModel().endpoint && this.app.getEmbeddingsModel().endpoint?.trim() != "") 
             || this.app.configuration.endpoint_embeddings.trim() != ""){
             this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with embeddings..."))
-            topContextChunks = await this.cosineSimilarityRank(query, topChunksBm25, this.app.configuration.rag_max_embedding_filter_chunks);
+            topContextChunks = await this.cosineSimilarityRank(prompt, topChunksBm25, this.app.configuration.rag_max_embedding_filter_chunks);
         } else {
             vscode.window.showInformationMessage('No embeddings server. Filtering chunks with embeddings will be skipped.');
             topContextChunks = topChunksBm25.slice(0, 5);
