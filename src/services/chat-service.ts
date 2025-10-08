@@ -23,7 +23,7 @@ export class ChatService {
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let futureChat: Chat;
-            futureChat = chatsList[parseInt(chat.label.split(". ")[0], 10) - 1]
+            futureChat = chatsList[parseInt(chat.label.split(". ")[0], 10) - 1] 
             if(!futureChat){
                 vscode.window.showWarningMessage("No chat selected.");
                 return;
