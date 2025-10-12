@@ -84,6 +84,18 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'deselectCompletionModel':
                         await this.app.modelService.deselectAndClearModel(ModelType.Completion);
                         break;
+                    case 'moreCompletionModel':
+                        await this.app.modelService.processModelActions(ModelType.Completion);
+                        break;
+                    case 'moreChatModel':
+                        await this.app.modelService.processModelActions(ModelType.Chat);
+                        break;
+                    case 'moreEmbeddingsModel':
+                        await this.app.modelService.processModelActions(ModelType.Embeddings);
+                        break;
+                    case 'moreToolsModel':
+                        await this.app.modelService.processModelActions(ModelType.Tools);
+                        break;
                     case 'deselectChatModel':
                         await this.app.modelService.deselectAndClearModel(ModelType.Chat);
                         break;

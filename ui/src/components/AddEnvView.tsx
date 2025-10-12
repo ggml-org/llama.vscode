@@ -96,6 +96,30 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
       command: 'deselectCompletionModel'
     });
   };
+  
+  const handleMoreCompletionModel = () => {
+    vscode.postMessage({
+      command: 'moreCompletionModel'
+    });
+  };
+
+  const handleMoreChatModel = () => {
+    vscode.postMessage({
+      command: 'moreChatModel'
+    });
+  };
+
+  const handleMoreEmbeddingsModel = () => {
+    vscode.postMessage({
+      command: 'moreEmbeddingsModel'
+    });
+  };
+
+  const handleMoreToolsModel = () => {
+    vscode.postMessage({
+      command: 'moreToolsModel'
+    });
+  };
 
   const handleDeselectChatModel = () => {
     vscode.postMessage({
@@ -211,6 +235,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentCompletionModel}</span>
+            {currentCompletionModel === noModelSelected  && (
+            <button
+              onClick={handleMoreCompletionModel}
+              title={`Add/Delete/View/Export/Import Completion Model`}
+              className="modern-btn secondary"
+            >
+              More
+            </button>
+            )}
             {currentCompletionModel != noModelSelected  && (
               <button
               onClick={handleShowCompletionModel}
@@ -244,6 +277,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentChatModel}</span>
+            {currentChatModel === noModelSelected  && (
+            <button
+              onClick={handleMoreChatModel}
+              title={`Add/Delete/View/Export/Import Chat Model`}
+              className="modern-btn secondary"
+            >
+              More
+            </button>
+            )}
             {currentChatModel != noModelSelected  && (
               <button
               onClick={handleShowChatModel}
@@ -277,6 +319,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentEmbeddingsModel}</span>
+            {currentEmbeddingsModel === noModelSelected  && (
+            <button
+              onClick={handleMoreEmbeddingsModel}
+              title={`Add/Delete/View/Export/Import Embeddings Model`}
+              className="modern-btn secondary"
+            >
+              More
+            </button>
+            )}
             {currentEmbeddingsModel != noModelSelected  && (
               <button
               onClick={handleShowEmbsModel}
@@ -311,6 +362,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentToolsModel}</span>
+            {currentToolsModel === noModelSelected  && (
+            <button
+              onClick={handleMoreToolsModel}
+              title={`Add/Delete/View/Export/Import Tools Model`}
+              className="modern-btn secondary"
+            >
+              More
+            </button>
+            )}
             {currentToolsModel != noModelSelected  && (
               <button
               onClick={handleShowToolsModel}

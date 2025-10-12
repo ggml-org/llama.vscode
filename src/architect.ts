@@ -454,7 +454,7 @@ export class Architect {
         if (result.includes("command not found") || result.includes("is not recognized")) {
             let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension.";
             if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted.";
-            let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm");
+            let [shouldInstall, shouldStopAsking] = await Utils.showYesNoNodontAskDialog(questionInstall, "Confirm");
             if (shouldInstall) {
                 await this.app.menu.installLlamacpp();
                 this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
@@ -464,8 +464,6 @@ export class Architect {
                     }, 2000);
                 }
             } else {
-                let questionStopAskingLlamaCppInstall = "Do you prefer to stop getting a suggestion to install llama.cpp?"
-                let shouldStopAsking = await Utils.showUserChoiceDialog(questionStopAskingLlamaCppInstall, "Yes");
                 if (shouldStopAsking) this.app.configuration.updateConfigValue("ask_install_llamacpp", false);
             }
         } else {
@@ -473,7 +471,7 @@ export class Architect {
             let lastUpgradeDateStr = this.app.persistence.getGlobalValue("last_llama_cpp");
             if (!lastUpgradeDateStr || Utils.isTimeToUpgrade(new Date(lastUpgradeDateStr), new Date(), this.app.configuration.ask_upgrade_llamacpp_hours)) {
                 let questionInstall = "Do you want to upgrade llama.cpp (used for running local models)? (recommended).";
-                let shouldInstall = await Utils.showUserChoiceDialog(questionInstall, "Confirm"); //yes, don't ask again
+                let [shouldInstall, shouldStopAsking] = await Utils.showYesNoNodontAskDialog(questionInstall, "Confirm");
                 if (shouldInstall) {
                     await this.app.menu.installLlamacpp();
                     this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
@@ -492,8 +490,6 @@ export class Architect {
                         this.app.configuration.updateConfigValue(SETTING_NAME_FOR_LIST.ENVS, envs);
                     }
                 } else {
-                    let questionStopAskingLlamaCppUpgrade = "Do you prefer to stop getting a suggestion to upgrade llama.cpp?"
-                    let shouldStopAsking = await Utils.showUserChoiceDialog(questionStopAskingLlamaCppUpgrade, "Yes");
                     if (shouldStopAsking){
                         if (!lastUpgradeDateStr) this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
                         this.app.configuration.updateConfigValue("ask_upgrade_llamacpp_hours", 72000); // more than 8 years

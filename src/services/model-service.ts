@@ -19,7 +19,8 @@ export class ModelService {
         this.strategies = {
             local: this.app.localModelStrategy,
             external: this.app.externalModelStrategy,
-            hf: this.app.hfModelStrategy
+            hf: this.app.hfModelStrategy,
+            oaiComp: this.app.openAiCompModelStrategy
         };
     }
 
@@ -31,6 +32,7 @@ export class ModelService {
                 UI_TEXT_KEYS.addLocalCompletionModel,
                 UI_TEXT_KEYS.addExternalCompletionModel,
                 UI_TEXT_KEYS.addCompletionModelFromHuggingface,
+                UI_TEXT_KEYS.addCompletionOpenAiCompModel,
                 UI_TEXT_KEYS.viewCompletionModelDetails,
                 UI_TEXT_KEYS.deleteCompletionModel,
                 UI_TEXT_KEYS.exportCompletionModel,
@@ -42,6 +44,7 @@ export class ModelService {
                 UI_TEXT_KEYS.addLocalChatModel,
                 UI_TEXT_KEYS.addExternalChatModel,
                 UI_TEXT_KEYS.addChatModelFromHuggingface,
+                UI_TEXT_KEYS.addChatOpenAiCompModel,
                 UI_TEXT_KEYS.viewChatModelDetails,
                 UI_TEXT_KEYS.deleteChatModel,
                 UI_TEXT_KEYS.exportChatModel,
@@ -53,6 +56,7 @@ export class ModelService {
                 UI_TEXT_KEYS.addLocalEmbeddingsModel,
                 UI_TEXT_KEYS.addExternalEmbeddingsModel,
                 UI_TEXT_KEYS.addEmbeddingsModelFromHuggingface,
+                UI_TEXT_KEYS.addEmbeddingsOpenAiCompModel,
                 UI_TEXT_KEYS.viewEmbeddingsModelDetails,
                 UI_TEXT_KEYS.deleteEmbeddingsModel,
                 UI_TEXT_KEYS.exportEmbeddingsModel,
@@ -64,6 +68,7 @@ export class ModelService {
                 UI_TEXT_KEYS.addLocalToolsModel,
                 UI_TEXT_KEYS.addExternalToolsModel,
                 UI_TEXT_KEYS.addToolsModelFromHuggingface,
+                UI_TEXT_KEYS.addToolsOpenAiCompModel,
                 UI_TEXT_KEYS.viewToolsModelDetails,
                 UI_TEXT_KEYS.deleteToolsModel,
                 UI_TEXT_KEYS.exportToolsModel,
@@ -107,6 +112,9 @@ export class ModelService {
             case 'addHf':
                 await this.addModel(type, 'hf');
                 break;
+            case 'addOaiComp':
+                await this.addModel(type, 'oaiComp');
+                break;
             case 'delete':
                 await this.deleteModel(details.modelsList, details.modelsListSettingName);
                 break;
@@ -130,6 +138,7 @@ export class ModelService {
             addLocal: this.app.configuration.getUiText(UI_TEXT_KEYS[`addLocal${typeStr}Model` as keyof typeof UI_TEXT_KEYS]) ?? "",
             addExternal: this.app.configuration.getUiText(UI_TEXT_KEYS[`addExternal${typeStr}Model` as keyof typeof UI_TEXT_KEYS]) ?? "",
             addHf: this.app.configuration.getUiText(UI_TEXT_KEYS[`add${typeStr}ModelFromHuggingface` as keyof typeof UI_TEXT_KEYS]) ?? "",
+            addOaiComp: this.app.configuration.getUiText(UI_TEXT_KEYS[`add${typeStr}OpenAiCompModel` as keyof typeof UI_TEXT_KEYS]) ?? "",
             view: this.app.configuration.getUiText(UI_TEXT_KEYS[`view${typeStr}ModelDetails` as keyof typeof UI_TEXT_KEYS]) ?? "",
             delete: this.app.configuration.getUiText(UI_TEXT_KEYS[`delete${typeStr}Model` as keyof typeof UI_TEXT_KEYS]) ?? "",
             export: this.app.configuration.getUiText(UI_TEXT_KEYS[`export${typeStr}Model` as keyof typeof UI_TEXT_KEYS]) ?? "",
@@ -141,6 +150,7 @@ export class ModelService {
         const details = this.getTypeDetails(type);
         let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
         let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", true);
+        modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", true, modelsList.length));
         modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", true, modelsList.length));
 
         const launchToEndpoint = new Map([
@@ -188,7 +198,7 @@ export class ModelService {
         await this.app.persistence.setValue(this.getSelectedProp(type), model);
     }
 
-    public async addModel(type: ModelType, kind: 'local' | 'external' | 'hf'): Promise<void> {
+    public async addModel(type: ModelType, kind: 'local' | 'external' | 'hf' | 'oaiComp'): Promise<void> {
         const details = this.getTypeDetails(type);
         const strategy = this.strategies[kind];
         if (strategy) {
