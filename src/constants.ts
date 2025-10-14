@@ -175,6 +175,8 @@ export const UI_TEXT_KEYS = {
   selectStartAgent: "Select/start agent...",
   deselectStopAgent: "Deselect/stop agent...",
   addAgent: "Add agent...",
+  editAgent: "Edit agent...",
+  copyAgent: "Copy agent...",
   viewAgentDetails: "View agent details...",
   deleteAgent: "Delete agent...",
   exportAgent: "Export agent...",

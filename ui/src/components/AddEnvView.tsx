@@ -121,6 +121,12 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
     });
   };
 
+  const handleMoreAgent = () => {
+    vscode.postMessage({
+      command: 'moreAgent'
+    });
+  };
+
   const handleDeselectChatModel = () => {
     vscode.postMessage({
       command: 'deselectChatModel'
@@ -169,9 +175,25 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
     });
   };
 
-  const handleShowAgentModel = () => {
+  const handleShowAgent = () => {
     vscode.postMessage({
       command: 'showAgentDetails'
+    });
+  };
+
+  const handleEditAgent = () => {
+    vscode.postMessage({
+      command: 'showAgentEditor'
+    });
+    
+    vscode.postMessage({
+      command: 'editSelectedAgent',
+      agent: currentAgent,
+    });
+
+    vscode.postMessage({
+      command: 'refreshEditedAgentTool',
+      agent: currentAgent,
     });
   };
 
@@ -213,6 +235,7 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
 
   return (
     <div>
+      <h1 style={{ margin: '0 0 20px 0', fontSize: '24px', fontWeight: 'bold' }}>Environment</h1>
           <div className="llm-buttons">
           <div className="single-button-frame">
             <div className="frame-label">Compl Model</div>
@@ -404,13 +427,31 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentAgent}</span>
+            {currentAgent === noAgentSelected  && (
+            <button
+              onClick={handleMoreAgent}
+              title={`Add/Delete/View/Export/Import Agentl`}
+              className="modern-btn secondary"
+            >
+              More
+            </button>
+            )}
             {currentAgent != noAgentSelected  && (
               <button
-              onClick={handleShowAgentModel}
+              onClick={handleShowAgent}
               title={`Show Agent Details`}
               className="modern-btn secondary"
             >
               ...
+            </button>
+            )}
+            {currentAgent != noAgentSelected  && (
+              <button
+              onClick={handleEditAgent}
+              title={`Show Agent Details`}
+              className="modern-btn secondary"
+            >
+              Edit
             </button>
             )}
           </div>

@@ -66,6 +66,16 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'configureTools':
                         await this.app.tools.selectTools()
                         break;
+                    case 'configureEditTools':
+                        const selectedTools = await this.app.agentService.selectTools(message.tools)
+                        this.app.agentService.resetEditedAgentTools();
+                        selectedTools.map(toolName => this.app.agentService.addEditedAgentTools(toolName,""))
+                        let selAgentTools = this.app.agentService.getEditedAgentTools();
+                        webviewView.webview.postMessage({
+                            command: 'updateAgentTools',
+                            files: Array.from(selAgentTools.entries())
+                        });
+                        break;
                     case 'stopSession':
                         this.app.llamaAgent.stopAgent();
                         break;
@@ -96,6 +106,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'moreToolsModel':
                         await this.app.modelService.processModelActions(ModelType.Tools);
                         break;
+                    case 'moreAgent':
+                        await this.app.agentService.processActions();
+                        break;
                     case 'deselectChatModel':
                         await this.app.modelService.deselectAndClearModel(ModelType.Chat);
                         break;
@@ -107,6 +120,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'deselectAgent':
                         await this.app.agentService.deselectAgent();
+                        break;
+                    case 'selectEditAgent':
+                        await this.app.agentService.editAgent(this.app.configuration.agents_list)
                         break;
                     case 'showCompletionModel':
                         this.app.modelService.showModelDetails(this.app.getComplModel());
@@ -149,6 +165,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'showAgentView':
                         this.showAgentView();
                         break;
+                    case 'showAgentEditor':
+                        this.showAgentEditor();
+                        break;
                     case 'showSelectedModels':
                         await this.app.envService.showCurrentEnv();    
                         break;
@@ -175,6 +194,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                             files: agentCommands
                         });
                         break;
+                    case 'getAgentTools':
+                        let agentTools = this.app.tools.getTools().map(tool => tool.function.name +  " | " + tool.function.description)
+                        webviewView.webview.postMessage({
+                            command: 'updateFileList',
+                            files: agentTools
+                        });
+                        break;
                     case 'addContextProjectFile':
                         let fileNames = message.fileLongName.split("|");
                         this.app.llamaAgent.addContextProjectFile(fileNames[1].trim(),fileNames[0].trim());
@@ -191,6 +217,62 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                             command: 'updateContextFiles',
                             files: Array.from(updatedContextFiles.entries())
                         });
+                        break;
+                    case 'addEditedAgentTool':
+                        let toolsNames = message.fileLongName.split("|");
+                        this.app.agentService.addEditedAgentTools(toolsNames[0].trim(),toolsNames[1].trim());
+                        const editedAgentTools = this.app.agentService.getEditedAgentTools();
+                        webviewView.webview.postMessage({
+                            command: 'updateAgentTools',
+                            files: Array.from(editedAgentTools.entries())
+                        });
+                        break;
+                    case 'removeEditedAgentTool':
+                        this.app.agentService.removeEditedAgentTools(message.fileLongName);
+                        const updatedTools = this.app.agentService.getEditedAgentTools();
+                        webviewView.webview.postMessage({
+                            command: 'updateAgentTools',
+                            files: Array.from(updatedTools.entries())
+                        });
+                        break;
+                    case 'saveEditAgent':
+                        if (!message.name) {
+                            vscode.window.showErrorMessage("Agent should have a name!")
+                            return;
+                        }
+                        let agentToSave: Agent = {
+                            name: message.name, 
+                            description: message.description,
+                            systemInstruction: message.systemInstruction.split(/\r?\n/),
+                            tools: message.tools
+                        } 
+                        await this.app.agentService.addUpdateAgent(agentToSave)
+                        break;
+                    case 'refreshEditedAgentTool':
+                        const refreshedTols = this.app.agentService.getEditedAgentTools();
+                        webviewView.webview.postMessage({
+                            command: 'updateAgentTools',
+                            files: Array.from(refreshedTols.entries())
+                        });
+                        break;
+                    case 'editSelectedAgent':
+                        const selectedAgent = this.app.getAgent()
+                        this.addEditAgent(selectedAgent);
+                        break
+                    case 'addEditAgent':
+                        const newAgent: Agent = {
+                            name: message.name, 
+                            description: message.description,
+                            systemInstruction: message.systemInstruction, 
+                            tools: message.tools
+                        }
+                        this.addEditAgent(newAgent);
+                        break
+                    case 'copyAsNewAgent':
+                        this.app.agentService.copyAgent()
+                        break;
+                    case 'deleteAgent':
+                        this.app.agentService.deleteAgent()
                         break;
                     case 'openContextFile':
                         const uri = vscode.Uri.file(message.fileLongName);
@@ -235,8 +317,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         }, 1000);
     }
 
+    public addEditAgent(agent: Agent) {
+        this.app.agentService.resetEditedAgentTools();
+        agent.tools?.map(tool => this.app.agentService.addEditedAgentTools(tool, ""));
+        const edAgtools = this.app.agentService.getEditedAgentTools();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'loadAgent',
+            name: agent?.name,
+            description: agent?.description,
+            systemInstruction: agent?.systemInstruction.join("\n"),
+            tools: Array.from(edAgtools.entries())
+        });
+    }
+
     private updateSettingInEnvView(key: string, settingValue: any) {
-         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'vscodeSettingValue',
             key: key,
             value: settingValue
@@ -343,6 +438,11 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public showEnvView() {
         vscode.commands.executeCommand('extension.showLlamaWebview');
         setTimeout(() => this.setView("addenv"), 500);
+    } 
+
+    public showAgentEditor() {
+        vscode.commands.executeCommand('extension.showLlamaWebview');
+        setTimeout(() => this.setView("agenteditor"), 400);
     } 
 
     public updateLlamaView() {

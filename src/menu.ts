@@ -246,9 +246,7 @@ export class Menu {
                 if (envSelected) await this.app.envService.processActions(envSelected);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.agents) ?? "":
-                let agentsActions: vscode.QuickPickItem[] = this.app.agentService.getActions();
-                let actionSelected = await vscode.window.showQuickPick(agentsActions);
-                if (actionSelected) await this.app.agentService.processActions(actionSelected);
+                await this.app.agentService.processActions();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.agentCommands) ?? "":
                 let agentCommandsActions: vscode.QuickPickItem[] = this.app.agentCommandService.getAgentCommandsActions();

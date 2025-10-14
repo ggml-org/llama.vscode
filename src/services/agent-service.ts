@@ -1,4 +1,3 @@
-
 import * as vscode from "vscode";
 import { QuickPickItem } from "vscode";
 import { Application } from "../application";
@@ -11,6 +10,7 @@ import { UI_TEXT_KEYS, PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, PREDEFINED_LISTS
 
 export class AgentService {
     private app: Application;
+    public editedAgentTools: Map<string,string> = new Map();
 
     constructor(app: Application) {
         this.app = app;
@@ -28,6 +28,12 @@ export class AgentService {
                 label: this.app.configuration.getUiText(UI_TEXT_KEYS.addAgent) ?? "",
             },
             {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.editAgent) ?? "",
+            },
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.copyAgent) ?? "",
+            },
+            {
                 label: this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentDetails) ?? ""
             },
             {
@@ -42,16 +48,25 @@ export class AgentService {
         ];
     }
 
-    async processActions(selected: vscode.QuickPickItem): Promise<void> {
-        switch (selected.label) {
+    async processActions(): Promise<void> {
+        let agentsActions: vscode.QuickPickItem[] = this.app.agentService.getActions();
+        let actionSelected = await vscode.window.showQuickPick(agentsActions);
+        if (!actionSelected) return
+        switch (actionSelected.label) {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartAgent):
                 await this.pickAndSelectAgent(this.app.configuration.agents_list);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.addAgent):
                 await this.addAgent(this.app.configuration.agents_list, SETTING_NAME_FOR_LIST.AGENTS);
                 break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.editAgent):
+                this.editAgent(this.app.configuration.agents_list);
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.copyAgent):
+                this.copyAgent();
+                break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteAgent):
-                await this.deleteAgent(this.app.configuration.agents_list, SETTING_NAME_FOR_LIST.AGENTS);
+                await this.deleteAgent();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.viewAgentDetails):
                 await this.viewAgent(this.app.configuration.agents_list);
@@ -120,70 +135,27 @@ export class AgentService {
     }
 
     async addAgent(agentsList: Agent[], settingName: string): Promise<void> {
-        let name = await Utils.getValidatedInput(
-            'name for your agent (required)',
-            (input) => input.trim() !== '',
-            5,
-            {
-                placeHolder: 'Enter a user friendly name for your agent (required)',
-                value: ''
-            }
-        );
-        if (name === undefined) {
-            vscode.window.showInformationMessage("Agent addition cancelled.");
-            return;
-        }
-        name = this.app.modelService.sanitizeInput(name);
+        this.app.llamaWebviewProvider.showAgentEditor();
+        this.app.llamaWebviewProvider.addEditAgent({name: "", description: "", systemInstruction: [], tools: []})
+    }
 
-        let description = await vscode.window.showInputBox({
-            placeHolder: 'description for the agent - what is the purpose, when to select etc. ',
-            prompt: 'Enter description for the agent.',
-            value: ''
-        });
-        description = this.app.modelService.sanitizeInput(description || '');
-
-        // Collect system instruction lines
-        let systemInstruction: string[] = [];
-        let line: string | undefined;
-        do {
-            line = await vscode.window.showInputBox({
-                placeHolder: 'Enter a line for system instruction (empty to finish)',
-                prompt: 'System instruction line',
-                value: ''
-            });
-            if (line && line.trim() !== '') {
-                systemInstruction.push(this.app.modelService.sanitizeInput(line));
-            }
-        } while (line && line.trim() !== '');
-
-        if (systemInstruction.length === 0) {
-            vscode.window.showWarningMessage("No system instruction provided. Agent may not function properly.");
-        }
-
-        // Select tools
+    selectTools = async (currentTools: string[]): Promise<string[]> => {
         const availableTools = Array.from(this.app.tools.toolsFunc.keys()).map(tool => ({
             label: tool,
-            picked: true // default all
+            picked: currentTools.includes(tool)
         }));
         const selectedToolsItems = await vscode.window.showQuickPick(availableTools, {
             canPickMany: true,
-            placeHolder: 'Select tools for the agent (Ctrl+click to select multiple)'
+            placeHolder: 'Select tools for the agent'
         });
         const tools = selectedToolsItems ? selectedToolsItems.map(item => item.label) : Array.from(this.app.tools.toolsFunc.keys());
 
-        let newAgent: Agent = {
-            name: name,
-            description: description,
-            systemInstruction: systemInstruction,
-            tools: tools
-        };
-
-        await this.persistAgent(newAgent, agentsList, settingName);
+        return tools;
     }
 
-    private async persistAgent(newAgent: Agent, agentsList: Agent[], settingName: string): Promise<void> {
+    private async persistNewAgent(newAgent: Agent, agentsList: Agent[], settingName: string, confirmMessage: string): Promise<void> {
         let agentDetails = this.getAgentDetailsAsString(newAgent);
-        const shouldAddAgent = await Utils.confirmAction("A new agent will be added. Do you want to add the agent?", agentDetails);
+        const shouldAddAgent = await Utils.confirmAction(confirmMessage, agentDetails);
 
         if (shouldAddAgent) {
             agentsList.push(newAgent);
@@ -192,7 +164,40 @@ export class AgentService {
         }
     }
 
-    async deleteAgent(agentsList: Agent[], settingName: string): Promise<void> {
+    private async persistEditedAgent(editedAgent: Agent, agentsList: Agent[], settingName: string): Promise<void> {
+        let agentDetails = this.getAgentDetailsAsString(editedAgent);
+        const shouldAddAgent = await Utils.confirmAction("Do you want to update agent?", agentDetails);
+        
+        if (shouldAddAgent) {
+            let agentExisting = agentsList.find(agn => agn.name.trim() == editedAgent.name.trim())
+            if (agentExisting){
+                agentExisting.description = editedAgent.description
+                agentExisting.systemInstruction = editedAgent.systemInstruction
+                agentExisting.tools = editedAgent.tools
+                this.app.configuration.updateConfigValue(settingName, agentsList);
+                vscode.window.showInformationMessage("The agent is updated: " + agentExisting.name);
+            } else {
+                vscode.window.showWarningMessage("The agent to update is not found!")
+            }
+        }
+    }
+
+    addUpdateAgent = async (agentToAddUpdate: Agent) => {
+        let agentsList = this.app.configuration.agents_list;
+        if (agentsList.findIndex(agn => agn.name.trim() == agentToAddUpdate.name.trim()) == -1){
+            await this.persistNewAgent(
+                agentToAddUpdate, 
+                agentsList, 
+                SETTING_NAME_FOR_LIST.AGENTS,
+                "A new agent will be added. Do you want to add the agent?"
+            );
+        } else {
+            await this.persistEditedAgent(agentToAddUpdate, agentsList, SETTING_NAME_FOR_LIST.AGENTS)
+        }
+    }
+
+    async deleteAgent(): Promise<void> {
+        let agentsList: Agent[] = this.app.configuration.agents_list;
         const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
         const agentItem = await vscode.window.showQuickPick(agentsItems);
         if (agentItem) {
@@ -202,10 +207,64 @@ export class AgentService {
             );
             if (shouldDeleteAgent) {
                 agentsList.splice(agentIndex, 1);
-                this.app.configuration.updateConfigValue(settingName, agentsList);
+                this.app.configuration.updateConfigValue(SETTING_NAME_FOR_LIST.AGENTS, agentsList);
                 vscode.window.showInformationMessage("The agent is deleted.")
             }
         }
+    }
+
+    async editAgent(agentsList: Agent[]): Promise<void> {
+        const agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        const agentItem = await vscode.window.showQuickPick(agentsItems);
+        if (agentItem) {
+            let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
+            this.app.llamaWebviewProvider.showAgentEditor();
+            setTimeout(() => {
+                this.app.llamaWebviewProvider.addEditAgent(agentsList[agentIndex])
+            }, 500);
+            
+        }
+    }
+
+    async copyAgent(): Promise<void> {
+        let agentsList = this.app.configuration.agents_list
+        let allAgents = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[]);
+        let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
+        let agentItem = await vscode.window.showQuickPick(agentsItems);
+        if (agentItem) {
+            let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
+            this.app.llamaWebviewProvider.showAgentEditor();
+            const selectedAgent = allAgents[agentIndex];
+            const newAgent: Agent = {
+                name: "Copy of " + agentItem.label,
+                description: selectedAgent.description,
+                systemInstruction: selectedAgent.systemInstruction,
+                tools: selectedAgent.tools
+            }
+            setTimeout(() => {
+                this.app.llamaWebviewProvider.addEditAgent(newAgent)
+            }, 500);
+        }
+        
+        // let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
+        // agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
+        // const agentItem = await vscode.window.showQuickPick(agentsItems);
+        // if (agentItem) {
+        //     let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
+        //     this.app.llamaWebviewProvider.showAgentEditor();
+        //     const selectedAgent = agentsList[agentIndex];
+        //     const newAgent: Agent = {
+        //         name: "Copyt of " + selectedAgent.name,
+        //         description: selectedAgent.description,
+        //         systemInstruction: selectedAgent.systemInstruction,
+        //         tools: selectedAgent.tools
+        //     }
+        //     setTimeout(() => {
+        //         this.app.llamaWebviewProvider.addEditAgent(newAgent)
+        //     }, 500);
+            
+       // }
     }
 
     async viewAgent(agentsList: Agent[]): Promise<void> {
@@ -277,7 +336,7 @@ export class AgentService {
         // Sanitize imported agent
         this.sanitizeAgent(newAgent);
 
-        await this.persistAgent(newAgent, agentsList, settingName);
+        await this.persistNewAgent(newAgent, agentsList, settingName,"A new agent will be added. Do you want to add the agent?");
     }
 
     private sanitizeAgent(agent: Agent): void {
@@ -308,5 +367,22 @@ export class AgentService {
             });
         }
         return items;
+    }
+
+    resetEditedAgentTools = () => {
+        this.editedAgentTools.clear();
+        this.app.llamaWebviewProvider.updateContextFilesInfo();
+    }
+
+    addEditedAgentTools = (toolName: string, toolDescription: string) => {
+        this.editedAgentTools.set(toolName, toolDescription);
+    }
+
+    removeEditedAgentTools = (toolName: string) => {
+        this.editedAgentTools.delete(toolName);
+    }
+
+    getEditedAgentTools = () => {
+        return this.editedAgentTools;
     }
 }

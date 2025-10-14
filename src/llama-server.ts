@@ -241,7 +241,7 @@ export class LlamaServer {
             "temperature": 0.8,
             "top_p": 0.95,
             ...(model.trim() != "" && { model: model}),
-            "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
+            "tools": [...this.app.tools.getTools(),  ...this.app.tools.vscodeTools],
             "tool_choice": "auto"
         };
     }
