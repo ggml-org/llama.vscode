@@ -321,14 +321,14 @@ export class Utils {
         return choice === 'Yes';
     }
 
-    static showUserChoiceDialog = async (message: string, acceptLable: string): Promise<boolean> => {
+    static showUserChoiceDialog = async (message: string, acceptLabel: string): Promise<boolean> => {
         const choice = await vscode.window.showInformationMessage(
             "llama-vscode \n\n" + message,
             { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
-            acceptLable
+            acceptLabel
         );
 
-        return choice === acceptLable;
+        return choice === acceptLabel;
     }
 
     static showYesYesdontaskNoDialog = async (message: string): Promise<[boolean, boolean]> => {
@@ -341,6 +341,18 @@ export class Utils {
         );
 
         return [choice === 'Yes' || choice === "Yes, don't ask again", choice === "Yes, don't ask again"];
+    }
+
+    static showYesNoNodontAskDialog = async (message: string, acceptLabel: string): Promise<[boolean, boolean]> => {
+        const choice = await vscode.window.showInformationMessage(
+            "llama-vscode \n\n" + message,
+            { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
+            acceptLabel,
+            'No',
+            "No, don't ask again"            
+        );
+
+        return [choice === acceptLabel, choice === "No, don't ask again"];
     }
 
     static showOkDialog = async (message: string) => {

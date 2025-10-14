@@ -124,6 +124,38 @@ You could delete the GGUF files from this folder. If they are missing, but are n
 
  
  
+## Edit Agent 
+
+### Overview
+Edit agent view is used for adding and editing agents. From there it is also possible to delete and copy an existing agent as a new one. The identifier of an agent is it's name. For now there is no tools model as part of the agent (the currently selected tools model will be used)
+
+### How to use it 
+Edit existing agent:  
+1. Click Select button and load an agent to be edited.
+2. Change the Description and System Instructions fields (if needed)
+3. Click Add Tools button and select the tools to be used for by the agent.
+4. Click Save button
+
+Add new agent:  
+1. Click New button
+2. Enter Name, Description and System Instructions for the agent
+3. Click Add Tools button and select the tools to be used for by the agent.
+4. Click Save button
+
+Copy existing agent as a new one:  
+1. Click Copy as New button
+2. Edit Name, Description and System Instructions for the agent
+3. Click Add Tools button and select the tools to be used for by the agent.
+4. Click Save button
+
+Delete agent: 
+1. Click Delete button
+3. Select an agent to be deleted from the list
+4. Confirm the deletion of the agent
+
+
+ 
+ 
 ## Edit with AI  
 
 ### Requred servers
@@ -167,12 +199,12 @@ This generate a commit message, based on the current changes.
 
 ![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3) 
  
-## Version 0.0.27 is released (21.09.2025)
+## Version 0.0.32 is released (05.10.2025)
 ## What is new
-- xAI Grog4 free (from OpenRouter) added to the initial models
-- Chat with AI with project context removed (agent does it better)
-- Chat with AI about llama-vscode is now with agent, not using webui
-- Agent - new buttons "Tools Model" and "Agent" -  possibility to view the selected model and agent and to change them.
+- predefined model DeepSeek V3.1 free 163,800 context (OpenRouter) added
+- predefined model Z.AI: GLM 4.5 Air (free): GLM 4.5 Air - 128.000 context (OpenRouter) added
+- Added agent "Ask" is for review, analysis and suggestions for the code without changing the files
+- Some bugs are fixed
 
 ## Setup instructions for llama.cpp server
 
@@ -320,7 +352,7 @@ https://github.com/user-attachments/assets/e75e96de-878b-43db-a45b-47cc0c554697
 ### Overview
 Agent is combination of system prompt and tools. If an agent is selected, it will be used by the Llama Agent UI. On slecting and agent, the selected llama-vscode tools are updated.
 
-They have properties: name, description, syste prompt, tools. 
+They have properties: name, description, system prompt, tools. 
 
 Agent could be added/deleted/viewed/selected/deselected/exported/imported
 
@@ -329,6 +361,12 @@ Select "Agents..." from llama-vscode menu
 
 - Add agent...
 Adds an agent
+
+- Edit agent...
+Edits an agent
+
+- Copy agent...
+Copies an agent
 
 - Delete agent...  
 Deletes an agent
@@ -389,6 +427,9 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 
 - Add model from huggingface  
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Add chat model from OpenAI compatible provider  
+Add chat model from OpenAI compatible provider - OpenRouter or custom (for example local/external llama.cpp server).
 
 - Export  
 A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
@@ -455,7 +496,7 @@ Select the model you want to delete from the list and delete it.
 - View  
 Select a model from the list to view all the details for this model
 
-- Selected  
+- Select  
 Select a model from the list to select it. If the model is a local one (has a command in local start command) a llama.cpp server with this model will be started. Only one completion model could be selected at a time.
 
 - Deselect  
@@ -463,6 +504,9 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 
 - Add model from huggingface  
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Add completion model from OpenAI compatible provider  
+Add completion model from OpenAI compatible provider - OpenRouter or custom (for example local/external llama.cpp server).
 
 - Export  
 A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
@@ -510,6 +554,9 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 
 - Add model from huggingface  
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Add embeddings model from OpenAI compatible provider  
+Add embeddings model from OpenAI compatible provider - OpenRouter or custom (for example local/external llama.cpp server).
 
 - Export  
 A model could be exported as a .json files. This file could be shared with others used, modified if needed and imported again. Select a model to export it.
@@ -607,6 +654,9 @@ Deselect the currently selected model. If the model is local, the llama.cpp serv
 
 - Add model from huggingface  
 Enter search words to find a model from huggingface. If the model is selected it will be automatically downloaded (if not yet done) and a llama.cpp server will be started with it.
+
+- Add tools model from OpenAI compatible provider  
+Add tools model from OpenAI compatible provider - OpenRouter or custom (for example local/external llama.cpp server).
 
 - Export  
 A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.

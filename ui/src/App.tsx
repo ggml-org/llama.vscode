@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AgentView, AIRunnerView, AddEnvView } from './components';
+import { AgentView, AIRunnerView, AddEnvView, AgentEditor } from './components';
 import { vscode } from './types/vscode';
 
 interface AppProps { }
@@ -9,6 +9,7 @@ const App: React.FC<AppProps> = () => {
   const noModelSelected = 'No model selected';
   const noAgentSelected = 'No agent selected';
   const noViewSet = 'agent';
+  const viewAgentEditor = 'agenteditor'
   const viewAiRunner = "airunner"
   const viewAddEnv = "addenv"
   
@@ -45,6 +46,8 @@ const App: React.FC<AppProps> = () => {
     initialState.view || noViewSet
   );
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
+  const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
+  const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string}>({name:"", description:"", systemInstruction:""});
 
   // Save state to VS Code whenever it changes
   useEffect(() => {
@@ -91,6 +94,13 @@ const App: React.FC<AppProps> = () => {
         case 'updateContextFiles':
           setContextFiles(new Map(message.files || []));
           break;
+        case 'updateAgentEdit':
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction});
+          break;
+        case 'loadAgent':
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction});
+          setAgentEditTools(new Map(message.tools || []));
+          break;
         default:
           break;
       }
@@ -124,6 +134,11 @@ const App: React.FC<AppProps> = () => {
     });
   };
   
+  const handleShowAgentEditor = () => {
+    vscode.postMessage({
+      command: 'showAgentEditor'
+    });
+  };
 
   const handleSelectedModels = () => {
     vscode.postMessage({
@@ -162,9 +177,16 @@ const App: React.FC<AppProps> = () => {
                   <button
                     onClick={handleShowAgentView}
                     className="header-btn secondary"
-                    title="Show Llama Agent"
+                    title="Show Llama Agent View"
                   >
                     {"💬"}
+                  </button>
+                  <button
+                    onClick={handleShowAgentEditor}
+                    className="header-btn secondary"
+                    title="Show Edit Agent View"
+                  >
+                    {"✎"}
                   </button>
               </div>
             </div>
@@ -172,8 +194,6 @@ const App: React.FC<AppProps> = () => {
       {view === noViewSet && (
         <div>
           {/* Environment Selection Header for Agent View */}
-          
-
           <AgentView
             displayText={displayText}
             setDisplayText={setDisplayText}
@@ -189,6 +209,24 @@ const App: React.FC<AppProps> = () => {
         </div>
       )}
       
+      {view === viewAgentEditor && (
+        <div>
+          {/* Environment Selection Header for Agent View */}
+          <AgentEditor
+            inputText={inputText}
+            setInputText={setInputText}
+            currentToolsModel={currentToolsModel}
+            currentAgent={currentAgent}
+            currentState={currentState}
+            setCurrentState={setCurrentState}
+            contextFiles={agentEditTools}
+            setContextFiles={setAgentEditTools}
+            agentEditDetails={agentEditDetails}
+            setAgentEditDetails = {setAgentEditDetails}
+          />
+        </div>
+      )}
+
       {view === viewAiRunner && (
         <div className="content">
           <AIRunnerView currentChatModel={currentChatModel} />

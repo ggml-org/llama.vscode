@@ -175,6 +175,8 @@ export const UI_TEXT_KEYS = {
   selectStartAgent: "Select/start agent...",
   deselectStopAgent: "Deselect/stop agent...",
   addAgent: "Add agent...",
+  editAgent: "Edit agent...",
+  copyAgent: "Copy agent...",
   viewAgentDetails: "View agent details...",
   deleteAgent: "Delete agent...",
   exportAgent: "Export agent...",
@@ -199,6 +201,7 @@ export const UI_TEXT_KEYS = {
   addLocalCompletionModel: "Add local completion model...",
   addExternalCompletionModel: "Add external completion model...",
   addCompletionModelFromHuggingface: "Add completion model from huggingface...",
+  addCompletionOpenAiCompModel: "Add completion model from OpenAI compatible provider...",
   viewCompletionModelDetails: "View completion model details...",
   deleteCompletionModel: "Delete completion model...",
   exportCompletionModel: "Export completion model...",
@@ -210,6 +213,7 @@ export const UI_TEXT_KEYS = {
   addLocalChatModel: "Add local chat model...",
   addExternalChatModel: "Add external chat model...",
   addChatModelFromHuggingface: "Add chat model from huggingface...",
+  addChatOpenAiCompModel: "Add chat model from OpenAI compatible provider...",
   viewChatModelDetails: "View chat model details...",
   deleteChatModel: "Delete chat model...",
   exportChatModel: "Export chat model...",
@@ -221,6 +225,7 @@ export const UI_TEXT_KEYS = {
   addLocalEmbeddingsModel: "Add local embeddings model...",
   addExternalEmbeddingsModel: "Add external embeddings model...",
   addEmbeddingsModelFromHuggingface: "Add embeddings model from huggingface...",
+  addEmbeddingsOpenAiCompModel: "Add embeddings model from OpenAI compatible provider...",
   viewEmbeddingsModelDetails: "View embeddings model details...",
   deleteEmbeddingsModel: "Delete embeddings model...",
   exportEmbeddingsModel: "Export embeddings model...",
@@ -232,6 +237,7 @@ export const UI_TEXT_KEYS = {
   addLocalToolsModel: "Add local tools model...",
   addExternalToolsModel: "Add external tools model...",
   addToolsModelFromHuggingface: "Add tools model from huggingface...",
+  addToolsOpenAiCompModel: "Add tools model from OpenAI compatible provider...",
   viewToolsModelDetails: "View tools model details...",
   deleteToolsModel: "Delete tools model...",
   exportToolsModel: "Export tools model...",
@@ -263,3 +269,12 @@ export const PREDEFINED_LISTS_KEYS = {
   AGENTS: SETTING_NAME_FOR_LIST.AGENTS,
   AGENT_COMMANDS: SETTING_NAME_FOR_LIST.AGENT_COMMANDS,
 } as const;
+
+export enum OpenAiProvidersKeys {
+  OpenRouter = 'OpenRouter...',
+  Custom = 'Custom...'
+}
+export const OPENAI_COMP_PROVIDERS = {
+  [OpenAiProvidersKeys.OpenRouter]: "https://openrouter.ai/api",
+  [OpenAiProvidersKeys.Custom]: ""
+} as const

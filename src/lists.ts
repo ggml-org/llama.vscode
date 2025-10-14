@@ -629,7 +629,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
             },
             {
               "name": "default",
-              "description": "This is the default agent.",
+              "description": "Agent for agentic programming - could answer questions, change/add/delete file, execute terminal commands, etc.",
               "systemInstruction": [
                 "You are an agent for software development - please keep going until the user’s query is completely resolved, before ending your turn and yielding back to the user.",
                 "Only terminate your turn when you are sure that the problem is solved.",

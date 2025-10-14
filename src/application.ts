@@ -28,6 +28,7 @@ import { ChatService } from "./services/chat-service";
 import { Agent, Chat, Env, LlmModel } from "./types";
 import { ModelType, PERSISTENCE_KEYS } from "./constants";
 import { ApiKeyService } from "./services/api-key-service";
+import { OpenAiCompModelStrategy } from "./services/openai-comp-model-strategy";
 
 export class Application {
     
@@ -54,6 +55,7 @@ export class Application {
     public hfModelStrategy: HfModelStrategy
     public localModelStrategy: LocalModelStrategy
     public externalModelStrategy: ExternalModelStrategy
+    public openAiCompModelStrategy: OpenAiCompModelStrategy
     public envService: EnvService
     public agentService: AgentService
     public agentCommandService: AgentCommandService
@@ -91,6 +93,7 @@ export class Application {
         this.hfModelStrategy = new HfModelStrategy(this)
         this.localModelStrategy = new LocalModelStrategy(this)
         this.externalModelStrategy = new ExternalModelStrategy(this)
+        this.openAiCompModelStrategy = new OpenAiCompModelStrategy(this)
         this.modelService = new ModelService(this)
         this.envService = new EnvService(this)
         this.agentService = new AgentService(this)

@@ -11,7 +11,7 @@ export class Tools {
     private app: Application;
     toolsFunc: ToolsMap = new Map();
     toolsFuncDesc: ToolsMap = new Map();
-    tools: any[] = [];
+    private tools: any[] = [];
     vscodeTools: any[] = [];
     vscodeToolsSelected: Map<string, boolean> = new Map();
     
@@ -650,6 +650,10 @@ export class Tools {
             }
         }
         
+    }
+
+    getTools = () => {
+        return this.tools;
     }
 
     selectTools = async () => {
