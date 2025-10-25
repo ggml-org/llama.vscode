@@ -363,6 +363,19 @@ export class Architect {
         context.subscriptions.push(editSelectedTextDisposable);
     }
 
+    registerCommandEditAllSearchFiles = (context: vscode.ExtensionContext) => {
+        const editAllSearchFilesDisposable = vscode.commands.registerCommand('extension.editAllSearchFiles', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.fileEditor.showEditAllSearchFilesPrompt(editor);
+        });
+        context.subscriptions.push(editAllSearchFilesDisposable);
+    }
+
+
     registerCommandAcceptTextEdit = (context: vscode.ExtensionContext) => {
         const acceptTextEditDisposable = vscode.commands.registerCommand('extension.acceptTextEdit', async () => {
             await this.app.textEditor.acceptSuggestion();

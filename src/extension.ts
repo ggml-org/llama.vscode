@@ -21,6 +21,7 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandAcceptFirstWord(context);
     app.architect.registerCommandShowMenu(context);
     app.architect.registerCommandEditSelectedText(context);
+    app.architect.registerCommandEditAllSearchFiles(context);
     app.architect.registerCommandAcceptTextEdit(context);
     app.architect.registerCommandRejectTextEdit(context);
     app.architect.setOnSaveDeleteFileForDb(context);

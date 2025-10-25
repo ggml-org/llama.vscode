@@ -83,6 +83,10 @@
         "title": "llama-vscode: Edit Selected Text with AI"
       },
       {
+        "command": "extension.editAllSearchFiles",
+        "title": "llama-vscode: Edit All Search Files"
+      },
+      {
         "command": "extension.acceptTextEdit",
         "title": "llama-vscode: Accept Text Edit Suggestion"
       },
@@ -614,6 +618,11 @@
             {
               "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
               "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "endpoint": "http://127.0.0.1:8011"
+            },
+            {
+              "name": "Qwen2.5-Coder-14B-Instruct-Q8_0-GGUF (> 32GB VRAM)",
+              "localStartCommand": "llama-server -hf ggml-org/Qwen2.5-Coder-14B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
