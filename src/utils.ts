@@ -8,6 +8,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
 import { Application } from "./application";
+import { UI_TEXT_KEYS } from "./constants";
 
 
 interface BM25Stats {
@@ -558,7 +559,7 @@ export class Utils {
 
     static  applyEdits = async (diffText: string): Promise<string> => {
         // Extract edit blocks from the diff-fenced format
-        let ret = "The file is updated";
+        let ret = UI_TEXT_KEYS.fileUpdated as string;
         let editBlocks: string[][] = [];
         if (!diffText) return "Edit file: The input parameter is missing!";
         const blocks = diffText.split("```diff")
@@ -887,5 +888,21 @@ export class Utils {
         } else {
             vscode.window.showErrorMessage(noMsg);
         }
+    }
+
+    static removeFirstAndLastLinesIfBackticks = (input: string): string => {
+        const lines = input.split('\n'); // Split the string into lines
+
+        // Remove the first line if it starts with ```
+        if (lines[0]?.trim().startsWith('```')) {
+            lines.shift(); // Remove the first line
+        }
+
+        // Remove the last line if it starts with ```
+        if (lines[lines.length - 1]?.trim().startsWith('```')) {
+            lines.pop(); // Remove the last line
+        }
+
+        return lines.join('\n'); // Join the remaining lines back into a string
     }
 }

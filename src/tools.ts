@@ -4,6 +4,7 @@ import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
 import { Plugin } from './plugin';
+import { UI_TEXT_KEYS } from "./constants";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -215,6 +216,7 @@ export class Tools {
                 return `File not found at ${filePath}`;
             }
             fs.unlinkSync(absolutePath);
+            this.app.chatContext.removeDocument(absolutePath)
         } catch (error) {
             if (error instanceof Error) {
                 return `Failed to delete file at ${filePath}: ${error.message}`;
@@ -252,8 +254,11 @@ export class Tools {
         let changes = params.input;
 
         if (params.input == undefined) return "The input is not provided."
+       
         let filePath = this.getFilePath(params.input);
         if (!filePath) return "The file is not provided.";
+        
+
         try {
             if (!this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await Utils.showYesYesdontaskNoDialog("Do you permit file " + filePath + " to be changed?")
@@ -264,6 +269,9 @@ export class Tools {
                 if (!yesApply) return Utils.MSG_NO_UESR_PERMISSION;
             }
             let resultEdit = await Utils.applyEdits(changes)
+            if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
+                this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
+            }
             return resultEdit;
         } catch (error) {
             console.error('Error changes since last commit:', error);
@@ -274,7 +282,7 @@ export class Tools {
     public editFileDesc = async (args: string) => {
         let params = JSON.parse(args);
         let diffText = params.input;
-        if (!diffText) return "EditFile Desc - parameter input not found."
+        if (!diffText) return "Parameter input not found."
         
         let filePath = this.getFilePath(diffText);
         
@@ -751,9 +759,16 @@ export class Tools {
             let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0]);
             filePath = blockParts[0].trim();
         } else {
-            if (diffText.length > 0) filePath = Utils.extractConflictParts("```diff\n" + diffText)[0].trim()
+            if (diffText.length > 0){
+                if (diffText.startsWith("```\n")) diffText = diffText.slice(5)
+                filePath = Utils.extractConflictParts("```diff\n" + diffText)[0].trim()
+            }
             else return "";
         }
+
+         // Workaround for ClaudCode project file format - get only the relative path to the file
+        if (filePath.includes(" ## ")) filePath = filePath.split(" ## ")[1];
+        if (filePath.startsWith("## ")) filePath = filePath.slice(3);
 
         let absolutePath = filePath;
         if (!path.isAbsolute(filePath)) {

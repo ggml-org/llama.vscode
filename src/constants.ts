@@ -145,6 +145,8 @@ export const UI_TEXT_KEYS = {
   showSelectedModels: "Show selected models",
   showSelectedModelsDescription: "Displays a list of currently selected models",
   useAsLocalAIRunner: "Use as local AI runner",
+  editMultipleFilesWithAi: "Edit multiple files with AI",
+  editMultipleFilesWithAiDescription: "Asks for glob pattern and prompt and edits with AI the files, which match the glob pattern with the provided prompt.",
   localAIRunnerDescription: "Download models automatically from Huggingface and chat with them (as LM Studio, Ollama, etc.)",
   editSettings: "Edit Settings...",
   apiKeys: "API keys...",
@@ -242,6 +244,9 @@ export const UI_TEXT_KEYS = {
   deleteToolsModel: "Delete tools model...",
   exportToolsModel: "Export tools model...",
   importToolsModel: "Import tools model...",
+
+  // Other
+  fileUpdated: "The file is updated"
 } as const;
 
 export const PERSISTENCE_KEYS = {
