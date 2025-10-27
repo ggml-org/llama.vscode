@@ -408,7 +408,7 @@ const AgentView: React.FC<AgentViewProps> = ({
                 ref={textareaRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ask me anything about your code... Press @ to select a file / for a command."
+                placeholder="Ask me anything about your code... Press @ to select a file, / for a command."
                 className="modern-textarea"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {

@@ -79,6 +79,10 @@ export class Menu {
             {
                 label: this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner)??"",
                 description: this.app.configuration.getUiText(UI_TEXT_KEYS.localAIRunnerDescription)
+            },
+            {
+                label: this.app.configuration.getUiText(UI_TEXT_KEYS.editMultipleFilesWithAi)??"",
+                description: this.app.configuration.getUiText(UI_TEXT_KEYS.editMultipleFilesWithAiDescription)
             }
         ]
         return menuItems;
@@ -229,6 +233,9 @@ export class Menu {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner):
                 vscode.commands.executeCommand('extension.showLlamaWebview');
                 this.app.llamaWebviewProvider.setView(UiView.AiRunner);
+                break;
+            case this.app.configuration.getUiText(UI_TEXT_KEYS.editMultipleFilesWithAi):
+                vscode.commands.executeCommand('extension.editAllSearchFiles');
                 break;
             default:
                 isHandled = false;

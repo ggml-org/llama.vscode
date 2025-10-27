@@ -32,7 +32,7 @@ export class FileEditor {
 
         const prompt = await vscode.window.showInputBox({
             placeHolder: 'Enter instructions for editing files...',
-            prompt: 'How would you like to modify the files?',
+            prompt: 'How would you like to modify the files? (the instructions will be applied to each file separately)',
             ignoreFocusOut: true
         });
         if (!prompt) return;
@@ -43,6 +43,12 @@ export class FileEditor {
             ignoreFocusOut: true
         });
         if (!glob) return;
+        let shouldContinue = Utils.showYesNoDialog(
+            "You requested an edit of multiple files with AI. " + 
+            "\n\nGlob pattern (what files to edit): " + glob +
+            "\nPrompt: " + prompt +
+            "\n\nDo you want to continue?")
+        if (!shouldContinue) return;
 
         const files = await vscode.workspace.findFiles(glob);
         if (!files || files.length === 0) {
@@ -64,6 +70,7 @@ export class FileEditor {
                         vscode.window.showInformationMessage(`File editing cancelled after ${processed} of ${total} files.`);
                         break;
                     }
+                    if (this.app.chatContext.isImageOrVideoFile(file.fsPath)) continue
                     progress.report({ message: `Editing ${file.fsPath}`, increment: (1 / total) * 100 });
 
                     try {
@@ -80,8 +87,12 @@ export class FileEditor {
 
                         if (completion?.choices?.[0]?.message?.content) {
                             var edited = completion.choices[0].message.content.trim();
-                            edited = this.removeFirstAndLastLinesIfBackticks(edited);
+                            edited = Utils.removeFirstAndLastLinesIfBackticks(edited);
                             await vscode.workspace.fs.writeFile(file, Buffer.from(edited, 'utf8'));
+                            if (this.app.configuration.rag_enabled) {
+                                const document = await vscode.workspace.openTextDocument(file);
+                                this.app.chatContext.udpateFileIndexing(document.uri.fsPath, document.getText())
+                            }
                         }
                     } catch (err) {
                         console.error(`Failed to edit ${file.fsPath}:`, err);
@@ -93,21 +104,5 @@ export class FileEditor {
                 }
             }
         );
-    }
-
-    private removeFirstAndLastLinesIfBackticks(input: string): string {
-        const lines = input.split('\n'); // Split the string into lines
-
-        // Remove the first line if it starts with ```
-        if (lines[0]?.trim().startsWith('```')) {
-            lines.shift(); // Remove the first line
-        }
-
-        // Remove the last line if it starts with ```
-        if (lines[lines.length - 1]?.trim().startsWith('```')) {
-            lines.pop(); // Remove the last line
-        }
-
-        return lines.join('\n'); // Join the remaining lines back into a string
     }
 }

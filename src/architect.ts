@@ -51,36 +51,13 @@ export class Architect {
 
     setOnSaveDeleteFileForDb = (context: vscode.ExtensionContext) => {
         const saveListener = vscode.workspace.onDidSaveTextDocument(async (document) => {
-            try {
-                if (!this.app.configuration.rag_enabled || this.app.configuration.rag_max_files <= 0) return;
-                if (!this.app.chatContext.isImageOrVideoFile(document.uri.toString())){
-                    // Update after a delay and only if the file is not changed in the meantime to avoid too often updates
-                    let updateTime = Date.now()
-                    let fileProperties = this.app.chatContext.getFileProperties(document.uri.toString())
-                    if (fileProperties) fileProperties.updated = updateTime;
-                    setTimeout(async () => {
-                        if (fileProperties && fileProperties.updated > updateTime ) {
-                            return;
-                        }
-                        this.app.chatContext.addDocument(document.uri.toString(), document.getText());
-                    }, 5000);
-                }
-            } catch (error) {
-                console.error('Failed to add document to RAG:', error);
-            }
+            this.app.chatContext.udpateFileIndexing(document.uri.fsPath, document.getText());
         });
         context.subscriptions.push(saveListener);
 
         // Add file delete listener for RAG
         const deleteListener = vscode.workspace.onDidDeleteFiles(async (event) => {
-            if (!this.app.configuration.rag_enabled || this.app.configuration.rag_max_files <= 0) return;
-            for (const file of event.files) {
-                try {
-                    await this.app.chatContext.removeDocument(file.toString());
-                } catch (error) {
-                    console.error('Failed to remove document from RAG:', error);
-                }
-            }
+            await this.app.chatContext.removeFileIndexing(event);
         });
         context.subscriptions.push(deleteListener);
     }
@@ -460,6 +437,10 @@ export class Architect {
         );
         context.subscriptions.push(postMessageCommand);
     }
+
+    
+
+    
 
     private async installUpgradeLlamaCpp(isFirstStart: any) {
         if (!this.app.configuration.ask_install_llamacpp) return;
