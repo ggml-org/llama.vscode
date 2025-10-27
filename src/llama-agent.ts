@@ -5,6 +5,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
+import { UI_TEXT_KEYS } from "./constants";
 
 
 interface Step {
@@ -263,7 +264,13 @@ export class LlamaAgent {
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                         if (toolFunc) {
                                             commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.add(commandDescription);
+                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) { 
+                                                changedFiles.add(commandDescription);
+                                                if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
+                                                    this.logText += commandOutput + "\n\n"
+                                                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                                                }
+                                            }
                                             if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.add(commandDescription);
                                         }
                                     }

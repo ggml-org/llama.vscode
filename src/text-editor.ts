@@ -95,7 +95,7 @@ export class TextEditor {
                 vscode.window.showInformationMessage('No suggestions available');
                 return;
             }
-            this.currentSuggestion = this.removeFirstAndLastLinesIfBackticks(data.choices[0].message.content.trim());
+            this.currentSuggestion = Utils.removeFirstAndLastLinesIfBackticks(data.choices[0].message.content.trim());
             this.currentSuggestion = Utils.addLeadingSpaces(this.currentSuggestion, this.removedSpaces)
             // Show the suggestion in a diff view
             await this.showDiffView(editor, this.currentSuggestion);
@@ -111,21 +111,7 @@ export class TextEditor {
         }
     }
 
-    private removeFirstAndLastLinesIfBackticks(input: string): string {
-        const lines = input.split('\n'); // Split the string into lines
-
-        // Remove the first line if it starts with ```
-        if (lines[0]?.trim().startsWith('```')) {
-            lines.shift(); // Remove the first line
-        }
-
-        // Remove the last line if it starts with ```
-        if (lines[lines.length - 1]?.trim().startsWith('```')) {
-            lines.pop(); // Remove the last line
-        }
-
-        return lines.join('\n'); // Join the remaining lines back into a string
-    }
+    
 
     private async showDiffView(editor: vscode.TextEditor, suggestion: string) {
         // Get context before and after the selection

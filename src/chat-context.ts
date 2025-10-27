@@ -275,9 +275,9 @@ export class ChatContext {
         }
     }
 
-    async removeDocument(uri: string) {
-        this.removeChunkEntries(uri);
-        this.filesProperties.delete(uri);
+    async removeDocument(filePath: string) {
+        this.removeChunkEntries(filePath);
+        this.filesProperties.delete(filePath);
     }
 
     async indexWorkspaceFiles() {
@@ -408,4 +408,37 @@ export class ChatContext {
         const regex = /@([a-zA-Z0-9_.-]+)(?=[,.?!\s]|$)/g;
         return [...text.matchAll(regex)].map(match => match[1]);
     }    
+
+    public udpateFileIndexing(filePath: string, fileContent: string) {
+        try {
+            if (this.app.configuration.rag_enabled && this.app.configuration.rag_max_files > 0) {
+                if (!this.isImageOrVideoFile(filePath)) {
+                    // Update after a delay and only if the file is not changed in the meantime to avoid too often updates
+                    let updateTime = Date.now();
+                    let fileProperties = this.getFileProperties(filePath);
+                    if (fileProperties) fileProperties.updated = updateTime;
+                    setTimeout(async () => {
+                        if (fileProperties && fileProperties.updated > updateTime) {
+                            return;
+                        }
+                        this.addDocument(filePath, fileContent);
+                    }, 5000);
+                }
+            }
+        } catch (error) {
+            console.error('Failed to add/update document to RAG:', error);
+        }
+    }
+
+    public async removeFileIndexing(event: vscode.FileDeleteEvent) {
+        if (this.app.configuration.rag_enabled && this.app.configuration.rag_max_files > 0) {
+            for (const file of event.files) {
+                try {
+                    await this.removeDocument(file.fsPath);
+                } catch (error) {
+                    console.error('Failed to remove document from RAG:', error);
+                }
+            }
+        }
+    }
 }
