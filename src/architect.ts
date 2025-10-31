@@ -16,6 +16,7 @@ export class Architect {
     constructor(application: Application) {
         this.app = application;
     }
+    
 
     init = async () => {
         // Start indexing workspace files
