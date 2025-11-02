@@ -35,10 +35,10 @@ export class Architect {
                                                                         this.app.envService.getEnvDetailsAsString(lastEnv) +
                                                                         "\n\n Do you want to continue?"
                                                                         );
-                    if (shouldSelect) this.app.envService.selectEnv(lastEnv, false);
+                    if (shouldSelect) this.app.envService.selectStartEnv(lastEnv, false);
                     if (dontAskAgain) this.app.configuration.updateConfigValue("env_start_last_used_confirm", false);
                 } else {
-                     this.app.envService.selectEnv(lastEnv, false);
+                     this.app.envService.selectStartEnv(lastEnv, false);
                 }
 
             }
