@@ -97,6 +97,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'moreCompletionModel':
                         await this.app.modelService.processModelActions(ModelType.Completion);
                         break;
+                    case 'selectAgentModel':
+                        await this.app.modelService.selectAgentModel(ModelType.Tools, this.app.configuration.tools_models_list);                        
+                        break;
                     case 'moreChatModel':
                         await this.app.modelService.processModelActions(ModelType.Chat);
                         break;
@@ -117,6 +120,10 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'deselectToolsModel':
                         await this.app.modelService.deselectAndClearModel(ModelType.Tools);
+                        break;
+                    case 'deselectAgentModel':
+                        this.app.setAgentModel(undefined);
+                        this.updateLlamaView();
                         break;
                     case 'deselectAgent':
                         await this.app.agentService.deselectAgent();
@@ -240,10 +247,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                             vscode.window.showErrorMessage("Agent should have a name!")
                             return;
                         }
+                        let agentModelToSave: LlmModel | undefined = undefined
+                        if (message.toolsModel) agentModelToSave = this.app.getTmpAgentModel();
                         let agentToSave: Agent = {
                             name: message.name, 
                             description: message.description,
                             systemInstruction: message.systemInstruction.split(/\r?\n/),
+                            toolsModel: agentModelToSave,
                             tools: message.tools
                         } 
                         await this.app.agentService.addUpdateAgent(agentToSave)
@@ -260,10 +270,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.addEditAgent(selectedAgent);
                         break
                     case 'addEditAgent':
+                        let toolsModel = Application.emptyModel
+                        if (message.toolsModel) toolsModel = this.app.getTmpAgentModel();
                         const newAgent: Agent = {
                             name: message.name, 
                             description: message.description,
                             systemInstruction: message.systemInstruction, 
+                            toolsModel: toolsModel,
                             tools: message.tools
                         }
                         this.addEditAgent(newAgent);
@@ -321,11 +334,13 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.app.agentService.resetEditedAgentTools();
         agent.tools?.map(tool => this.app.agentService.addEditedAgentTools(tool, ""));
         const edAgtools = this.app.agentService.getEditedAgentTools();
+        this.app.setAgentModel(agent.toolsModel);
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'loadAgent',
             name: agent?.name,
             description: agent?.description,
             systemInstruction: agent?.systemInstruction.join("\n"),
+            toolsModel: agent?.toolsModel?.name??'',
             tools: Array.from(edAgtools.entries())
         });
     }
@@ -365,6 +380,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateToolsModel',
             model: currentToolsModel.name || 'No model selected'
+        });
+    }
+
+    private updateTmpAgentModel() {
+        const currentTmpAgentModel: LlmModel = this.app.getTmpAgentModel();
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateTmpAgentModel',
+            model: currentTmpAgentModel.name || ''
         });
     }
 
@@ -450,6 +473,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateChatModel();
         this.updateEmbsModel();
         this.updateComplsModel();
+        this.updateTmpAgentModel();
         this.updateAgent();
         this.updateEnv();
         this.updateSettingsInView();

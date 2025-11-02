@@ -4,20 +4,20 @@ import { vscode } from '../types/vscode';
 interface AgentEditorProps {
   inputText: string;
   setInputText: (text: string) => void;
-  currentToolsModel: string;
+  currentAgentModel: string;
   currentAgent: string;
   currentState: string;
   setCurrentState: (state: string) => void;
   contextFiles: Map<string, string>;
   setContextFiles: (files: Map<string, string>) => void;
-  agentEditDetails: {name: string, description: string, systemInstruction: string}
-  setAgentEditDetails:(agentDetails: {name: string, description: string, systemInstruction: string}) => void 
+  agentEditDetails: {name: string, description: string, systemInstruction: string, toolsModel: string}
+  setAgentEditDetails:(agentDetails: {name: string, description: string, systemInstruction: string, toolsModel: string}) => void 
 }
 
 const AgentEditor: React.FC<AgentEditorProps> = ({
   inputText,
   setInputText,
-  currentToolsModel,
+  currentAgentModel,
   currentAgent,
   currentState,
   setCurrentState,
@@ -90,8 +90,9 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
           setTools(new Map(message.files || []));
           break;
         case 'loadAgent':
-          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction});
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
           setTools(new Map(message.tools || []));
+          currentAgentModel = message.toolsModel;
           break;
         default:
           break;
@@ -121,6 +122,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
       name: agentEditDetails.name,
       description: agentEditDetails.description,
       systemInstruction: agentEditDetails.systemInstruction,
+      toolsModel: currentAgentModel,
       tools: Array.from(agentTools.keys())
     });
   };
@@ -132,9 +134,27 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
     });
   }
 
+  const handleDeselectToolsModel = () => {
+    vscode.postMessage({
+      command: 'deselectAgentModel'
+    });
+  };
+  
   const handleSelectToolsModel = () => {
     vscode.postMessage({
-      command: 'selectModelWithTools'
+      command: 'selectAgentModel'
+    });
+  };
+
+  const handleMoreToolsModel = () => {
+    vscode.postMessage({
+      command: 'moreToolsModel'
+    });
+  };
+
+  const handleShowToolsModel = () => {
+    vscode.postMessage({
+      command: 'showToolsModel'
     });
   };
   
@@ -150,6 +170,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
       name: "",
       description: "",
       systemInstruction: [],
+      toolsModel: "",
       tools: []
     });
   }
@@ -306,8 +327,8 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
                   Delete
                 </button>
               </div>
-              
-              {/* Context Files */}
+              <span style={{ display: 'block', marginTop: '20px', marginBottom: '10px', fontWeight: 'bold' }}>{'Tools'}</span>
+              {/* Tools */}
               {agentTools.size > 0 && (
                 <div className="context-chips">
                   {Array.from(agentTools.entries()).map(([toolName, toolDescription]) => (
@@ -331,41 +352,88 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
               )}
 
               
-              <span>{'Name (agent identifier)'}</span>
+              <span style={{ display: 'block', marginTop: '20px', marginBottom: '10px', fontWeight: 'bold' }}>{'Name (agent identifier)'}</span>
               {/* Modern Textarea */}
               <textarea
                 ref={elemNameRef}
                 value={agentEditDetails.name}
-                onChange={(e) => setAgentEditDetails({name: e.target.value, description: agentEditDetails.description,  systemInstruction: agentEditDetails.systemInstruction})}
+                onChange={(e) => setAgentEditDetails({name: e.target.value, description: agentEditDetails.description,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel})}
                 placeholder="Enter agent name."
                 className="modern-textarea"
                 rows={1}
                 style={{ height: 'auto', minHeight: '1.5em', resize: 'none' }}
               />
 
-              <span>{'Descriptoin'}</span>
+              <span style={{ display: 'block', marginTop: '20px', marginBottom: '10px', fontWeight: 'bold' }}>{'Descriptoin'}</span>
               {/* Modern Textarea */}
               <textarea
                 ref={elemDescriptionRef}
                 value={agentEditDetails.description}
-                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: e.target.value,  systemInstruction: agentEditDetails.systemInstruction})}
+                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: e.target.value,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel})}
                 placeholder="Enter agent description."
                 className="modern-textarea"
                 rows={2}
                 style={{ height: 'auto', minHeight: '3em', resize: 'none' }}
               />
 
-              <span>{'System Instruction'}</span>
+              <span style={{ display: 'block', marginTop: '20px', marginBottom: '10px', fontWeight: 'bold' }}>{'System Instruction'}</span>
               {/* Modern Textarea */}
               <textarea
                 ref={elemSystemPromptRef}
                 value={agentEditDetails.systemInstruction}
-                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: agentEditDetails.description,  systemInstruction: e.target.value})}
+                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: agentEditDetails.description,  systemInstruction: e.target.value,  toolsModel: agentEditDetails.toolsModel})}
                 placeholder="Enter system instructions for the agent."
                 className="modern-textarea"
                 rows={10}
                 style={{ height: 'auto', minHeight: '15em', resize: 'vertical' }}
               />
+
+             <div className="single-button-frame">
+            <div className="frame-label">Agent Model (Optional)</div> 
+              {currentAgentModel == "" && (
+              <button
+              onClick={handleSelectToolsModel}
+              title={`Add Default Agent (Tools) Model`}
+              className="modern-btn secondary"
+            >
+              Add
+            </button>
+            )}
+            {
+            currentAgentModel && (
+              <button
+              onClick={handleDeselectToolsModel}
+              title={`Remove Agent Model`}
+              className="modern-btn secondary"
+            >
+            Remove
+            </button>
+            )
+            }
+            <span className="model-text">{currentAgentModel}</span>
+            {
+            currentAgentModel === "" && (
+            <button
+              onClick={handleMoreToolsModel}
+              title={`Add/Delete/View/Export/Import Tools Model`}
+              className="modern-btn secondary"
+            >
+              More
+            </button>
+            )
+            }
+            {
+            currentAgentModel && (
+              <button
+              onClick={handleShowToolsModel}
+              title={`Show Tools Model Details`}
+              className="modern-btn secondary"
+            >
+              ...
+            </button>
+            )
+            }
+            </div>
 
               {/* Input Actions */}
               <div className="input-actions">
@@ -373,9 +441,9 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
                   <button
                     onClick={handleSelectTools}
                     className="modern-btn secondary"
-                    title="Add file to context"
+                    title="Add/remove tools to the agent"
                   >
-                    Add Tools
+                    Add/Remove Tools
                   </button>
                 </div>
                 <button

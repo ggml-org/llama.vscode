@@ -6,7 +6,7 @@ import { Utils } from "../utils";
 import * as fs from "fs";
 import * as path from "path";
 import { PREDEFINED_LISTS } from "../lists";
-import { UI_TEXT_KEYS, PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, PREDEFINED_LISTS_KEYS } from "../constants";
+import { UI_TEXT_KEYS, PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, PREDEFINED_LISTS_KEYS, ModelType } from "../constants";
 
 export class AgentService {
     private app: Application;
@@ -115,6 +115,9 @@ export class AgentService {
         for (let toolName of allTools) {
             this.app.configuration.updateConfigValue(`tool_${toolName}_enabled`, agent.tools?.includes(toolName) ?? false);
         }
+        if (agent.toolsModel && agent.toolsModel.name) {
+            this.app.modelService.selectStartModel(agent.toolsModel, ModelType.Tools, this.app.modelService.getTypeDetails(ModelType.Tools))
+        }
         await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_AGENT, agent);
         this.app.llamaWebviewProvider.updateLlamaView();
         if (agent.name.trim() !== "") {
@@ -173,6 +176,7 @@ export class AgentService {
             if (agentExisting){
                 agentExisting.description = editedAgent.description
                 agentExisting.systemInstruction = editedAgent.systemInstruction
+                agentExisting.toolsModel = editedAgent.toolsModel
                 agentExisting.tools = editedAgent.tools
                 this.app.configuration.updateConfigValue(settingName, agentsList);
                 vscode.window.showInformationMessage("The agent is updated: " + agentExisting.name);
@@ -353,6 +357,7 @@ export class AgentService {
             "\nname: " + agent.name +
             "\ndescription: " + agent.description +
             "\nsystem prompt: \n" + agent.systemInstruction.join("\n") +
+            "\ntools model: \n" + agent.toolsModel?.name +
             "\n\ntools: " + (agent.tools ? agent.tools.join(", ") : "");
     }
 

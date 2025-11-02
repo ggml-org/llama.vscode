@@ -60,7 +60,8 @@ export interface Env {
 export interface Agent {
     name: string,
     description?: string,
-    systemInstruction: string[]
+    systemInstruction: string[],
+    toolsModel?: LlmModel,
     tools?: string[]
 }
 
