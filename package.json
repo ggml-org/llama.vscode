@@ -342,6 +342,38 @@
                 "description": "The system instructions for this agent",
                 "default": ""
               },
+              "toolsModel":{
+                "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Name for this model to be shown to the user"
+              },
+              "endpoint": {
+                "type": "string",
+                "description": "The endpoint, from where to access the model",
+                "default": ""
+              },
+              "aiModel": {
+                "type": "string",
+                "description": "The name of the AI model as expected by the provider",
+                "default": ""
+              },
+              "isKeyRequired": {
+                "type": "boolean",
+                "description": "Is key requried for the endpoint",
+                "default": false
+              },
+              "localStartCommand": {
+                "type": "string",
+                "description": "Command to be used for sterting the model locally.",
+                "default": ""
+              }
+            },
+            "required": [
+              "name"
+            ]
+              },
               "tools": {
                 "type": "array",
                 "items": {

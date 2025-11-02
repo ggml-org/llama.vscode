@@ -10,7 +10,7 @@ import { Configuration } from "../configuration";
 import { PREDEFINED_LISTS } from "../lists";
 
 export class ModelService {
-    public static readonly emptyModel = {name: ""};
+    
     private app: Application;
     private strategies: Record<string, IAddStrategy>;
 
@@ -146,7 +146,7 @@ export class ModelService {
         };
     }
 
-    selectModel = async (type: ModelType, modelsList: LlmModel[]): Promise<LlmModel | undefined> => {
+    selectModel = async (type: ModelType, modelsList: LlmModel[], shoudStartModel:boolean = true): Promise<LlmModel | undefined> => {
         const details = this.getTypeDetails(type);
         let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
         let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", true);
@@ -182,7 +182,7 @@ export class ModelService {
                 model = allModels[index];
             }
 
-            await this.selectStartModel(model, type, details);
+            if (shoudStartModel) await this.selectStartModel(model, type, details);
 
             return model;
         }
@@ -235,7 +235,7 @@ export class ModelService {
     }
 
     public async showModelDetails(model: LlmModel): Promise<void> {
-        await Utils.showOkDialog("Model details: " + this.getDetails(model));
+        await Utils.showOkDialog("Model details: \n\n" + this.getDetails(model));
     }
 
     async exportModel(type: ModelType, modelsList: LlmModel[]): Promise<void> {
@@ -391,7 +391,7 @@ export class ModelService {
     }
 
     clearModel = (type: ModelType) => {
-        this.app.setSelectedModel(type, ModelService.emptyModel);
+        this.app.setSelectedModel(type, Application.emptyModel);
         this.app.llamaWebviewProvider.updateLlamaView();
     }
     
@@ -406,8 +406,13 @@ export class ModelService {
         this.app.setSelectedModel(modelType, model);
     }
 
+    public async selectAgentModel(modelType: ModelType, modelsList: LlmModel[]) {
+        let model = await this.app.modelService.selectModel(modelType, modelsList, false);
+        this.app.setAgentModel(model);
+    }
+
     public getEmptyModel(): LlmModel {
-        return ModelService.emptyModel
+        return Application.emptyModel
     }
 
     public async checkForToolsModel() {

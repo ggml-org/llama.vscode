@@ -32,7 +32,7 @@ import { ApiKeyService } from "./services/api-key-service";
 import { OpenAiCompModelStrategy } from "./services/openai-comp-model-strategy";
 
 export class Application {
-    
+    public static readonly emptyModel = {name: ""};
     private static instance: Application;
     public configuration: Configuration;
     public extraContext: ExtraContext;
@@ -64,10 +64,11 @@ export class Application {
     public chatService: ChatService
     public apiKeyService: ApiKeyService
 
-    private selectedComplModel: LlmModel = ModelService.emptyModel
-    private selectedModel: LlmModel = ModelService.emptyModel
-    private selectedEmbeddingsModel: LlmModel = ModelService.emptyModel
-    private selectedToolsModel: LlmModel = ModelService.emptyModel
+    private selectedComplModel: LlmModel = Application.emptyModel
+    private selectedModel: LlmModel = Application.emptyModel
+    private selectedEmbeddingsModel: LlmModel = Application.emptyModel
+    private selectedToolsModel: LlmModel = Application.emptyModel
+    private selectedTmpAgentModel: LlmModel = Application.emptyModel
     private selectedEnv: Env = {name: ""}
     private selectedAgent: Agent = {name: "", systemInstruction: []}
     private selectedChat: Chat = {name: "", id: ""}
@@ -110,7 +111,7 @@ export class Application {
             Application.instance = new Application(context);
         }
         return Application.instance;
-    }
+    }   
 
     getComplModel = (): LlmModel => {
         return this.selectedComplModel;
@@ -126,6 +127,10 @@ export class Application {
 
     getEmbeddingsModel = (): LlmModel => {
         return this.selectedEmbeddingsModel;
+    }
+
+    getTmpAgentModel = (): LlmModel => {
+        return this.selectedTmpAgentModel;
     }
 
     getEnv = (): Env => {
@@ -161,7 +166,11 @@ export class Application {
     }
 
     isEmbeddingsModelSelected = (): boolean => {
-        return this.selectedEmbeddingsModel != undefined && this.selectedToolsModel.name. trim() != "";
+        return this.selectedEmbeddingsModel != undefined && this.selectedEmbeddingsModel.name. trim() != "";
+    }
+
+    isTmpAgentModelSelected = (): boolean => {
+        return this.selectedTmpAgentModel != undefined && this.selectedTmpAgentModel.name. trim() != "";
     }
 
     isEnvSelected = (): boolean => {
@@ -181,18 +190,23 @@ export class Application {
     setSelectedModel = (type: ModelType, model: LlmModel | undefined) => {
         switch (type) {
             case ModelType.Completion:
-                this.selectedComplModel = model??ModelService.emptyModel;
+                this.selectedComplModel = model??Application.emptyModel;
                 break;
             case ModelType.Chat:
-                this.selectedModel = model??ModelService.emptyModel;
+                this.selectedModel = model??Application.emptyModel;
                 break;
             case ModelType.Embeddings:
-                this.selectedEmbeddingsModel = model??ModelService.emptyModel;
+                this.selectedEmbeddingsModel = model??Application.emptyModel;
                 break;
             case ModelType.Tools:
-                this.selectedToolsModel = model??ModelService.emptyModel;
+                this.selectedToolsModel = model??Application.emptyModel;
                 break;
         }
+        this.llamaWebviewProvider.updateLlamaView();
+    }
+
+    setAgentModel = (model: LlmModel | undefined) => {
+        this.selectedTmpAgentModel = model??Application.emptyModel;
         this.llamaWebviewProvider.updateLlamaView();
     }
 

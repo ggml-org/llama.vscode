@@ -24,6 +24,9 @@ const App: React.FC<AppProps> = () => {
   const [currentToolsModel, setCurrentToolsModel] = useState<string>(
     initialState.currentToolsModel || noModelSelected
   );
+  const [currentAgentModel, setCurrentAgentModel] = useState<string>(
+    initialState.currentAgentModel || noModelSelected
+  );
   const [currentChatModel, setCurrentChatModel] = useState<string>(
     initialState.currentChatModel || noModelSelected
   );
@@ -47,7 +50,7 @@ const App: React.FC<AppProps> = () => {
   );
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
   const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
-  const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string}>({name:"", description:"", systemInstruction:""});
+  const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string}>({name:"", description:"", systemInstruction:"", toolsModel:""});
 
   // Save state to VS Code whenever it changes
   useEffect(() => {
@@ -58,12 +61,13 @@ const App: React.FC<AppProps> = () => {
       currentChatModel,
       currentEmbeddingsModel,
       currentCompletionModel,
+      currentAgentModel,
       currentAgent,
       currentEnv: currentEnv,
       currentState,
       view
     });
-  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgent, currentEnv, currentState, view]);
+  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, view]);
 
   useEffect(() => {
     // Listen for messages from the extension
@@ -72,6 +76,9 @@ const App: React.FC<AppProps> = () => {
       switch (message.command) {
         case 'updateToolsModel':
           setCurrentToolsModel(message.model || noModelSelected);
+          break;
+        case 'updateTmpAgentModel':
+          setCurrentAgentModel(message.model || "");
           break;
         case 'updateChatModel':
           setCurrentChatModel(message.model || noModelSelected);
@@ -95,10 +102,11 @@ const App: React.FC<AppProps> = () => {
           setContextFiles(new Map(message.files || []));
           break;
         case 'updateAgentEdit':
-          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction});
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
           break;
         case 'loadAgent':
-          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction});
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
+          setCurrentAgentModel(message.toolsModel);
           setAgentEditTools(new Map(message.tools || []));
           break;
         default:
@@ -215,7 +223,7 @@ const App: React.FC<AppProps> = () => {
           <AgentEditor
             inputText={inputText}
             setInputText={setInputText}
-            currentToolsModel={currentToolsModel}
+            currentAgentModel={currentAgentModel}
             currentAgent={currentAgent}
             currentState={currentState}
             setCurrentState={setCurrentState}
