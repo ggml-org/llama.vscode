@@ -1983,6 +1983,8 @@
     "postinstall": "npm run build-ui",
     "test": "node ./dist/test/runTest.js",
     "compile": "tsc -p ./",
+    "bundle": "esbuild src/extension.ts --bundle --platform=node --format=cjs --external:vscode --outfile=dist/extension.js --minify",
+    "vscode:prepublish": "npm run bundle",
     "lint": "eslint --ext .ts,.tsx .",
     "format": "prettier --write --ignore-path .gitignore '**/*'"
   },
@@ -2004,6 +2006,7 @@
     "@types/picomatch": "^4.0.0",
     "@types/vscode": "^1.100.0",
     "@vscode/test-electron": "^2.5.2",
+    "esbuild": "^0.24.0",
     "glob": "^11.0.3",
     "mocha": "^11.7.4",
     "typescript": "^4.8.0",

@@ -1,3 +1,51 @@
+# Exclude development sources and tests
+src/**
+ui/src/**
+ui/node_modules/**
+ui/package.json
+ui/package-lock.json
+src/test/**
+dist/test/**
+**/*.test.*
+**/*.spec.*
+
+# Exclude maps and TypeScript sources from package
+**/*.map
+**/*.ts
+**/*.tsx
+
+# Exclude build configs and project metadata not needed at runtime
+.eslintrc*
+.eslint*
+.prettier*
+*.code-workspace
+.vscode/**
+.vscode-test/**
+.git/**
+.gitignore
+.gitmodules
+.npmrc
+.github/**
+.nyc_output/**
+coverage/**
+
+# Exclude local artifacts
+*.vsix
+*.log
+npm-debug.log*
+yarn-error.log*
+
+# Keep only runtime bundles and assets
+!dist/**
+!ui/dist/**
+!resources/**
+!llama.png
+!package.json
+!README.md
+!LICENSE
+ 
+# Exclude production dependencies (we bundle the extension code)
+node_modules/**
 # Exclude VCS and workspace config
 .git/**
 .github/**
