@@ -342,37 +342,37 @@
                 "description": "The system instructions for this agent",
                 "default": ""
               },
-              "toolsModel":{
+              "toolsModel": {
                 "type": "object",
-            "properties": {
-              "name": {
-                "type": "string",
-                "description": "Name for this model to be shown to the user"
-              },
-              "endpoint": {
-                "type": "string",
-                "description": "The endpoint, from where to access the model",
-                "default": ""
-              },
-              "aiModel": {
-                "type": "string",
-                "description": "The name of the AI model as expected by the provider",
-                "default": ""
-              },
-              "isKeyRequired": {
-                "type": "boolean",
-                "description": "Is key requried for the endpoint",
-                "default": false
-              },
-              "localStartCommand": {
-                "type": "string",
-                "description": "Command to be used for sterting the model locally.",
-                "default": ""
-              }
-            },
-            "required": [
-              "name"
-            ]
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Name for this model to be shown to the user"
+                  },
+                  "endpoint": {
+                    "type": "string",
+                    "description": "The endpoint, from where to access the model",
+                    "default": ""
+                  },
+                  "aiModel": {
+                    "type": "string",
+                    "description": "The name of the AI model as expected by the provider",
+                    "default": ""
+                  },
+                  "isKeyRequired": {
+                    "type": "boolean",
+                    "description": "Is key requried for the endpoint",
+                    "default": false
+                  },
+                  "localStartCommand": {
+                    "type": "string",
+                    "description": "Command to be used for sterting the model locally.",
+                    "default": ""
+                  }
+                },
+                "required": [
+                  "name"
+                ]
               },
               "tools": {
                 "type": "array",
@@ -1998,15 +1998,15 @@
     "simple-git": "^3.28.0"
   },
   "devDependencies": {
-    "@vscode/test-cli": "^0.0.11",
     "@babel/types": "^7.28.4",
     "@types/micromatch": "^4.0.9",
     "@types/mocha": "^10.0.10",
     "@types/node": "^18.0.0",
     "@types/picomatch": "^4.0.0",
     "@types/vscode": "^1.100.0",
+    "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
-    "esbuild": "^0.24.0",
+    "esbuild": "^0.27.0",
     "glob": "^11.0.3",
     "mocha": "^11.7.4",
     "typescript": "^4.8.0",

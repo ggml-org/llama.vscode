@@ -53,11 +53,15 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'clearText':
                         this.app.llamaAgent.resetMessages();
-                        this.app.llamaAgent.resetContextProjectFiles()
+                        this.app.llamaAgent.resetContext()
                         await this.app.chatService.selectUpdateChat({name:"", id:""})
                         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
                             command: 'updateText',
                             text: ''
+                        });
+                        webviewView.webview.postMessage({
+                            command: 'updateContextImage',
+                            image: ""
                         });
                         break;
                     case 'showChatsHistory':
@@ -223,6 +227,30 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         webviewView.webview.postMessage({
                             command: 'updateContextFiles',
                             files: Array.from(updatedContextFiles.entries())
+                        });
+                        break;
+                    case 'selectImageFile':
+                        var selImgPath = await this.app.llamaAgent.selectImageFile();
+                        this.app.llamaAgent.addContextProjectImage(selImgPath)
+                        webviewView.webview.postMessage({
+                            command: 'updateContextImage',
+                            image: selImgPath
+                        });
+                        break;
+                    case 'addContextProjectImage':
+                        let imagePath = message.image;
+                        this.app.llamaAgent.addContextProjectImage(imagePath);
+                        const contextImage = this.app.llamaAgent.getContextProjecImage();
+                        webviewView.webview.postMessage({
+                            command: 'updateContextImage',
+                            image: contextImage
+                        });
+                        break;
+                    case 'removeContextProjectImage':
+                        this.app.llamaAgent.removeContextProjectImage();
+                        webviewView.webview.postMessage({
+                            command: 'updateContextImage',
+                            files: ""
                         });
                         break;
                     case 'addEditedAgentTool':
