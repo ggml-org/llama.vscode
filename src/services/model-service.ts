@@ -151,7 +151,6 @@ export class ModelService {
         let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
         let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", true);
         modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", true, modelsList.length));
-        modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", true, modelsList.length));
 
         const launchToEndpoint = new Map([
             ["launch_completion", "endpoint"],
