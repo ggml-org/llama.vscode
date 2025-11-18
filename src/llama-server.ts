@@ -5,6 +5,9 @@ import { LlmModel, LlamaChatResponse, LlamaResponse, ChatMessage } from "./types
 import { Utils } from "./utils";
 import * as cp from 'child_process';
 import * as util from 'util';
+import * as fs from 'fs';
+import * as path from 'path';
+import { SUPPORTED_IMG_FILE_EXTS } from "./constants";
 
 const STATUS_OK = 200;
 
@@ -232,9 +235,43 @@ export class LlamaServer {
           };
     }
 
-    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false) {
+    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "") {
         this.app.tools.addSelectedTools();
         let filteredMsgs = this.filterThoughtFromMsgs(messages)
+        
+        // Add image with base64 encoding
+        if (imagePath && fs.existsSync(imagePath)) {
+            
+            var imgType = ""
+            for (var suffix in SUPPORTED_IMG_FILE_EXTS){
+                if (imagePath.endsWith(suffix)) {
+                    imgType = SUPPORTED_IMG_FILE_EXTS[suffix];
+                    break;
+                }
+            }
+            if (imgType) {
+                const imageBuffer = fs.readFileSync(imagePath);
+                const base64Image = imageBuffer.toString('base64');
+                const imageMessage = {
+                    role: 'user',
+                    content: [
+                        {
+                            type: 'text',
+                            text: 'Here is an image for context:'
+                        },
+                        {
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${imgType};base64,${base64Image}`
+                            }
+                        }
+                    ]
+                };
+                filteredMsgs = (filteredMsgs as any[])
+                filteredMsgs.push(imageMessage);
+            }
+        }
+        
         return {
             "messages": filteredMsgs,
             "stream": stream,
@@ -343,7 +380,8 @@ export class LlamaServer {
         messages: ChatMessage[],
         isSummarization = false,
         onDelta?: (delta: string) => void,
-        abortSignal?: AbortSignal
+        abortSignal?: AbortSignal, 
+        imagePath = ""
     ): Promise<LlamaToolsResponse | undefined> => {
         let selectedModel: LlmModel = this.app.getToolsModel();
         let model = this.app.configuration.ai_model;
@@ -379,7 +417,7 @@ export class LlamaServer {
         }
 
         // Streaming branch for tools/agent calls
-        request = this.createToolsRequestPayload(messages, model, true);
+        request = this.createToolsRequestPayload(messages, model, true, imagePath);
 
         try {
             const streamResponse = await axios.post<any>(

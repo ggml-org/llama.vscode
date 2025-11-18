@@ -49,6 +49,7 @@ const App: React.FC<AppProps> = () => {
     initialState.view || noViewSet
   );
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
+  const [imagePath, setContextImage] = useState<string>("");
   const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
   const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string}>({name:"", description:"", systemInstruction:"", toolsModel:""});
 
@@ -100,6 +101,9 @@ const App: React.FC<AppProps> = () => {
           break;
         case 'updateContextFiles':
           setContextFiles(new Map(message.files || []));
+          break;
+        case 'updateContextImage':
+          setContextImage(message.image || "");
           break;
         case 'updateAgentEdit':
           setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
@@ -213,6 +217,8 @@ const App: React.FC<AppProps> = () => {
             setCurrentState={setCurrentState}
             contextFiles={contextFiles}
             setContextFiles={setContextFiles}
+            imagePath={imagePath}
+            setContextImage={setContextImage}
           />
         </div>
       )}

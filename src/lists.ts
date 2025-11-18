@@ -106,10 +106,16 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "aiModel": "z-ai/glm-4.5-air"
             },
             {
-              "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262.144 context $0.118/M input tokens $0.118/M output tokens (OpenRouter)",
+              "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262 144 context $0.118/M input tokens $0.118/M output tokens (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
               "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
+            },
+            {
+              "name": "Qwen: Qwen3 VL 30B A3B Instruct - 262 144 context $0.15/M input tokens $0.60/M output tokens (OpenRouter)",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "qwen/qwen3-vl-30b-a3b-instruct"
             },
             {
               "name": "Qwen: Qwen3 Coder - 262K context $0.30/M input tokens $1.20/M output tokens (OpenRouter)",

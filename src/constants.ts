@@ -283,3 +283,10 @@ export const OPENAI_COMP_PROVIDERS = {
   [OpenAiProvidersKeys.OpenRouter]: "https://openrouter.ai/api",
   [OpenAiProvidersKeys.Custom]: ""
 } as const
+
+export const SUPPORTED_IMG_FILE_EXTS: { [key: string]: string } = {
+    '.jpeg': 'image/jpeg',
+    '.jpg': 'image/jpeg',
+    '.png': 'image/png',
+    '.webp': 'image/webp'
+} as const;;

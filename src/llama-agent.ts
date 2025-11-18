@@ -5,7 +5,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { UI_TEXT_KEYS } from "./constants";
+import { SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 
 
 interface Step {
@@ -23,6 +23,8 @@ export class LlamaAgent {
     private logText = ""
     public contexProjectFiles: Map<string,string> = new Map();
     public sentContextFiles: Map<string,string> = new Map();
+    public contextImage: string = "";
+    public sentContextImages: string[] = [];
     private abortController: AbortController | null = null;
 
     constructor(application: Application) {
@@ -70,17 +72,50 @@ export class LlamaAgent {
             this.logText = chat.log??"";
          }
         //  this.app.llamaWebviewProvider.logInUi(this.logText);
-         this.resetContextProjectFiles();
+         this.resetContext();
     }
 
-    resetContextProjectFiles = () => {
+    resetContext = () => {
         this.contexProjectFiles.clear();
         this.app.llamaWebviewProvider.updateContextFilesInfo();
         this.sentContextFiles.clear();
+        this.contextImage = "";
+        this.sentContextImages = [];
     }
 
     addContextProjectFile = (fileLongName: string, fileShortName: string) => {
         this.contexProjectFiles.set(fileLongName, fileShortName);
+    }
+
+    addContextProjectImage = (imagePath: string) => {
+        this.contextImage = imagePath;
+    }
+    
+    removeContextProjectImage = () => {
+        this.contextImage = "";
+    }
+
+    selectImageFile = async (): Promise<string> => {
+        var imgPath = "";
+
+        var fileTypes =  Object.values(SUPPORTED_IMG_FILE_EXTS)
+        fileTypes = fileTypes.map(type => type.replace("image/", ""))
+        
+        const uris = await vscode.window.showOpenDialog({
+                    canSelectMany: false,
+                    openLabel: 'Import Model',
+                    filters: {
+                        'Image Files': fileTypes
+                    },
+                });
+        
+                if (!uris || uris.length === 0) {
+                    return "";
+                }
+        
+        imgPath = uris[0].fsPath;
+
+        return imgPath;
     }
 
     removeContextProjectFile = (fileLongName: string) => {
@@ -89,6 +124,10 @@ export class LlamaAgent {
 
     getContextProjectFiles = () => {
         return this.contexProjectFiles;
+    }
+
+    getContextProjecImage = () => {
+        return this.contextImage;
     }
 
     run = async (query:string, agentCommand?:string) => {
@@ -215,7 +254,8 @@ export class LlamaAgent {
                         streamed += delta;
                         this.logText += delta;
                         this.app.llamaWebviewProvider.logInUi(this.logText);
-                    }, this.abortController?.signal);
+                    }, this.abortController?.signal, !this.sentContextImages.includes(this.contextImage)? this.contextImage : "");
+                    if (this.contextImage) this.sentContextImages.push(this.contextImage)
                     if (!data) {
                         this.logText += "No response from AI" + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);

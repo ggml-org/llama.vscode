@@ -14,6 +14,8 @@ interface AgentViewProps {
   setCurrentState: (state: string) => void;
   contextFiles: Map<string, string>;
   setContextFiles: (files: Map<string, string>) => void;
+  imagePath: string;
+  setContextImage: (imgPath: string) => void;
 }
 
 const AgentView: React.FC<AgentViewProps> = ({
@@ -26,7 +28,9 @@ const AgentView: React.FC<AgentViewProps> = ({
   currentState,
   setCurrentState,
   contextFiles,
-  setContextFiles
+  setContextFiles,
+  imagePath,
+  setContextImage
 }) => {
   const [showFileSelector, setShowFileSelector] = useState<boolean>(false);
   const [fileList, setFileList] = useState<string[]>([]);
@@ -109,6 +113,9 @@ const AgentView: React.FC<AgentViewProps> = ({
         case 'updateContextFiles':
           setContextFiles(new Map(message.files || []));
           break;
+        case 'updateContextImage':
+          setContextImage(message.image || "");
+          break;
         default:
           break;
       }
@@ -116,7 +123,7 @@ const AgentView: React.FC<AgentViewProps> = ({
 
     window.addEventListener('message', handleMessage);
     return () => window.removeEventListener('message', handleMessage);
-  }, [setDisplayText, setCurrentState, setContextFiles]);
+  }, [setDisplayText, setCurrentState, setContextFiles, setContextImage]);
 
   // Function to focus the textarea (can be called from extension)
   const focusTextarea = () => {
@@ -147,6 +154,12 @@ const AgentView: React.FC<AgentViewProps> = ({
     handleAddSource('getFileList');
   }
 
+  const handleAddImage = () => {
+    vscode.postMessage({
+      command: 'selectImageFile'
+    });
+  }
+  
   const handleSelectToolsModel = () => {
     vscode.postMessage({
       command: 'selectModelWithTools'
@@ -208,6 +221,10 @@ const AgentView: React.FC<AgentViewProps> = ({
         command: 'addContextProjectFile',
         fileLongName: fileLongName
       });
+      // vscode.postMessage({
+      //   command: 'addContextProjectImage',
+      //   image: "/home/igardev/Downloads/sofia.jpeg"
+      // });
     } else if (inputText.endsWith('/')){
       vscode.postMessage({
         command: 'sendAgentCommand',
@@ -242,6 +259,14 @@ const AgentView: React.FC<AgentViewProps> = ({
       fileLongName: fileLongName
     });
   };
+
+  const handleRemoveContextImage = (imagePath: string) => {
+    vscode.postMessage({
+      command: 'removeContextProjectImage',
+      image: imagePath
+    });
+  };
+
 
   const handleOpenContextFile = (fileLongName: string) => {
     vscode.postMessage({
@@ -403,6 +428,19 @@ const AgentView: React.FC<AgentViewProps> = ({
                 </div>
               )}
 
+              {imagePath && (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                  <span className="model-text">{"image: " + imagePath}</span>
+                  <button
+                    className="modern-btn secondary"
+                    onClick={() => handleRemoveContextImage(imagePath)}
+                    title="Remove image from context"
+                    style={{ padding: '4px 8px', fontSize: '12px', minWidth: 'auto' }}
+                  >
+                    ×
+                  </button>
+                </div>
+              )}
               {/* Modern Textarea */}
               <textarea
                 ref={textareaRef}
@@ -452,6 +490,14 @@ const AgentView: React.FC<AgentViewProps> = ({
                     title="Add file to context"
                   >
                     @
+                  </button>
+                  <button
+                    onClick={handleAddImage}
+                    className="modern-btn secondary"
+                    title="Add/replace image to context (.jpg, .png, .webp)"
+                    style={{ filter: 'grayscale(100%)' }}
+                  >
+                    🖼️
                   </button>
                 </div>
               </div>
