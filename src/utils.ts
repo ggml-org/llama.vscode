@@ -905,4 +905,16 @@ export class Utils {
 
         return lines.join('\n'); // Join the remaining lines back into a string
     }
+
+    static getTodosFilePath = () => {
+        let filePath = "";
+        const TODO_FILE = '.llama-vscode-todos.md';
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            filePath = TODO_FILE;
+        } else {
+            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            filePath = path.join(workspaceRoot, TODO_FILE);
+        }
+        return filePath;
+    }
 }
