@@ -217,9 +217,7 @@ export class LlamaAgent {
             }
             
             const todoFile = Utils.getTodosFilePath()
-            if (fs.existsSync(todoFile)){
-                fs.unlinkSync(todoFile)
-            }
+            this.removeFile(todoFile);
 
             if (this.app.configuration.tool_update_todo_list_enabled){
                 query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
@@ -380,6 +378,8 @@ export class LlamaAgent {
             
             // Clean up AbortController
             this.abortController = null;
+
+            this.removeFile(todoFile);
             
             return response;
         }  
@@ -410,6 +410,12 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
+    }
+
+    private removeFile(todoFile: string) {
+        if (fs.existsSync(todoFile)) {
+            fs.unlinkSync(todoFile);
+        }
     }
 
     private async getItemContext(key: string, value: string) {
