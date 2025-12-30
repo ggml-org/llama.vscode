@@ -180,9 +180,10 @@ export class LlamaAgent {
 
     askAgent = async (query:string, agentCommand?:string): Promise<string> => {
             let response = ""
+            const originalQuery = query;
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
-            this.logText += "***" + query.replace("\n", "  \n") + "***" + "\n\n"; // Make sure markdown shows new lines correctly
+            this.logText += "***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n"; // Make sure markdown shows new lines correctly
 
             
             if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
@@ -213,6 +214,13 @@ export class LlamaAgent {
                     query += itemContext
                     this.sentContextFiles.set(key, value);
                 }                  
+            }
+            
+            const todoFile = Utils.getTodosFilePath()
+            this.removeFile(todoFile);
+
+            if (this.app.configuration.tool_update_todo_list_enabled){
+                query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
             }
 
             if (agentCommand) {
@@ -247,8 +255,14 @@ export class LlamaAgent {
                     this.resetMessages();
                     return "agent stopped"
                 }
-                iterationsCount++;
+                iterationsCount++;                    
                 try {
+                    if (fs.existsSync(todoFile) && iterationsCount % this.app.configuration.plan_review_frequency == 0){
+                        let goal = "Task: \n" + originalQuery
+                        let currentPlan = "Below is the todo list:\n"
+                        currentPlan += fs.readFileSync(todoFile, "utf-8")
+                        this.messages.push({"role": "user", "content": goal + "\n\n" + currentPlan})                   
+                    }
                     let streamed = "";
                     let data:any = await this.app.llamaServer.getAgentCompletion(this.messages, false, (delta: string) => {
                         streamed += delta;
@@ -364,6 +378,8 @@ export class LlamaAgent {
             
             // Clean up AbortController
             this.abortController = null;
+
+            this.removeFile(todoFile);
             
             return response;
         }  
@@ -394,6 +410,12 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
+    }
+
+    private removeFile(todoFile: string) {
+        if (fs.existsSync(todoFile)) {
+            fs.unlinkSync(todoFile);
+        }
     }
 
     private async getItemContext(key: string, value: string) {

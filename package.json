@@ -474,7 +474,8 @@
                 "delete_file",
                 "get_diff",
                 "edit_file",
-                "ask_user"
+                "ask_user",
+                "update_todo_list"
               ]
             }
           ],
@@ -1847,15 +1848,10 @@
           "default": false,
           "description": "Enable/disable tool llama-vscode_help"
         },
-        "llama-vscode.tool_save_plan_enabled": {
+        "llama-vscode.tool_update_todo_list_enabled": {
           "type": "boolean",
-          "default": false,
-          "description": "Enable/disable tool llama-vscode_help"
-        },
-        "llama-vscode.tool_update_task_enabled": {
-          "type": "boolean",
-          "default": false,
-          "description": "Enable/disable tool llama-vscode_help"
+          "default": true,
+          "description": "Enable/disable tool update_todo_list"
         },
         "llama-vscode.tool_custom_tool_description": {
           "type": "string",
@@ -1891,6 +1887,11 @@
           "type": "number",
           "default": 20,
           "description": "Max number of iterations with AI when working with tools. If you are working with paid AI providers, big number here could result in higher costs."
+        },
+        "llama-vscode.plan_review_frequency": {
+          "type": "number",
+          "default": 5,
+          "description": "How often (interations count) the plan/todos should be sent to the LLM again during a session."
         },
         "llama-vscode.chats_max_history": {
           "type": "number",

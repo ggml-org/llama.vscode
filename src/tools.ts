@@ -30,6 +30,7 @@ export class Tools {
         this.toolsFunc.set("custom_tool", this.customTool)
         this.toolsFunc.set("custom_eval_tool", this.customEvalTool)   
         this.toolsFunc.set("llama_vscode_help", this.llamaVscodeHelp)     
+        this.toolsFunc.set("update_todo_list", this.updateTodoList) 
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
         this.toolsFuncDesc.set("read_file", this.readFileDesc)
@@ -42,6 +43,7 @@ export class Tools {
         this.toolsFuncDesc.set("custom_tool", this.customToolDesc)
         this.toolsFuncDesc.set("custom_eval_tool", this.customEvalToolDesc)
         this.toolsFuncDesc.set("llama_vscode_help", this.llamaVscodeHelpDesc)
+        this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc)
         
     }
 
@@ -376,6 +378,31 @@ export class Tools {
     public llamaVscodeHelpDesc = async (args: string) => {
         return "llama_vscode_help tool is executed. "
     }
+
+    public updateTodoList = async (args: string) => {
+        let params = JSON.parse(args);
+
+        if (params.todos == undefined) return "The todos are not provided."
+        
+        let filePath = Utils.getTodosFilePath();
+        
+        try {
+            fs.writeFileSync(filePath, params.todos, 'utf8');
+        } catch (error) {
+            return `Error creating/updating todos`
+        }
+
+        return "The todos are created/updated."
+    }
+
+    public updateTodoListDesc = async (args: string) => {
+        let ret = "update_todo_list tool is executed. \n\n"
+        let params = JSON.parse(args);
+        if (params.todos) ret += params.todos.split(/\r?\n/).join("  \n")
+        return ret
+    }
+
+    
     
     
     public init = () => {
@@ -632,6 +659,26 @@ export class Tools {
                     "parameters": {
                         "type": "object",
                         "properties": {},
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_update_todo_list_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "update_todo_list",
+                    "description": this.app.prompts.TOOL_UPDATE_TODO_LIST_DESCRIPTION,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "todos": {
+                                "description": this.app.prompts.TOOL_UPDATE_TODO_LIST_PARAMETER_DESCRIPTION,
+                                "type": "string",
+                            },
+                        },
                         "required": [],
                     },
                     "strict": true

@@ -1020,3 +1020,20 @@ Same like code completion server, but use embeddings model and a little bit diff
 ```
  
  
+## Update todos tool
+
+### Overview
+Llama-vscode provides a tool update_todo_list to the agent for planning and tracking the execution of the user request.
+
+### How to use it
+Update todos tool is based on Roocode's tool with the same name (the tool description is copied from Roocode). 
+If the update_todo_list is enabled (selected), the agent could use it for planning non trivial tasks (user requests). This tools is used for both creating and updating the todo items. The todo items are saved in file <project_root>\.llama-vscode-todos.md. The todo items are updated by the agent to track the execution of the plan. This file is removed after the execution of the current user request is finished. If this file is updated by the user, the change might be taken into account by the agent. The content of the file (together with the inital user request) is sent to the agent periodically (every 5-th iteration by default, but this could be changed from setting plan_review_frequency). The agent could overwrite the user changes in the todo items file before reading it.  
+Each time the agent uses the tool, the todo items are shown in the agent chat window. The state of the items tracked with [ ] (not started), [-] (in progres) [x] (finished)
+Todo items are not reused between the user requests.
+
+Settings:
+- plan_review_frequency: Sets how often the todo items are sent to the agent to remind/review what is the current state of the plan
+- tool_update_todo_list_enabled - controls if the tool is enabled
+
+<img width="750" height="922" alt="image" src="https://github.com/user-attachments/assets/a4049df0-17da-4c6d-868f-a6bcbfa5f65c" />
+
