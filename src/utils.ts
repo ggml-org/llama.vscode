@@ -917,4 +917,13 @@ export class Utils {
         }
         return filePath;
     }
+
+    static getWorkspaceFolder = () => {
+        const workspaceFolders = vscode.workspace.workspaceFolders;
+        if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+            return "";
+        } else {
+            return vscode.workspace.workspaceFolders[0].uri.fsPath;
+        }
+    }
 }

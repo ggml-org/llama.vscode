@@ -6,7 +6,12 @@ import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
 import { SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
+import path from "path";
 
+
+interface Frontmatter {
+  [key: string]: any;
+}
 
 interface Step {
     id: string | number;
@@ -196,6 +201,11 @@ export class LlamaAgent {
                 && JSON.stringify(this.messages).length > this.app.configuration.chats_max_tokens*4) {
                 this.summarize();
             }
+
+            // Get the skills
+            const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
+            let skillsDesc = this.getSkillsDesc(skillsFolder)
+            if (skillsDesc) query += "\n\n" + skillsDesc
 
             if (this.contexProjectFiles.size > 0){
                 query += "\n\nBelow is a context, attached by the user.\n"
@@ -431,5 +441,73 @@ export class LlamaAgent {
             itemContext += "\n\nFile " + key + " content from line " + firstLine + " to line " + lastLine + " (one based):\n\n" + fileContent.slice(0, this.app.configuration.rag_max_context_file_chars);
         }
         return itemContext;
+    }
+
+    private getSkillsDesc(skillsFolder: string): string {
+        let desc = ""
+        if (fs.existsSync(skillsFolder)) {
+            desc += "<available_skills>"
+            const items = fs.readdirSync(skillsFolder, { withFileTypes: true });
+        
+            const folders = items
+                .filter(item => item.isDirectory())
+                .map(item => item.name);
+
+            for(let folder in folders){
+                const skillsFile = path.join(skillsFolder, folders[folder], "SKILL.md");
+                if (fs.existsSync(skillsFile)){
+                    desc += "<skill>"
+                    const frontMatter = this.parseFrontmatter(skillsFile)
+                    desc += `<name>${frontMatter.name}</name>`
+                    desc += `<description>${frontMatter.description}</description>`
+                    desc += `<location>${skillsFile}</location>`
+                    desc += "</skill>"
+                }
+            }
+            desc += "</available_skills>"
+        }
+        return desc;
+    }
+
+    private parseFrontmatter(filePath: string): Frontmatter {
+        try {
+            const fileContent = fs.readFileSync(filePath, 'utf-8');
+            
+            // Match frontmatter between --- delimiters
+            const frontmatterRegex = /^---\s*\n([\s\S]*?)\n---\s*\n?/;
+            const match = fileContent.match(frontmatterRegex);
+            
+            if (!match) {
+            return { frontmatter: {}, content: fileContent };
+            }
+            
+            const frontmatterText = match[1];
+            const content = fileContent.slice(match[0].length);
+            
+            // Parse frontmatter (assuming YAML format)
+            const frontmatter: Frontmatter = {};
+            const lines = frontmatterText.split('\n');
+            
+            for (const line of lines) {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+                const key = line.slice(0, colonIndex).trim();
+                const value = line.slice(colonIndex + 1).trim();
+                
+                // Try to parse as JSON-like values
+                try {
+                frontmatter[key] = JSON.parse(value);
+                } catch {
+                // Remove quotes if present
+                frontmatter[key] = value.replace(/^['"](.*)['"]$/, '$1');
+                }
+            }
+            }
+            
+            return frontmatter;
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to read or parse file: ${error}`);
+            return {}
+        }
     }
 }

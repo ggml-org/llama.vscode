@@ -46,6 +46,7 @@ export class Configuration {
     ring_chunk_size = 64;
     ring_scope = 1024;
     ring_update_ms = 1000;
+    skills_folder = ""
     language = "en";
 
     // experimental - avoid using
@@ -240,6 +241,7 @@ export class Configuration {
         this.chats_max_tokens = Number(config.get<number>("chats_max_tokens"));
         this.chats_summarize_old_msgs = Boolean(config.get<boolean>("chats_summarize_old_msgs"));
         this.chats_msgs_keep = Number(config.get<number>("chats_msgs_keep"));
+        this.skills_folder = String(config.get<string>("skills_folder"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));

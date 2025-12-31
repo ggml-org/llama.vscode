@@ -1918,6 +1918,11 @@
           "default": false,
           "description": "Show the details about the tools calls in UI - arguments and results."
         },
+        "llama-vscode.skills_folder": {
+          "type": "string",
+          "default": "",
+          "description": "The folder, where are the skills are stored. If empty , <project_folder>/skills will be used."
+        },
         "llama-vscode.language": {
           "type": "string",
           "default": "en",
@@ -1993,6 +1998,7 @@
     "axios": "^1.1.2",
     "globby": "^14.1.0",
     "ignore": "^7.0.4",
+    "js-yaml": "^4.1.1",
     "openai": "^4.80.1",
     "picomatch": "^4.0.2",
     "remark-gfm": "^4.0.1",
