@@ -99,6 +99,36 @@ export class Architect {
         context.subscriptions.push(changeActiveTextEditorDisp)
     }
 
+    registerCommandSelectNextSuggestion = (context: vscode.ExtensionContext) => {
+        const selectNextSuggestionCommand = vscode.commands.registerCommand(
+            'extension.selectNextSuggestion',
+            async () => {
+                const editor = vscode.window.activeTextEditor;
+                if (!editor) {
+                    return;
+                }
+                await vscode.commands.executeCommand('editor.action.inlineSuggest.showNext');
+                await this.app.completion.increaseSuggestionIndex();
+            }
+        );
+        context.subscriptions.push(selectNextSuggestionCommand);
+    }
+
+    registerCommandSelectPreviousSuggestion = (context: vscode.ExtensionContext) => {
+        const selectPreviousSuggestionCommand = vscode.commands.registerCommand(
+            'extension.selectPreviousSuggestion',
+            async () => {
+                const editor = vscode.window.activeTextEditor;
+                if (!editor) {
+                    return;
+                }
+                await vscode.commands.executeCommand('editor.action.inlineSuggest.showPrevious');
+                await this.app.completion.decreaseSuggestionIndex();
+            }
+        );
+        context.subscriptions.push(selectPreviousSuggestionCommand);
+    }
+
     registerCommandAcceptFirstLine = (context: vscode.ExtensionContext) => {
         const acceptFirstLineCommand = vscode.commands.registerCommand(
             'extension.acceptFirstLine',

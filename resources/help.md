@@ -13,9 +13,7 @@ Example:
 1. Select several lines of source code
 2. Press Ctrl+Shift+A (or right click and select "llama-vscode: Show Llama Agent") - this will attach the selected lines to the prompt
 3. Inside the agent prompt press "/" and select "explain"
-The agent will explain the selected code. 
- 
-## Chat with AI about llama-vscode  
+The agent will explain the selected code.## Chat with AI about llama-vscode  
 
 ### Requred servers
 - Tools server
@@ -25,12 +23,6 @@ This is a conversation with the llama-vscode help agent AI about llama-vscode, s
 - From llama-vscode menu select "Chat with AI about llama-vscode" -> the agent will be opened
 - Enter your question about llama-vscode
 The first time it could take longer to answer. The following questions will be answered faster as the help information will be cached.
- 
- 
-## Chat with AI with project context 
-This is removed. Chat with AI with project context is equal to using agent with the tool search_source. The agent has many other tools and is therefore a better choice.
- 
- 
 ## Chat with AI  
 
 ### Requred servers
@@ -41,8 +33,8 @@ This is a conversation with the local AI. Mainly for asking questions for refere
 - Press Ctrl+; inside an editor (or select from llama.vscode menu Chat with AI) - A chat window will open inside VS Code
 - Enter your message and start the chat
 
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411) 
- 
+![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411)## Chat with AI with project context 
+This is removed. Chat with AI with project context is equal to using agent with the tool search_source. The agent has many other tools and is therefore a better choice.
 ## Code completion
 
 ### Requred servers
@@ -61,9 +53,7 @@ https://github.com/user-attachments/assets/97bb1418-dcea-4a49-8332-13b2ab4da661
 
 
 
-![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok) 
- 
-## Custom eval tool
+![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok)## Custom eval tool
 
 ### Overview
 llama-vscode provides to the users the posibility to partially create their own tool. Custom eval tool is a simple one - has one parameters and and uses the provided by the user javascript function to calculate the result.
@@ -85,8 +75,6 @@ https://github.com/user-attachments/assets/fb12d56f-61e8-409b-b888-0a524167e116
 https://github.com/user-attachments/assets/7e928fc3-da14-4834-a414-0f8e23593155
 
 
- 
- 
 ## Custom tool
 
 ### Overview
@@ -105,8 +93,6 @@ https://github.com/user-attachments/assets/46602f8c-bd45-4794-9f5c-6ebe262c396a
 
 https://github.com/user-attachments/assets/50baa8c3-f426-4901-a443-8882da644800
 
- 
- 
 ## Delete models  
 
 ### Overview
@@ -122,14 +108,20 @@ You could delete the GGUF files from this folder. If they are missing, but are n
 
 
 
- 
- 
 ## Edit Agent 
 
 ### Overview
 Edit agent view is used for adding and editing agents. From there it is also possible to delete and copy an existing agent as a new one. The identifier of an agent is it's name. For now there is no tools model as part of the agent (the currently selected tools model will be used)
 
+<img width="582" height="977" alt="image" src="https://github.com/user-attachments/assets/9a406e7a-09ea-4f04-9054-f709bcdb038a" />
+
+
 ### How to use it 
+Edit agent view could be shown in one of the following ways:  
+- In the left sidebar click llama-viscode button and after that on the upper part click button Show Edit Agent View (pencip image)
+- From llama-vscode menu (Ctrl+Shift+M) select Agents...-> Add agent (or Edit agent or Copy agent)
+- From environment view, when an agent is selected, click button Edit - this will show the selected agent in the Edit Agent View
+
 Edit existing agent:  
 1. Click Select button and load an agent to be edited.
 2. Change the Description and System Instructions fields (if needed)
@@ -150,12 +142,10 @@ Copy existing agent as a new one:
 
 Delete agent: 
 1. Click Delete button
-3. Select an agent to be deleted from the list
-4. Confirm the deletion of the agent
+2. Select an agent to be deleted from the list
+3. Confirm the deletion of the agent
 
 
- 
- 
 ## Edit with AI  
 
 ### Requred servers
@@ -171,9 +161,7 @@ Delete agent:
 https://github.com/user-attachments/assets/887d0b88-717b-4765-b565-d4c54673bde8
 
 
-![Edit with AI](https://github.com/user-attachments/assets/d7aef6a8-8c29-4278-b91f-9b3031c8cbd5) 
- 
-## Env
+![Edit with AI](https://github.com/user-attachments/assets/d7aef6a8-8c29-4278-b91f-9b3031c8cbd5)## Env
 
 ### What is env
 Env (short for environment) is a group of models, agent and settings. Env makes it easier for the users to prepare the environment for their needs. Selecting an env with a given intent will make sure all needed servers are available. One env could contain up to 4 different models - for completions, chat, embeddings, tools. Env could also contain an agent and settings for enabling/disabling completions, rag and starting last selected env on startup. If the user wants to use only code completions functionality, he/she could select an env with only one model for completions. If the user wants to use all the functionality from llama-vscode, he/she could select an env with full package of models.
@@ -186,8 +174,6 @@ There is a page in llama-vscode UI with the current environment details. From th
 
 <img width="540" height="996" alt="image" src="https://github.com/user-attachments/assets/b1a78d7a-8602-451a-b304-fc967fb66696" />
 
- 
- 
 ## Generate a commit message  
 
 ### Requred servers
@@ -197,14 +183,13 @@ There is a page in llama-vscode UI with the current environment details. From th
 In the source control panel just click on the star button (near the commit button).  
 This generate a commit message, based on the current changes.   
 
-![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3) 
- 
-## Version 0.0.32 is released (05.10.2025)
+![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3)## Version 0.0.39 is released (31.12.2025)
 ## What is new
-- predefined model DeepSeek V3.1 free 163,800 context (OpenRouter) added
-- predefined model Z.AI: GLM 4.5 Air (free): GLM 4.5 Air - 128.000 context (OpenRouter) added
-- Added agent "Ask" is for review, analysis and suggestions for the code without changing the files
-- Some bugs are fixed
+
+- Skills (https://agentskills.io/home) could be now used with llama-vscode
+- skills_folder setting determines where are skills descriptions. If empty the <project_folder>/skills folder is used by default
+- Anthropic models support skills best. I guess, the open source models will catch up.
+
 
 ## Setup instructions for llama.cpp server
 
@@ -252,8 +237,6 @@ This generate a commit message, based on the current changes.
 
 ### [Model selection](https://github.com/ggml-org/llama.vscode/wiki/Model-selection)
 
- 
- 
 ## How to use llama-vscode  
 
 ### Overview
@@ -279,8 +262,6 @@ If you are an existing user - you could continue using llama-vscode as before.
 
 For more details - select 'View Documentation' from llama-vscode menu
 
- 
- 
 ## Llama Agent 
 
 ### Requred servers
@@ -321,8 +302,6 @@ https://github.com/user-attachments/assets/dd9da21a-6f57-477d-a55c-e4ff60b1ecb8
 
 
 
- 
- 
 ## Use as local AI runner (as LM Studio, Ollama, etc.) 
 
 ### Overview
@@ -342,8 +321,6 @@ Enjoy talking with local AI.
 
 https://github.com/user-attachments/assets/e75e96de-878b-43db-a45b-47cc0c554697
 
- 
- 
 ## Manage envs 
 
 ### Requred servers
@@ -385,8 +362,6 @@ An agent could be exported as a .json files. This file could be shared with othe
 
 - Import  
 An agent could be imported from a .json file - select a file to import it.
- 
- 
 ## Manage chat models 
 
 ### Requred servers
@@ -435,9 +410,7 @@ Add chat model from OpenAI compatible provider - OpenRouter or custom (for examp
 A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
 
 - Import  
-A model could be imported from a .json file - select a file to import it. 
- 
-## Manage envs 
+A model could be imported from a .json file - select a file to import it.## Manage envs 
 
 ### Requred servers
 - No servers required
@@ -462,8 +435,6 @@ A chat could be exported as a .json file. This file could be shared with other u
 
 - Import  
 A chat could be imported from a .json file - select a file to import it.
- 
- 
 ## Manage completion models 
 
 ### Requred servers
@@ -512,9 +483,7 @@ Add completion model from OpenAI compatible provider - OpenRouter or custom (for
 A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
 
 - Import  
-A model could be imported from a .json file - select a file to import it. 
- 
-## Manage embeddings 
+A model could be imported from a .json file - select a file to import it.## Manage embeddings 
 
 ### Requred servers
 - No servers required
@@ -562,9 +531,7 @@ Add embeddings model from OpenAI compatible provider - OpenRouter or custom (for
 A model could be exported as a .json files. This file could be shared with others used, modified if needed and imported again. Select a model to export it.
 
 - Import  
-A model could be imported from a .json file - select a file to import it. 
- 
-## Manage envs 
+A model could be imported from a .json file - select a file to import it.## Manage envs 
 
 ### Requred servers
 - No servers required
@@ -612,8 +579,6 @@ https://github.com/user-attachments/assets/3fb864ad-a010-4d19-97d8-fd7c9ce60494
 https://github.com/user-attachments/assets/3b8dffcc-bcdc-4981-b181-ffc52fe43075
 
 
- 
- 
 ## Manage tools models 
 
 ### Requred servers
@@ -662,9 +627,7 @@ Add tools model from OpenAI compatible provider - OpenRouter or custom (for exam
 A model could be exported as a .json files. This file could be shared with other users, modified if needed and imported again. Select a model to export it.
 
 - Import  
-A model could be imported from a .json file - select a file to import it. 
- 
-## MCP Support  
+A model could be imported from a .json file - select a file to import it.## MCP Support  
 
 ### Requred servers
 - Tools server
@@ -684,8 +647,6 @@ llama-vscode could use the the tools from the MCP servers, which are installed i
 4. Click "Select Tools" from Llama Agent panel and select the tools, which you want to use from your MCP Server
 
 
- 
- 
 ## Menu  
 
 ### Requred servers
@@ -701,8 +662,6 @@ OR
 
 https://github.com/user-attachments/assets/9895924d-1948-4f3c-b52e-2cce453645c8
 
- 
- 
 ## Model selection
 
 ### What is model selection
@@ -716,8 +675,22 @@ There are different ways to select a model
 - In Llama Agent click the button for selecting a model (completion, chat, embeddings, tools)
 - In llama-vscode menu select "Completion models..." (or chat, embeddings, tools)
 - Select an env. This will select the models, which are part of the env
- 
- 
+## Parallel Completions
+
+### Overview
+Llama-vscode generates parallel code completions (default 3) if a version of llama.cpp after December, 6, 2025 (commit c42712b) is used. The next completion is shown by pressing Ctrl+], previous completion is shown by pressing Ctrl+[.  
+The setting max_parallel_completions determines how many completions are generated.
+
+### How to use it
+1. Run the completion model and start codeing
+2. When a code completion is shown, press Ctrl+] to show the next completion, Ctrl+[ to show the previous completion
+
+
+Settings:
+- max_parallel_completions: The max number of parallel completions to generate. Default is 3.
+
+[Screencast from 2026-01-05 15-05-00.webm](https://github.com/user-attachments/assets/41fa92f8-88db-4079-9574-486fb4286c79)
+
 ## Rules
 
 ### What are rules
@@ -730,46 +703,6 @@ The rules are optional. You could use rules file to add instructions to the syst
 There are two ways to configure rules:
 - Create a new rules file under name llama-vscode-rules.md in the root of the project.
 - In llama-vscode setting Agent_rules enter a path to a rules file. It could be relative to the project root or absolute path. If this is specified, the file llama-vscode-rules.md will be ignored.
- 
- 
-## Statusbar  
-
-### Requred servers
-- No servers requred
-
-### How to use it 
-- View vscode-state
-- View statistics
-- Click on "llama-vscode" status bar to show llama-vscode menu
-
-
-
-https://github.com/user-attachments/assets/8f0b4575-104f-471c-be3f-f3d5b58aeee1
-
- 
- 
-## Use cases  
-
-### Overview
-The use cases below describe how to prepare and use llama-vscode in some specific cases. There are already some configurations for models and env, which could be selected and used directly
-
-### Only completion used, local server started by llama-vscode
-- Use the default configuration if it works for you by selecting Env for your case
-- If you want to use a different one, here is how to prepare it:
-1. Create completion model - select llama-vscode menu -> "Completion models..." -> "Add completion model from Huggingface", find the model in Huggingface and add it.
-2. From llama-vscode menu select "Deselect/stop env and models"
-3. Create an env, which includes only this model - from llama-vscode menu -> "Env..." -> "Add Env...". A panel will be show with buttons for selecting completion, chat, embeddings and tools models. Click "Compl" button and select the newly added model (the name is hf: model_name_from_huggingface). Test if code completion works well. Click button "Add Env" to save the environment.
-
-### Only completion used, external server
-Extarnal server could be also a local one, but is not started by llama-vscode on selecting the model. The completion server should support /infill endpoint, which is currently available only by llama.cpp.
-1. Create a new model - select llama-vscode menu -> "Completion models..." -> "Add completion model...". Enter only name and endpoint.
-2. From llama-vscode menu select "Deselect/stop env and models"
-3. Create an env, which includes only this model - from llama-vscode menu -> "Env..." -> "Add Env...". A panel will be show with buttons for selecting completion, chat, embeddings and tools models. Click "Compl" button and select the newly added model. Test if code completion works well. Click button "Add Env" to save the environment.
-
-
-
- 
- 
 ## Setup llama.cpp server for Linux 
 
 1. Download the release files for your OS from [llama.cpp releases.](https://github.com/ggerganov/llama.cpp/releases) (or build from source).  
@@ -853,8 +786,6 @@ Same like code completion server, but use embeddings model and a little bit diff
 ```bash  
 `llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
- 
- 
 ### Setup llama.cpp servers for Mac  
 
 Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if not yet done). After that add/select the models you want to use.   
@@ -933,8 +864,6 @@ Same like code completion server, but use embeddings model and a little bit diff
 `llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
 
- 
- 
 ### Setup llama.cpp servers for Windows  
 
 Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if not yet done). After that add/select the models you want to use.   
@@ -1018,8 +947,34 @@ Same like code completion server, but use embeddings model and a little bit diff
 ```bash
 `llama-server.exe -hf nomic-embed-text-v2-moe-q8_0.gguf --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
- 
- 
+## Skills
+
+### Overview
+Llama-vscode support skills (https://agentskills.io/home), which extend the capabilities of the LLM (similar to tools).
+
+### How to use it
+1. Set the skills folder in setting skills_folder (if not set, the <project_root>/skills is used)
+2. Ask the agent for to do something, which requres a skill (or ask details about the skills)
+
+On sending a user request to the agent, the folder is scanned and the available skills are provided to the LLM. If the LLM decides to use a partiular skill, the skill details are loaded by LLM.  
+
+
+Settings:
+- skills_folder: The folder where the skills are stored
+## Statusbar  
+
+### Requred servers
+- No servers requred
+
+### How to use it 
+- View vscode-state
+- View statistics
+- Click on "llama-vscode" status bar to show llama-vscode menu
+
+
+
+https://github.com/user-attachments/assets/8f0b4575-104f-471c-be3f-f3d5b58aeee1
+
 ## Update todos tool
 
 ### Overview
@@ -1036,4 +991,24 @@ Settings:
 - tool_update_todo_list_enabled - controls if the tool is enabled
 
 <img width="750" height="922" alt="image" src="https://github.com/user-attachments/assets/a4049df0-17da-4c6d-868f-a6bcbfa5f65c" />
+
+## Use cases  
+
+### Overview
+The use cases below describe how to prepare and use llama-vscode in some specific cases. There are already some configurations for models and env, which could be selected and used directly
+
+### Only completion used, local server started by llama-vscode
+- Use the default configuration if it works for you by selecting Env for your case
+- If you want to use a different one, here is how to prepare it:
+1. Create completion model - select llama-vscode menu -> "Completion models..." -> "Add completion model from Huggingface", find the model in Huggingface and add it.
+2. From llama-vscode menu select "Deselect/stop env and models"
+3. Create an env, which includes only this model - from llama-vscode menu -> "Env..." -> "Add Env...". A panel will be show with buttons for selecting completion, chat, embeddings and tools models. Click "Compl" button and select the newly added model (the name is hf: model_name_from_huggingface). Test if code completion works well. Click button "Add Env" to save the environment.
+
+### Only completion used, external server
+Extarnal server could be also a local one, but is not started by llama-vscode on selecting the model. The completion server should support /infill endpoint, which is currently available only by llama.cpp.
+1. Create a new model - select llama-vscode menu -> "Completion models..." -> "Add completion model...". Enter only name and endpoint.
+2. From llama-vscode menu select "Deselect/stop env and models"
+3. Create an env, which includes only this model - from llama-vscode menu -> "Env..." -> "Add Env...". A panel will be show with buttons for selecting completion, chat, embeddings and tools models. Click "Compl" button and select the newly added model. Test if code completion works well. Click button "Add Env" to save the environment.
+
+
 
