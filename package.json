@@ -152,6 +152,16 @@
         "when": "editorTextFocus"
       },
       {
+        "command": "extension.selectNextSuggestion",
+        "key": "alt+]",
+        "when": "editorTextFocus && inlineSuggestionVisible"
+      },
+      {
+        "command": "extension.selectPreviousSuggestion",
+        "key": "alt+[",
+        "when": "editorTextFocus && inlineSuggestionVisible"
+      },
+      {
         "command": "extension.acceptFirstLine",
         "key": "shift+tab",
         "when": "editorTextFocus && inlineSuggestionVisible"
@@ -270,6 +280,11 @@
           "type": "string",
           "default": "",
           "description": "The URL to be used by the extension for creating embeddings."
+        },
+        "llama-vscode.max_parallel_completions": {
+          "type": "number",
+          "default": 3,
+          "description": "The max number of parallel completions. Switching between completions could be done with Alt+] (next) or Alt =+[ (previous). "
         },
         "llama-vscode.new_completion_model_port": {
           "type": "number",

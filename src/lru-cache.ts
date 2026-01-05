@@ -2,7 +2,7 @@ import * as crypto from 'crypto';
 
 export class LRUCache {
     private capacity: number;
-    private map: Map<string, string>;
+    private map: Map<string, string[]>;
 
     constructor(capacity: number) {
         if (capacity <= 0) {
@@ -18,7 +18,7 @@ export class LRUCache {
      * @param key The key to retrieve.
      * @returns The value associated with the key, or undefined if the key is not found.
      */
-    get = (key: string): string | undefined => {
+    get = (key: string): string[] | undefined => {
         if (!this.map.has(key)) {
             return undefined;
         }
@@ -37,7 +37,7 @@ export class LRUCache {
      * @param key The key to insert or update.
      * @param value The value to associate with the key.
      */
-    put = (key: string, value: string): void => {
+    put = (key: string, value: string[]): void => {
         if (this.map.has(key)) {
             // If the key exists, delete it to refresh its position
             this.map.delete(key);
