@@ -711,7 +711,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "delete_file",
                 "get_diff",
                 "edit_file",
-                "ask_user"
+                "ask_user",
+                "update_todo_list"
               ]
             },
             {
