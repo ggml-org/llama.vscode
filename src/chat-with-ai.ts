@@ -128,19 +128,9 @@ export class ChatWithAi {
                     // console.log("onDidReceiveMessage: " + message.text);
                 }
             });
-            // Wait for the page to load before sending message
-            if (query) extraCont += await this.prepareRagContext(query);
-            setTimeout(async () => {
-                if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
-            }, Math.max(0, 3000 - (Date.now() - createWebviewTimeInMs)));
         } else {
             aiPanel.reveal();
             this.lastActiveEditor = editor;
-            if (query) extraCont += await this.prepareRagContext(query);
-            // Wait for the page to load before sending message
-            setTimeout(async () => {
-                if (aiPanel) aiPanel.webview.postMessage({ command: 'setText', text: queryToSend, context: extraCont });
-            }, 500);
         }
     }
 
@@ -157,46 +147,12 @@ export class ChatWithAi {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <meta 
+                http-equiv="Content-Security-Policy" 
+                content="default-src 'self' https: http: data: blob: 'unsafe-inline' 'unsafe-eval';
+                        connect-src 'self' https: http: ws: wss:;
+                        frame-src 'self' https: http:;">
             <title>llama.cpp server UI</title>
-            <script>
-                // Initialize the VS Code API
-                const vscode = acquireVsCodeApi();
-                vscode.postMessage({ command: 'jsAction', text: 'vscode javascript object created' });
-
-                // Listen for messages from the extension
-                window.addEventListener('message', (event) => {
-                    vscode.postMessage({ command: 'jsAction', text: 'message received' });
-
-                    const { command, text, context } = event.data; // Extract the command and text from the event
-                    if (command === 'setText') {
-                        vscode.postMessage({ command: 'jsAction', text: 'command setText received' });
-
-                        const iframe = document.getElementById('askAiIframe');
-                        if (iframe) {
-                            vscode.postMessage({ command: 'jsAction', text: 'askAiIframe obtained' });
-                            iframe.contentWindow.postMessage({ command: 'setText', text: text, context: context }, '*');
-                            vscode.postMessage({ command: 'jsAction', text: text });
-                        }
-                    }
-                    if (command === 'escapePressed') {
-                        vscode.postMessage({ command: 'jsAction', text: 'command escape pressed' });
-                        vscode.postMessage({ command: 'escapePressed' });
-                    }
-                    if (command === 'jsAction') {
-                        vscode.postMessage({ command: 'jsAction', text: text });
-                    }
-                });
-
-                // Listen for key events in the iframe
-                window.addEventListener('keydown', (event) => {
-                    vscode.postMessage({ command: 'jsAction', text: 'keydown event received' });
-                    if (event.key === 'Escape') {
-                        // Send a message to the extension when Escape is pressed
-                        vscode.postMessage({ command: 'escapePressed', text: "" });
-                        vscode.postMessage({ command: 'jsAction', text: "Escabe key pressed..." });
-                    }
-                });
-            </script>
             <style>
                 body, html {
                     margin: 0;
@@ -213,7 +169,7 @@ export class ChatWithAi {
             </style>
         </head>
         <body>
-            <iframe src="${url}" id="askAiIframe"></iframe>
+            <iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" id="askAiIframe"></iframe>
         </body>
         </html>
         `;

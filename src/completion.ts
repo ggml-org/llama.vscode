@@ -91,6 +91,7 @@ export class Completion {
 
             let newCompletions: string[] = []
             let firstComplLines: string[] = []
+
             for (let compl of completions){
                 let suggestionLines = compl.split(/\r?\n/)
                 Utils.removeTrailingNewLines(suggestionLines);
@@ -357,7 +358,7 @@ export class Completion {
 
     private getComplFromContent(codeCompletions: any): string[] | undefined {
         if ("content" in codeCompletions) 
-            return codeCompletions.content??""
+            return [codeCompletions.content??""]
         
         if (codeCompletions.length > 0){
             let completions: Set<string> = new Set()
@@ -368,7 +369,15 @@ export class Completion {
         } 
         else return [];
     }
-    
-    // Function for printing the first n Fibonachi numbers
-    
+
+    private getMaxNumber(numbers: number[]): number {
+        let max = 0;
+        for (const num of numbers) {
+            if (num > max) {
+                max = num;
+            }
+        }
+        return max;
+    }
+
 }

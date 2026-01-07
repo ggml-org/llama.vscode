@@ -75,10 +75,6 @@
         "title": "llama-vscode: Ask AI"
       },
       {
-        "command": "extension.askAiWithContext",
-        "title": "llama-vscode: Ask AI With Context"
-      },
-      {
         "command": "extension.editSelectedText",
         "title": "llama-vscode: Edit Selected Text with AI"
       },
@@ -184,11 +180,6 @@
       {
         "command": "extension.askAi",
         "key": "ctrl+;",
-        "when": "editorTextFocus"
-      },
-      {
-        "command": "extension.askAiWithContext",
-        "key": "ctrl+Shift+;",
         "when": "editorTextFocus"
       },
       {
