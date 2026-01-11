@@ -15,7 +15,6 @@ export interface LlamaToolsResponse {
     choices: [{
         message:{content?: string, tool_calls?:[{id:string, function: {name:string, arguments: string}}]},
         finish_reason?: string,
-        
     }];
 }
 
@@ -109,11 +108,12 @@ export class LlamaServer {
     private createRequestPayload(noPredict: boolean, inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, model: string, nindent?: number) {
         if (noPredict) {
             return {
+                id_slot: 0,
                 input_prefix: inputPrefix,
                 input_suffix: inputSuffix,
                 input_extra: chunks,
                 prompt,
-                n_predict: 0,                
+                n_predict: 0,
                 samplers: [],
                 cache_prompt: true,
                 t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
@@ -123,9 +123,10 @@ export class LlamaServer {
         }
 
         return {
+            id_slot: 0,
             input_prefix: inputPrefix,
             input_suffix: inputSuffix,
-            input_extra: chunks, 
+            input_extra: chunks,
             prompt,
             n_predict: this.app.configuration.n_predict,
             n_cmpl: this.app.configuration.max_parallel_completions,
@@ -239,10 +240,10 @@ export class LlamaServer {
     private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "") {
         this.app.tools.addSelectedTools();
         let filteredMsgs = this.filterThoughtFromMsgs(messages)
-        
+
         // Add image with base64 encoding
         if (imagePath && fs.existsSync(imagePath)) {
-            
+
             var imgType = ""
             for (var suffix in SUPPORTED_IMG_FILE_EXTS){
                 if (imagePath.endsWith(suffix)) {
@@ -272,7 +273,7 @@ export class LlamaServer {
                 filteredMsgs.push(imageMessage);
             }
         }
-        
+
         return {
             "messages": filteredMsgs,
             "stream": stream,
@@ -284,12 +285,12 @@ export class LlamaServer {
         };
     }
 
-    private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
+private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         let filteredMsgs = this.filterThoughtFromMsgs(messages)
         const summaryPromptMsgs: ChatMessage[] = [
             {
-            role: 'system',
-            content: `Summarize the conversation concisely, preserving technical details and code solutions.`
+                role: 'system',
+                content: `Summarize the conversation concisely, preserving technical details and code solutions.`
             },
             ...filteredMsgs
         ];
@@ -317,7 +318,7 @@ export class LlamaServer {
 
         // else, default to llama.cpp
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
-        if (!endpoint) { 
+        if (!endpoint) {
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
             const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select")
             if (shouldSelectModel){
@@ -351,7 +352,7 @@ export class LlamaServer {
         chunks: any,
         nindent: number
     ): Promise<LlamaChatResponse | undefined> => {
-        
+
         let { endpoint, model, requestConfig } = this.getChatModelProperties();
 
         const response = await axios.post<LlamaChatResponse>(
@@ -381,7 +382,7 @@ export class LlamaServer {
         messages: ChatMessage[],
         isSummarization = false,
         onDelta?: (delta: string) => void,
-        abortSignal?: AbortSignal, 
+        abortSignal?: AbortSignal,
         imagePath = ""
     ): Promise<LlamaToolsResponse | undefined> => {
         let selectedModel: LlmModel = this.app.getToolsModel();
@@ -390,7 +391,7 @@ export class LlamaServer {
 
         let endpoint = this.app.configuration.endpoint_tools;
         if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) endpoint = selectedModel.endpoint;
-        
+
         let requestConfig = this.app.configuration.axiosRequestConfigTools;
         if (selectedModel?.isKeyRequired !== undefined && selectedModel.isKeyRequired){
             const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
@@ -403,10 +404,10 @@ export class LlamaServer {
                 }
             }
         }
-        
+
         let uri = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
         let request: any;
-        
+
         if (isSummarization) {
             request = this.createGetSummaryRequestPayload(messages, model);
             const response = await axios.post<LlamaToolsResponse>(
@@ -518,7 +519,7 @@ export class LlamaServer {
         }
     };
 
-    
+
 
     updateExtraContext = (chunks: any[]): void => {
         // If the server is OpenAI compatible, use the OpenAI API to prepare for the next FIM
@@ -543,7 +544,7 @@ export class LlamaServer {
 
             let endpoint = this.app.configuration.endpoint_embeddings;
             if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
-            
+
             let requestConfig = this.app.configuration.axiosRequestConfigEmbeddings;
             if (selectedModel.isKeyRequired){
                 const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
@@ -556,7 +557,7 @@ export class LlamaServer {
                     }
                 }
             }
-            
+
             const response = await axios.post<LlamaEmbeddingsResponse>(
                 `${Utils.trimTrailingSlash(endpoint)}/v1/embeddings`,
                 {
@@ -697,7 +698,7 @@ export class LlamaServer {
                 name: 'llama-vscode Command Terminal'
             });
         // }
-        
+
         this.vsCodeCommandTerminal.show(true);
         this.vsCodeCommandTerminal.sendText(`echo "Executing: ${command}"`);
         try {
@@ -706,7 +707,7 @@ export class LlamaServer {
             // Show output in   terminal
             this.vsCodeCommandTerminal.sendText(`echo "Command completed successfully"`);
             this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
-            
+
             return { stdout, stderr };
         } catch (error: any) {
             this.vsCodeCommandTerminal.sendText(`echo "Command failed: ${error.message}"`);
@@ -771,7 +772,7 @@ export class LlamaServer {
             this.vsCodeCommandTerminal = undefined;
         }
     }
-    
+
     killToolsCmd = (): void => {
         if (this.vsCodeToolsTerminal) {
             this.vsCodeToolsTerminal.dispose();
@@ -787,7 +788,7 @@ export class LlamaServer {
         let endpoint = this.app.configuration.endpoint_chat;
         let model = this.app.configuration.ai_model;
         let requestConfig = this.app.configuration.axiosRequestConfigChat;
-        if (!endpoint) { 
+        if (!endpoint) {
             endpoint = this.app.configuration.endpoint_tools;
             requestConfig = this.app.configuration.axiosRequestConfigTools;
         }
