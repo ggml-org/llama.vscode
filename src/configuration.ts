@@ -48,6 +48,12 @@ export class Configuration {
     ring_update_ms = 1000;
     skills_folder = ""
     language = "en";
+    health_check_interval_s = 30;
+    health_check_compl_enabled = false;
+    health_check_chat_enabled = false;
+    health_check_embs_enabled = false;
+    health_check_tools_enabled = false;
+
 
     // experimental - avoid using
     use_openai_endpoint = false;
@@ -263,6 +269,11 @@ export class Configuration {
         this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
         this.ask_install_llamacpp = Boolean(config.get<boolean>("ask_install_llamacpp", true));
         this.ask_upgrade_llamacpp_hours = Number(config.get<number>("ask_upgrade_llamacpp_hours"));
+        this.health_check_interval_s = Number(config.get<number>("health_check_interval_s"));
+        this.health_check_compl_enabled = Boolean(config.get<boolean>("health_check_compl_enabled"));
+        this.health_check_chat_enabled = Boolean(config.get<boolean>("health_check_chat_enabled"));
+        this.health_check_embs_enabled = Boolean(config.get<boolean>("health_check_embs_enabled"));
+        this.health_check_tools_enabled = Boolean(config.get<boolean>("health_check_tools_enabled"));
     };
 
     getUiText = (uiText: string): string | undefined => {
@@ -287,7 +298,11 @@ export class Configuration {
     isEnvViewSettingChanged = (event: vscode.ConfigurationChangeEvent) => {
          return event.affectsConfiguration("llama-vscode.enabled")
             || event.affectsConfiguration("llama-vscode.rag_enabled")
-            || event.affectsConfiguration("llama-vscode.env_start_last_used");
+            || event.affectsConfiguration("llama-vscode.env_start_last_used")
+            || event.affectsConfiguration("llama-vscode.health_check_compl_enabled")
+            || event.affectsConfiguration("llama-vscode.health_check_chat_enabled")
+            || event.affectsConfiguration("llama-vscode.health_check_embs_enabled")
+            || event.affectsConfiguration("llama-vscode.health_check_tools_enabled");
     }
 
     isRagConfigChanged = (event: vscode.ConfigurationChangeEvent) => {

@@ -1565,6 +1565,31 @@
           "default": "",
           "description": "self-signed certificate file - path/to/cert.pem"
         },
+        "llama-vscode.health_check_interval_s": {
+          "type": "number",
+          "default": 30,
+          "description": "Models health check interval in seconds"
+        },
+        "llama-vscode.health_check_compl_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Works only for llama.cpp servers - enables health check for completion model"
+        },
+        "llama-vscode.health_check_chat_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Works only for llama.cpp servers - enables health check for chat model"
+        },
+        "llama-vscode.health_check_embs_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Works only for llama.cpp servers - enables health check for embeddings model"
+        },
+        "llama-vscode.health_check_tools_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Works only for llama.cpp servers - enables health check for tools model"
+        },
         "llama-vscode.n_prefix": {
           "default": 256,
           "type": "number",

@@ -178,6 +178,16 @@ export class Architect {
         context.subscriptions.push(rungBufferUpdateDisposable);
     }
 
+    setPeriodicModelsHealthUpdate = (context: vscode.ExtensionContext) => {
+        const modelsHealthIntervalId = setInterval(this.app.modelService.periodicModelHealthUpdate, this.app.configuration.health_check_interval_s * 1000);
+        const modelsHealthUpdateDisposable = {
+            dispose: () => {
+                clearInterval(modelsHealthIntervalId);
+            }
+        };
+        context.subscriptions.push(modelsHealthUpdateDisposable);
+    }
+
     setOnSaveFile = (context: vscode.ExtensionContext) => {
         const onSaveDocDisposable = vscode.workspace.onDidSaveTextDocument(this.app.extraContext.handleDocumentSave);
         context.subscriptions.push(onSaveDocDisposable);

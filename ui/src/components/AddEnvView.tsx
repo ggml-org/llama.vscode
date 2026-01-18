@@ -10,6 +10,10 @@ interface AddEnvViewProps {
   completionsEnabled?: boolean;
   ragEnabled?: boolean;
   autoStartEnv?: boolean;
+  healthCheckComplEnabled?: boolean;
+  healthCheckChatEnabled?: boolean;
+  healthCheckEmbsEnabled?: boolean,
+  healthCheckToolsEnabled?: boolean
 }
 
 const noModelSelected = 'No model selected';
@@ -23,11 +27,19 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
   currentAgent,
   completionsEnabled = false,
   ragEnabled = false,
-  autoStartEnv = false
+  autoStartEnv = false,
+  healthCheckComplEnabled = false,
+  healthCheckChatEnabled  = false,
+  healthCheckEmbsEnabled = false,
+  healthCheckToolsEnabled = false
 }) => {
   const [isCompletionsEnabled, setIsCompletionsEnabled] = useState(completionsEnabled);
   const [isRagEnabled, setIsRagEnabled] = useState(ragEnabled);
   const [isAutoStartEnv, setIsAutoStartEnv] = useState(autoStartEnv);
+  const [isHealthCheckComplEnabled, setIsHealthCheckComplEnabled] = useState(healthCheckComplEnabled);
+  const [isHealthCheckChatEnabled, setIsHealthCheckChatEnabled] = useState(healthCheckChatEnabled);
+  const [isHealthCheckEmbsEnabled, setIsHealthCheckEmbsEnabled] = useState(healthCheckEmbsEnabled);
+  const [isHealthCheckToolsEnabled, setIsHealthCheckToolsEnabled] = useState(healthCheckToolsEnabled);
 
   // Get the VS Code setting on component mount
   useEffect(() => {
@@ -50,6 +62,30 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
         key: 'env_start_last_used'
       });
     }, 1000);
+    setTimeout(() => {
+      vscode.postMessage({
+        command: 'getVscodeSetting',
+        key: 'health_check_compl_enabled'
+      });
+    }, 1000);
+    setTimeout(() => {
+      vscode.postMessage({
+        command: 'getVscodeSetting',
+        key: 'health_check_chat_enabled'
+      });
+    }, 1000);
+    setTimeout(() => {
+      vscode.postMessage({
+        command: 'getVscodeSetting',
+        key: 'health_check_embs_enabled'
+      });
+    }, 1000);
+    setTimeout(() => {
+      vscode.postMessage({
+        command: 'getVscodeSetting',
+        key: 'health_check_tools_enabled'
+      });
+    }, 1000);
   }, []);
 
   // Listen for messages from the extension
@@ -57,9 +93,29 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
     const handleMessage = (event: MessageEvent) => {
       const message = event.data;
       if (message.command === 'vscodeSettingValue') {
-        if (message.key === 'enabled') setIsCompletionsEnabled(message.value);
-        else if (message.key === 'rag_enabled') setIsRagEnabled(message.value);
-        else if (message.key === 'env_start_last_used') setIsAutoStartEnv(message.value);
+        switch (message.key) {
+          case 'health_check_compl_enabled':
+            setIsHealthCheckComplEnabled(message.value);
+            break;
+          case 'health_check_chat_enabled':
+            setIsHealthCheckChatEnabled(message.value);
+            break;
+          case 'health_check_embs_enabled':
+            setIsHealthCheckEmbsEnabled(message.value);
+            break;
+          case 'health_check_tools_enabled':
+            setIsHealthCheckToolsEnabled(message.value);
+            break;
+          case 'enabled':
+            setIsCompletionsEnabled(message.value);
+            break;
+          case 'rag_enabled':
+            setIsRagEnabled(message.value);
+            break;
+          case 'env_start_last_used':
+            setIsAutoStartEnv(message.value);
+            break;
+        }
       }
     };
 
@@ -102,6 +158,14 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
       command: 'moreCompletionModel'
     });
   };
+
+  const handleHealthCheck = (model: string) => {
+    vscode.postMessage({
+      command: 'checkModelHealth',
+      model
+    });
+  };
+  
 
   const handleMoreChatModel = () => {
     vscode.postMessage({
@@ -258,6 +322,16 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentCompletionModel}</span>
+            {currentCompletionModel != noModelSelected && isHealthCheckComplEnabled  && (
+            <button
+              onClick={()=>handleHealthCheck("completion")}
+              title={`Check Health of Completion Model`}
+              className="modern-btn secondary"
+              style={{ color: currentCompletionModel.includes("Error") ? "red" : "green" }}
+            >
+              {currentCompletionModel.includes("Error") ? "X": "V"}
+            </button>
+            )}
             {currentCompletionModel === noModelSelected  && (
             <button
               onClick={handleMoreCompletionModel}
@@ -300,6 +374,16 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentChatModel}</span>
+            {currentChatModel != noModelSelected && isHealthCheckChatEnabled  && (
+            <button
+              onClick={()=>handleHealthCheck("chat")}
+              title={`Check Health of Chat Model`}
+              className="modern-btn secondary"
+              style={{ color: currentChatModel.includes("Error") ? "red" : "green" }}
+            >
+              {currentChatModel.includes("Error") ? "X": "V"}
+            </button>
+            )}
             {currentChatModel === noModelSelected  && (
             <button
               onClick={handleMoreChatModel}
@@ -342,6 +426,16 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentEmbeddingsModel}</span>
+            {currentEmbeddingsModel != noModelSelected  && isHealthCheckEmbsEnabled  && (
+            <button
+              onClick={()=>handleHealthCheck("embeddings")}
+              title={`Check Health of Embeddings Model`}
+              className="modern-btn secondary"
+              style={{ color: currentEmbeddingsModel.includes("Error") ? "red" : "green" }}
+            >
+              {currentEmbeddingsModel.includes("Error") ? "X": "V"}
+            </button>
+            )}
             {currentEmbeddingsModel === noModelSelected  && (
             <button
               onClick={handleMoreEmbeddingsModel}
@@ -385,6 +479,16 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             </button>
             )}
             <span className="model-text">{currentToolsModel}</span>
+            {currentToolsModel != noModelSelected   && isHealthCheckToolsEnabled  && (
+            <button
+              onClick={()=>handleHealthCheck("tools")}
+              title={`Check Health of Tools Model`}
+              className="modern-btn secondary"
+              style={{ color: currentToolsModel.includes("Error") ? "red" : "green" }}
+            >
+              {currentToolsModel.includes("Error") ? "X": "V"}
+            </button>
+            )}
             {currentToolsModel === noModelSelected  && (
             <button
               onClick={handleMoreToolsModel}

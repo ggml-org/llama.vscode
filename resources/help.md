@@ -33,9 +33,7 @@ This is a conversation with the local AI. Mainly for asking questions for refere
 - Press Ctrl+; inside an editor (or select from llama.vscode menu Chat with AI) - A chat window will open inside VS Code
 - Enter your message and start the chat
 
-![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411)## Chat with AI with project context 
-This is removed. Chat with AI with project context is equal to using agent with the tool search_source. The agent has many other tools and is therefore a better choice.
-## Code completion
+![Chat with AI](https://github.com/user-attachments/assets/e068f5cc-fce3-4366-9b8f-1c89e952b411)## Code completion
 
 ### Requred servers
 - Completion server
@@ -183,13 +181,31 @@ There is a page in llama-vscode UI with the current environment details. From th
 In the source control panel just click on the star button (near the commit button).  
 This generate a commit message, based on the current changes.   
 
-![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3)## Version 0.0.39 is released (31.12.2025)
+![Generate a commit message](https://github.com/user-attachments/assets/25f5d1ae-3673-4416-ba52-7615969c1bb3)## Health check
+
+### Overview
+Health check for the models is added. It works with llama.cpp server or other servers, which supports endpoint/health REST service. When the health check is enabled, the current state of the selected model is visible in the environment view. The health check is done every 30 seconds (could be changed from setting Health_check_interval_s). It could be triggered also manually by the user by clicking the appropriate button in the environment view (after the selected model name).
+
+### How to use it
+1. Enable health check in settings for the appropriate model (e.g. for completion Health_check_compl_enabled)
+2. Open environment view and select the completion model (for example)
+3. The health check will be monitored periodically and the status will be displayed in the environment view
+4. Optionally, the health check can be triggered manually by clicking the appropriate button
+
+Settings:
+- Health_check_interval_s: The interval in seconds for the health check
+- Health_check_compl_enabled: Enable/disable health check for completion model
+- Health_check_chat_enabled: Enable/disable health check for chat model
+- Health_check_embs_enabled: Enable/disable health check for embedding model
+- Health_check_tools_enabled: Enable/disable health check for tools model
+## Version 0.0.40 is released (05.01.2025)
 ## What is new
 
-- Skills (https://agentskills.io/home) could be now used with llama-vscode
-- skills_folder setting determines where are skills descriptions. If empty the <project_folder>/skills folder is used by default
-- Anthropic models support skills best. I guess, the open source models will catch up.
-
+Generation of multiple completions in parallel:
+- Setting max_parallel_completions determines how many completions to generate in parallel (default 3)
+- Shortcuts - Alt+] - next completion, Alt+[ - previous completion
+- Requires llama.cpp after December, 6, 2025 (commit c42712b) but is backword compatible (generates one completion for older versions)
+- [More details](https://github.com/ggml-org/llama.vscode/wiki/Parallel-completions)
 
 ## Setup instructions for llama.cpp server
 
@@ -682,8 +698,9 @@ Llama-vscode generates parallel code completions (default 3) if a version of lla
 The setting max_parallel_completions determines how many completions are generated.
 
 ### How to use it
-1. Run the completion model and start codeing
+1. Run the completion model and start coding
 2. When a code completion is shown, press Ctrl+] to show the next completion, Ctrl+[ to show the previous completion
+3. Alternatively - you could hover over the shown completion and when the toolbar is shown click the arrows to show the other completions.
 
 
 Settings:

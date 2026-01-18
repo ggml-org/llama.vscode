@@ -369,15 +369,4 @@ export class Completion {
         } 
         else return [];
     }
-
-    private getMaxNumber(numbers: number[]): number {
-        let max = 0;
-        for (const num of numbers) {
-            if (num > max) {
-                max = num;
-            }
-        }
-        return max;
-    }
-
 }

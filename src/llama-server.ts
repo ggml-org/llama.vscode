@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosRequestConfig } from "axios";
 import {Application} from "./application";
 import vscode, { Terminal } from "vscode";
 import { LlmModel, LlamaChatResponse, LlamaResponse, ChatMessage } from "./types";
@@ -7,7 +7,7 @@ import * as cp from 'child_process';
 import * as util from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
-import { SUPPORTED_IMG_FILE_EXTS } from "./constants";
+import { ModelType, SUPPORTED_IMG_FILE_EXTS } from "./constants";
 
 const STATUS_OK = 200;
 
@@ -831,5 +831,37 @@ export class LlamaServer {
             }
         }
         return { endpoint, model, requestConfig };
+    }
+
+    checkHealth = async (modelType: ModelType, model: LlmModel) => {
+        let requestConfig: AxiosRequestConfig = this.app.configuration.axiosRequestConfigCompl;
+        switch (modelType) {
+            case ModelType.Chat:
+                requestConfig = this.app.configuration.axiosRequestConfigChat;
+                break;
+            case ModelType.Completion:
+                requestConfig = this.app.configuration.axiosRequestConfigCompl;
+                break;
+            case ModelType.Tools:
+                requestConfig = this.app.configuration.axiosRequestConfigTools;
+                break;
+            case ModelType.Embeddings:
+                requestConfig = this.app.configuration.axiosRequestConfigEmbeddings;
+                break;
+        }
+        try {
+            // TODO:Make sure to work with OpenRauter too
+            let response = await axios.get(model.endpoint + "/health", requestConfig);
+            if (!response.data.hasOwnProperty("status")) return "Error: No health status field found";
+            return response.data.status
+        } catch (error) {
+            if (error instanceof TypeError) {
+                return "TypeError occurred: " + error.message;
+            } else if (error instanceof ReferenceError) {
+                return "ReferenceError occurred:" + error.message;
+            } else {
+                return "An unexpected Error occurred:" + (error as Error).message;
+            }
+        }
     }
 }
