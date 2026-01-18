@@ -65,13 +65,14 @@ export class Application {
     public apiKeyService: ApiKeyService
 
     private selectedComplModel: LlmModel = Application.emptyModel
-    private selectedModel: LlmModel = Application.emptyModel
+    private selectedChatModel: LlmModel = Application.emptyModel
     private selectedEmbeddingsModel: LlmModel = Application.emptyModel
     private selectedToolsModel: LlmModel = Application.emptyModel
     private selectedTmpAgentModel: LlmModel = Application.emptyModel
     private selectedEnv: Env = {name: ""}
     private selectedAgent: Agent = {name: "", systemInstruction: []}
     private selectedChat: Chat = {name: "", id: ""}
+    private modelState: Map<string, string> = new Map()
 
     private constructor(context: vscode.ExtensionContext) {
         this.configuration = new Configuration()
@@ -111,7 +112,26 @@ export class Application {
             Application.instance = new Application(context);
         }
         return Application.instance;
-    }   
+    }
+    
+    getModel = (modelType: ModelType): LlmModel => {
+        let model: LlmModel;
+        switch (modelType) {
+            case ModelType.Completion:
+                model = this.selectedComplModel;
+                break;
+            case ModelType.Chat:
+                model = this.selectedChatModel;
+                break;
+            case ModelType.Embeddings:
+                model = this.selectedEmbeddingsModel;
+                break;
+            case ModelType.Tools:
+                model = this.selectedToolsModel;
+                break;
+        }
+        return model;
+    }
 
     getComplModel = (): LlmModel => {
         return this.selectedComplModel;
@@ -122,7 +142,7 @@ export class Application {
     }
 
     getChatModel = (): LlmModel => {
-        return this.selectedModel;
+        return this.selectedChatModel;
     }
 
     getEmbeddingsModel = (): LlmModel => {
@@ -158,7 +178,7 @@ export class Application {
     }
 
     isChatModelSelected = (): boolean => {
-        return this.selectedModel != undefined && this.selectedModel.name. trim() != "";
+        return this.selectedChatModel != undefined && this.selectedChatModel.name. trim() != "";
     }
 
     isToolsModelSelected = (): boolean => {
@@ -193,7 +213,7 @@ export class Application {
                 this.selectedComplModel = model??Application.emptyModel;
                 break;
             case ModelType.Chat:
-                this.selectedModel = model??Application.emptyModel;
+                this.selectedChatModel = model??Application.emptyModel;
                 break;
             case ModelType.Embeddings:
                 this.selectedEmbeddingsModel = model??Application.emptyModel;
@@ -203,6 +223,15 @@ export class Application {
                 break;
         }
         this.llamaWebviewProvider.updateLlamaView();
+    }
+
+    setModelState = (type: ModelType, state: string) => {
+        this.modelState.set(type, state);
+        this.llamaWebviewProvider.updateModels();
+    }
+
+    getModelState = (type: ModelType): string => {
+        return this.modelState.get(type)??"";
     }
 
     setAgentModel = (model: LlmModel | undefined) => {

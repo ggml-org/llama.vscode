@@ -15,6 +15,7 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandNoCacheCompletion(context);
     app.architect.setOnSaveFile(context);
     app.architect.setPeriodicRingBufferUpdate(context);
+    app.architect.setPeriodicModelsHealthUpdate(context);
     app.architect.setClipboardEvents(context);
     app.architect.setOnChangeActiveFile(context);
     app.architect.registerCommandAcceptFirstLine(context);

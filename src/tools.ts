@@ -564,8 +564,8 @@ export class Tools {
                     "description": "Gets the files changes since last commit",
                     "parameters": {
                         "type": "object",
-                        "required": [
-                        ],
+                        "properties": {},
+                        "required": [],
                     },
                     "strict": true
                 }

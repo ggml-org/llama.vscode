@@ -391,6 +391,7 @@ export class ModelService {
 
     clearModel = (type: ModelType) => {
         this.app.setSelectedModel(type, Application.emptyModel);
+        this.app.setModelState(type, "");
         this.app.llamaWebviewProvider.updateLlamaView();
     }
     
@@ -432,5 +433,39 @@ export class ModelService {
             return false;
         }
         else return true;
+    }
+
+    periodicModelHealthUpdate = async () => {
+        if (this.app.configuration.health_check_interval_s > 0) {
+            if (this.app.configuration.health_check_compl_enabled  && this.app.isComplModelSelected()) {
+                await this.updateModelState(ModelType.Completion);
+            }
+            if (this.app.configuration.health_check_chat_enabled  && this.app.isChatModelSelected()) {
+                await this.updateModelState(ModelType.Chat);
+            }
+            if (this.app.configuration.health_check_embs_enabled  && this.app.isEmbeddingsModelSelected()) {
+                await this.updateModelState(ModelType.Embeddings);
+            }
+            if (this.app.configuration.health_check_tools_enabled  && this.app.isToolsModelSelected()) {
+                await this.updateModelState(ModelType.Tools);
+            }
+        }
+    }
+
+    public async checkModelHealth(modelType: ModelType) {
+        let healthState = await this.app.llamaServer.checkHealth(modelType, this.app.getModel(modelType));
+        if (healthState.toLowerCase() == "ok" || healthState.toLowerCase() == "healthy") vscode.window.showInformationMessage(modelType.charAt(0).toUpperCase() + modelType.slice(1) + " model health is OK.");
+        else vscode.window.showErrorMessage("Error with " + modelType + " model:" + healthState);
+        this.app.setModelState(modelType, healthState);
+    }
+
+    private async updateModelState(modelType: ModelType) {
+        let healthState = await this.app.llamaServer.checkHealth(modelType, this.app.getModel(modelType));
+        let currentHealthState = this.app.getModelState(modelType);
+        if ((currentHealthState == "" || currentHealthState.toLocaleLowerCase() == "ok" || currentHealthState.toLocaleLowerCase() == "healthy") 
+            && healthState.toLowerCase() != "ok" && healthState.toLowerCase() != "healthy") {
+            vscode.window.showErrorMessage("Error with completion model:" + healthState);
+        }
+        this.app.setModelState(modelType, healthState.slice(0, 150));
     }
 }

@@ -101,6 +101,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'moreCompletionModel':
                         await this.app.modelService.processModelActions(ModelType.Completion);
                         break;
+                    case 'checkModelHealth':
+                        await this.app.modelService.checkModelHealth(message.model);
+                        break;
                     case 'selectAgentModel':
                         await this.app.modelService.selectAgentModel(ModelType.Tools, this.app.configuration.tools_models_list);                        
                         break;
@@ -356,7 +359,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 files: Array.from(contextFiles.entries())
             });
         }, 1000);
-    }
+    }    
 
     public addEditAgent(agent: Agent) {
         this.app.agentService.resetEditedAgentTools();
@@ -385,29 +388,42 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateSettingInEnvView('enabled', this.app.configuration.enabled);
         this.updateSettingInEnvView('rag_enabled', this.app.configuration.rag_enabled);
         this.updateSettingInEnvView('env_start_last_used', this.app.configuration.env_start_last_used);
+        this.updateSettingInEnvView('health_check_compl_enabled', this.app.configuration.health_check_compl_enabled);
+        this.updateSettingInEnvView('health_check_chat_enabled', this.app.configuration.health_check_chat_enabled);
+        this.updateSettingInEnvView('health_check_embs_enabled', this.app.configuration.health_check_embs_enabled);
+        this.updateSettingInEnvView('health_check_tools_enabled', this.app.configuration.health_check_tools_enabled);
     }
 
-    private updateEmbsModel() {
+    private updateEmbsModel(status: string = "") {
         const currentEmbeddingsModel: LlmModel = this.app.getEmbeddingsModel();
+        let modelName = currentEmbeddingsModel.name
+        if (this.app.configuration.health_check_embs_enabled  && status && status.toLowerCase() != "ok")
+            modelName += ": " + status;
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateEmbeddingsModel',
-            model: currentEmbeddingsModel.name || 'No model selected'
+            model: modelName || 'No model selected'
         });
     }
 
-    private updateChatModel() {
-        const currentChatModel: LlmModel = this.app.getChatModel();
+    private updateChatModel(status: string = "") {
+        const currentChatModel: LlmModel = this.app.getModel(ModelType.Chat);
+        let modelName = currentChatModel.name
+        if (this.app.configuration.health_check_chat_enabled  && status && status.toLowerCase() != "ok")
+            modelName += ": " + status;
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateChatModel',
-            model: currentChatModel.name || 'No model selected'
+            model: modelName || 'No model selected'
         });
     }
 
-    private updateToolsModel() {
-        const currentToolsModel: LlmModel = this.app.getToolsModel();
+    private updateToolsModel(status: string = "") {
+        const currentToolsModel: LlmModel = this.app.getModel(ModelType.Tools);
+        let modelName = currentToolsModel.name
+        if (this.app.configuration.health_check_tools_enabled  && status && status.toLowerCase() != "ok")
+            modelName += ": " + status;
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateToolsModel',
-            model: currentToolsModel.name || 'No model selected'
+            model: modelName || 'No model selected'
         });
     }
 
@@ -419,11 +435,14 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    private updateComplsModel() {
-        const currentToolsModel: LlmModel = this.app.getComplModel();
+    public updateComplsModel(status: string = "") {
+        const currentComplModel: LlmModel = this.app.getModel(ModelType.Completion);
+        let modelName = currentComplModel.name
+        if (this.app.configuration.health_check_compl_enabled  && status && status.toLowerCase() != "ok")
+            modelName += ": " + status;
         vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
             command: 'updateCompletionModel',
-            model: currentToolsModel.name || 'No model selected'
+            model: modelName || 'No model selected'
         });
     }
 
@@ -497,15 +516,19 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     } 
 
     public updateLlamaView() {
-        this.updateToolsModel();
-        this.updateChatModel();
-        this.updateEmbsModel();
-        this.updateComplsModel();
+        this.updateModels();
         this.updateTmpAgentModel();
         this.updateAgent();
         this.updateEnv();
         this.updateSettingsInView();
         this.logInUi(this.app.llamaAgent.getAgentLogText())
+    }
+
+    public updateModels() {
+        this.updateToolsModel(this.app.getModelState(ModelType.Tools));
+        this.updateChatModel(this.app.getModelState(ModelType.Chat));
+        this.updateEmbsModel(this.app.getModelState(ModelType.Embeddings));
+        this.updateComplsModel(this.app.getModelState(ModelType.Completion));
     }
 
     public updateContextFilesInfo() {
