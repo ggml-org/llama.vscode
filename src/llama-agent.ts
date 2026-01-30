@@ -56,7 +56,14 @@ export class LlamaAgent {
             }
         } else {
             const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
-            if (fs.existsSync(absolutePath)) projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            if (fs.existsSync(absolutePath)) {
+                projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            } else {
+                const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
+                if (fs.existsSync(agentsAbsolutePath)) {
+                    projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
+                }
+            }
         }
         this.messages = [
             {
