@@ -6,14 +6,11 @@
   "publisher": "ggml-org",
   "repository": "https://github.com/ggml-org/llama.vscode",
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.99.3"
   },
   "icon": "llama.png",
   "activationEvents": [
-    "onLanguage:plaintext",
-    "onLanguage:javascript",
-    "onLanguage:typescript",
-    "onCommand.acceptFirstLine"
+    "onStartupFinished"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -89,6 +86,14 @@
       {
         "command": "extension.rejectTextEdit",
         "title": "llama-vscode: Reject Text Edit Suggestion"
+      },
+      {
+        "command": "extension.acceptAllTextEdit",
+        "title": "llama-vscode: Accept All Text Edit Suggestion"
+      },
+      {
+        "command": "extension.showEditHistory",
+        "title": "llama-vscode: Show Edit History"
       },
       {
         "command": "extension.killAgent",
@@ -369,9 +374,9 @@
               "name": "default",
               "description": "This is the default agent.",
               "systemInstruction": [
-                "You are an agent for software development - please keep going until the user’s query is completely resolved, before ending your turn and yielding back to the user.",
+                "You are an agent for software development - please keep going until the user's query is completely resolved, before ending your turn and yielding back to the user.",
                 "Only terminate your turn when you are sure that the problem is solved.",
-                "If you are not sure about anything pertaining to the user’s request, use your tools to read files and gather the relevant information: do NOT guess or make up an answer.",
+                "If you are not sure about anything pertaining to the user's request, use your tools to read files and gather the relevant information: do NOT guess or make up an answer.",
                 "You MUST plan extensively before each function call, and reflect extensively on the outcomes of the previous function calls. DO NOT do this entire process by making function calls only, as this can impair your ability to solve the problem and think insightfully.",
                 "Read the file content or a section of the file before editing a the file.",
                 "",
@@ -1714,6 +1719,68 @@
           "type": "string",
           "default": "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>",
           "description": "The prompt template to be used for the OpenAI compatible endpoint."
+        },
+        "llama-vscode.top_p": {
+          "type": "number",
+          "default": 0.99,
+          "description": "Adjusts the diversity of the generated text. Higher values (e.g., 0.9) mean the model considers more words, leading to more varied but potentially less coherent output. Lower values (e.g., 0.1) make the model more focused and deterministic."
+        },
+        "llama-vscode.frequency_penalty": {
+          "type": "number",
+          "default": 0,
+          "description": "Reduces the likelihood of the model repeating the same lines verbatim. Higher values make the model more likely to introduce new topics."
+        },
+        "llama-vscode.presence_penalty": {
+          "type": "number",
+          "default": 0,
+          "description": "Encourages the model to talk about new topics rather than repeating information. Positive values increase the model's likelihood to sample tokens not already present in the current response and vice-versa."
+        },
+        "llama-vscode.stop": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "default": [],
+          "description": "A list of up to 4 sequences where the API will stop generating further tokens. The returned text will not contain the stop sequence."
+        },
+        "llama-vscode.custom_slash_commands": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "The slash command name (e.g., /mycommand)"
+              },
+              "prompt": {
+                "type": "string",
+                "description": "The prompt to send to the AI when this command is used"
+              }
+            },
+            "required": ["name", "prompt"]
+          },
+          "default": [],
+          "description": "Define custom slash commands for the Llama Agent. Each command should have a name (e.g., /summarize) and a prompt that describes the action."
+        },
+        "llama-vscode.confirm_run_terminal_command": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, the user will be asked for confirmation before the 'run_terminal_command' tool is executed."
+        },
+        "llama-vscode.confirm_delete_file": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, the user will be asked for confirmation before the 'delete_file' tool is executed."
+        },
+        "llama-vscode.confirm_edit_file": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, the user will be asked for confirmation before the 'edit_file' tool is executed."
+        },
+        "llama-vscode.confirm_custom_eval_tool": {
+          "type": "boolean",
+          "default": true,
+          "description": "If true, the user will be asked for confirmation before the 'custom_eval_tool' is executed (as it can run arbitrary code)."
         }
       }
     },

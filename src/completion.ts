@@ -29,6 +29,8 @@ export class Completion {
             return null;
         }
 
+        let ragContextChunks: string[] = []; // Déclaration et initialisation déplacées ici
+
         // Start only if the previous request is finiched
         while (this.isRequestInProgress) {
             await Utils.delay(this.app.configuration.DELAY_BEFORE_COMPL_REQUEST);
@@ -77,7 +79,26 @@ export class Completion {
                 }
                 this.app.statusbar.showThinkingInfo();
 
-                data = await this.app.llamaServer.getFIMCompletion(inputPrefix, inputSuffix, prompt, this.app.extraContext.chunks, nindent)
+                // Integrate RAG context
+                if (this.app.configuration.rag_enabled) {
+                    const queryForRag = inputPrefix + prompt + inputSuffix;
+                    const chunks = await this.app.chatContext.getRagContextChunks(queryForRag);
+                    ragContextChunks = chunks.map(chunk => chunk.content);
+                }
+                
+                // Enrich inputPrefix with RAG context
+                const enrichedInputPrefix = ragContextChunks.length > 0 
+                    ? `Context from project files:\n${ragContextChunks.join('\n\n')}\n\n${inputPrefix}`
+                    : inputPrefix;
+
+                data = await this.app.llamaServer.getFIMCompletion(
+                    enrichedInputPrefix,
+                    inputSuffix,
+                    prompt,
+                    this.app.extraContext.chunks,
+                    nindent,
+                    prompt.trim() === "" ? this.app.prompts.FIM_CODE_SNIPPET : undefined // Use snippet prompt if starting a new line
+                )
                 if (data != undefined) completion = data.content;
                 else completion = undefined
             }
@@ -90,6 +111,9 @@ export class Completion {
 
             let suggestionLines = completion.split(/\r?\n/)
             Utils.removeTrailingNewLines(suggestionLines);
+
+            // Apply intelligent filtering and ranking
+            suggestionLines = this.filterAndRankSuggestions(suggestionLines, ragContextChunks, prompt);
 
             if (this.shouldDiscardSuggestion(suggestionLines, document, position, linePrefix, lineSuffix)) {
                 this.app.statusbar.showInfo(undefined);
@@ -131,6 +155,32 @@ export class Completion {
             return [];
         }
     }
+
+    private filterAndRankSuggestions = (suggestionLines: string[], ragContextChunks: string[], prompt: string): string[] => {
+        if (suggestionLines.length === 0) return [];
+
+        if (ragContextChunks.length === 0) return suggestionLines; // No RAG context, return as is
+
+        const promptKeywords = this.app.chatContext.tokenize(prompt);
+        const ragKeywords = ragContextChunks.flatMap(chunk => this.app.chatContext.tokenize(chunk));
+        const allKeywords = new Set([...promptKeywords, ...ragKeywords]);
+
+        // Simple ranking: prioritize suggestions that contain more relevant keywords
+        const scoredSuggestions = suggestionLines.map(line => {
+            const lineTokens = this.app.chatContext.tokenize(line);
+            let score = 0;
+            for (const keyword of allKeywords) {
+                if (lineTokens.includes(keyword)) {
+                    score++;
+                }
+            }
+            return { line, score };
+        });
+
+        scoredSuggestions.sort((a, b) => b.score - a.score);
+
+        return scoredSuggestions.map(s => s.line);
+    };
 
     private isOnlySpacesOrTabs = (str: string): boolean => {
         // Regular expression to match only spaces and tabs
@@ -290,6 +340,14 @@ export class Completion {
         await editor.edit(editBuilder => {
             editBuilder.insert(position, insertText);
         });
+
+        // Remove the inserted word from the cached lastCompletion so subsequent accepts progress
+        try {
+            const remaining = lastSuggestion.slice(insertText.length);
+            this.lastCompletion.completion = remaining;
+        } catch (e) {
+            // ignore
+        }
     }
 
     insertFirstLine = async (editor: vscode.TextEditor) => {
@@ -310,5 +368,17 @@ export class Completion {
         await editor.edit(editBuilder => {
             editBuilder.insert(position, insertLine);
         });
+
+        // Update lastCompletion to remove the inserted line so future accepts insert the remainder
+        try {
+            const idx = lastItem.indexOf('\n');
+            if (idx >= 0) {
+                this.lastCompletion.completion = lastItem.slice(idx + 1);
+            } else {
+                this.lastCompletion.completion = "";
+            }
+        } catch (e) {
+            // ignore
+        }
     }
 }

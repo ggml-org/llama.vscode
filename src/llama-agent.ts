@@ -75,7 +75,65 @@ export class LlamaAgent {
     }
 
     run = async (query:string) => {
-        await this.askAgent(query);
+        if (query.startsWith("/")) {
+            await this._handleSlashCommand(query);
+        } else {
+            await this._handleAgentQuery(query);
+        }
+    }
+
+    private async _handleSlashCommand(query: string) {
+        const parts = query.split(" ");
+        const command = parts[0];
+        const args = parts.slice(1).join(" ");
+
+        switch (command) {
+            case "/help":
+                vscode.window.showInformationMessage("Llama Agent Help:\n\n" +
+                    "To use Llama Agent, you need to select a tools model in the extension settings.\n" +
+                    "Once selected, you can type your query, and the agent will try to execute tools.\n" +
+                    "You can also attach context files to help the agent understand your environment.\n" +
+                    "Type `/help` to see this message again.\n" +
+                    "Available commands:\n" +
+                    "  `/help` - Show this help message\n" +
+                    "  `/read <filepath>` - Read the content of a file");
+                break;
+            case "/read":
+                if (args) {
+                    this.logText += `\n***Executing command: ${command} ${args}***\n\n`;
+                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                    const readFileTool = this.app.tools.toolsFunc.get("read_file");
+                    if (readFileTool) {
+                        try {
+                            const fileContent = await readFileTool(args);
+                            this.logText += `File content of ${args}:\n${fileContent}\n\n`;
+                        } catch (error: any) {
+                            this.logText += `Error reading file ${args}: ${error.message}\n\n`;
+                        }
+                    } else {
+                        this.logText += `Tool 'read_file' not found or not enabled.\n\n`;
+                    }
+                } else {
+                    this.logText += `Usage: /read <filepath>\n\n`;
+                }
+                this.app.llamaWebviewProvider.logInUi(this.logText);
+                break;
+            default:
+                // Check for custom slash commands
+                const customCommand = this.app.configuration.custom_slash_commands.find(cmd => cmd.name === command);
+                if (customCommand) {
+                    this.logText += `\n***Executing custom command: ${command}***\n\n`;
+                    // Here, we can send the customCommand.prompt to the LLM as a user message
+                    // and then let the _handleAgentQuery method process it.
+                    // For simplicity, let's just log the prompt for now and call _handleAgentQuery.
+                    this.logText += `Custom command prompt: ${customCommand.prompt} ${args}\n\n`;
+                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                    await this._handleAgentQuery(`${customCommand.prompt} ${args}`);
+                } else {
+                    vscode.window.showInformationMessage(`Unknown command: ${command}. Type \`/help\` for a list of commands.`);
+                }
+                break;
+        }
     }
 
     private async summarize(): Promise<void> {
@@ -121,7 +179,7 @@ export class LlamaAgent {
         return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
     }
 
-    askAgent = async (query:string): Promise<string> => {
+    private _handleAgentQuery = async (query:string): Promise<string> => {
             let response = ""
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
@@ -232,9 +290,40 @@ export class LlamaAgent {
                                         }   
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                         if (toolFunc) {
+                                            let shouldExecute = true;
+                                            let confirmMessage = "";
+                                            switch (oneToolCall.function.name) {
+                                                case "run_terminal_command":
+                                                    shouldExecute = !this.app.configuration.confirm_run_terminal_command;
+                                                    confirmMessage = `The AI wants to run the terminal command:\n\n${JSON.parse(oneToolCall.function.arguments).command}\n\nDo you want to allow this?`;
+                                                    break;
+                                                case "delete_file":
+                                                    shouldExecute = !this.app.configuration.confirm_delete_file;
+                                                    confirmMessage = `The AI wants to delete the file:\n\n${JSON.parse(oneToolCall.function.arguments).target_file}\n\nDo you want to allow this?`;
+                                                    break;
+                                                case "edit_file":
+                                                    shouldExecute = !this.app.configuration.confirm_edit_file;
+                                                    confirmMessage = `The AI wants to edit the file:\n\n${JSON.parse(oneToolCall.function.arguments).target_file}\n\nDo you want to allow this?`;
+                                                    break;
+                                                case "custom_eval_tool":
+                                                    shouldExecute = !this.app.configuration.confirm_custom_eval_tool;
+                                                    confirmMessage = `The AI wants to execute custom code with the 'custom_eval_tool':\n\n${JSON.parse(oneToolCall.function.arguments).input}\n\nThis tool can run arbitrary code. Do you want to allow this?`;
+                                                    break;
+                                                default:
+                                                    shouldExecute = true; // Default to execute if no specific confirmation is set
+                                                    break;
+                                            }
+
+                                            if (!shouldExecute) {
+                                                const confirmed = await Utils.showYesNoDialog(confirmMessage);
+                                                if (!confirmed) {
+                                                    commandOutput = Utils.MSG_NO_UESR_PERMISSION;
+                                                } else {
+                                                    commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                                }
+                                            } else {
                                             commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) changedFiles.add(commandDescription);
-                                            if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.add(commandDescription);
+                                            }
                                         }
                                     }
                                     if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
@@ -285,6 +374,33 @@ export class LlamaAgent {
             chat.log = this.logText;
             await this.app.menu.selectUpdateChat(chat)
             return response;
+        }  
+        
+    public sendAgentQueryDirect = async (query: string): Promise<string | undefined> => {
+        let messages: ChatMessage[] = [
+            {
+                "role": "user",
+                "content": query
+            }
+        ];
+        
+        if (!this.app.menu.isToolsModelSelected()) {
+            // Log an error or return an error message, but don't show UI message
+            console.error("Error: Tools model is not selected for direct agent query.");
+            return "Error: Tools model is not selected";
+        }
+
+        try {
+            let data:any = await this.app.llamaServer.getAgentCompletion(messages);
+            if (data && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+                return data.choices[0].message.content.trim();
+            } else {
+                return undefined;
+            }
+        } catch (error) {
+            console.error("Error during direct agent query:", error);
+            return "Error: " + error;
+        }
         }  
         
     stopAgent = () => {

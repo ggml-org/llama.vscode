@@ -1,0 +1,8 @@
+2025-09-15 02:13:50.627 [info] ChatSessionStore: Migrating 0 chat sessions from storage service to file system
+2025-09-15 02:13:51.342 [info] Started local extension host with pid 15820.
+2025-09-15 02:13:51.487 [error] [/C:/Users/yohlo/Documents/llama.vscode/ui]: property `engines` is mandatory and must be of type `object`
+2025-09-15 02:13:51.525 [info] Loading development extension at c:\Users\yohlo\Documents\llama.vscode
+2025-09-15 02:13:53.012 [info] Settings Sync: Account status changed from uninitialized to unavailable
+2025-09-15 02:13:55.436 [error] Error: Path file:///c%3A/Users/yohlo/Documents/llama.vscode does not point to a valid extension test runner.
+	at aJ.sb (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:17606)
+	at async aJ.$extensionTestsExecute (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:17238)

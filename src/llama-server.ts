@@ -104,10 +104,10 @@ export class LlamaServer {
 
         const rsp = await client.completions.create({
             model: this.app.configuration.openai_client_model || "",
-            prompt: additional_context + this. app.prompts.replacePlaceholders(this.app.configuration.openai_prompt_template, replacements),
+            prompt: additional_context + this.app.prompts.replacePlaceholders(this.app.configuration.openai_prompt_template, replacements),
             max_tokens: this.app.configuration.n_predict,
             temperature: 0.1,
-            top_p: this.defaultRequestParams.top_p,
+            top_p: this.app.configuration.top_p,
             stream: this.defaultRequestParams.stream,
         });
 
@@ -128,7 +128,7 @@ export class LlamaServer {
         };
     }
 
-    private createRequestPayload(noPredict: boolean, inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, model: string, nindent?: number) {
+    private createRequestPayload(noPredict: boolean, inputPrefix: string, inputSuffix: string, chunks: any[], prompt: string, model: string, nindent?: number, promptTemplate?: string) {
         if (noPredict) {
             return {
                 input_prefix: inputPrefix,
@@ -155,7 +155,11 @@ export class LlamaServer {
             t_max_prompt_ms: this.app.configuration.t_max_prompt_ms,
             t_max_predict_ms: this.app.configuration.t_max_predict_ms,
             ...(this.app.configuration.lora_completion.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
-            ...(model.trim() != "" && { model: model})
+            ...(model.trim() != "" && { model: model}),
+            top_p: this.app.configuration.top_p,
+            ...(this.app.configuration.frequency_penalty != 0 && { frequency_penalty: this.app.configuration.frequency_penalty }),
+            ...(this.app.configuration.presence_penalty != 0 && { presence_penalty: this.app.configuration.presence_penalty }),
+            ...(this.app.configuration.stop.length > 0 && { stop: this.app.configuration.stop })
         };
     }
 
@@ -181,6 +185,9 @@ export class LlamaServer {
             "top_p": 0.95,
             ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
             ...(model.trim() != "" && { model: model}),
+            ...(this.app.configuration.frequency_penalty != 0 && { frequency_penalty: this.app.configuration.frequency_penalty }),
+            ...(this.app.configuration.presence_penalty != 0 && { presence_penalty: this.app.configuration.presence_penalty }),
+            ...(this.app.configuration.stop.length > 0 && { stop: this.app.configuration.stop })
           };
     }
 
@@ -252,8 +259,12 @@ export class LlamaServer {
             ],
             "stream": false,
             "temperature": 0.8,
+            "top_p": 0.95,
             ...(this.app.configuration.lora_chat.trim() != "" && { lora: [{ id: 0, scale: 0.5 }] }),
             ...(model.trim() != "" && { model: model}),
+            ...(this.app.configuration.frequency_penalty != 0 && { frequency_penalty: this.app.configuration.frequency_penalty }),
+            ...(this.app.configuration.presence_penalty != 0 && { presence_penalty: this.app.configuration.presence_penalty }),
+            ...(this.app.configuration.stop.length > 0 && { stop: this.app.configuration.stop })
           };
     }
 
@@ -264,10 +275,13 @@ export class LlamaServer {
             "messages": filteredMsgs,
             "stream": false,
             "temperature": 0.8,
-            "top_p": 0.95,
+            "top_p": this.app.configuration.top_p,
             ...(model.trim() != "" && { model: model}),
             "tools": [...this.app.tools.tools,  ...this.app.tools.vscodeTools],
-            "tool_choice": "auto"
+            "tool_choice": "auto",
+            ...(this.app.configuration.frequency_penalty != 0 && { frequency_penalty: this.app.configuration.frequency_penalty }),
+            ...(this.app.configuration.presence_penalty != 0 && { presence_penalty: this.app.configuration.presence_penalty }),
+            ...(this.app.configuration.stop.length > 0 && { stop: this.app.configuration.stop })
         };
     }
 
@@ -284,8 +298,11 @@ export class LlamaServer {
             "messages": summaryPromptMsgs,
             "stream": false,
             "temperature": 0.8,
-            "top_p": 0.95,
-            ...(model.trim() != "" && { model: model})
+            "top_p": this.app.configuration.top_p,
+            ...(model.trim() != "" && { model: model}),
+            ...(this.app.configuration.frequency_penalty != 0 && { frequency_penalty: this.app.configuration.frequency_penalty }),
+            ...(this.app.configuration.presence_penalty != 0 && { presence_penalty: this.app.configuration.presence_penalty }),
+            ...(this.app.configuration.stop.length > 0 && { stop: this.app.configuration.stop })
         };
     }
 
@@ -294,7 +311,8 @@ export class LlamaServer {
         inputSuffix: string,
         prompt: string,
         chunks: any,
-        nindent: number
+        nindent: number,
+        promptTemplate?: string
     ): Promise<LlamaResponse | undefined> => {
         // If the server is OpenAI compatible, use the OpenAI API to get the completion
         if (this.app.configuration.use_openai_endpoint) {
@@ -325,7 +343,7 @@ export class LlamaServer {
 
         const response = await axios.post<LlamaResponse>(
             `${Utils.trimTrailingSlash(endpoint)}/infill`,
-            this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, model, nindent),
+            this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, model, nindent, promptTemplate),
             requestConfig
         );
 

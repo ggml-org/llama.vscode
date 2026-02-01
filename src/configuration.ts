@@ -48,6 +48,12 @@ export class Configuration {
     ring_update_ms = 1000;
     language = "en";
 
+    // LLM Parameters
+    top_p = 0.99;
+    frequency_penalty = 0;
+    presence_penalty = 0;
+    stop: string[] = [];
+
     // experimental - avoid using
     use_openai_endpoint = false;
     openai_client: OpenAI | null = null;
@@ -104,6 +110,11 @@ export class Configuration {
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     agents_list = new Array();
+    custom_slash_commands: {name: string, prompt: string}[] = [];
+    confirm_run_terminal_command = true;
+    confirm_delete_file = true;
+    confirm_edit_file = true;
+    confirm_custom_eval_tool = true;
     // additional configs`
     // TODO: change to snake_case for consistency
     axiosRequestConfigCompl = {};
@@ -250,6 +261,15 @@ export class Configuration {
         this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
         this.ask_install_llamacpp = Boolean(config.get<boolean>("ask_install_llamacpp", true));
         this.ask_upgrade_llamacpp_hours = Number(config.get<number>("ask_upgrade_llamacpp_hours"));
+        this.top_p = Number(config.get<number>("top_p"));
+        this.frequency_penalty = Number(config.get<number>("frequency_penalty"));
+        this.presence_penalty = Number(config.get<number>("presence_penalty"));
+        this.stop = config.get<string[]>("stop") || [];
+        this.custom_slash_commands = config.get<{name: string, prompt: string}[]>("custom_slash_commands") || [];
+        this.confirm_run_terminal_command = Boolean(config.get<boolean>("confirm_run_terminal_command", true));
+        this.confirm_delete_file = Boolean(config.get<boolean>("confirm_delete_file", true));
+        this.confirm_edit_file = Boolean(config.get<boolean>("confirm_edit_file", true));
+        this.confirm_custom_eval_tool = Boolean(config.get<boolean>("confirm_custom_eval_tool", true));
     };
 
     getUiText = (uiText: string): string | undefined => {
@@ -264,7 +284,11 @@ export class Configuration {
             || event.affectsConfiguration("llama-vscode.api_key_tools")
             || event.affectsConfiguration("llama-vscode.api_key_chat")
             || event.affectsConfiguration("llama-vscode.api_key_embeddings")
-            || event.affectsConfiguration("llama-vscode.self_signed_certificate")) {
+            || event.affectsConfiguration("llama-vscode.self_signed_certificate")
+            || event.affectsConfiguration("llama-vscode.top_p")
+            || event.affectsConfiguration("llama-vscode.frequency_penalty")
+            || event.affectsConfiguration("llama-vscode.presence_penalty")
+            || event.affectsConfiguration("llama-vscode.stop")) {
             this.setLlamaRequestConfig();
             this.setOpenAiClient();
         }

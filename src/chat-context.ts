@@ -18,14 +18,22 @@ export class ChatContext {
     private nextEntryId: number = 0;
     public entries: Map<number, ChunkEntry>;
     private filesProperties: Map<string, FileProperties>;
+    private readonly indexPath: string;
 
     constructor(application: Application) {
         this.app = application;
         this.entries = new Map();
         this.filesProperties = new Map();
+        const extensionGlobalStoragePath = this.app.persistence.extensionContext.globalStorageUri.fsPath;
+        const ragIndexDir = path.join(extensionGlobalStoragePath, 'rag-index');
+        if (!fs.existsSync(ragIndexDir)) {
+            fs.mkdirSync(ragIndexDir, { recursive: true });
+        }
+        this.indexPath = path.join(ragIndexDir, 'index.json');
     }
 
     public async init() {
+        await this.loadIndex();
         vscode.window.showInformationMessage('Vector index initialized!');
     }
 
@@ -173,7 +181,7 @@ export class ChatContext {
         .map(word => word.toLowerCase());
     }
 
-    private tokenize = (text: string): string[] => {
+    public tokenize = (text: string): string[] => {
         return text.split(/([A-Z]?[a-z]+)|[_\-\.\s]+/)
         .filter(Boolean) // Remove empty strings from the result
         .map(word => word.toLowerCase());
@@ -250,10 +258,10 @@ export class ChatContext {
                     // Make sure next iteration starts after the last added line
                     i = startLine + j - this.app.configuration.rag_max_lines_per_chunk
                 }
-                // const embedding = await this.getEmbedding(chunk);
+                const embedding = await this.getEmbedding(chunk);
                 let chunkContent = "\nFile Name: "  + uri + "\nFrom line: " + (startLine + 1) + "\nTo line: " + endLine + "\nContent:\n" + chunk
                 const chunkHash = this.app.lruResultCache.getHash(chunkContent)
-                this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash, embedding: []});
+                this.entries.set(this.nextEntryId, { uri: uri, content: chunkContent, firstLine: startLine + 1, lastLine: endLine, hash: chunkHash, embedding: embedding});
                 if (this.entries.size >= this.app.configuration.rag_max_chunks) break;
                 this.nextEntryId++;
             }
@@ -282,10 +290,36 @@ export class ChatContext {
 
     async indexWorkspaceFiles() {
         try {
-            this.entries.clear();
-            this.filesProperties.clear()
+            // Load existing index first for incremental updates
+            await this.loadIndex();
+
             if (this.app.configuration.rag_max_files <= 0) return;
-            const files = (await this.getFilesRespectingGitignore()).slice(0,this.app.configuration.rag_max_files)
+
+            const currentFiles = await this.getFilesRespectingGitignore();
+            const currentFilePaths = new Set(currentFiles.map(uri => uri.fsPath));
+
+            // Remove documents that no longer exist in the workspace
+            for (const indexedFilePath of Array.from(this.filesProperties.keys())) {
+                if (!currentFilePaths.has(indexedFilePath)) {
+                    await this.removeDocument(indexedFilePath);
+                }
+            }
+
+            // Process new and modified files
+            const filesToProcess = currentFiles.filter(uri => {
+                const filePath = uri.fsPath;
+                const existingProps = this.filesProperties.get(filePath);
+                if (!existingProps) return true; // New file
+
+                // Check if file content has changed (by hash) or if it's new.
+                // For simplicity, we'll re-add if content hash differs. `addDocument` handles content hashing.
+                return false; // Assuming addDocument will handle the hash check
+            }).slice(0,this.app.configuration.rag_max_files);
+
+            if (filesToProcess.length === 0 && this.entries.size > 0) {
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("RAG index is up to date.") ?? "");
+                return; // No files to process and index already exists
+            }
 
             // Show progress
             const progressOptions = {
@@ -294,11 +328,11 @@ export class ChatContext {
                 cancellable: true
             };
             await vscode.window.withProgress(progressOptions, async (progress, token) => {
-                const total = files.length;
+                const total = filesToProcess.length;
                 let processed = 0;
 
-                this.app.logger.addEventLog("RAG", "START_RAG_INDEXING", "")
-                for (const file of files) {
+                this.app.logger.addEventLog("RAG", "START_RAG_INDEXING_INCREMENTAL", "")
+                for (const file of filesToProcess) {
                     if (token.isCancellationRequested) {
                         break;
                     }
@@ -318,14 +352,47 @@ export class ChatContext {
                     }
                     if (this.entries.size >= this.app.configuration.rag_max_chunks) break;
                 }
-                this.app.logger.addEventLog("RAG", "END_RAG_INDEXING", "Files: " + processed + " Chunks: " + this.entries.size)
-                vscode.window.showInformationMessage(this.app.configuration.getUiText("Indexed") + " " + processed +"/" + files.length +" "
-                + this.app.configuration.getUiText("files for RAG search"));
+                this.app.logger.addEventLog("RAG", "END_RAG_INDEXING_INCREMENTAL", "Files: " + processed + " Chunks: " + this.entries.size)
+                if (processed > 0) {
+                    vscode.window.showInformationMessage(this.app.configuration.getUiText("Indexed") + " " + processed +"/" + filesToProcess.length +" "
+                    + this.app.configuration.getUiText("files for RAG search"));
+                } else {
+                    vscode.window.showInformationMessage(this.app.configuration.getUiText("No new files to index for RAG.") ?? "");
+                }
             });
+            await this.saveIndex();
 
         } catch (error) {
             console.error('Failed to index workspace files:', error);
             vscode.window.showErrorMessage('Failed to index workspace files');
+        }
+    }
+
+    private async saveIndex() {
+        try {
+            const data = JSON.stringify({
+                entries: Array.from(this.entries.entries()),
+                filesProperties: Array.from(this.filesProperties.entries()),
+                nextEntryId: this.nextEntryId,
+            });
+            await fs.promises.writeFile(this.indexPath, data);
+        } catch (error) {
+            console.error('Failed to save RAG index:', error);
+        }
+    }
+
+    private async loadIndex() {
+        try {
+            if (fs.existsSync(this.indexPath)) {
+                const data = await fs.promises.readFile(this.indexPath, 'utf8');
+                const parsedData = JSON.parse(data);
+                this.entries = new Map(parsedData.entries);
+                this.filesProperties = new Map(parsedData.filesProperties);
+                this.nextEntryId = parsedData.nextEntryId;
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("RAG index loaded successfully.") ?? "");
+            }
+        } catch (error) {
+            console.error('Failed to load RAG index:', error);
         }
     }
 

@@ -362,11 +362,90 @@ export class Architect {
         context.subscriptions.push(editSelectedTextDisposable);
     }
 
+    registerCommandExplainSelectedCode = (context: vscode.ExtensionContext) => {
+        const explainSelectedCodeDisposable = vscode.commands.registerCommand('extension.explainSelectedCode', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.explainSelectedCode(editor);
+        });
+        context.subscriptions.push(explainSelectedCodeDisposable);
+    }
+
+    registerCommandRefactorSelectedCode = (context: vscode.ExtensionContext) => {
+        const refactorSelectedCodeDisposable = vscode.commands.registerCommand('extension.refactorSelectedCode', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.refactorSelectedCode(editor);
+        });
+        context.subscriptions.push(refactorSelectedCodeDisposable);
+    }
+
+    registerCommandGenerateCodeBlock = (context: vscode.ExtensionContext) => {
+        const generateCodeBlockDisposable = vscode.commands.registerCommand('extension.generateCodeBlock', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.generateCodeBlock(editor);
+        });
+        context.subscriptions.push(generateCodeBlockDisposable);
+    }
+
+    registerCommandNextEdit = (context: vscode.ExtensionContext) => {
+        const nextEditDisposable = vscode.commands.registerCommand('extension.nextEdit', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.nextEdit(editor);
+        });
+        context.subscriptions.push(nextEditDisposable);
+    }
+
+    registerCommandGenerateUnitTests = (context: vscode.ExtensionContext) => {
+        const generateUnitTestsDisposable = vscode.commands.registerCommand('extension.generateUnitTests', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.generateUnitTests(editor);
+        });
+        context.subscriptions.push(generateUnitTestsDisposable);
+    }
+
+    registerCommandAnalyzeError = (context: vscode.ExtensionContext) => {
+        const analyzeErrorDisposable = vscode.commands.registerCommand('extension.analyzeError', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
+                vscode.window.showErrorMessage('No active editor!');
+                return;
+            }
+            await this.app.textEditor.analyzeError(editor);
+        });
+        context.subscriptions.push(analyzeErrorDisposable);
+    }
+
     registerCommandAcceptTextEdit = (context: vscode.ExtensionContext) => {
         const acceptTextEditDisposable = vscode.commands.registerCommand('extension.acceptTextEdit', async () => {
             await this.app.textEditor.acceptSuggestion();
         });
         context.subscriptions.push(acceptTextEditDisposable);
+    }
+
+    registerCommandAcceptAllTextEdit = (context: vscode.ExtensionContext) => {
+        const acceptAllDisposable = vscode.commands.registerCommand('extension.acceptAllTextEdit', async () => {
+            await this.app.textEditor.acceptAllSuggestion();
+        });
+        context.subscriptions.push(acceptAllDisposable);
     }
 
     registerCommandRejectTextEdit = (context: vscode.ExtensionContext) => {
@@ -375,6 +454,13 @@ export class Architect {
                 this.app.textEditor.rejectSuggestion();
             })
         );
+    }
+
+    registerCommandShowEditHistory = (context: vscode.ExtensionContext) => {
+        const showHistoryDisposable = vscode.commands.registerCommand('extension.showEditHistory', async () => {
+            await this.app.textEditor.showEditHistory();
+        });
+        context.subscriptions.push(showHistoryDisposable);
     }
 
     registerCommandKillAgent = (context: vscode.ExtensionContext) => {
@@ -517,5 +603,16 @@ export class Architect {
         let chatModel = this.app.menu.getChatModel();
         if (chatModel && chatModel.endpoint) endpoint = chatModel.endpoint;
         return endpoint;
+    }
+
+    registerCommandSendAgentQuery = (context: vscode.ExtensionContext) => {
+        const sendAgentQueryDisposable = vscode.commands.registerCommand('extension.sendAgentQuery', async (query: string) => {
+            if (!query) {
+                vscode.window.showErrorMessage('Query cannot be empty.');
+                return undefined;
+            }
+            return await this.app.llamaAgent.sendAgentQueryDirect(query);
+        });
+        context.subscriptions.push(sendAgentQueryDisposable);
     }
 }

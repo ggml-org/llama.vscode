@@ -16,6 +16,10 @@ export class Persistence {
         this.app = app;
     }
 
+    public get extensionContext(): vscode.ExtensionContext {
+        return this.context;
+    }
+
     getApiKey = (endpoint: string): string | undefined => {
         return this.context.globalState.get(this.uniquePrefix + this.apiKeysMapPrefix + endpoint) as string
     }

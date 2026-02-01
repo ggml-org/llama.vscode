@@ -1,7 +1,6 @@
 .vscode/**
 .idea/**
 .vscode-test/**
-src/**
 .gitignore
 .yarnrc
 vsc-extension-quickstart.md
@@ -12,4 +11,6 @@ vsc-extension-quickstart.md
 **/.vscode-test.*
 ui/node_modules/**
 ui/src/**
+node_modules/
+src/
 **/test

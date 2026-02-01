@@ -1,0 +1,47 @@
+Voici une liste des fonctionnalités que tu as mentionnées, accompagnée d'explications sur chacune d'elles :
+
+### 1. **Command Palette**
+   - **Description** : Une interface qui permet aux utilisateurs de rechercher et d'exécuter rapidement des commandes.
+   - **Utilité** : Facilite l'accès à diverses fonctions sans naviguer à travers les menus.
+
+### 2. **Complétion de Code**
+   - **Description** : Prédit des modifications sur plusieurs lignes de code. En appuyant sur Tab, les utilisateurs peuvent accepter les suggestions.
+   - **Utilité** : Améliore la vitesse de codage et réduit les erreurs.
+
+### 3. **Agent**
+   - **Description** : Une IA capable de lire et de modifier du code dans plusieurs fichiers en réponse à des descriptions en langage naturel.
+   - **Utilité** : Permet des modifications de code plus intuitives sans avoir besoin de syntaxe complexe.
+
+### 4. **Mode Agent**
+   - **Description** : Fonctionnalité qui permet aux utilisateurs de décrire en langage naturel les modifications souhaitées, que l'IA applique directement.
+   - **Utilité** : Simplifie l'édition de code pour les utilisateurs non techniques.
+
+### 5. **Édition en Ligne**
+   - **Description** : Permet de modifier le code sélectionné en utilisant des commandes en langage naturel.
+   - **Utilité** : Rends la modification du code plus accessible et efficace.
+
+### 6. **Chat**
+   - **Description** : Interface de conversation avec l'IA, supportant plusieurs onglets et l'historique des conversations.
+   - **Utilité** : Facilité d’interaction avec l’IA pour poser des questions ou obtenir des conseils.
+
+### 7. **Règles**
+   - **Description** : Instructions personnalisées qui définissent le comportement de l'IA, incluant des préférences de codage et des conventions.
+   - **Utilité** : Permet d’adapter le comportement de l’IA aux besoins spécifiques d’un projet.
+
+### 8. **Recherche Sémantique**
+   - **Description** : Recherche de code par son sens, permettant des requêtes en langage naturel.
+   - **Utilité** : Améliore la pertinence des résultats de recherche et aide à trouver du code basé sur l'intention.
+
+### 9. **MCP (Model Context Protocol)**
+   - **Description** : Permet l'intégration d'outils externes, y compris des bases de données et des API.
+   - **Utilité** : Facilite l'accès à des ressources et des données externes pour enrichir les fonctionnalités de l'IA.
+
+### 10. **Gestion du Contexte**
+   - **Description** : Informations fournies aux modèles d’IA lors de la génération de code, incluant les fichiers et l'historique des conversations.
+   - **Utilité** : Aide l'IA à comprendre le contexte pour des réponses plus pertinentes.
+
+### 11. **Modèles**
+   - **Description** : Différents modèles d’IA pour la génération de code, chacun avec des caractéristiques spécifiques.
+   - **Utilité** : Permet de choisir le modèle le plus adapté en fonction des besoins de performance et de capacité.
+
+Ces fonctionnalités sont conçues pour améliorer l'efficacité et l'expérience utilisateur lors de l'interaction avec des systèmes d'IA, en rendant le développement de code plus intuitif et accessible.

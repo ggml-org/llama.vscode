@@ -1,0 +1,72 @@
+2025-09-15 02:17:59.318 [info] Extension host with pid 32728 started
+2025-09-15 02:17:59.487 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2025-09-15 02:17:59.630 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2025-09-15 02:17:59.701 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: false, activationEvent: 'onView:llama-vscode.webview', root cause: ggml-org.llama-vscode
+2025-09-15 02:17:59.937 [info] ExtensionService#_doActivateExtension vscode.git, startup: false, activationEvent: 'onView:llama-vscode.webview', root cause: ggml-org.llama-vscode
+2025-09-15 02:18:00.418 [warning] [vscode.git] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'git.openRepositoryInParentFolders', provide the URI of a resource or 'null' for any resource.
+2025-09-15 02:18:00.418 [warning] [vscode.git] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'git.showProgress', provide the URI of a resource or 'null' for any resource.
+2025-09-15 02:18:00.524 [info] ExtensionService#_doActivateExtension ggml-org.llama-vscode, startup: false, activationEvent: 'onView:llama-vscode.webview'
+2025-09-15 02:18:01.052 [warning] [Deprecation Warning] 'PendingMigrationError' is deprecated. navigator is now a global in nodejs, please see https://aka.ms/vscode-extensions/navigator for additional info on this error.
+ FROM: PendingMigrationError: navigator is now a global in nodejs, please see https://aka.ms/vscode-extensions/navigator for additional info on this error.
+	at get (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:6611)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\node_modules\axios\dist\node\axios.cjs:1310:20)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\dist\llama-server.js:40:33)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\dist\application.js:6:24)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\dist\extension.js:39:23)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at aJ.Cb (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:240:1253)
+2025-09-15 02:18:01.139 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2025-09-15 02:18:01.165 [info] Extension 'ggml-org.llama-vscode' uses a document selector without scheme. Learn more about this: https://go.microsoft.com/fwlink/?linkid=872305
+2025-09-15 02:18:01.330 [warning] ggml-org.llama-vscode created a webview without a content security policy: https://aka.ms/vscode-webview-missing-csp
+2025-09-15 02:18:01.578 [info] Eager extensions activated
+2025-09-15 02:18:01.595 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2025-09-15 02:18:01.621 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2025-09-15 02:18:01.688 [info] Extension host terminating: renderer closed the MessagePort
+2025-09-15 02:18:01.718 [info] Extension host with pid 32728 exiting with code 0

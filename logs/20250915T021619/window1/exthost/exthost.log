@@ -1,0 +1,73 @@
+2025-09-15 02:16:25.646 [info] Extension host with pid 25668 started
+2025-09-15 02:16:25.744 [info] ExtensionService#_doActivateExtension vscode.github-authentication, startup: false, activationEvent: 'onAuthenticationRequest:github'
+2025-09-15 02:16:25.847 [info] ExtensionService#_doActivateExtension vscode.emmet, startup: false, activationEvent: 'onLanguage'
+2025-09-15 02:16:26.054 [info] ExtensionService#_doActivateExtension vscode.git-base, startup: true, activationEvent: '*', root cause: vscode.git
+2025-09-15 02:16:26.077 [info] ExtensionService#_doActivateExtension vscode.git, startup: true, activationEvent: '*'
+2025-09-15 02:16:26.229 [info] ExtensionService#_doActivateExtension vscode.github, startup: true, activationEvent: '*'
+2025-09-15 02:16:26.435 [warning] [vscode.git] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'git.openRepositoryInParentFolders', provide the URI of a resource or 'null' for any resource.
+2025-09-15 02:16:26.435 [warning] [vscode.git] Accessing a resource scoped configuration without providing a resource is not expected. To get the effective value for 'git.showProgress', provide the URI of a resource or 'null' for any resource.
+2025-09-15 02:16:26.565 [info] Eager extensions activated
+2025-09-15 02:16:27.012 [warning] [Deprecation Warning] 'PendingMigrationError' is deprecated. navigator is now a global in nodejs, please see https://aka.ms/vscode-extensions/navigator for additional info on this error.
+ FROM: PendingMigrationError: navigator is now a global in nodejs, please see https://aka.ms/vscode-extensions/navigator for additional info on this error.
+	at get (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:6611)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\node_modules\axios\dist\node\axios.cjs:1310:20)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\dist\llama-server.js:40:33)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\dist\application.js:6:24)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at Object.<anonymous> (c:\Users\yohlo\Documents\llama.vscode\dist\extension.js:39:23)
+	at Module._compile (node:internal/modules/cjs/loader:1696:14)
+	at Module._extensions..js (node:internal/modules/cjs/loader:1829:10)
+	at Module.load (node:internal/modules/cjs/loader:1430:32)
+	at Module._load (node:internal/modules/cjs/loader:1253:12)
+	at c._load (node:electron/js2c/node_init:2:17993)
+	at e._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:391:5984)
+	at t._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:209:22649)
+	at r._load (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:201:25551)
+	at TracingChannel.traceSync (node:diagnostics_channel:322:14)
+	at wrapModuleLoad (node:internal/modules/cjs/loader:242:24)
+	at Module.require (node:internal/modules/cjs/loader:1452:12)
+	at require (node:internal/modules/helpers:135:16)
+	at aJ.Cb (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:240:1253)
+	at aJ.yb (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:240:1379)
+	at aJ.sb (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:17545)
+	at async aJ.$extensionTestsExecute (file:///c:/Users/yohlo/Documents/llama.vscode%20-%203%20-%20OK/.vscode-test/vscode-win32-x64-archive-1.104.0/resources/app/out/vs/workbench/api/node/extensionHostProcess.js:116:17238)
+2025-09-15 02:16:27.085 [info] ExtensionService#_doActivateExtension vscode.debug-auto-launch, startup: false, activationEvent: 'onStartupFinished'
+2025-09-15 02:16:27.094 [info] ExtensionService#_doActivateExtension vscode.merge-conflict, startup: false, activationEvent: 'onStartupFinished'
+2025-09-15 02:16:27.149 [info] ExtensionService#_doActivateExtension ggml-org.llama-vscode, startup: false, activationEvent: 'onStartupFinished'
+2025-09-15 02:16:27.153 [info] Extension host terminating: renderer closed the MessagePort
+2025-09-15 02:16:27.190 [info] Extension host with pid 25668 exiting with code 0

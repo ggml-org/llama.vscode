@@ -42,6 +42,7 @@ export class Application {
 
     private constructor(context: vscode.ExtensionContext) {
         this.configuration = new Configuration()
+        this.persistence = new Persistence(this, context)
         this.llamaServer = new LlamaServer(this)
         this.extraContext = new ExtraContext(this)
         this.lruResultCache = new LRUCache(this.configuration.max_cache_keys);
@@ -58,7 +59,6 @@ export class Application {
         this.tools = new Tools(this)
         this.llamaAgent = new LlamaAgent(this)
         this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this, context)
-        this.persistence = new Persistence(this, context)
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {
