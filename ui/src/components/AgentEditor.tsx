@@ -364,7 +364,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
                 style={{ height: 'auto', minHeight: '1.5em', resize: 'none' }}
               />
 
-              <span style={{ display: 'block', marginTop: '20px', marginBottom: '10px', fontWeight: 'bold' }}>{'Descriptoin'}</span>
+              <span style={{ display: 'block', marginTop: '20px', marginBottom: '10px', fontWeight: 'bold' }}>{'Description'}</span>
               {/* Modern Textarea */}
               <textarea
                 ref={elemDescriptionRef}
