@@ -1540,6 +1540,11 @@
           "default": true,
           "description": "If code completion should be triggered automatically (true) or only by pressing Ctrl+l."
         },
+        "llama-vscode.debounce_ms": {
+          "type": "number",
+          "default": 0,
+          "description": "Milliseconds to wait after the last keystroke before sending a completion request (0 = disabled). Useful on low-end hardware to avoid triggering inference on every keystroke."
+        },
         "llama-vscode.api_key": {
           "type": "string",
           "default": "",

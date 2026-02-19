@@ -29,6 +29,7 @@ export class Configuration {
     new_embeddings_model_host = "127.0.0.1"
     new_tools_model_host = "127.0.0.1"
     auto = true;
+    debounce_ms = 0;
     api_key = "";
     api_key_chat = "";
     api_key_tools = "";
@@ -194,6 +195,7 @@ export class Configuration {
         this.openai_client_model = String(config.get<string>("openai_client_model"));
         this.openai_prompt_template = String(config.get<string>("openai_prompt_template"));
         this.auto = Boolean(config.get<boolean>("auto"));
+        this.debounce_ms = Number(config.get<number>("debounce_ms"));
         this.api_key = String(config.get<string>("api_key"));
         this.api_key_chat = String(config.get<string>("api_key_chat"));
         this.api_key_tools = String(config.get<string>("api_key_tools"));
