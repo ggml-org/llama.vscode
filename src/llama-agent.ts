@@ -63,6 +63,14 @@ export class LlamaAgent {
                 if (fs.existsSync(agentsAbsolutePath)) {
                     projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
                 }
+                const soulAbsolutePath = Utils.getAbsolutFilePath("SOUL.md");
+                if (fs.existsSync(soulAbsolutePath)) {
+                    projectContext += "  \n\n AI soul desription from " + soulAbsolutePath + ": \n" + fs.readFileSync(soulAbsolutePath, "utf-8");
+                }
+                const userInstructionsPath = Utils.getAbsolutFilePath("USER.md");
+                if (fs.existsSync(userInstructionsPath)) {
+                    projectContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
+                }
             }
         }
         this.messages = [
