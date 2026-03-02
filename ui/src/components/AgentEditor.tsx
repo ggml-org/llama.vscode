@@ -10,8 +10,8 @@ interface AgentEditorProps {
   setCurrentState: (state: string) => void;
   contextFiles: Map<string, string>;
   setContextFiles: (files: Map<string, string>) => void;
-  agentEditDetails: {name: string, description: string, systemInstruction: string, toolsModel: string}
-  setAgentEditDetails:(agentDetails: {name: string, description: string, systemInstruction: string, toolsModel: string}) => void 
+  agentEditDetails: {name: string, description: string, systemInstruction: string, toolsModel: string, subagentEnabled: boolean}
+  setAgentEditDetails:(agentDetails: {name: string, description: string, systemInstruction: string, toolsModel: string, subagentEnabled: boolean}) => void 
 }
 
 const AgentEditor: React.FC<AgentEditorProps> = ({
@@ -90,7 +90,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
           setTools(new Map(message.files || []));
           break;
         case 'loadAgent':
-          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel, subagentEnabled: message.subagentEnabled});
           setTools(new Map(message.tools || []));
           currentAgentModel = message.toolsModel;
           break;
@@ -120,6 +120,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
     vscode.postMessage({
       command: 'saveEditAgent',
       name: agentEditDetails.name,
+      subagentEnabled: agentEditDetails.subagentEnabled,
       description: agentEditDetails.description,
       systemInstruction: agentEditDetails.systemInstruction,
       toolsModel: currentAgentModel,
@@ -357,7 +358,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
               <textarea
                 ref={elemNameRef}
                 value={agentEditDetails.name}
-                onChange={(e) => setAgentEditDetails({name: e.target.value, description: agentEditDetails.description,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel})}
+                onChange={(e) => setAgentEditDetails({name: e.target.value, description: agentEditDetails.description,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel,subagentEnabled: agentEditDetails.subagentEnabled})}
                 placeholder="Enter agent name."
                 className="modern-textarea"
                 rows={1}
@@ -369,7 +370,7 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
               <textarea
                 ref={elemDescriptionRef}
                 value={agentEditDetails.description}
-                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: e.target.value,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel})}
+                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: e.target.value,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel, subagentEnabled: agentEditDetails.subagentEnabled})}
                 placeholder="Enter agent description."
                 className="modern-textarea"
                 rows={2}
@@ -381,12 +382,22 @@ const AgentEditor: React.FC<AgentEditorProps> = ({
               <textarea
                 ref={elemSystemPromptRef}
                 value={agentEditDetails.systemInstruction}
-                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: agentEditDetails.description,  systemInstruction: e.target.value,  toolsModel: agentEditDetails.toolsModel})}
+                onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: agentEditDetails.description,  systemInstruction: e.target.value,  toolsModel: agentEditDetails.toolsModel, subagentEnabled: agentEditDetails.subagentEnabled})}
                 placeholder="Enter system instructions for the agent."
                 className="modern-textarea"
                 rows={10}
                 style={{ height: 'auto', minHeight: '15em', resize: 'vertical' }}
               />
+              <div style={{ marginBottom: '20px', marginTop: '10px', fontWeight: 'bold' }}>
+                <label className="checkbox-label" title="If enabled - the agent could be used as a subagent.">
+                  <input
+                    type="checkbox"
+                    checked={agentEditDetails.subagentEnabled}
+                    onChange={(e) => setAgentEditDetails({name: agentEditDetails.name, description: e.target.value,  systemInstruction: agentEditDetails.systemInstruction, toolsModel: agentEditDetails.toolsModel, subagentEnabled: e.target.checked})}
+                  />
+                  <span style={{ marginLeft: '8px' }}>Available as Subagent</span>
+                </label>
+              </div>
 
              <div className="single-button-frame">
             <div className="frame-label">Agent Model (Optional)</div> 

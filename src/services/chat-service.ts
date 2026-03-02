@@ -41,16 +41,16 @@ export class ChatService {
     }
     
     selectUpdateChat = async (chatToSelect: Chat) => {
-        if (chatToSelect.id != this.app.getChat().id){
+        if (!chatToSelect.id){
+            this.app.setChat(chatToSelect);
+            await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_CHAT, this.app.getChat());
+        } else {
             await this.updateChatHistory();
             this.app.setChat(chatToSelect);
             await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_CHAT, chatToSelect);
-            this.app.llamaAgent.selectChat(chatToSelect);
+            await this.app.llamaAgent.selectChat(chatToSelect);
             this.app.llamaWebviewProvider.updateLlamaView();
-        } else {
-            this.app.setChat(chatToSelect);
-            await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_CHAT, this.app.getChat());
-        }       
+        }      
     }
 
     deleteChatFromList = async (chatList: Chat[]) => {

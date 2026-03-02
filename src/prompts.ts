@@ -275,6 +275,42 @@ Replace the entire TODO list with an updated checklist reflecting the current st
 
 TOOL_UPDATE_TODO_LIST_PARAMETER_DESCRIPTION = `Full markdown checklist in execution order, using [ ] for pending, [x] for completed, and [-] for in progress`
 
+TOOL_DELEGATE_TASK_DESCRIPTION = `Delegates a specific task to a subagent. 
+Use this when you encounter a subtask that is better handled by a dedicated agent (e.g. providing help for llama.vscode, performing calculations, retrieving specific data) or for optimizing context length. 
+Provide the subagent's name and a clear, self-contained description of the task to be performed. 
+Optionally, include relevant context (such as user preferences or key conversation snippets) to help the subagent. 
+The subagent will execute the task using its own tools and return a result. 
+If the delegation fails, an error status with details will be returned.`
+
+TOOL_CREATE_AGENT_DESCRIPTION = `Creates a new agent in the system. The agent's configuration must be provided as a JSON string conforming to the schema defined in the description of property "agent_json". 
+Upon successful creation, returns a confirmation message containing the unique identifier of the new agent. Ensure that any tool names listed in the tools field correspond to existing tools in the system.`
+
+PROPERTY_AGENT_JSON_DESCRIPTION = `A JSON string that defines the agent to be created. The object must include the following fields:
+
+    name (string): The name of the agent.
+
+    description (string): A brief explanation of the agent's purpose and behavior.
+
+    subagentEnabled (boolean): Set to true if this agent can be invoked as a subagent by other agents; otherwise false.
+
+    systemInstruction (string): The system prompt or instruction that guides the agent's responses and actions.
+
+    tools (string, optional): A comma-separated list of tool names that the agent is permitted to use. Do not include spaces around the commas (e.g., "tool1,tool2,tool3"). If omitted, the agent will have no tools.
+
+Example value:
+{
+  "name": "CustomerSupportAgent",
+  "description": "Handles customer inquiries and returns troubleshooting steps.",
+  "subagentEnabled": true,
+  "systemInstruction": "You are a helpful customer support representative...",
+  "tools": "searchKnowledgeBase,ticketCreator"
+}
+`
+
+SUBAGENTS_DESCRIPTION = `Subagents
+You have access to specialized subagents via the delegate_task tool. Use it when you encounter a well‑defined subtask that can be handled independently — for example, providing help for llama.vscode, performing complex calculations, or retrieving data from a specific source.
+If the delegation fails (error or timeout), decide whether to retry with a different subagent, handle the task yourself, or report the issue to the user.`
+
 constructor(application: Application) {
         this.app = application;
     }

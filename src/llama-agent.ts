@@ -42,6 +42,19 @@ export class LlamaAgent {
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
         if (this.app.isAgentSelected()) systemPromt = this.app.getAgent().systemInstruction.join("\n")
+        if (this.app.configuration.tool_delegate_task_enabled) {
+            let agentPromtPrefix = "  \n\n " + this.app.prompts.SUBAGENTS_DESCRIPTION;
+            agentPromtPrefix += "  \n\n Subagents:";
+            let subagentsList = "";
+            for (let agent of this.app.configuration.agents_list) {
+                if (agent.subagentEnabled){
+                    subagentsList += "  \n" + agent.name + ": " + agent.description;
+                }
+            }
+            if (subagentsList.length > 0) {
+                systemPromt += agentPromtPrefix + subagentsList;
+            }
+        }
         let worspaceFolder = "";
         if (vscode.workspace.workspaceFolders && vscode.workspace.workspaceFolders[0]){
             worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
@@ -58,12 +71,19 @@ export class LlamaAgent {
             const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
             if (fs.existsSync(absolutePath)) {
                 projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
-            } else {
-                const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
-                if (fs.existsSync(agentsAbsolutePath)) {
-                    projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
-                }
-            }
+            }          
+        }       
+        const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
+        if (fs.existsSync(agentsAbsolutePath)) {
+            projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
+        }
+        const soulAbsolutePath = Utils.getAbsolutFilePath("SOUL.md");
+        if (fs.existsSync(soulAbsolutePath)) {
+            projectContext += "  \n\n AI soul desription from " + soulAbsolutePath + ": \n" + fs.readFileSync(soulAbsolutePath, "utf-8");
+        }
+        const userInstructionsPath = Utils.getAbsolutFilePath("USER.md");
+        if (fs.existsSync(userInstructionsPath)) {
+            projectContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
         }
         this.messages = [
             {
@@ -74,15 +94,15 @@ export class LlamaAgent {
         this.logText = "";
     }
 
-    selectChat = (chat: Chat) => {
-        if (chat && chat.defaultAgent) this.app.agentService.selectAgent(chat.defaultAgent);
+    selectChat = async (chat: Chat) => {
+        if (chat && chat.defaultAgent) await this.app.agentService.selectAgent(chat.defaultAgent);
         this.resetMessages();
 
         if (chat){
             const currentChat = this.app.getChat();
             this.messages = chat.messages??[];
             this.logText = chat.log??"";
-         }
+        }
         //  this.app.llamaWebviewProvider.logInUi(this.logText);
          this.resetContext();
     }
@@ -383,15 +403,7 @@ export class LlamaAgent {
             this.logText += "  \nAgent session finished. \n\n"
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.app.llamaWebviewProvider.setState("AI finished")
-            let chat = this.app.getChat()
-            if (!this.app.isChatSelected()){
-                chat.name = this.logText.slice(0, 25);
-                chat.id = Date.now().toString(36);
-                chat.description = new Date().toLocaleString() + " " + this.logText.slice(0,150)
-            }
-            chat.messages = this.messages;
-            chat.log = this.logText;
-            await this.app.chatService.selectUpdateChat(chat)
+            await this.updateChat();
             
             // Clean up AbortController
             this.abortController = null;
@@ -427,6 +439,18 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
+    }
+
+    public async updateChat() {
+        let chat = this.app.getChat();
+        if (!this.app.isChatSelected()) {
+            chat.name = this.logText.slice(0, 25);
+            chat.id = Date.now().toString(36);
+            chat.description = new Date().toLocaleString() + " " + this.logText.slice(0, 150);
+        }
+        chat.messages = this.messages;
+        chat.log = this.logText;
+        await this.app.chatService.selectUpdateChat(chat);
     }
 
     private removeFile(todoFile: string) {

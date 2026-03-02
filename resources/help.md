@@ -198,6 +198,12 @@ Settings:
 - Health_check_chat_enabled: Enable/disable health check for chat model
 - Health_check_embs_enabled: Enable/disable health check for embedding model
 - Health_check_tools_enabled: Enable/disable health check for tools model
+
+<img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/dca91333-687e-4856-b187-25df50d17b1c" />
+
+<img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
+
+
 ## Version 0.0.40 is released (05.01.2025)
 ## What is new
 
@@ -691,6 +697,17 @@ There are different ways to select a model
 - In Llama Agent click the button for selecting a model (completion, chat, embeddings, tools)
 - In llama-vscode menu select "Completion models..." (or chat, embeddings, tools)
 - Select an env. This will select the models, which are part of the env
+## More context files
+
+### What are AGENTS.md, SOUL.md, and USER.md
+If in the project folder there are files: AGENTS.md, SOUL.md, and USER.md, they are used to provide additional context to the AI model when a request is sent. 
+AGENTS.md - instructions related with agents
+SOUL.md - instructions related with the "soul" of the agent (how to behave, what values to follow, etc.)
+USER.md - information about the user - preferences, additional information, etc.
+These files are not mandatory. Ther are added because in some systems are quite popular and probably could be reused from there.
+
+### How to use them
+Just add one or more of these files to the project folder.
 ## Parallel Completions
 
 ### Overview
@@ -992,6 +1009,18 @@ Settings:
 
 https://github.com/user-attachments/assets/8f0b4575-104f-471c-be3f-f3d5b58aeee1
 
+## Subagents
+
+### What are subagents
+Subagents are a way to optimize the user of LLM context. Some tasks are be executed in a separate session and only the final result is added to the context of the original agent session. 
+This is implemented with the tool delegate_task. If the delegate_task tool is enabled, the agent could decide to delegate some tasks to subagents. Each agent could be used as a subagent if it's field "Available as Subagent" is checked.
+
+### How to use them
+1. Make sure the tool delegate_task is enabled.
+2. Make sure the agents you want to use as subagents have the field "Available as Subagent" checked and meaningful description.
+3. Write a prompt, for which it is good idea to use the subagent. Alternatively, you could directly ask in the prompt to use the subagent.
+
+The agent "Agent creator" makes it easier to create agents (which could be used as subagents).
 ## Update todos tool
 
 ### Overview
