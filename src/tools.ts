@@ -5,6 +5,7 @@ import path from "path";
 import fs from 'fs';
 import { Plugin } from './plugin';
 import { UI_TEXT_KEYS } from "./constants";
+import { Chat, Agent } from "./types";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -31,6 +32,8 @@ export class Tools {
         this.toolsFunc.set("custom_eval_tool", this.customEvalTool)   
         this.toolsFunc.set("llama_vscode_help", this.llamaVscodeHelp)     
         this.toolsFunc.set("update_todo_list", this.updateTodoList) 
+        this.toolsFunc.set("delegate_task", this.delegateTask) 
+        this.toolsFunc.set("create_agent", this.createAgent) 
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
         this.toolsFuncDesc.set("read_file", this.readFileDesc)
@@ -44,7 +47,9 @@ export class Tools {
         this.toolsFuncDesc.set("custom_eval_tool", this.customEvalToolDesc)
         this.toolsFuncDesc.set("llama_vscode_help", this.llamaVscodeHelpDesc)
         this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc)
-        
+        this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc);
+        this.toolsFuncDesc.set("delegate_task", this.delegateTaskDesc)
+        this.toolsFuncDesc.set("create_agent ", this.createAgentDesc);
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -394,7 +399,7 @@ export class Tools {
 
         return "The todos are created/updated."
     }
-
+    
     public updateTodoListDesc = async (args: string) => {
         let ret = "update_todo_list tool is executed. \n\n"
         let params = JSON.parse(args);
@@ -402,8 +407,89 @@ export class Tools {
         return ret
     }
 
+    public delegateTask = async (args: string) => {
+        let params = JSON.parse(args);
+        let finalAnswer = "No answer from the subagent.";
+        if (params.subagent_name) {
+            // store current agent
+            await this.app.llamaAgent.updateChat()
+            let parentChat = this.app.getChat();
+            parentChat.defaultAgent = this.app.getAgent();
+            let subagent: Agent = this.app.configuration.agents_list.find(agent => agent.name == params.subagent_name)
+            if (!subagent) return "No subagent found with name " + params.subagent_name;
+            this.app.llamaAgent.resetContext();
+            let newChatName = "delegate_task" + Date.now()
+            let newSubagent: Agent =  { ...subagent };
+            if (subagent.tools){
+                // clone the tools to avoid changing the original agent
+                newSubagent.tools = [...subagent.tools];
+            } else {
+                newSubagent.tools = [];
+            }
+            newSubagent.tools.push("ask_user")
+            // The goal is to get the answer from the subagent in one tools loop - so use a tool call if user input is needed
+            newSubagent.systemInstruction.push("For questions to the user, please use the tool 'ask_user'.")
+            let newChat: Chat = {
+                name: newChatName,
+                id: newChatName,
+                messages: [],
+                defaultAgent: newSubagent,
+                log: "subagent: " + params.subagent_name + "  \n  \n"
+            }
+            
+            await this.app.chatService.selectUpdateChat(newChat)
+
+            if (params.task) {
+                finalAnswer = await this.app.llamaAgent.askAgent(params.task)
+            } else {
+                return "No task provided."
+            }
+            await this.app.chatService.selectUpdateChat(parentChat)
+            this.app.llamaWebviewProvider.setState("AI is working")
+        } else {
+            return "No subagent name provided."
+        }
+        
+        return finalAnswer
+    }
     
+    public delegateTaskDesc = async (args: string) => {
+        let ret = "delegate_task tool is executed. \n\n"
+        let params = JSON.parse(args);
+        if (params.task && params.subagent_name) ret += "subagent: " +  params.subagent_name + "\ntask: " + params.task
+        return ret.split(/\r?\n/).join("  \n")
+    }
+
+    public createAgent = async (args: string) => {
+        let params = JSON.parse(args);
+        let finalAnswer = "The agent is created";
+        
+        if (params.agent_json) {
+            let receivedAgent = JSON.parse(params.agent_json)
+            let newAgent:Agent = {
+                name: receivedAgent.name,
+                description: receivedAgent.description,
+                subagentEnabled: receivedAgent.subagentEnabled??false,
+                systemInstruction: receivedAgent.systemInstruction.split(/\r?\n/)
+            }
+            if (receivedAgent.tools) {
+                newAgent.tools = receivedAgent.tools.split(",")
+            }
+            // TODO check if one more parsing of agent_json is needed
+            await this.app.agentService.addUpdateAgent(newAgent)
+        } else {
+            return "No agent provided."
+        }
+        
+        return finalAnswer
+    }
     
+    public createAgentDesc = async (args: string) => {
+        let ret = "create_agent tool is executed. \n\n"
+        // let params = JSON.parse(args);
+        // if (params.task && params.subagent_name) ret += "subagent: " +  params.subagent_name + "\ntask: " + params.task
+        return ret.split(/\r?\n/).join("  \n")
+    }
     
     public init = () => {
         this.tools = [
@@ -676,6 +762,50 @@ export class Tools {
                         "properties": {
                             "todos": {
                                 "description": this.app.prompts.TOOL_UPDATE_TODO_LIST_PARAMETER_DESCRIPTION,
+                                "type": "string",
+                            },
+                        },
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_create_agent_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "create_agent",
+                    "description": this.app.prompts.TOOL_CREATE_AGENT_DESCRIPTION,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "agent_json": {
+                                "description": this.app.prompts.PROPERTY_AGENT_JSON_DESCRIPTION,
+                                "type": "string",
+                            },                            
+                        },
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_delegate_task_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "delegate_task",
+                    "description": this.app.prompts.TOOL_DELEGATE_TASK_DESCRIPTION,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "subagent_name": {
+                                "description": "Name of the subagent to invoke. Must be one of the available subagents listed in the system prompt.",
+                                "type": "string",
+                            },
+                            "task": {
+                                "description": "Description of the task to be delegated to the subagent.",
                                 "type": "string",
                             },
                         },

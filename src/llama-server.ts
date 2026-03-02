@@ -274,7 +274,7 @@ export class LlamaServer {
             }
         }
 
-        return {
+            return {
             "messages": filteredMsgs,
             "stream": stream,
             "temperature": 0.8,

@@ -73,6 +73,7 @@ export class Configuration {
     rag_max_context_file_chars = 10000
 
     tool_run_terminal_command_enabled = true;
+    tool_create_agent_enabled = true;
     tool_search_source_enabled = true;
     tool_read_file_enabled = true;
     tool_list_directory_enabled = true;
@@ -92,6 +93,7 @@ export class Configuration {
     tool_custom_eval_tool_code = "";
     tool_llama_vscode_help_enabled = true;
     tool_update_todo_list_enabled = true;
+    tool_delegate_task_enabled = true;
     tools_max_iterations = 50;
     plan_review_frequency = 5;
     tools_log_calls = false;
@@ -222,6 +224,7 @@ export class Configuration {
         this.rag_max_context_files = Number(config.get<number>("rag_max_context_files"));
         this.rag_max_context_file_chars = Number(config.get<number>("rag_max_context_file_chars"));
         this.tool_run_terminal_command_enabled = Boolean(config.get<boolean>("tool_run_terminal_command_enabled"));
+        this.tool_create_agent_enabled = Boolean(config.get<boolean>("tool_create_agent_enabled"));
         this.tool_search_source_enabled = Boolean(config.get<boolean>("tool_search_source_enabled"));
         this.tool_read_file_enabled = Boolean(config.get<boolean>("tool_read_file_enabled"));
         this.tool_list_directory_enabled = Boolean(config.get<boolean>("tool_list_directory_enabled"));
@@ -234,6 +237,7 @@ export class Configuration {
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
         this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
         this.tool_update_todo_list_enabled = Boolean(config.get<boolean>("tool_update_todo_list_enabled"));
+        this.tool_delegate_task_enabled = Boolean(config.get<boolean>("tool_delegate_task_enabled"));
         this.tool_llama_vscode_help_enabled = Boolean(config.get<boolean>("tool_llama_vscode_help_enabled"));
         this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
         this.tool_custom_tool_source = String(config.get<string>("tool_custom_tool_source"));
@@ -315,6 +319,7 @@ export class Configuration {
 
     isToolChanged = (event: vscode.ConfigurationChangeEvent) => {
         return event.affectsConfiguration("llama-vscode.tool_run_terminal_command_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_create_agent_enabled")
         || event.affectsConfiguration("llama-vscode.tool_search_source_enabled")
         || event.affectsConfiguration("llama-vscode.tool_list_directory_enabled")
         || event.affectsConfiguration("llama-vscode.tool_read_file_enabled")
@@ -328,6 +333,7 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_get_diff_enabled")
         || event.affectsConfiguration("llama-vscode.tool_llama_vscode_help_enabled")
         || event.affectsConfiguration("llama-vscode.tool_update_todo_list_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_delegate_task_enabled")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_enabled")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_description")
         || event.affectsConfiguration("llama-vscode.tool_custom_eval_tool_property_description")

@@ -60,6 +60,7 @@ export interface Env {
 export interface Agent {
     name: string,
     description?: string,
+    subagentEnabled?: boolean,
     systemInstruction: string[],
     toolsModel?: LlmModel,
     tools?: string[]

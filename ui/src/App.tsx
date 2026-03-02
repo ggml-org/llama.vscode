@@ -51,7 +51,7 @@ const App: React.FC<AppProps> = () => {
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
   const [imagePath, setContextImage] = useState<string>("");
   const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
-  const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string}>({name:"", description:"", systemInstruction:"", toolsModel:""});
+  const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string, subagentEnabled: boolean}>({name:"", description:"", systemInstruction:"", toolsModel:"", subagentEnabled: false});
 
   // Save state to VS Code whenever it changes
   useEffect(() => {
@@ -106,10 +106,10 @@ const App: React.FC<AppProps> = () => {
           setContextImage(message.image || "");
           break;
         case 'updateAgentEdit':
-          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel,subagentEnabled: message.subagentEnabled});
           break;
         case 'loadAgent':
-          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel});
+          setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel, subagentEnabled: message.subagentEnabled});
           setCurrentAgentModel(message.toolsModel);
           setAgentEditTools(new Map(message.tools || []));
           break;

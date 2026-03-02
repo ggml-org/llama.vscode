@@ -113,10 +113,14 @@ export class AgentService {
         this.app.setAgent(agent);
         const allTools = Array.from(this.app.tools.toolsFunc.keys());
         for (let toolName of allTools) {
-            this.app.configuration.updateConfigValue(`tool_${toolName}_enabled`, agent.tools?.includes(toolName) ?? false);
+            try {
+                await this.app.configuration.updateConfigValue(`tool_${toolName}_enabled`, agent.tools?.includes(toolName) ?? false);
+            } catch (err) {
+                vscode.window.showErrorMessage("Error updating tools configuration.")
+            }
         }
         if (agent.toolsModel && agent.toolsModel.name) {
-            this.app.modelService.selectStartModel(agent.toolsModel, ModelType.Tools, this.app.modelService.getTypeDetails(ModelType.Tools))
+            await this.app.modelService.selectStartModel(agent.toolsModel, ModelType.Tools, this.app.modelService.getTypeDetails(ModelType.Tools))
         }
         await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_AGENT, agent);
         this.app.llamaWebviewProvider.updateLlamaView();
@@ -175,6 +179,7 @@ export class AgentService {
             let agentExisting = agentsList.find(agn => agn.name.trim() == editedAgent.name.trim())
             if (agentExisting){
                 agentExisting.description = editedAgent.description
+                agentExisting.subagentEnabled = editedAgent.subagentEnabled
                 agentExisting.systemInstruction = editedAgent.systemInstruction
                 agentExisting.toolsModel = editedAgent.toolsModel
                 agentExisting.tools = editedAgent.tools
@@ -357,6 +362,7 @@ export class AgentService {
             "\nname: " + agent.name +
             "\ndescription: " + agent.description +
             "\nsystem prompt: \n" + agent.systemInstruction.join("\n") +
+            "\nsubagent enabled: " + agent.subagentEnabled +
             "\ntools model: \n" + agent.toolsModel?.name +
             "\n\ntools: " + (agent.tools ? agent.tools.join(", ") : "");
     }

@@ -52,17 +52,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.app.llamaAgent.run(message.text, message.agentCommand);
                         break;
                     case 'clearText':
-                        this.app.llamaAgent.resetMessages();
-                        this.app.llamaAgent.resetContext()
-                        await this.app.chatService.selectUpdateChat({name:"", id:""})
-                        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
-                            command: 'updateText',
-                            text: ''
-                        });
-                        webviewView.webview.postMessage({
-                            command: 'updateContextImage',
-                            image: ""
-                        });
+                        await this.clearChatText(webviewView);
                         break;
                     case 'showChatsHistory':
                         this.app.chatService.selectChatFromList();
@@ -155,7 +145,11 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'selectAgent':
                         let agentsList = this.app.configuration.agents_list
-                        await this.app.agentService.pickAndSelectAgent(agentsList)
+                        let shouldContinue = await Utils.showYesNoDialog("This will remove the current conversation. Do you want to continue?")
+                        if (shouldContinue) {
+                            await this.app.agentService.pickAndSelectAgent(agentsList)
+                            await this.clearChatText(webviewView);
+                        }
                         break;
                     case 'chatWithAI':
                         this.app.askAi.closeChatWithAi(false);
@@ -283,6 +277,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         let agentToSave: Agent = {
                             name: message.name, 
                             description: message.description,
+                            subagentEnabled: message.subagentEnabled,
                             systemInstruction: message.systemInstruction.split(/\r?\n/),
                             toolsModel: agentModelToSave,
                             tools: message.tools
@@ -306,6 +301,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         const newAgent: Agent = {
                             name: message.name, 
                             description: message.description,
+                            subagentEnabled: message.subagentEnabled,
                             systemInstruction: message.systemInstruction, 
                             toolsModel: toolsModel,
                             tools: message.tools
@@ -361,6 +357,20 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         }, 1000);
     }    
 
+    private async clearChatText(webviewView: vscode.WebviewView) {
+        this.app.llamaAgent.resetMessages();
+        this.app.llamaAgent.resetContext();
+        await this.app.chatService.selectUpdateChat({ name: "", id: "" });
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateText',
+            text: ''
+        });
+        webviewView.webview.postMessage({
+            command: 'updateContextImage',
+            image: ""
+        });
+    }
+
     public addEditAgent(agent: Agent) {
         this.app.agentService.resetEditedAgentTools();
         agent.tools?.map(tool => this.app.agentService.addEditedAgentTools(tool, ""));
@@ -370,6 +380,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             command: 'loadAgent',
             name: agent?.name,
             description: agent?.description,
+            subagentEnabled: agent?.subagentEnabled,
             systemInstruction: agent?.systemInstruction.join("\n"),
             toolsModel: agent?.toolsModel?.name??'',
             tools: Array.from(edAgtools.entries())
