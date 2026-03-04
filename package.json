@@ -6,7 +6,7 @@
   "publisher": "ggml-org",
   "repository": "https://github.com/ggml-org/llama.vscode",
   "engines": {
-    "vscode": "^1.100.0"
+    "vscode": "^1.109.0"
   },
   "icon": "llama.png",
   "activationEvents": [
@@ -17,6 +17,13 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "languageModelChatProviders": [
+      {
+        "vendor": "llama-vscode",
+        "displayName": "llama.cpp",
+        "managementCommand": "extension.showMenu"
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {
@@ -691,7 +698,6 @@
                 "create_agent"
               ]
             }
-            
           ],
           "description": "The list of the agents, which could be selected"
         },
@@ -2264,7 +2270,7 @@
     "@types/mocha": "^10.0.10",
     "@types/node": "^18.0.0",
     "@types/picomatch": "^4.0.0",
-    "@types/vscode": "^1.100.0",
+    "@types/vscode": "^1.109.0",
     "@vscode/test-cli": "^0.0.11",
     "@vscode/test-electron": "^2.5.2",
     "esbuild": "^0.27.0",
