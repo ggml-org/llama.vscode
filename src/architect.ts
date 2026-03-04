@@ -26,6 +26,14 @@ export class Architect {
             this.app.menu.showHowToUseLlamaVscode();
             this.app.persistence.setGlobalValue("isFirstStart", false)
         }
+        const currentVersion = vscode.extensions.getExtension('ggml-org.llama-vscode')?.packageJSON?.version as string | undefined;
+        const storedVersion = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.EXTENSION_VERSION) as string | undefined;
+        if (currentVersion && storedVersion && currentVersion !== storedVersion) {
+            vscode.window.showInformationMessage(this.app.configuration.getUiText(`llama-vscode extension is updated.`) ?? "");
+        }
+        if (currentVersion) {
+            this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.EXTENSION_VERSION, currentVersion);
+        }
         await this.installUpgradeLlamaCpp(isFirstStart);
         if (this.app.configuration.env_start_last_used){
             let lastEnv = this.app.persistence.getValue("selectedEnv")
@@ -70,7 +78,6 @@ export class Architect {
             if (this.app.configuration.isRagConfigChanged(event)) this.init();
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
             if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
-            vscode.window.showInformationMessage(this.app.configuration.getUiText(`llama-vscode extension is updated.`)??"");
         });
         context.subscriptions.push(configurationChangeDisp);
     }

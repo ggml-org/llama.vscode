@@ -253,6 +253,7 @@ export const PERSISTENCE_KEYS = {
   SELECTED_CHAT: 'selectedChat' as const,
   SELECTED_AGENT: 'selectedAgent' as const,
   SELECTED_ENV: 'selectedEnv' as const,
+  EXTENSION_VERSION: 'extensionVersion' as const,
 } as const;
 
 export const SETTING_NAME_FOR_LIST = {
