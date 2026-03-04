@@ -30,6 +30,15 @@ export class Completion {
             return null;
         }
 
+        // Debounce: wait for the user to pause typing before hitting the backend
+        if (context.triggerKind == vscode.InlineCompletionTriggerKind.Automatic && this.app.configuration.debounce_ms > 0) {
+            await Utils.delay(this.app.configuration.debounce_ms);
+            if (token.isCancellationRequested) {
+                this.app.logger.addEventLog(group, "DEBOUNCE_CANCELLATION_RETURN", "")
+                return null;
+            }
+        }
+
         // Start only if the previous request is finiched
         while (this.isRequestInProgress) {
             await Utils.delay(this.app.configuration.DELAY_BEFORE_COMPL_REQUEST);
