@@ -4,3 +4,7 @@ node_modules
 .vscode-test/
 *.vsix
 .idea/
+.env
+__pycache__/
+.venv/
+
