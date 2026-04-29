@@ -1,6 +1,5 @@
 import * as vscode from 'vscode';
 import {Application} from "./application";
-import {LlamaChatModelProvider} from "./llama-chat-model-provider";
 
 let app: Application
 export function activate(context: vscode.ExtensionContext) {
@@ -33,21 +32,10 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerWebviewProvider(context)
     app.architect.registerCommandSelectNextSuggestion(context)
     app.architect.registerCommandSelectPreviousSuggestion(context)
+    app.architect.registerLlavaVscodeModelProvider(context)
     app.architect.init()
 
-    // Register the llama.cpp language model chat provider for GitHub Copilot Chat
-    const llamaChatModelProvider = new LlamaChatModelProvider(app);
-    context.subscriptions.push(vscode.lm.registerLanguageModelChatProvider(
-        'llama-vscode',
-        llamaChatModelProvider
-    ));
-    context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
-        if (event.affectsConfiguration('llama-vscode.endpoint_chat')
-            || event.affectsConfiguration('llama-vscode.endpoint_tools')
-            || event.affectsConfiguration('llama-vscode.ai_api_version')) {
-            llamaChatModelProvider.notifyModelsChanged();
-        }
-    }));
+    
 }
 
 export async function deactivate() {
