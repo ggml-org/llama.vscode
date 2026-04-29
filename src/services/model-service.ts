@@ -195,6 +195,17 @@ export class ModelService {
         await details.killCmd();
         if (model.localStartCommand) await details.shellCmd(this.sanitizeCommand(model.localStartCommand ?? ""));
         await this.app.persistence.setValue(this.getSelectedProp(type), model);
+        if (type == ModelType.Tools && model?.isKeyRequired !== undefined && model.isKeyRequired){
+            const apiKey = this.app.persistence.getApiKey(model.endpoint??"");
+            if (apiKey){
+                this.app.configuration.axiosRequestConfigTools = {
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                }
+            }
+        }
     }
 
     public async addModel(type: ModelType, kind: 'local' | 'external' | 'hf' | 'oaiComp'): Promise<void> {

@@ -82,11 +82,13 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
         const openaiMessages = messages.map((msg) => ({
             role: msg.role === vscode.LanguageModelChatMessageRole.User ? 'user' : 'assistant',
             content: msg.content
-                .map((part) => (part instanceof vscode.LanguageModelTextPart ? part.value : ''))
+                .map((part: unknown) =>
+                    part instanceof vscode.LanguageModelTextPart ? part.value : ''
+                )
                 .join(''),
         }));
 
-        const tools = options.tools?.map((t) => ({
+        const tools = options.tools?.map((t: vscode.LanguageModelToolInformation) => ({
             type: 'function',
             function: {
                 name: t.name,
@@ -109,7 +111,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
         const abortController = new AbortController();
         token.onCancellationRequested(() => abortController.abort());
 
-        const requestConfig = this.app.configuration.axiosRequestConfigChat;
+        const requestConfig = this.app.configuration.axiosRequestConfigTools;
         const streamResponse = await axios.post<NodeJS.ReadableStream>(
             `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
             requestBody,
@@ -211,7 +213,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             typeof text === 'string'
                 ? text
                 : text.content
-                      .map((p) => (p instanceof vscode.LanguageModelTextPart ? p.value : ''))
+                      .map((p: unknown) => (p instanceof vscode.LanguageModelTextPart ? p.value : ''))
                       .join('');
         // Rough approximation: 1 token ≈ 4 characters. The llama.cpp server does not expose a
         // tokenization endpoint via the standard OpenAI API, so we use this heuristic.
@@ -220,7 +222,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
     }
 
     private getChatEndpoint(): string {
-        const selectedModel = this.app.getChatModel();
+        const selectedModel = this.app.getToolsModel();
         if (selectedModel?.endpoint) {
             return selectedModel.endpoint;
         }
