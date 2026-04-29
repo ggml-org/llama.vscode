@@ -9,6 +9,7 @@ import { Utils } from './utils';
 import { Env, LlmModel } from './types';
 import { env } from 'process';
 import { PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, UiView } from './constants';
+import {LlamaChatModelProvider} from "./llama-chat-model-provider";
 
 export class Architect {
     private app: Application
@@ -209,6 +210,22 @@ export class Architect {
                 });
             })
         );
+    }
+
+    registerLlavaVscodeModelProvider = (context: vscode.ExtensionContext) => {
+        // Register the llama.vscode language model chat provider for GitHub Copilot Chat
+        
+        context.subscriptions.push(vscode.lm.registerLanguageModelChatProvider(
+            'llama-vscode',
+            this.app.llamaChatModelProvider
+        ));
+        context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
+            if (event.affectsConfiguration('llama-vscode.endpoint_chat')
+                || event.affectsConfiguration('llama-vscode.endpoint_tools')
+                || event.affectsConfiguration('llama-vscode.ai_api_version')) {
+                this.app.llamaChatModelProvider.notifyModelsChanged();
+            }
+        }));
     }
 
     registerGenarateCommitMsg = (context: vscode.ExtensionContext) => {

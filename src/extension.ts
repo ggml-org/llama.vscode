@@ -32,7 +32,10 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerWebviewProvider(context)
     app.architect.registerCommandSelectNextSuggestion(context)
     app.architect.registerCommandSelectPreviousSuggestion(context)
+    app.architect.registerLlavaVscodeModelProvider(context)
     app.architect.init()
+
+    
 }
 
 export async function deactivate() {
