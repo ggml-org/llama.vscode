@@ -20,7 +20,7 @@
     "languageModelChatProviders": [
       {
         "vendor": "llama-vscode",
-        "displayName": "llama.cpp",
+        "displayName": "llama.vscode",
         "managementCommand": "extension.showMenu"
       }
     ],

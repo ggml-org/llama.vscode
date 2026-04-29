@@ -51,7 +51,21 @@ https://github.com/user-attachments/assets/97bb1418-dcea-4a49-8332-13b2ab4da661
 
 
 
-![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok)## Custom eval tool
+![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok)## Copilot Chat Model Provider
+
+### Overview
+Llama-vscode could be used as a VS Code copilot chat model provider. With other words llama-vscode could provide models for the copilot. The provided models could be from local models or openrouter.com or other appliation, which servers the tools models for llama-vscode. This way you could automatically download and start locally models by llama.cpp and llama-vscode and use them with Copilot for free.
+
+### How to use it
+1. Select/Start tools model from llama-vscode (local or external)  
+<img width="485" height="875" alt="copilotSelectToolsModel" src="https://github.com/user-attachments/assets/caa33531-22f4-46dd-b429-7498c45c93e9" />
+  
+2. In VS Code Copilot show the models list -> Other Models -> Manage Models  
+<img width="1404" height="754" alt="CopilotManageModels" src="https://github.com/user-attachments/assets/dc861aa1-db86-46ff-83c1-98c7a435ad06" />
+  
+3. Make the models (all models available by the application serving the tools model are shown) you want to use visible (click on the left of the model name)  
+4. Select the desired model from Copilot and start using it
+## Custom eval tool
 
 ### Overview
 llama-vscode provides to the users the posibility to partially create their own tool. Custom eval tool is a simple one - has one parameters and and uses the provided by the user javascript function to calculate the result.
@@ -204,14 +218,28 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
-## Version 0.0.40 is released (05.01.2025)
+## Version 0.0.45 is released (04.03.2026)
 ## What is new
 
-Generation of multiple completions in parallel:
-- Setting max_parallel_completions determines how many completions to generate in parallel (default 3)
-- Shortcuts - Alt+] - next completion, Alt+[ - previous completion
-- Requires llama.cpp after December, 6, 2025 (commit c42712b) but is backword compatible (generates one completion for older versions)
-- [More details](https://github.com/ggml-org/llama.vscode/wiki/Parallel-completions)
+- Configurable debounce for inline completion requests - setting debounce_ms. 
+llama-vscode will wait debounce_ms after a keystroke before sending a request to the LLM for inline code completion. If in the meantime there is another keystroke, the request for the previous keystroke is cancelled. Useful on low end hardware to avoid triggering code completion on every keystroke.
+
+- Notification "Extension is updated" is shown only on version change, not on every setting change (as was before)
+
+
+## Version 0.0.44 is released (03.03.2026)
+## What is new
+
+- Subagents implemented (with tool delegate_task) - now each agent, which has "Available as Subagent" checked could be used as a subagent
+
+- new agent - Unit Test Writer
+
+- new tool create_agent
+
+- new agent "Agent creator"
+
+- Files SOUL.md and USER.md (if available in the project root) will be added to the context
+
 
 ## Setup instructions for llama.cpp server
 
