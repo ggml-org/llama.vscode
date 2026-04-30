@@ -44,13 +44,13 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
                     prompt: 'example: http://localhost:8080 or https://openrauter.ai/api'
                 })??""
                 isKeyRequired = await Utils.confirmAction(`Is API key required for this endpoint (${endpoint})?`, "");
-            } 
+            }
             if (!endpoint){
                 vscode.window.showWarningMessage("Endpoint is not provided!")
                 return;
             }
             const providerModels: QuickPickItem[] = [];
-            const models = await this.getModels(endpoint);
+            const models = await this.getModels(endpoint, isKeyRequired);
             if (models.length == 0) {
                 vscode.window.showInformationMessage("No models are found.")
                 return
@@ -108,30 +108,50 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
         }
     }
 
-    private async getModels(endpoint: string): Promise<OpenAiCompModel[]> {
-        let hfEndpoint = Utils.trimTrailingSlash(endpoint) +"/v1/models";
+    private async getModels(endpoint: string, isKeyRequired: boolean): Promise<OpenAiCompModel[]> {
+        const hfEndpoint = Utils.trimTrailingSlash(endpoint) + "/v1/models";
+
+        // Create a request configuration
+        let requestConfig: any = {};
+
+        if (isKeyRequired) {
+            // We get the saved key for this specific endpoint
+            const apiKey = this.app.persistence.getApiKey(endpoint);
+            if (apiKey) {
+                requestConfig = {
+                    headers: {
+                        'Authorization': `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    }
+                };
+            }
+        }
+
         try {
-            let result = await axios.default.get(
-                `${Utils.trimTrailingSlash(hfEndpoint)}`
+            const result = await axios.default.get(
+                `${Utils.trimTrailingSlash(hfEndpoint)}`,
+                requestConfig
             );
+
             let models: OpenAiCompModel[] = [];
-        
-            let modelsList: OpenAiCompModel[] = []
-            if (result && result.data && result.data.models) modelsList = result.data.models
-            else if (result && result.data && result.data.data) modelsList = result.data.data
-            if (modelsList.length > 0){
-                for(let mdl of modelsList){
-                    models.push(mdl)
+            let modelsList: OpenAiCompModel[] = [];
+
+            if (result && result.data && result.data.models) modelsList = result.data.models;
+            else if (result && result.data && result.data.data) modelsList = result.data.data;
+
+            if (modelsList.length > 0) {
+                for (let mdl of modelsList) {
+                    models.push(mdl);
                 }
             }
-            
+
             return models;
-        } catch (error){
-            vscode.window.showErrorMessage("Error getting provider models): " + error)
+        } catch (error) {
+            vscode.window.showErrorMessage("Error getting provider models: " + error);
             return [];
         }
     }
-    
+
     private sanitizeInput(input: string): string {
         return input ? input.trim() : '';
     }
