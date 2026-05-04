@@ -26,6 +26,192 @@ export class TextEditor {
         vscode.commands.executeCommand('setContext', 'textEditSuggestionVisible', visible);
     }
 
+    private escapeWebviewAttr(value: string): string {
+        return value
+            .replace(/&/g, '&amp;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;')
+            .replace(/</g, '&lt;');
+    }
+
+    /**
+     * Multiline instructions (webview); resolves undefined if cancelled or closed.
+     */
+    private showMultilineEditPrompt(): Promise<string | undefined> {
+        const title =
+            this.app.configuration.getUiText('How would you like to modify the selected text?') ??
+            'How would you like to modify the selected text?';
+        const placeholder =
+            this.app.configuration.getUiText('Enter your instructions for editing the text...') ??
+            'Enter your instructions for editing the text...';
+        const submitLabel = this.app.configuration.getUiText('Submit') ?? 'Submit';
+        const cancelLabel = this.app.configuration.getUiText('Cancel') ?? 'Cancel';
+        const emptyHint =
+            this.app.configuration.getUiText('Please enter editing instructions.') ??
+            'Please enter editing instructions.';
+
+        return new Promise((resolve) => {
+            let settled = false;
+            const panel = vscode.window.createWebviewPanel(
+                'editWithAiMultilinePrompt',
+                title,
+                { viewColumn: vscode.ViewColumn.Beside, preserveFocus: false },
+                { enableScripts: true }
+            );
+
+            const finish = (value: string | undefined) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                resolve(value);
+                panel.dispose();
+            };
+
+            const cspSource = panel.webview.cspSource;
+            panel.webview.html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src ${cspSource} 'unsafe-inline'; script-src 'unsafe-inline' ${cspSource};">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 12px;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+        }
+        label {
+            margin-bottom: 8px;
+        }
+        textarea {
+            flex: 1;
+            min-height: 120px;
+            resize: vertical;
+            padding: 8px;
+            border: 1px solid var(--vscode-input-border);
+            background: var(--vscode-input-background);
+            color: var(--vscode-input-foreground);
+            font-family: var(--vscode-editor-font-family);
+            font-size: var(--vscode-editor-font-size);
+        }
+        textarea:focus {
+            outline: 1px solid var(--vscode-focusBorder);
+        }
+        .actions {
+            margin-top: 12px;
+            display: flex;
+            gap: 8px;
+            justify-content: flex-end;
+        }
+        /* DOM order is Submit then Cancel (Tab: textarea → Submit → Cancel); flex order keeps Cancel left, Submit right. */
+        .actions .secondary {
+            order: 1;
+        }
+        .actions .primary {
+            order: 2;
+        }
+        button {
+            padding: 6px 14px;
+            border: none;
+            cursor: pointer;
+            font-size: var(--vscode-font-size);
+        }
+        .primary {
+            background: var(--vscode-button-background);
+            color: var(--vscode-button-foreground);
+        }
+        .primary:hover {
+            background: var(--vscode-button-hoverBackground);
+        }
+        .secondary {
+            background: var(--vscode-button-secondaryBackground);
+            color: var(--vscode-button-secondaryForeground);
+        }
+        .secondary:hover {
+            background: var(--vscode-button-secondaryHoverBackground);
+        }
+    </style>
+</head>
+<body>
+    <label for="prompt">${this.escapeWebviewAttr(title)}</label>
+    <textarea id="prompt" placeholder="${this.escapeWebviewAttr(placeholder)}" autofocus></textarea>
+    <div class="actions">
+        <button type="button" class="primary" id="submit">${this.escapeWebviewAttr(submitLabel)}</button>
+        <button type="button" class="secondary" id="cancel">${this.escapeWebviewAttr(cancelLabel)}</button>
+    </div>
+    <script>
+        const vscode = acquireVsCodeApi();
+        const ta = document.getElementById('prompt');
+        function focusPrompt() {
+            if (!ta) {
+                return;
+            }
+            ta.focus();
+            const len = ta.value.length;
+            ta.setSelectionRange(len, len);
+        }
+        window.addEventListener('load', focusPrompt);
+        requestAnimationFrame(focusPrompt);
+        setTimeout(focusPrompt, 0);
+        setTimeout(focusPrompt, 100);
+        window.addEventListener('message', (event) => {
+            const data = event.data;
+            if (data && data.command === 'focusPrompt') {
+                focusPrompt();
+            }
+        });
+        document.getElementById('submit').addEventListener('click', () => {
+            vscode.postMessage({ command: 'submit', text: ta.value });
+        });
+        document.getElementById('cancel').addEventListener('click', () => {
+            vscode.postMessage({ command: 'cancel' });
+        });
+    </script>
+</body>
+</html>`;
+
+            const requestPromptFocus = () => {
+                void panel.webview.postMessage({ command: 'focusPrompt' });
+            };
+            panel.onDidChangeViewState((e) => {
+                if (e.webviewPanel.visible) {
+                    requestPromptFocus();
+                }
+            });
+            requestPromptFocus();
+            setTimeout(requestPromptFocus, 50);
+            setTimeout(requestPromptFocus, 200);
+
+            panel.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'submit') {
+                    const text = typeof message.text === 'string' ? message.text : '';
+                    if (!text.trim()) {
+                        void vscode.window.showInformationMessage(emptyHint);
+                        return;
+                    }
+                    finish(text);
+                } else if (message.command === 'cancel') {
+                    finish(undefined);
+                }
+            });
+
+            panel.onDidDispose(() => {
+                if (!settled) {
+                    settled = true;
+                    resolve(undefined);
+                }
+            });
+        });
+    }
+
     async showEditPrompt(editor: vscode.TextEditor) {
         let chatUrl = this.app.configuration.endpoint_chat
         if (!chatUrl) chatUrl = this.app.configuration.endpoint_tools; 
@@ -64,12 +250,7 @@ export class TextEditor {
         const contextRange = new vscode.Range(startLine, 0, endLine, editor.document.lineAt(endLine).text.length);
         const context = editor.document.getText(contextRange);
         
-        // Create and show input box
-        const prompt = await vscode.window.showInputBox({
-            placeHolder: 'Enter your instructions for editing the text...',
-            prompt: 'How would you like to modify the selected text?',
-            ignoreFocusOut: true
-        });
+        const prompt = await this.showMultilineEditPrompt();
 
         if (!prompt) {
             return;

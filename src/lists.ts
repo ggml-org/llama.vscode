@@ -79,7 +79,36 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "endpoint": "http://127.0.0.1:8010"
             }
           ]],
-[PREDEFINED_LISTS_KEYS.TOOLS,  [
+[PREDEFINED_LISTS_KEYS.TOOLS,
+    [
+            {
+              "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU)",
+              "localStartCommand": "llama-server -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --jinja  -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
+            {
+              "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (VRAM>3GB)",
+              "localStartCommand": "llama-server -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --jinja -ngl 99  -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
+            {
+              "name": "Qwen3.5-4B-GGUF:Q8_0 (LOCAL) (VRAM>6GB)",
+              "localStartCommand": "llama-server -hf unsloth/Qwen3.5-4B-GGUF:Q8_0 --jinja -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
+            {
+              "name": "Qwen3.5-9B-GGUF:Q8_0 (LOCAL) (VRAM>12GB)",
+              "localStartCommand": "llama-server -hf unsloth/Qwen3.5-9B-GGUF:Q8_0 --jinja -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
             {
               "name": "OpenAI gpt-oss 20B (LOCAL) (> 19GB VRAM)",
               "localStartCommand": "llama-server -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
