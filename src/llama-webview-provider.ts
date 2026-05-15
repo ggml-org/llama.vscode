@@ -57,6 +57,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'showChatsHistory':
                         this.app.chatService.selectChatFromList();
                         break;
+                    case 'deleteCurrentChat':
+                        await this.deleteCurrentChat(webviewView);
+                        break;
                     case 'configureTools':
                         await this.app.tools.selectTools()
                         break;
@@ -369,6 +372,42 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             command: 'updateContextImage',
             image: ""
         });
+    }
+
+    private async deleteCurrentChat(webviewView: vscode.WebviewView) {
+        const currentChat = this.app.getChat();
+        if (!currentChat || !currentChat.id) {
+            vscode.window.showInformationMessage("No chat to delete. Start a new conversation first.");
+            return;
+        }
+        
+        let chatsList = this.app.persistence.getChats();
+        if (!chatsList || chatsList.length === 0) {
+            vscode.window.showInformationMessage("No saved chats to delete.");
+            return;
+        }
+
+        // Show confirmation dialog with action buttons
+        const confirmed = await vscode.window.showWarningMessage(
+            `Delete chat "${currentChat.name || 'Untitled'}"?`,
+            { modal: true },
+            "Delete"
+        );
+
+        if (confirmed === "Delete") {
+            // Find and remove the current chat from the list
+            const chatIndex = chatsList.findIndex((chat: any) => chat.id === currentChat.id);
+            if (chatIndex !== -1) {
+                chatsList.splice(chatIndex, 1);
+                await this.app.persistence.setChats(chatsList);
+                
+                // Clear the UI after deletion
+                await this.clearChatText(webviewView);
+                vscode.window.showInformationMessage(`Chat "${currentChat.name || 'Untitled'}" has been deleted.`);
+            } else {
+                vscode.window.showWarningMessage("Could not find the chat to delete.");
+            }
+        }
     }
 
     public addEditAgent(agent: Agent) {
