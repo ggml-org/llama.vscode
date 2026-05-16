@@ -716,9 +716,6 @@ export class Utils {
                 { enableScripts: true }
             );
 
-            // Calculate max height to fit screen (approximate - 80% of viewport)
-            const maxDetailHeight = 'calc(80vh - 200px)';
-
             panel.webview.html = `
             <!DOCTYPE html>
             <html>
@@ -741,30 +738,27 @@ export class Utils {
                 }
                 .container {
                     display: flex;
-                    flex-direction: row;
-                    gap: 16px;
+                    flex-direction: column;
+                    gap: 12px;
                     flex: 1;
                     min-height: 0;
                 }
                 .message {
-                    flex: 0 0 280px;
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    white-space: pre-wrap;
-                    word-wrap: break-word;
+                    flex: 0 0 auto;
                     padding: 12px;
                     border-radius: 4px;
                     background: var(--vscode-editor-background);
                     border: 1px solid var(--vscode-panel-border);
                     font-size: 13px;
                     line-height: 1.5;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
                 }
                 .details {
                     flex: 1;
                     display: flex;
                     flex-direction: column;
-                    min-width: 0;
+                    min-height: 0;
                     border: 1px solid var(--vscode-panel-border);
                     border-radius: 4px;
                     background: var(--vscode-editor-background);
@@ -776,6 +770,7 @@ export class Utils {
                     font-size: 12px;
                     color: var(--vscode-editor-foreground);
                     background: var(--vscode-sideBar-background);
+                    flex: 0 0 auto;
                 }
                 .details-content {
                     flex: 1;
@@ -800,7 +795,7 @@ export class Utils {
                 .buttons {
                     display: flex;
                     gap: 8px;
-                    margin-top: 16px;
+                    margin-top: 12px;
                     justify-content: flex-end;
                     flex: 0 0 auto;
                 }
