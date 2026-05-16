@@ -312,14 +312,107 @@ export class Utils {
     }
 
     static showYesNoDialog = async (message: string): Promise<boolean> => {
-        const choice = await vscode.window.showInformationMessage(
-            "llama-vscode \n\n" + message,
-            { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
-            'Yes',
-            'No'
-        );
+        return new Promise((resolve) => {
+            const panel = vscode.window.createWebviewPanel(
+                'yesNoDialog',
+                'Confirmation',
+                { viewColumn: vscode.ViewColumn.One, preserveFocus: true },
+                { enableScripts: true }
+            );
 
-        return choice === 'Yes';
+            panel.webview.html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                * {
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: var(--vscode-font-family);
+                    margin: 0;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                    background: var(--vscode-editor-background);
+                    color: var(--vscode-editor-foreground);
+                }
+                .container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    flex: 1;
+                    min-height: 0;
+                }
+                .message {
+                    flex: 1;
+                    padding: 12px;
+                    border-radius: 4px;
+                    background: var(--vscode-editor-background);
+                    border: 1px solid var(--vscode-panel-border);
+                    font-size: 13px;
+                    line-height: 1.5;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    overflow-y: auto;
+                }
+                .buttons {
+                    display: flex;
+                    gap: 8px;
+                    justify-content: flex-end;
+                    flex: 0 0 auto;
+                }
+                .button {
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 2px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-family: var(--vscode-font-family);
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                .button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                .button.secondary {
+                    background: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                }
+                .button.secondary:hover {
+                    background: var(--vscode-button-secondaryHoverBackground);
+                }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="message">${message.replace(/\n/g, '<br>')}</div>
+                </div>
+                <div class="buttons">
+                    <button class="button secondary" onclick="respond(false)">No</button>
+                    <button class="button" onclick="respond(true)">Yes</button>
+                </div>
+                <script>
+                const vscode = acquireVsCodeApi();
+                function respond(answer) {
+                    vscode.postMessage({ command: 'answer', value: answer });
+                }
+                </script>
+            </body>
+            </html>
+            `;
+
+            panel.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'answer') {
+                    resolve(message.value);
+                    panel.dispose();
+                }
+            });
+        });
     }
 
     static showUserChoiceDialog = async (message: string, acceptLabel: string): Promise<boolean> => {
@@ -357,11 +450,99 @@ export class Utils {
     }
 
     static showOkDialog = async (message: string) => {
-        const choice = await vscode.window.showInformationMessage(
-             "llama-vscode \n\n" + message,
-            { modal: true }, // Makes the dialog modal (blocks interaction until resolved)
-            'OK'
-        );
+        return new Promise((resolve) => {
+            const panel = vscode.window.createWebviewPanel(
+                'okDialog',
+                'Information',
+                { viewColumn: vscode.ViewColumn.One, preserveFocus: true },
+                { enableScripts: true }
+            );
+
+            panel.webview.html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                * {
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: var(--vscode-font-family);
+                    margin: 0;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                    background: var(--vscode-editor-background);
+                    color: var(--vscode-editor-foreground);
+                }
+                .container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    flex: 1;
+                    min-height: 0;
+                }
+                .message {
+                    flex: 1;
+                    padding: 12px;
+                    border-radius: 4px;
+                    background: var(--vscode-editor-background);
+                    border: 1px solid var(--vscode-panel-border);
+                    font-size: 13px;
+                    line-height: 1.5;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    overflow-y: auto;
+                }
+                .buttons {
+                    display: flex;
+                    gap: 8px;
+                    justify-content: flex-end;
+                    flex: 0 0 auto;
+                }
+                .button {
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 2px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-family: var(--vscode-font-family);
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                .button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="message">${message.replace(/\n/g, '<br>')}</div>
+                </div>
+                <div class="buttons">
+                    <button class="button" onclick="respond()">OK</button>
+                </div>
+                <script>
+                const vscode = acquireVsCodeApi();
+                function respond() {
+                    vscode.postMessage({ command: 'answer', value: true });
+                }
+                </script>
+            </body>
+            </html>
+            `;
+
+            panel.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'answer') {
+                    resolve(message.value);
+                    panel.dispose();
+                }
+            });
+        });
     }
 
     static getAbsolutePath = async (shortFileName: string): Promise<string | undefined> => {
@@ -1126,8 +1307,7 @@ export class Utils {
     }
 
     static async confirmAction(message: string, details: string = ""): Promise<boolean> {
-        const fullMessage = message + (details ? "\n\n" + details : "");
-        return Utils.showYesNoDialog(fullMessage);
+        return Utils.showEnvConfirmationDialog(message, details);
     }
 
     static async confirmEnvAction(message: string, details: string = ""): Promise<boolean> {
