@@ -494,7 +494,7 @@ export class Utils {
             </head>
             <body>
                 <div class="container">
-                    <div class="message">${message.replace(/\\n/g, '<br>')}</div>
+                    <div class="message">${message.replace(/\n/g, '<br>')}</div>
                 </div>
                 <div class="buttons">
                     <button class="button secondary" onclick="respond(false)">Cancel</button>
@@ -642,10 +642,10 @@ export class Utils {
             </head>
             <body>
                 <div class="container">
-                    <div class="title">${title.replace(/\\n/g, '<br>')}</div>
+                    <div class="title">${title.replace(/\n/g, '<br>')}</div>
                     <div class="details">
                         <div class="details-header">Details</div>
-                        <div class="details-content">${details.replace(/\\n/g, '<br>')}</div>
+                        <div class="details-content">${details.replace(/\n/g, '<br>')}</div>
                     </div>
                 </div>
                 <div class="buttons">
@@ -798,10 +798,10 @@ export class Utils {
             </head>
             <body>
                 <div class="container">
-                    <div class="title">${title.replace(/\\n/g, '<br>')}</div>
+                    <div class="title">${title.replace(/\n/g, '<br>')}</div>
                     ${details ? `<div class="details">
                         <div class="details-header">Details</div>
-                        <div class="details-content">${details.replace(/\\n/g, '<br>')}</div>
+                        <div class="details-content">${details.replace(/\n/g, '<br>')}</div>
                     </div>` : ''}
                 </div>
                 <div class="buttons">
