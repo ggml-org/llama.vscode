@@ -853,6 +853,155 @@ export class Utils {
         });
     }
 
+    static showFilePermissionDialog = (message: string, filePath: string): Promise<[boolean, boolean]> => {
+        return new Promise((resolve) => {
+            const panel = vscode.window.createWebviewPanel(
+                'filePermission',
+                'File Permission',
+                { viewColumn: vscode.ViewColumn.One, preserveFocus: true },
+                { enableScripts: true }
+            );
+
+            panel.webview.html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                * {
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: var(--vscode-font-family);
+                    margin: 0;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                    background: var(--vscode-editor-background);
+                    color: var(--vscode-editor-foreground);
+                }
+                .container {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    flex: 1;
+                    min-height: 0;
+                }
+                .message {
+                    flex: 0 0 auto;
+                    padding: 12px;
+                    border-radius: 4px;
+                    background: var(--vscode-editor-background);
+                    border: 1px solid var(--vscode-panel-border);
+                    font-size: 13px;
+                    line-height: 1.5;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                }
+                .file-path {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 0;
+                    border: 1px solid var(--vscode-panel-border);
+                    border-radius: 4px;
+                    background: var(--vscode-editor-background);
+                }
+                .path-header {
+                    padding: 8px 12px;
+                    border-bottom: 1px solid var(--vscode-panel-border);
+                    font-weight: bold;
+                    font-size: 12px;
+                    color: var(--vscode-editor-foreground);
+                    background: var(--vscode-sideBar-background);
+                    flex: 0 0 auto;
+                }
+                .path-content {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px;
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: 12px;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    line-height: 1.4;
+                    word-break: break-all;
+                }
+                .path-content::-webkit-scrollbar {
+                    width: 10px;
+                }
+                .path-content::-webkit-scrollbar-track {
+                    background: var(--vscode-scrollbarSlider-background);
+                }
+                .path-content::-webkit-scrollbar-thumb {
+                    background: var(--vscode-scrollbarSlider-hoverBackground);
+                    border-radius: 4px;
+                }
+                .buttons {
+                    display: flex;
+                    gap: 8px;
+                    margin-top: 12px;
+                    justify-content: flex-end;
+                    flex: 0 0 auto;
+                }
+                .button {
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 2px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-family: var(--vscode-font-family);
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                .button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                .button.secondary {
+                    background: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                }
+                .button.secondary:hover {
+                    background: var(--vscode-button-secondaryHoverBackground);
+                }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="message">${message.replace(/\n/g, '<br>')}</div>
+                    <div class="file-path">
+                        <div class="path-header">File Path</div>
+                        <div class="path-content">${filePath.replace(/\n/g, '<br>')}</div>
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button class="button secondary" onclick="respond(false, false)">No</button>
+                    <button class="button secondary" onclick="respond(false, true)">No, Don't Ask Again</button>
+                    <button class="button" onclick="respond(true, false)">Yes</button>
+                    <button class="button" onclick="respond(true, true)">Yes, Don't Ask Again</button>
+                </div>
+                <script>
+                const vscode = acquireVsCodeApi();
+                function respond(answer, dontAsk) {
+                    vscode.postMessage({ command: 'answer', value: [answer, dontAsk] });
+                }
+                </script>
+            </body>
+            </html>
+            `;
+
+            panel.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'answer') {
+                    resolve(message.value);
+                    panel.dispose();
+                }
+            });
+        });
+    }
+
     static fetchWebPage = async (url: string): Promise<string> => {
         // Validate the URL
         let parsedUrl: URL;
@@ -983,6 +1132,10 @@ export class Utils {
 
     static async confirmEnvAction(message: string, details: string = ""): Promise<boolean> {
         return Utils.showEnvConfirmationDialog(message, details);
+    }
+
+    static async confirmFilePermissionAction(message: string, filePath: string): Promise<[boolean, boolean]> {
+        return Utils.showFilePermissionDialog(message, filePath);
     }
 
     static getFunctionFromFile = (filePath: string) => {
