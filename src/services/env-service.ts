@@ -132,7 +132,7 @@ export class EnvService {
                 envStartLastUsed: env.envStartLastUsed ?? currentEnvStartLastUsed,
                 complEnabled: env.complEnabled ?? currentComplEnabled,
             };
-            shouldSelect = await Utils.confirmAction(
+            shouldSelect = await Utils.confirmEnvAction(
                 "You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started.\n\n Do you want to continue?",
                 this.getEnvDetailsAsString(tempEnv)
             );

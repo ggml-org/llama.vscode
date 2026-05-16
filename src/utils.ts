@@ -707,6 +707,157 @@ export class Utils {
         });
     }
 
+    static showEnvConfirmationDialog = (message: string, details: string): Promise<boolean> => {
+        return new Promise((resolve) => {
+            const panel = vscode.window.createWebviewPanel(
+                'envConfirmation',
+                'Environment Selection',
+                { viewColumn: vscode.ViewColumn.One, preserveFocus: true },
+                { enableScripts: true }
+            );
+
+            // Calculate max height to fit screen (approximate - 80% of viewport)
+            const maxDetailHeight = 'calc(80vh - 200px)';
+
+            panel.webview.html = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                * {
+                    box-sizing: border-box;
+                }
+                body {
+                    font-family: var(--vscode-font-family);
+                    margin: 0;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    height: 100vh;
+                    background: var(--vscode-editor-background);
+                    color: var(--vscode-editor-foreground);
+                }
+                .container {
+                    display: flex;
+                    flex-direction: row;
+                    gap: 16px;
+                    flex: 1;
+                    min-height: 0;
+                }
+                .message {
+                    flex: 0 0 280px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    padding: 12px;
+                    border-radius: 4px;
+                    background: var(--vscode-editor-background);
+                    border: 1px solid var(--vscode-panel-border);
+                    font-size: 13px;
+                    line-height: 1.5;
+                }
+                .details {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    min-width: 0;
+                    border: 1px solid var(--vscode-panel-border);
+                    border-radius: 4px;
+                    background: var(--vscode-editor-background);
+                }
+                .details-header {
+                    padding: 8px 12px;
+                    border-bottom: 1px solid var(--vscode-panel-border);
+                    font-weight: bold;
+                    font-size: 12px;
+                    color: var(--vscode-editor-foreground);
+                    background: var(--vscode-sideBar-background);
+                }
+                .details-content {
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 12px;
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    font-size: 12px;
+                    white-space: pre-wrap;
+                    word-wrap: break-word;
+                    line-height: 1.4;
+                }
+                .details-content::-webkit-scrollbar {
+                    width: 10px;
+                }
+                .details-content::-webkit-scrollbar-track {
+                    background: var(--vscode-scrollbarSlider-background);
+                }
+                .details-content::-webkit-scrollbar-thumb {
+                    background: var(--vscode-scrollbarSlider-hoverBackground);
+                    border-radius: 4px;
+                }
+                .buttons {
+                    display: flex;
+                    gap: 8px;
+                    margin-top: 16px;
+                    justify-content: flex-end;
+                    flex: 0 0 auto;
+                }
+                .button {
+                    padding: 6px 16px;
+                    border: none;
+                    border-radius: 2px;
+                    background: var(--vscode-button-background);
+                    color: var(--vscode-button-foreground);
+                    cursor: pointer;
+                    font-family: var(--vscode-font-family);
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+                .button:hover {
+                    background: var(--vscode-button-hoverBackground);
+                }
+                .button.secondary {
+                    background: var(--vscode-button-secondaryBackground);
+                    color: var(--vscode-button-secondaryForeground);
+                }
+                .button.secondary:hover {
+                    background: var(--vscode-button-secondaryHoverBackground);
+                }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="message">${message.replace(/\n/g, '<br>')}</div>
+                    <div class="details">
+                        <div class="details-header">Env Details</div>
+                        <div class="details-content">${details.replace(/\n/g, '<br>').replace(/: /g, ': ')}</div>
+                    </div>
+                </div>
+                <div class="buttons">
+                    <button class="button secondary" onclick="respond(false)">Cancel</button>
+                    <button class="button" onclick="respond(true)">Continue</button>
+                </div>
+                <script>
+                const vscode = acquireVsCodeApi();
+                function respond(answer) {
+                    vscode.postMessage({ command: 'answer', value: answer });
+                }
+                </script>
+            </body>
+            </html>
+            `;
+
+            panel.webview.onDidReceiveMessage((message) => {
+                if (message.command === 'answer') {
+                    resolve(message.value);
+                    panel.dispose();
+                }
+            });
+        });
+    }
+
     static fetchWebPage = async (url: string): Promise<string> => {
         // Validate the URL
         let parsedUrl: URL;
@@ -833,6 +984,10 @@ export class Utils {
     static async confirmAction(message: string, details: string = ""): Promise<boolean> {
         const fullMessage = message + (details ? "\n\n" + details : "");
         return Utils.showYesNoDialog(fullMessage);
+    }
+
+    static async confirmEnvAction(message: string, details: string = ""): Promise<boolean> {
+        return Utils.showEnvConfirmationDialog(message, details);
     }
 
     static getFunctionFromFile = (filePath: string) => {
