@@ -348,7 +348,8 @@
                 "description": "Description of the agent - for what purposes should be used, what are his strengths, etc."
               },
               "subagentEnabled": {
-                "type": "string",
+                "type": "boolean",
+                "default": false,
                 "description": "If the agent could be used as subagent of another agent to execute a specific task."
               },
               "systemInstruction": {
@@ -357,6 +358,14 @@
                   "type": "string"
                 },
                 "description": "The system instructions for this agent",
+                "default": ""
+              },
+              "system_instruction": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "Deprecated alias for systemInstruction",
                 "default": ""
               },
               "toolsModel": {
@@ -401,8 +410,7 @@
               }
             },
             "required": [
-              "name",
-              "system_instruction"
+              "name"
             ]
           },
           "default": [
@@ -1229,6 +1237,14 @@
                       "type": "string"
                     },
                     "description": "The system instructions for this agent",
+                    "default": ""
+                  },
+                  "system_instruction": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Deprecated alias for systemInstruction",
                     "default": ""
                   },
                   "tools": {
