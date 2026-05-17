@@ -18,6 +18,27 @@ interface OpenAIModelsResponse {
     data: OpenAIModel[];
 }
 
+type OpenAIToolCall = {
+    id: string;
+    type: 'function';
+    function: {
+        name: string;
+        arguments: string;
+    };
+};
+
+type OpenAIChatMessage =
+    | {
+          role: 'user' | 'assistant';
+          content: string | null;
+          tool_calls?: OpenAIToolCall[];
+      }
+    | {
+          role: 'tool';
+          content: string;
+          tool_call_id: string;
+      };
+
 export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider {
     private readonly _onDidChangeLanguageModelChatInformation = new vscode.EventEmitter<void>();
     readonly onDidChangeLanguageModelChatInformation: vscode.Event<void> =
@@ -79,16 +100,9 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             throw new Error('No chat endpoint configured');
         }
 
-        const openaiMessages = messages.map((msg) => ({
-            role: msg.role === vscode.LanguageModelChatMessageRole.User ? 'user' : 'assistant',
-            content: msg.content
-                .map((part: unknown) =>
-                    part instanceof vscode.LanguageModelTextPart ? part.value : ''
-                )
-                .join(''),
-        }));
+        const openaiMessages = this.toOpenAIMessages(messages);
 
-        const tools = options.tools?.map((t: vscode.LanguageModelToolInformation) => ({
+        const tools = options.tools?.map((t) => ({
             type: 'function',
             function: {
                 name: t.name,
@@ -96,6 +110,13 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                 parameters: t.inputSchema,
             },
         }));
+
+        if (tools?.length) {
+            openaiMessages.unshift({
+                role: 'user',
+                content: 'You are operating in tool-calling mode. Never claim that files were created, read, changed, listed, or that commands were run unless you first emit the corresponding tool call and then receive its tool result. When tools are available and the task depends on tools, emit tool calls instead of prose. Do not describe intended tool usage.',
+            });
+        }
 
         const requestBody: Record<string, unknown> = {
             model: model.id,
@@ -106,6 +127,9 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                 temperature: options.modelOptions.temperature,
             }),
             ...(tools?.length && { tools }),
+            ...(this.mapToolMode(options.toolMode, tools?.length ?? 0) && {
+                tool_choice: this.mapToolMode(options.toolMode, tools?.length ?? 0),
+            }),
         };
 
         const abortController = new AbortController();
@@ -233,5 +257,112 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             return this.app.configuration.endpoint_tools;
         }
         return '';
+    }
+
+    private toOpenAIMessages(
+        messages: readonly vscode.LanguageModelChatRequestMessage[],
+    ): OpenAIChatMessage[] {
+        const openaiMessages: OpenAIChatMessage[] = [];
+
+        for (const msg of messages) {
+            const textParts: string[] = [];
+            const toolCalls: OpenAIToolCall[] = [];
+            const toolResults: Array<{ callId: string; content: string }> = [];
+
+            for (const part of msg.content) {
+                if (part instanceof vscode.LanguageModelTextPart) {
+                    textParts.push(part.value);
+                    continue;
+                }
+
+                if (part instanceof vscode.LanguageModelToolCallPart) {
+                    toolCalls.push({
+                        id: part.callId,
+                        type: 'function',
+                        function: {
+                            name: part.name,
+                            arguments: JSON.stringify(part.input ?? {}),
+                        },
+                    });
+                    continue;
+                }
+
+                if (part instanceof vscode.LanguageModelToolResultPart) {
+                    toolResults.push({
+                        callId: part.callId,
+                        content: this.stringifyToolResult(part.content),
+                    });
+                }
+            }
+
+            const textContent = textParts.join('');
+            const role =
+                msg.role === vscode.LanguageModelChatMessageRole.User ? 'user' : 'assistant';
+
+            if (role === 'assistant') {
+                if (textContent || toolCalls.length > 0) {
+                    openaiMessages.push({
+                        role,
+                        content: textContent || null,
+                        ...(toolCalls.length > 0 && { tool_calls: toolCalls }),
+                    });
+                }
+                continue;
+            }
+
+            if (textContent) {
+                openaiMessages.push({
+                    role,
+                    content: textContent,
+                });
+            }
+
+            for (const toolResult of toolResults) {
+                openaiMessages.push({
+                    role: 'tool',
+                    tool_call_id: toolResult.callId,
+                    content: toolResult.content,
+                });
+            }
+        }
+
+        return openaiMessages;
+    }
+
+    private stringifyToolResult(content: readonly unknown[]): string {
+        return content
+            .map((item) => {
+                if (typeof item === 'string') {
+                    return item;
+                }
+
+                if (item instanceof vscode.LanguageModelTextPart) {
+                    return item.value;
+                }
+
+                if (item && typeof item === 'object' && 'value' in item) {
+                    const value = (item as { value: unknown }).value;
+                    return typeof value === 'string' ? value : JSON.stringify(value);
+                }
+
+                return JSON.stringify(item);
+            })
+            .filter((item) => item && item !== 'null' && item !== 'undefined')
+            .join('\n');
+    }
+
+    private mapToolMode(
+        toolMode: vscode.LanguageModelChatToolMode | undefined,
+        toolCount: number,
+    ): 'auto' | 'required' | undefined {
+        if (!toolCount || toolMode === undefined) {
+            return undefined;
+        }
+
+        if (toolMode === vscode.LanguageModelChatToolMode.Required) {
+            return 'required';
+        }
+
+        return 'auto';
     }
 }
