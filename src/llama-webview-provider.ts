@@ -44,6 +44,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.onDidReceiveMessage(
             async (message) => {
                 console.log('Webview received message:', message);
+                console.log('Message command:', message.command);
                 switch (message.command) {
                     case 'sendText':
                         this.app.llamaAgent.run(message.text);
@@ -338,6 +339,20 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         const settingValue = this.app.configuration[message.key as keyof Configuration];
                         this.updateSettingInEnvView(message.key, settingValue);
                         break;
+                    case 'deleteCurrentChat':
+                        console.log('Delete current chat triggered');
+                        try {
+                            await this.app.chatService.deleteCurrentChat();
+                            console.log('Chat deleted successfully');
+                            await this.clearChatText(webviewView);
+                            console.log('Chat view cleared');
+                        } catch (error) {
+                            console.error('Error deleting chat:', error);
+                            vscode.window.showErrorMessage('Error deleting chat: ' + (error instanceof Error ? error.message : String(error)));
+                        }
+                        break;
+                    default:
+                        console.log('Unknown command:', message.command);
                 }
             }
         );
