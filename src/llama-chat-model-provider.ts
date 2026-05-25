@@ -88,7 +88,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                 .join(''),
         }));
 
-        const tools = options.tools?.map((t: vscode.LanguageModelToolInformation) => ({
+        const tools = options.tools?.map((t) => ({
             type: 'function',
             function: {
                 name: t.name,
