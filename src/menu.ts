@@ -1,5 +1,6 @@
 import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
+import os from "os";
 import { Utils } from "./utils";
 import { ModelType, AGENT_NAME, UI_TEXT_KEYS, UiView } from "./constants";
 
@@ -365,7 +366,13 @@ export class Menu {
             vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
         } else {
             await this.app.llamaServer.killCommandCmd();
-            let terminalCommand = process.platform === 'darwin' ? "brew install llama.cpp" : process.platform === 'win32' ? "winget install llama.cpp" : "";
+            const windowsArch = os.machine().toLowerCase();
+            const wingetArch = windowsArch === "arm64" ? "arm64" : windowsArch === "x64" || windowsArch === "amd64" ? "x64" : "";
+            let terminalCommand = process.platform === 'darwin'
+                ? "brew install llama.cpp"
+                : process.platform === 'win32'
+                    ? `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`
+                    : "";
             // await this.app.llamaServer.shellCommandCmd(terminalCommand);
             await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand)
         }
