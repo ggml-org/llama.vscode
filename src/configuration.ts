@@ -3,6 +3,7 @@ import OpenAI from "openai";
 import https from "https";
 import fs from "fs";
 import {translations} from "./translations"
+import { Agent } from "./types";
 import { Utils } from "./utils";
 
 export class Configuration {
@@ -265,7 +266,7 @@ export class Configuration {
         this.embeddings_models_list = config.get("embeddings_models_list")??new Array(); 
         this.tools_models_list = config.get("tools_models_list")??new Array();
         this.envs_list = config.get("envs_list")??new Array();
-        this.agents_list = config.get("agents_list")??new Array();
+        this.agents_list = this.normalizeAgents(config.get("agents_list") ?? new Array());
         this.agent_rules = String(config.get<string>("agent_rules"));
         this.agent_commands = config.get("agent_commands")??new Array();
         this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
@@ -281,6 +282,48 @@ export class Configuration {
         this.health_check_embs_enabled = Boolean(config.get<boolean>("health_check_embs_enabled"));
         this.health_check_tools_enabled = Boolean(config.get<boolean>("health_check_tools_enabled"));
     };
+
+    private normalizeAgents(rawAgents: unknown): Agent[] {
+        if (!Array.isArray(rawAgents)) {
+            return [];
+        }
+
+        return rawAgents.map((rawAgent) => this.normalizeAgent(rawAgent));
+    }
+
+    private normalizeAgent(rawAgent: unknown): Agent {
+        const agent = (rawAgent && typeof rawAgent === 'object' ? rawAgent : {}) as Record<string, unknown>;
+        const systemInstructionValue = agent.systemInstruction ?? agent.system_instruction ?? [];
+        const subagentEnabledValue = agent.subagentEnabled;
+
+        let systemInstruction: string[];
+        if (Array.isArray(systemInstructionValue)) {
+            systemInstruction = systemInstructionValue.map((value) => String(value));
+        } else if (typeof systemInstructionValue === 'string') {
+            systemInstruction = systemInstructionValue.split(/\r?\n/);
+        } else {
+            systemInstruction = [];
+        }
+
+        let subagentEnabled: boolean | undefined;
+        if (typeof subagentEnabledValue === 'boolean') {
+            subagentEnabled = subagentEnabledValue;
+        } else if (typeof subagentEnabledValue === 'string') {
+            subagentEnabled = subagentEnabledValue.toLowerCase() === 'true';
+        }
+
+        return {
+            ...agent,
+            name: String(agent.name ?? ''),
+            description: agent.description !== undefined ? String(agent.description) : undefined,
+            systemInstruction,
+            subagentEnabled,
+            tools: Array.isArray(agent.tools) ? agent.tools.map((tool) => String(tool)) : undefined,
+            toolsModel: agent.toolsModel && typeof agent.toolsModel === 'object'
+                ? { ...(agent.toolsModel as Record<string, unknown>) }
+                : undefined,
+        } as Agent;
+    }
 
     getUiText = (uiText: string): string | undefined => {
         let langTexts = this.uiLanguages.get(this.language);
