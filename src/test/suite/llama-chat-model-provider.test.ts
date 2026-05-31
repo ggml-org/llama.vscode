@@ -258,6 +258,7 @@ suite('LlamaChatModelProvider Test Suite', () => {
 				assert.ok(error instanceof Error);
 				assert.strictEqual(error.name, 'LanguageModelProviderError');
 				assert.match(error.message, /empty response/i);
+				assert.strictEqual(error.stack, undefined);
 				return true;
 			}
 		);

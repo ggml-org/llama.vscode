@@ -261,6 +261,11 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             const toolCalls: { id: string; name: string; arguments: string }[] = [];
             let settled = false;
             let reportedResponsePart = false;
+            let payloadCount = 0;
+            let contentChunkCount = 0;
+            let toolCallDeltaCount = 0;
+            let doneReceived = false;
+            let lastFinishReason: string | undefined;
 
             const resolveOnce = () => {
                 if (settled) {
@@ -284,6 +289,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                 }
 
                 reportedResponsePart = true;
+                contentChunkCount += 1;
                 progress.report(new vscode.LanguageModelTextPart(content));
             };
 
@@ -295,12 +301,14 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
 
             const processPayload = (payload: string): boolean => {
                 if (payload === '[DONE]') {
+                    doneReceived = true;
                     finalize();
                     readable.removeAllListeners();
                     return true;
                 }
 
                 try {
+                    payloadCount += 1;
                     const json = JSON.parse(payload);
                     if (json?.error) {
                         rejectStreamError(this.normalizeProviderApiError(json.error), json.error);
@@ -317,12 +325,17 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                         return true;
                     }
 
+                    if (typeof choice.finish_reason === 'string') {
+                        lastFinishReason = choice.finish_reason;
+                    }
+
                     const delta = choice.delta ?? {};
                     if (typeof delta.content === 'string') {
                         reportTextPart(delta.content);
                     }
 
                     if (Array.isArray(delta.tool_calls)) {
+                        toolCallDeltaCount += delta.tool_calls.length;
                         for (const tc of delta.tool_calls) {
                             const idx: number = typeof tc.index === 'number' ? tc.index : 0;
                             if (!toolCalls[idx]) {
@@ -395,12 +408,16 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                             trace.conversationId ? `conversation_id=${trace.conversationId}` : '',
                             typeof trace.conversationTurn === 'number' ? `conversation_turn=${trace.conversationTurn}` : '',
                             `model=${model.id}`,
+                            `payloads=${payloadCount}`,
+                            `content_chunks=${contentChunkCount}`,
+                            `tool_call_deltas=${toolCallDeltaCount}`,
+                            `final_tool_calls=${toolCalls.filter(tc => tc.id && tc.name).length}`,
+                            `done_received=${doneReceived}`,
+                            lastFinishReason ? `finish_reason=${lastFinishReason}` : '',
                         ].filter(Boolean).join(' | ')
                     );
 
-                    const error = new Error('The model returned an empty response.') as Error & { cause?: unknown };
-                    error.name = 'LanguageModelProviderError';
-                    rejectOnce(error);
+                    rejectOnce(this.createEmptyResponseError());
                     return;
                 }
 
@@ -977,6 +994,15 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
         // VS Code's chat fetch path formats verbose errors as
         // `${error.message}: ${error.stack}`. For this user-correctable preflight
         // case, suppress the stack so the UI doesn't duplicate the message.
+        error.stack = undefined;
+        return error;
+    }
+
+    private createEmptyResponseError(): Error & { cause?: unknown } {
+        const error = new Error(
+            'The model returned an empty response. Try again, compact the conversation again, or start a new chat.'
+        ) as Error & { cause?: unknown };
+        error.name = 'LanguageModelProviderError';
         error.stack = undefined;
         return error;
     }
