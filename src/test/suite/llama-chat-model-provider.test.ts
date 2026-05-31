@@ -1,5 +1,6 @@
 /// <reference types="mocha" />
 import * as assert from 'assert';
+import { Readable } from 'stream';
 import * as vscode from 'vscode';
 import axios from 'axios';
 import { suite, test, teardown } from 'mocha';
@@ -124,5 +125,141 @@ suite('LlamaChatModelProvider Test Suite', () => {
 		);
 
 		assert.strictEqual(postCalled, false);
+	});
+
+	test('flushes the final SSE chunk when the stream ends without a trailing newline', async () => {
+		(axios as typeof axios & { get: typeof axios.get }).get = (async (url: string) => {
+			if (url.endsWith('/v1/models')) {
+				return {
+					data: {
+						data: [
+							{
+								id: 'mock-model',
+								owned_by: 'llamacpp',
+							},
+						],
+					},
+				};
+			}
+
+			if (url.includes('/props')) {
+				return {
+					data: {
+						default_generation_settings: {
+							n_ctx: 65536,
+						},
+					},
+				};
+			}
+
+			throw new Error(`Unexpected GET ${url}`);
+		}) as typeof axios.get;
+
+		(axios as typeof axios & { post: typeof axios.post }).post = (async () => ({
+			data: Readable.from([
+				'data: {"choices":[{"delta":{"content":"final answer"}}]}'
+			]),
+		})) as typeof axios.post;
+
+		const provider = new LlamaChatModelProvider(new MockApplication() as unknown as Application);
+		const reportedParts: vscode.LanguageModelResponsePart[] = [];
+
+		await provider.provideLanguageModelChatResponse(
+			{
+				id: 'mock-model',
+				name: 'mock-model',
+				family: 'llama-vscode',
+				version: '1',
+				maxInputTokens: 65536,
+				maxOutputTokens: 4096,
+				capabilities: {
+					toolCalling: true,
+					imageInput: false,
+				},
+			},
+			[
+				{
+					role: vscode.LanguageModelChatMessageRole.User,
+					content: [new vscode.LanguageModelTextPart('say hello')],
+				},
+			] as unknown as readonly vscode.LanguageModelChatRequestMessage[],
+			{} as vscode.ProvideLanguageModelChatResponseOptions,
+			{ report: part => reportedParts.push(part) },
+			new vscode.CancellationTokenSource().token,
+		);
+
+		assert.deepStrictEqual(
+			reportedParts.map(part => part instanceof vscode.LanguageModelTextPart ? part.value : part.constructor.name),
+			['final answer']
+		);
+	});
+
+	test('rejects an empty streamed response explicitly', async () => {
+		(axios as typeof axios & { get: typeof axios.get }).get = (async (url: string) => {
+			if (url.endsWith('/v1/models')) {
+				return {
+					data: {
+						data: [
+							{
+								id: 'mock-model',
+								owned_by: 'llamacpp',
+							},
+						],
+					},
+				};
+			}
+
+			if (url.includes('/props')) {
+				return {
+					data: {
+						default_generation_settings: {
+							n_ctx: 65536,
+						},
+					},
+				};
+			}
+
+			throw new Error(`Unexpected GET ${url}`);
+		}) as typeof axios.get;
+
+		(axios as typeof axios & { post: typeof axios.post }).post = (async () => ({
+			data: Readable.from([
+				'data: {"choices":[{"delta":{}}]}\n'
+			]),
+		})) as typeof axios.post;
+
+		const provider = new LlamaChatModelProvider(new MockApplication() as unknown as Application);
+
+		await assert.rejects(
+			() => provider.provideLanguageModelChatResponse(
+				{
+					id: 'mock-model',
+					name: 'mock-model',
+					family: 'llama-vscode',
+					version: '1',
+					maxInputTokens: 65536,
+					maxOutputTokens: 4096,
+					capabilities: {
+						toolCalling: true,
+						imageInput: false,
+					},
+				},
+				[
+					{
+						role: vscode.LanguageModelChatMessageRole.User,
+						content: [new vscode.LanguageModelTextPart('say hello')],
+					},
+				] as unknown as readonly vscode.LanguageModelChatRequestMessage[],
+				{} as vscode.ProvideLanguageModelChatResponseOptions,
+				{ report: () => undefined },
+				new vscode.CancellationTokenSource().token,
+			),
+			(error: unknown) => {
+				assert.ok(error instanceof Error);
+				assert.strictEqual(error.name, 'LanguageModelProviderError');
+				assert.match(error.message, /empty response/i);
+				return true;
+			}
+		);
 	});
 });

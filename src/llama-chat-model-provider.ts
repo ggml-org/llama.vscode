@@ -259,11 +259,123 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             const readable = streamResponse.data;
             let buffer = '';
             const toolCalls: { id: string; name: string; arguments: string }[] = [];
+            let settled = false;
+            let reportedResponsePart = false;
+
+            const resolveOnce = () => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                resolve();
+            };
+
+            const rejectOnce = (error: Error) => {
+                if (settled) {
+                    return;
+                }
+                settled = true;
+                reject(error);
+            };
+
+            const reportTextPart = (content: string) => {
+                if (!content) {
+                    return;
+                }
+
+                reportedResponsePart = true;
+                progress.report(new vscode.LanguageModelTextPart(content));
+            };
+
+            const rejectStreamError = (apiError: ProviderApiError, rawError: unknown) => {
+                this.logProviderApiError('CHAT_COMPLETIONS_STREAM_ERROR', completionsUrl, apiError, trace, `model=${model.id}`);
+                rejectOnce(this.toProviderError(apiError, rawError));
+                readable.removeAllListeners();
+            };
+
+            const processPayload = (payload: string): boolean => {
+                if (payload === '[DONE]') {
+                    finalize();
+                    readable.removeAllListeners();
+                    return true;
+                }
+
+                try {
+                    const json = JSON.parse(payload);
+                    if (json?.error) {
+                        rejectStreamError(this.normalizeProviderApiError(json.error), json.error);
+                        return true;
+                    }
+
+                    const choice = json.choices?.[0];
+                    if (!choice) {
+                        return false;
+                    }
+
+                    if (choice.error) {
+                        rejectStreamError(this.normalizeProviderApiError(choice.error), choice.error);
+                        return true;
+                    }
+
+                    const delta = choice.delta ?? {};
+                    if (typeof delta.content === 'string') {
+                        reportTextPart(delta.content);
+                    }
+
+                    if (Array.isArray(delta.tool_calls)) {
+                        for (const tc of delta.tool_calls) {
+                            const idx: number = typeof tc.index === 'number' ? tc.index : 0;
+                            if (!toolCalls[idx]) {
+                                toolCalls[idx] = { id: '', name: '', arguments: '' };
+                            }
+                            if (tc.id) {
+                                toolCalls[idx].id = tc.id;
+                            }
+                            if (tc.function?.name) {
+                                toolCalls[idx].name = tc.function.name;
+                            }
+                            if (tc.function?.arguments) {
+                                toolCalls[idx].arguments += tc.function.arguments;
+                            }
+                        }
+                    }
+                } catch {
+                    // Skip malformed SSE chunks
+                }
+
+                return false;
+            };
+
+            const processBufferedLines = (chunkText: string, flushPartialLine = false): boolean => {
+                buffer += chunkText;
+                const lines = buffer.split(/\r?\n/);
+
+                if (!flushPartialLine) {
+                    buffer = lines.pop() ?? '';
+                } else {
+                    buffer = '';
+                }
+
+                for (const line of lines) {
+                    const trimmed = line.trim();
+                    if (!trimmed || !trimmed.startsWith('data:')) {
+                        continue;
+                    }
+
+                    const payload = trimmed.slice(5).trim();
+                    if (processPayload(payload)) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
 
             const finalize = () => {
                 for (const tc of toolCalls) {
                     if (tc.id && tc.name) {
                         try {
+                            reportedResponsePart = true;
                             progress.report(
                                 new vscode.LanguageModelToolCallPart(tc.id, tc.name, JSON.parse(tc.arguments || '{}'))
                             );
@@ -272,84 +384,50 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                         }
                     }
                 }
-                resolve();
+
+                if (!reportedResponsePart) {
+                    this.app.logger.addEventLog(
+                        'API',
+                        'CHAT_COMPLETIONS_EMPTY_RESPONSE',
+                        [
+                            `request_id=${trace.requestId}`,
+                            `caller=${trace.caller}`,
+                            trace.conversationId ? `conversation_id=${trace.conversationId}` : '',
+                            typeof trace.conversationTurn === 'number' ? `conversation_turn=${trace.conversationTurn}` : '',
+                            `model=${model.id}`,
+                        ].filter(Boolean).join(' | ')
+                    );
+
+                    const error = new Error('The model returned an empty response.') as Error & { cause?: unknown };
+                    error.name = 'LanguageModelProviderError';
+                    rejectOnce(error);
+                    return;
+                }
+
+                resolveOnce();
             };
 
             token.onCancellationRequested(() => {
                 (readable as any).destroy?.();
-                resolve();
+                resolveOnce();
             });
 
             readable.on('data', (chunk: Buffer) => {
-                buffer += chunk.toString('utf8');
-                const lines = buffer.split(/\r?\n/);
-                buffer = lines.pop() ?? '';
-
-                for (const line of lines) {
-                    const trimmed = line.trim();
-                    if (!trimmed || !trimmed.startsWith('data:')) {
-                        continue;
-                    }
-                    const payload = trimmed.slice(5).trim();
-                    if (payload === '[DONE]') {
-                        finalize();
-                        readable.removeAllListeners();
-                        return;
-                    }
-                    try {
-                        const json = JSON.parse(payload);
-                        if (json?.error) {
-                            const apiError = this.normalizeProviderApiError(json.error);
-                            this.logProviderApiError('CHAT_COMPLETIONS_STREAM_ERROR', completionsUrl, apiError, trace, `model=${model.id}`);
-                            reject(this.toProviderError(apiError, apiError));
-                            readable.removeAllListeners();
-                            return;
-                        }
-                        const choice = json.choices?.[0];
-                        if (!choice) {
-                            continue;
-                        }
-                        if (choice.error) {
-                            const apiError = this.normalizeProviderApiError(choice.error);
-                            this.logProviderApiError('CHAT_COMPLETIONS_STREAM_ERROR', completionsUrl, apiError, trace, `model=${model.id}`);
-                            reject(this.toProviderError(apiError, apiError));
-                            readable.removeAllListeners();
-                            return;
-                        }
-                        const delta = choice.delta ?? {};
-                        if (typeof delta.content === 'string' && delta.content) {
-                            progress.report(new vscode.LanguageModelTextPart(delta.content));
-                        }
-                        if (Array.isArray(delta.tool_calls)) {
-                            for (const tc of delta.tool_calls) {
-                                const idx: number = typeof tc.index === 'number' ? tc.index : 0;
-                                if (!toolCalls[idx]) {
-                                    toolCalls[idx] = { id: '', name: '', arguments: '' };
-                                }
-                                if (tc.id) {
-                                    toolCalls[idx].id = tc.id;
-                                }
-                                if (tc.function?.name) {
-                                    toolCalls[idx].name = tc.function.name;
-                                }
-                                if (tc.function?.arguments) {
-                                    toolCalls[idx].arguments += tc.function.arguments;
-                                }
-                            }
-                        }
-                    } catch {
-                        // Skip malformed SSE chunks
-                    }
+                processBufferedLines(chunk.toString('utf8'));
+                if (settled) {
+                    return;
                 }
             });
 
             readable.on('end', () => {
+                if (processBufferedLines('', true)) {
+                    return;
+                }
                 finalize();
             });
 
             readable.on('error', (err: Error) => {
-                this.logProviderApiError('CHAT_COMPLETIONS_STREAM_ERROR', completionsUrl, err, trace, `model=${model.id}`);
-                reject(this.toProviderError(this.extractProviderApiError(err), err));
+                rejectStreamError(this.extractProviderApiError(err), err);
             });
         });
     }
