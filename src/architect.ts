@@ -222,7 +222,9 @@ export class Architect {
         context.subscriptions.push(vscode.workspace.onDidChangeConfiguration((event) => {
             if (event.affectsConfiguration('llama-vscode.endpoint_chat')
                 || event.affectsConfiguration('llama-vscode.endpoint_tools')
-                || event.affectsConfiguration('llama-vscode.ai_api_version')) {
+                || event.affectsConfiguration('llama-vscode.ai_api_version')
+                || event.affectsConfiguration('llama-vscode.lm_max_input_tokens')
+                || event.affectsConfiguration('llama-vscode.lm_max_output_tokens')) {
                 this.app.llamaChatModelProvider.notifyModelsChanged();
             }
         }));

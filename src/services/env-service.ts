@@ -176,6 +176,9 @@ export class EnvService {
                 await this.app.modelService.addApiKey(toolsModel);
                 if (toolsModel.localStartCommand) {
                     await this.app.llamaServer.shellToolsCmd(this.app.modelService.sanitizeCommand(toolsModel.localStartCommand));
+                    // Loading can change what /v1/models and /props report for the selected
+                    // model, so fire another refresh after the server is actually running.
+                    this.app.llamaChatModelProvider.notifyModelsChanged();
                 }
             }
 

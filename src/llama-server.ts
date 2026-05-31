@@ -8,14 +8,46 @@ import * as util from 'util';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ModelType, SUPPORTED_IMG_FILE_EXTS } from "./constants";
+import {
+    buildRuntimePropsUrl,
+    DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
+    DEFAULT_MAX_OUTPUT_TOKENS,
+    estimateTokenCount,
+    extractRuntimeContextSize,
+    isLikelyLlamaCppProvider,
+    OpenAICompatibleModel,
+    resolveModelTokenLimits,
+    resolveBoundedMaxOutputTokens,
+    resolveRequestMaxOutputTokens,
+    ResolvedModelTokenLimits,
+} from './language-model-token-limits';
 
 const STATUS_OK = 200;
 
 export interface LlamaToolsResponse {
     choices: [{
-        message:{content?: string, tool_calls?:[{id:string, function: {name:string, arguments: string}}]},
+        message:{content?: string | null, tool_calls?:[{id:string, function: {name:string, arguments: string}}]},
         finish_reason?: string,
+        error?: LlamaApiError,
     }];
+    error?: LlamaApiError;
+    truncated?: boolean;
+    tokens_cached?: number;
+    timings?: LlamaResponse['timings'];
+    generation_settings?: LlamaResponse['generation_settings'];
+    usage?: {
+        prompt_tokens?: number;
+        completion_tokens?: number;
+        total_tokens?: number;
+    };
+}
+
+interface LlamaApiError {
+    message: string;
+    type?: string;
+    n_prompt_tokens?: number;
+    n_ctx?: number;
+    [key: string]: unknown;
 }
 
 export interface LlamaEmbeddingsResponse {
@@ -34,6 +66,44 @@ export interface LlamaEmbeddingsResponse {
     ]
 }
 
+interface ApplyTemplateResponse {
+    prompt: string;
+}
+
+interface TokenizeResponse {
+    tokens: unknown[];
+}
+
+interface OpenAIModelsResponse {
+    data: OpenAICompatibleModel[];
+}
+
+interface RequestDetailsOverride {
+    endpoint: string;
+    model?: string;
+    requestConfig?: AxiosRequestConfig;
+    trace?: RequestTraceContext;
+    tools?: unknown[];
+    toolChoice?: unknown;
+}
+
+interface ResolvedRequestDetails {
+    endpoint: string;
+    model: string;
+    requestConfig: AxiosRequestConfig;
+    selectedModel: LlmModel;
+    trace?: RequestTraceContext;
+    tools?: unknown[];
+    toolChoice?: unknown;
+}
+
+export interface RequestTraceContext {
+    requestId: string;
+    caller: string;
+    conversationId?: string;
+    conversationTurn?: number;
+}
+
 export class LlamaServer {
     private app: Application
     private vsCodeFimTerminal: Terminal | undefined;
@@ -43,6 +113,10 @@ export class LlamaServer {
     private vsCodeCommandTerminal: Terminal | undefined;
     private vsCodeToolsTerminal: Terminal | undefined;
     private aiModel = "";
+    private requestTraceCounter = 0;
+    private toolsTokenLimitsCache:
+        | { key: string; expiresAt: number; limits: ResolvedModelTokenLimits }
+        | undefined;
     private readonly defaultRequestParams = {
         top_k: 40,
         top_p: 0.99,
@@ -237,15 +311,74 @@ export class LlamaServer {
           };
     }
 
-    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "") {
-        this.app.tools.addSelectedTools();
-        let filteredMsgs = this.filterThoughtFromMsgs(messages)
+    private getToolsRequestDetails(): ResolvedRequestDetails {
+        const selectedModel: LlmModel = this.app.getToolsModel();
+        let model = this.app.configuration.ai_model;
+        if (selectedModel?.aiModel) {
+            model = selectedModel.aiModel;
+        }
 
-        // Add image with base64 encoding
+        let endpoint = this.app.configuration.endpoint_tools;
+        if (selectedModel?.endpoint) {
+            endpoint = selectedModel.endpoint;
+        }
+
+        let requestConfig = this.app.configuration.axiosRequestConfigTools;
+        if (selectedModel?.isKeyRequired) {
+            const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint ?? "");
+            if (apiKey) {
+                requestConfig = {
+                    headers: {
+                        Authorization: `Bearer ${apiKey}`,
+                        "Content-Type": "application/json",
+                    },
+                };
+            }
+        }
+
+        return {
+            endpoint,
+            model,
+            requestConfig,
+            selectedModel,
+        };
+    }
+
+    createRequestTrace(caller: string): RequestTraceContext {
+        this.requestTraceCounter += 1;
+        return {
+            requestId: `${caller}-${Date.now().toString(36)}-${this.requestTraceCounter.toString(36)}`,
+            caller,
+        };
+    }
+
+    private resolveRequestDetails(override?: RequestDetailsOverride): ResolvedRequestDetails {
+        const details = this.getToolsRequestDetails();
+        if (!override) {
+            return {
+                ...details,
+                trace: undefined,
+            };
+        }
+
+        return {
+            ...details,
+            endpoint: override.endpoint,
+            model: override.model ?? details.model,
+            requestConfig: override.requestConfig ?? details.requestConfig,
+            trace: override.trace,
+            tools: override.tools,
+            toolChoice: override.toolChoice,
+        };
+    }
+
+    private buildToolsMessages(messages: ChatMessage[], imagePath = "") {
+        let filteredMsgs = this.filterThoughtFromMsgs(messages);
+
         if (imagePath && fs.existsSync(imagePath)) {
 
-            var imgType = ""
-            for (var suffix in SUPPORTED_IMG_FILE_EXTS){
+            let imgType = "";
+            for (const suffix in SUPPORTED_IMG_FILE_EXTS){
                 if (imagePath.endsWith(suffix)) {
                     imgType = SUPPORTED_IMG_FILE_EXTS[suffix];
                     break;
@@ -269,10 +402,17 @@ export class LlamaServer {
                         }
                     ]
                 };
-                filteredMsgs = (filteredMsgs as any[])
+                filteredMsgs = filteredMsgs as any[];
                 filteredMsgs.push(imageMessage);
             }
         }
+
+        return filteredMsgs;
+    }
+
+    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "") {
+        this.app.tools.addSelectedTools();
+        const filteredMsgs = this.buildToolsMessages(messages, imagePath);
 
             return {
             "messages": filteredMsgs,
@@ -283,6 +423,333 @@ export class LlamaServer {
             "tools": [...this.app.tools.getTools(),  ...this.app.tools.vscodeTools],
             "tool_choice": "auto"
         };
+    }
+
+    private summarizeTemplateMessages(messages: unknown[]): string {
+        const roles = messages.map((message, index) => {
+            if (!message || typeof message !== 'object') {
+                return `${index}:invalid`;
+            }
+
+            const role = (message as { role?: unknown }).role;
+            return `${index}:${typeof role === 'string' ? role : 'missing-role'}`;
+        });
+
+        return `count=${messages.length}; roles=[${roles.join(', ')}]`;
+    }
+
+    private formatTraceDetails(trace?: RequestTraceContext): string {
+        if (!trace) {
+            return '';
+        }
+
+        return [
+            `request_id=${trace.requestId}`,
+            `caller=${trace.caller}`,
+            trace.conversationId ? `conversation_id=${trace.conversationId}` : '',
+            typeof trace.conversationTurn === 'number' ? `conversation_turn=${trace.conversationTurn}` : '',
+        ].filter(Boolean).join(' | ');
+    }
+
+    private logApiRequest(label: string, method: string, url: string, details = "", trace?: RequestTraceContext) {
+        this.app.logger.addEventLog('API', `${label}_${method}_REQUEST`, [url, this.formatTraceDetails(trace), details].filter(Boolean).join(' | '));
+    }
+
+    private logApiResponse(label: string, method: string, url: string, details = "", trace?: RequestTraceContext) {
+        this.app.logger.addEventLog('API', `${label}_${method}_RESPONSE`, [url, this.formatTraceDetails(trace), details].filter(Boolean).join(' | '));
+    }
+
+    private formatUsageLogDetails(usage: Record<string, unknown> | undefined, tokensCached?: number): string[] {
+        const completionTokenDetails = this.getUsageRecordField(usage, 'completion_tokens_details');
+        const promptTokenDetails = this.getUsageRecordField(usage, 'prompt_tokens_details');
+        const cachedPromptTokens = this.getUsageNumberField(promptTokenDetails, 'cached_tokens');
+
+        return [
+            `prompt_tokens=${this.getUsageNumberField(usage, 'prompt_tokens') ?? 'unknown'}`,
+            `completion_tokens=${this.getUsageNumberField(usage, 'completion_tokens') ?? 'unknown'}`,
+            `total_tokens=${this.getUsageNumberField(usage, 'total_tokens') ?? 'unknown'}`,
+            `reasoning_tokens=${this.getUsageNumberField(completionTokenDetails, 'reasoning_tokens') ?? 'unknown'}`,
+            `cached_prompt_tokens=${cachedPromptTokens ?? tokensCached ?? 'unknown'}`,
+        ];
+    }
+
+    private getUsageRecordField(record: Record<string, unknown> | undefined, field: string): Record<string, unknown> | undefined {
+        const value = record?.[field];
+        return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+    }
+
+    private getUsageNumberField(record: Record<string, unknown> | undefined, field: string): number | undefined {
+        const value = record?.[field];
+        return typeof value === 'number' ? value : undefined;
+    }
+
+    private logApiError(label: string, method: string, url: string, error: unknown, details = "", trace?: RequestTraceContext) {
+        const apiError = this.extractApiError(error);
+        this.app.logger.addEventLog(
+            'API',
+            `${label}_${method}_ERROR`,
+            [url, this.formatTraceDetails(trace), details, `error=${apiError.message.replace(/\r?\n/g, ' ')}`].filter(Boolean).join(' | ')
+        );
+    }
+
+    logBudgetDecision(
+        trace: RequestTraceContext,
+        details: {
+            endpoint: string;
+            model: string;
+            promptTokens?: number;
+            promptCountSource: 'exact' | 'fallback';
+            maxInputTokens: number;
+            maxOutputTokens: number;
+            chosenMaxTokens: number;
+            safetyMarginTokens: number;
+        }
+    ) {
+        this.app.logger.addEventLog(
+            'BUDGET',
+            'REQUEST_DECISION',
+            [
+                this.formatTraceDetails(trace),
+                `endpoint=${details.endpoint}`,
+                `model=${details.model || 'none'}`,
+                `prompt_tokens=${details.promptTokens ?? 'unknown'}`,
+                `prompt_count_source=${details.promptCountSource}`,
+                `max_input_tokens=${details.maxInputTokens}`,
+                `max_output_tokens=${details.maxOutputTokens}`,
+                `chosen_max_tokens=${details.chosenMaxTokens}`,
+                `safety_margin_tokens=${details.safetyMarginTokens}`,
+            ].join(' | ')
+        );
+    }
+
+    logBudgetFallback(
+        trace: RequestTraceContext,
+        details: {
+            endpoint: string;
+            model: string;
+            fallbackPromptTokens: number;
+            fallbackReason: string;
+        }
+    ) {
+        this.app.logger.addEventLog(
+            'BUDGET',
+            'EXACT_COUNT_FALLBACK',
+            [
+                this.formatTraceDetails(trace),
+                `endpoint=${details.endpoint}`,
+                `model=${details.model || 'none'}`,
+                `fallback_prompt_tokens=${details.fallbackPromptTokens}`,
+                `reason=${details.fallbackReason}`,
+            ].join(' | ')
+        );
+    }
+
+    async getToolsModelTokenLimits(): Promise<ResolvedModelTokenLimits> {
+        const { endpoint, model, requestConfig } = this.getToolsRequestDetails();
+        const cacheKey = [
+            endpoint,
+            model,
+            this.app.configuration.ai_api_version,
+            this.app.configuration.lm_max_input_tokens,
+            this.app.configuration.lm_max_output_tokens,
+        ].join('|');
+
+        if (this.toolsTokenLimitsCache
+            && this.toolsTokenLimitsCache.key === cacheKey
+            && this.toolsTokenLimitsCache.expiresAt > Date.now()) {
+            return this.toolsTokenLimitsCache.limits;
+        }
+
+        const configuredMaxInputTokens = this.app.configuration.lm_max_input_tokens;
+        const configuredMaxOutputTokens = this.app.configuration.lm_max_output_tokens;
+
+        const fallbackLimits = resolveModelTokenLimits(
+            { id: model || 'tools-model' },
+            {
+                configuredMaxInputTokens,
+                configuredMaxOutputTokens,
+            }
+        );
+
+        if (!endpoint) {
+            return fallbackLimits;
+        }
+
+        const modelsUrl = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/models`;
+
+        try {
+            this.logApiRequest('TOOLS_MODELS', 'GET', modelsUrl, `model=${model || 'none'}`);
+            const response = await axios.get<OpenAIModelsResponse>(
+                modelsUrl,
+                requestConfig
+            );
+            this.logApiResponse('TOOLS_MODELS', 'GET', modelsUrl, `count=${response.data?.data?.length ?? 0}`);
+
+            const models = response.data?.data ?? [];
+            const matchedModel =
+                models.find((candidate) => candidate.id === model)
+                ?? (models.length === 1 ? models[0] : undefined);
+
+            if (!matchedModel) {
+                return fallbackLimits;
+            }
+
+            let runtimeContextSize: number | undefined;
+            if (configuredMaxInputTokens <= 0 && isLikelyLlamaCppProvider([matchedModel])) {
+                try {
+                    const propsUrl = models.length === 1
+                        ? buildRuntimePropsUrl(endpoint)
+                        : buildRuntimePropsUrl(endpoint, matchedModel.id);
+                    this.logApiRequest('TOOLS_PROPS', 'GET', propsUrl, `model=${matchedModel.id}`);
+                    const propsResponse = await axios.get(propsUrl, requestConfig);
+                    runtimeContextSize = extractRuntimeContextSize(propsResponse.data);
+                    this.logApiResponse('TOOLS_PROPS', 'GET', propsUrl, `n_ctx=${runtimeContextSize ?? 'unknown'}`);
+                } catch (error) {
+                    this.logApiError('TOOLS_PROPS', 'GET', models.length === 1 ? buildRuntimePropsUrl(endpoint) : buildRuntimePropsUrl(endpoint, matchedModel.id), error, `model=${matchedModel.id}`);
+                    runtimeContextSize = undefined;
+                }
+            }
+
+            const limits = resolveModelTokenLimits(matchedModel, {
+                configuredMaxInputTokens,
+                configuredMaxOutputTokens,
+                runtimeContextSize,
+            });
+
+            this.toolsTokenLimitsCache = {
+                key: cacheKey,
+                expiresAt: Date.now() + 30000,
+                limits,
+            };
+
+            return limits;
+        } catch (error) {
+            this.logApiError('TOOLS_MODELS', 'GET', modelsUrl, error, `model=${model || 'none'}`);
+            return fallbackLimits;
+        }
+    }
+
+    async applyToolsTemplate(
+        messages: ChatMessage[],
+        imagePath = "",
+        requestDetails?: RequestDetailsOverride
+    ): Promise<string | undefined> {
+        const { endpoint, model, requestConfig, trace, tools, toolChoice } = this.resolveRequestDetails(requestDetails);
+        if (!endpoint) {
+            return undefined;
+        }
+
+        const templateMessages = this.buildToolsMessages(messages, imagePath);
+        const templateUrl = `${Utils.trimTrailingSlash(endpoint)}/apply-template`;
+
+        try {
+            this.logApiRequest('APPLY_TEMPLATE', 'POST', templateUrl, `model=${model || 'none'} | ${this.summarizeTemplateMessages(templateMessages as unknown[])}`, trace);
+            const response = await axios.post<ApplyTemplateResponse>(
+                templateUrl,
+                {
+                    messages: templateMessages,
+                    ...(model.trim() !== '' && { model }),
+                    ...(tools?.length && { tools }),
+                    ...(toolChoice !== undefined && { tool_choice: toolChoice }),
+                },
+                requestConfig
+            );
+
+            this.logApiResponse('APPLY_TEMPLATE', 'POST', templateUrl, `prompt_length=${response.data.prompt?.length ?? 0}`, trace);
+
+            return response.status === STATUS_OK ? response.data.prompt : undefined;
+        } catch (error) {
+            const apiError = this.extractApiError(error);
+            const details = [
+                `endpoint=${endpoint}`,
+                `model=${model || 'none'}`,
+                this.summarizeTemplateMessages(templateMessages as unknown[]),
+                `error=${apiError.message.replace(/\r?\n/g, ' ')}`,
+            ].join(' | ');
+
+            this.logApiError('APPLY_TEMPLATE', 'POST', templateUrl, error, `model=${model || 'none'} | ${this.summarizeTemplateMessages(templateMessages as unknown[])}`, trace);
+            this.app.logger.addEventLog('TOOLS', 'APPLY_TEMPLATE_ERROR', details);
+            console.error('[llama-vscode] apply-template failed:', details);
+            return undefined;
+        }
+    }
+
+    async countToolsPromptTokens(
+        messages: ChatMessage[],
+        imagePath = "",
+        requestDetails?: RequestDetailsOverride
+    ): Promise<number | undefined> {
+        const prompt = await this.applyToolsTemplate(messages, imagePath, requestDetails);
+        if (!prompt) {
+            return undefined;
+        }
+
+        return this.countTextTokens(prompt, requestDetails);
+    }
+
+    async countTextTokens(text: string, requestDetails?: RequestDetailsOverride): Promise<number | undefined> {
+        const { endpoint, requestConfig, trace } = this.resolveRequestDetails(requestDetails);
+        if (!endpoint) {
+            return undefined;
+        }
+
+        const tokenizeUrl = `${Utils.trimTrailingSlash(endpoint)}/tokenize`;
+
+        try {
+            this.logApiRequest('TOKENIZE', 'POST', tokenizeUrl, `content_length=${text.length}`, trace);
+            const response = await axios.post<TokenizeResponse>(
+                tokenizeUrl,
+                {
+                    content: text,
+                    add_special: false,
+                    parse_special: true,
+                },
+                requestConfig
+            );
+
+            this.logApiResponse('TOKENIZE', 'POST', tokenizeUrl, `tokens=${response.data.tokens.length}`, trace);
+
+            return response.status === STATUS_OK ? response.data.tokens.length : undefined;
+        } catch (error) {
+            this.logApiError('TOKENIZE', 'POST', tokenizeUrl, error, `content_length=${text.length}`, trace);
+            return undefined;
+        }
+    }
+
+    estimateToolsRequestTokens(requestPayload: unknown): number {
+        // Fallback only: exact prompt counting should go through apply-template + tokenize.
+        return estimateTokenCount(requestPayload);
+    }
+
+    private createErrorResponse(error: LlamaApiError): LlamaToolsResponse {
+        return {
+            choices: [{
+                message: { content: error.message },
+                finish_reason: 'error',
+                error,
+            }],
+            error,
+        };
+    }
+
+    private extractApiError(error: unknown): LlamaApiError {
+        if (axios.isAxiosError(error)) {
+            const responseData = error.response?.data as { error?: LlamaApiError } | undefined;
+            if (responseData?.error) {
+                return responseData.error;
+            }
+
+            return {
+                message: error.message,
+                ...(typeof error.response?.status === 'number' && { status: error.response.status }),
+            };
+        }
+
+        if (error instanceof Error) {
+            return { message: error.message };
+        }
+
+        return { message: String(error) };
     }
 
 private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
@@ -336,11 +803,14 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             }
         }
 
+        const infillUrl = `${Utils.trimTrailingSlash(endpoint)}/infill`;
+        this.logApiRequest('FIM', 'POST', infillUrl, `model=${model || 'none'} | prompt_length=${prompt.length}`);
         const response = await axios.post<LlamaResponse>(
-            `${Utils.trimTrailingSlash(endpoint)}/infill`,
+            infillUrl,
             this.createRequestPayload(false, inputPrefix, inputSuffix, chunks, prompt, model, nindent),
             requestConfig
         );
+        this.logApiResponse('FIM', 'POST', infillUrl, `has_content=${response.data?.content !== undefined}`);
 
         return response.status === STATUS_OK ? response.data : undefined;
     };
@@ -355,11 +825,14 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
 
         let { endpoint, model, requestConfig } = this.getChatModelProperties();
 
+        const chatUrl = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
+        this.logApiRequest('CHAT_EDIT', 'POST', chatUrl, `model=${model || 'none'}`);
         const response = await axios.post<LlamaChatResponse>(
-            `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
+            chatUrl,
             this.createChatEditRequestPayload(instructions, originalText, context, model),
             requestConfig
         );
+        this.logApiResponse('CHAT_EDIT', 'POST', chatUrl, `has_choices=${response.data?.choices?.length ?? 0}`);
 
         return response.status === STATUS_OK ? response.data : undefined;
     };
@@ -369,11 +842,14 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
     ): Promise<LlamaChatResponse | undefined> => {
         let { endpoint, model, requestConfig } = this.getChatModelProperties();
 
+        const chatUrl = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
+        this.logApiRequest('CHAT', 'POST', chatUrl, `model=${model || 'none'} | prompt_length=${prompt.length}`);
         const response = await axios.post<LlamaChatResponse>(
-            `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`,
+            chatUrl,
             this.createChatRequestPayload(prompt, model),
             requestConfig
         );
+        this.logApiResponse('CHAT', 'POST', chatUrl, `has_choices=${response.data?.choices?.length ?? 0}`);
 
         return response.status === STATUS_OK ? response.data : undefined;
     };
@@ -383,45 +859,85 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         isSummarization = false,
         onDelta?: (delta: string) => void,
         abortSignal?: AbortSignal,
-        imagePath = ""
+        imagePath = "",
+        trace: RequestTraceContext = this.createRequestTrace(isSummarization ? 'agent-summary' : 'agent')
     ): Promise<LlamaToolsResponse | undefined> => {
-        let selectedModel: LlmModel = this.app.getToolsModel();
-        let model = this.app.configuration.ai_model;
-        if (selectedModel?.aiModel !== undefined && selectedModel.aiModel) model = selectedModel.aiModel;
-
-        let endpoint = this.app.configuration.endpoint_tools;
-        if (selectedModel?.endpoint !== undefined && selectedModel.endpoint) endpoint = selectedModel.endpoint;
-
-        let requestConfig = this.app.configuration.axiosRequestConfigTools;
-        if (selectedModel?.isKeyRequired !== undefined && selectedModel.isKeyRequired){
-            const apiKey = this.app.persistence.getApiKey(selectedModel.endpoint??"");
-            if (apiKey){
-                requestConfig = {
-                    headers: {
-                        Authorization: `Bearer ${apiKey}`,
-                        "Content-Type": "application/json",
-                    },
-                }
-            }
-        }
+        const { endpoint, model, requestConfig } = this.getToolsRequestDetails();
 
         let uri = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
         let request: any;
 
         if (isSummarization) {
             request = this.createGetSummaryRequestPayload(messages, model);
-            const response = await axios.post<LlamaToolsResponse>(
-                uri,
-                request,
-                { ...requestConfig, signal: abortSignal }
-            );
-            return response.status === STATUS_OK ? response.data : undefined;
+            try {
+                this.logApiRequest('TOOLS_SUMMARY', 'POST', uri, `model=${model || 'none'} | ${this.summarizeTemplateMessages(request.messages as unknown[])}`, trace);
+                const response = await axios.post<LlamaToolsResponse>(
+                    uri,
+                    request,
+                    { ...requestConfig, signal: abortSignal }
+                );
+                this.logApiResponse('TOOLS_SUMMARY', 'POST', uri, `finish_reason=${response.data?.choices?.[0]?.finish_reason ?? 'unknown'}`, trace);
+                return response.status === STATUS_OK ? response.data : undefined;
+            } catch (error) {
+                this.logApiError('TOOLS_SUMMARY', 'POST', uri, error, `model=${model || 'none'}`, trace);
+                return this.createErrorResponse(this.extractApiError(error));
+            }
         }
 
         // Streaming branch for tools/agent calls
         request = this.createToolsRequestPayload(messages, model, true, imagePath);
+        const tokenLimits = await this.getToolsModelTokenLimits();
+        const exactPromptTokens = await this.countToolsPromptTokens(messages, imagePath, {
+            endpoint,
+            model,
+            requestConfig,
+            trace,
+        });
+        const promptTokenEstimate = exactPromptTokens ?? this.estimateToolsRequestTokens(request);
+        if (exactPromptTokens === undefined) {
+            this.logBudgetFallback(trace, {
+                endpoint,
+                model,
+                fallbackPromptTokens: promptTokenEstimate,
+                fallbackReason: 'exact_count_unavailable',
+            });
+        }
+        const boundedMaxOutputTokens = resolveBoundedMaxOutputTokens({
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: tokenLimits.maxOutputTokens,
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        });
+        request.max_tokens = resolveRequestMaxOutputTokens({
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: boundedMaxOutputTokens,
+            promptTokenEstimate,
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+            contextSafetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
+        });
+        this.logBudgetDecision(trace, {
+            endpoint,
+            model,
+            promptTokens: promptTokenEstimate,
+            promptCountSource: exactPromptTokens === undefined ? 'fallback' : 'exact',
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: boundedMaxOutputTokens,
+            chosenMaxTokens: request.max_tokens as number,
+            safetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
+        });
 
         try {
+            this.logApiRequest(
+                'TOOLS_STREAM',
+                'POST',
+                uri,
+                [
+                    `model=${model || 'none'}`,
+                    this.summarizeTemplateMessages(request.messages as unknown[]),
+                    `prompt_tokens=${promptTokenEstimate}`,
+                    `max_tokens=${request.max_tokens}`,
+                ].join(' | '),
+                trace
+            );
             const streamResponse = await axios.post<any>(
                 uri,
                 request,
@@ -435,15 +951,30 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 let finishReason: string | undefined = undefined;
                 const toolCalls: any[] = [];
                 const message: any = { role: 'assistant', content: null as string | null };
+                let responseData: Partial<LlamaToolsResponse> = {};
 
                 const finalize = () => {
                     message.content = fullContent || null;
                     if (toolCalls.length > 0) message.tool_calls = toolCalls;
+                    this.logApiResponse(
+                        'TOOLS_STREAM',
+                        'POST',
+                        uri,
+                        [
+                            `finish_reason=${finishReason ?? 'unknown'}`,
+                            `truncated=${responseData.truncated === true}`,
+                            `content_length=${fullContent.length}`,
+                            `tool_calls=${toolCalls.length}`,
+                            ...this.formatUsageLogDetails(responseData.usage as Record<string, unknown> | undefined, responseData.tokens_cached),
+                        ].join(' | '),
+                        trace
+                    );
                     resolve({
                         choices: [{
                             message,
                             finish_reason: finishReason,
-                        }]
+                        }],
+                        ...responseData,
                     });
                 };
 
@@ -473,6 +1004,12 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                             const json = JSON.parse(payload);
                             const choice = json.choices && json.choices[0] ? json.choices[0] : undefined;
                             if (!choice) continue;
+
+                            if (typeof json.truncated === 'boolean') responseData.truncated = json.truncated;
+                            if (typeof json.tokens_cached === 'number') responseData.tokens_cached = json.tokens_cached;
+                            if (json.timings) responseData.timings = json.timings;
+                            if (json.generation_settings) responseData.generation_settings = json.generation_settings;
+                            if (json.usage) responseData.usage = json.usage;
 
                             // Finish reason may appear on a later chunk
                             if (choice.finish_reason) finishReason = choice.finish_reason;
@@ -511,11 +1048,13 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 });
 
                 readable.on('error', () => {
-                    resolve(undefined);
+                    this.logApiError('TOOLS_STREAM', 'POST', uri, { message: 'Stream error during generation' }, `model=${model || 'none'}`, trace);
+                    resolve(this.createErrorResponse({ message: 'Stream error during generation' }));
                 });
             });
         } catch (err) {
-            return undefined;
+            this.logApiError('TOOLS_STREAM', 'POST', uri, err, `model=${model || 'none'}`, trace);
+            return this.createErrorResponse(this.extractApiError(err));
         }
     };
 
@@ -529,20 +1068,26 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
 
         // else, make a request to the API to prepare for the next FIM
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
+        const infillUrl = `${Utils.trimTrailingSlash(endpoint)}/infill`;
+        this.logApiRequest('FIM_PREP', 'POST', infillUrl, `model=${model || 'none'} | chunks=${chunks.length ?? 0}`);
         axios.post<LlamaResponse>(
-            `${Utils.trimTrailingSlash(endpoint)}/infill`,
+            infillUrl,
             this.createRequestPayload(true, "", "", chunks, "", model, undefined),
             requestConfig
-        );
+        ).then(() => {
+            this.logApiResponse('FIM_PREP', 'POST', infillUrl, 'ok');
+        }).catch((error) => {
+            this.logApiError('FIM_PREP', 'POST', infillUrl, error, `model=${model || 'none'}`);
+        });
     };
 
     getEmbeddings = async (text: string): Promise<LlamaEmbeddingsResponse | undefined> => {
+        let endpoint = this.app.configuration.endpoint_embeddings;
+        let model = this.app.configuration.ai_model;
         try {
             let selectedModel: LlmModel = this.app.getEmbeddingsModel();
-            let model = this.app.configuration.ai_model;
             if (selectedModel.aiModel) model = selectedModel.aiModel;
 
-            let endpoint = this.app.configuration.endpoint_embeddings;
             if (selectedModel.endpoint) endpoint = selectedModel.endpoint;
 
             let requestConfig = this.app.configuration.axiosRequestConfigEmbeddings;
@@ -558,8 +1103,10 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 }
             }
 
+            const embeddingsUrl = `${Utils.trimTrailingSlash(endpoint)}/v1/embeddings`;
+            this.logApiRequest('EMBEDDINGS', 'POST', embeddingsUrl, `model=${model || 'none'} | input_length=${text.length}`);
             const response = await axios.post<LlamaEmbeddingsResponse>(
-                `${Utils.trimTrailingSlash(endpoint)}/v1/embeddings`,
+                embeddingsUrl,
                 {
                     "input": text,
                     // "model": "GPT-4",
@@ -568,8 +1115,10 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 },
                 requestConfig
             );
+            this.logApiResponse('EMBEDDINGS', 'POST', embeddingsUrl, `tokens=${response.data.usage?.total_tokens ?? 'unknown'}`);
             return response.data;
         } catch (error: any) {
+            this.logApiError('EMBEDDINGS', 'POST', `${Utils.trimTrailingSlash(endpoint)}/v1/embeddings`, error, `model=${model || 'none'}`);
             console.error('Failed to get embeddings:', error);
             vscode.window.showInformationMessage(this.app.configuration.getUiText("Error getting embeddings") + " " + error.message);
             return undefined;
@@ -852,10 +1401,14 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         }
         try {
             // TODO:Make sure to work with OpenRauter too
-            let response = await axios.get(model.endpoint + "/health", requestConfig);
+            const healthUrl = model.endpoint + "/health";
+            this.logApiRequest('HEALTH', 'GET', healthUrl, `modelType=${modelType}`);
+            let response = await axios.get(healthUrl, requestConfig);
+            this.logApiResponse('HEALTH', 'GET', healthUrl, `status=${response.data?.status ?? 'missing'}`);
             if (!response.data.hasOwnProperty("status")) return "Error: No health status field found";
             return response.data.status
         } catch (error) {
+            this.logApiError('HEALTH', 'GET', model.endpoint + "/health", error, `modelType=${modelType}`);
             if (error instanceof TypeError) {
                 return "TypeError occurred: " + error.message;
             } else if (error instanceof ReferenceError) {

@@ -7,6 +7,7 @@ import { Plugin } from './plugin';
 import * as fs from 'fs';
 import { SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 import path from "path";
+import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 
 
 interface Frontmatter {
@@ -167,9 +168,9 @@ export class LlamaAgent {
         await this.askAgent(query, agentCommand);
     }
 
-    private async summarize(): Promise<void> {
+    private async summarize(): Promise<boolean> {
         if (this.messages.length <= this.app.configuration.chats_msgs_keep) {
-            return; // Not enough messages to summarize
+            return false; // Not enough messages to summarize
         }
 
         // Preserve system messages and recent messages
@@ -181,7 +182,7 @@ export class LlamaAgent {
         );
 
         if (oldMessages.length === 0) {
-            return; // Nothing to summarize
+            return false; // Nothing to summarize
         }
 
         try {
@@ -196,11 +197,50 @@ export class LlamaAgent {
                 },
                 ...recentMessages
             ];
+            return true;
 
         } catch (error) {
             console.error('Failed to generate summary:', error);
             // Fallback: just keep recent messages and remove older ones
             this.messages = [...systemMessages, ...recentMessages];
+            return true;
+        }
+    }
+
+    private async summarizeToFitCurrentBudget(imagePath = ""): Promise<boolean> {
+        const tokenLimits = await this.app.llamaServer.getToolsModelTokenLimits();
+        const reservedOutputTokens = Math.max(1024, resolveBoundedMaxOutputTokens({
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: tokenLimits.maxOutputTokens,
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        }));
+        const maxPromptTokens = Math.max(
+            1,
+            tokenLimits.maxInputTokens - reservedOutputTokens - DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS
+        );
+
+        let summarizedAny = false;
+        while (true) {
+            const promptTokens = await this.app.llamaServer.countToolsPromptTokens(this.messages, imagePath);
+            this.app.logger.addEventLog(
+                'AGENT',
+                'BUDGET_CHECK',
+                `prompt_tokens=${promptTokens ?? 'unknown'} | max_prompt_tokens=${maxPromptTokens} | messages=${this.messages.length}`
+            );
+            if (promptTokens === undefined || promptTokens <= maxPromptTokens) {
+                return summarizedAny;
+            }
+
+            if (!this.app.configuration.chats_summarize_old_msgs) {
+                return summarizedAny;
+            }
+
+            const summarized = await this.summarize();
+            if (!summarized) {
+                return summarizedAny;
+            }
+            this.app.logger.addEventLog('AGENT', 'BUDGET_SUMMARIZE', `messages=${this.messages.length}`);
+            summarizedAny = true;
         }
     }
 
@@ -224,11 +264,6 @@ export class LlamaAgent {
                 return "Tools model is not selected"
             }
             
-            if (this.app.configuration.chats_summarize_old_msgs 
-                && JSON.stringify(this.messages).length > this.app.configuration.chats_max_tokens*4) {
-                this.summarize();
-            }
-
             // Get the skills
             const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
             let skillsDesc = this.getSkillsDesc(skillsFolder)
@@ -300,6 +335,7 @@ export class LlamaAgent {
                         currentPlan += fs.readFileSync(todoFile, "utf-8")
                         this.messages.push({"role": "user", "content": goal + "\n\n" + currentPlan})                   
                     }
+                    await this.summarizeToFitCurrentBudget(this.contextImage);
                     let streamed = "";
                     let data:any = await this.app.llamaServer.getAgentCompletion(this.messages, false, (delta: string) => {
                         streamed += delta;
@@ -308,15 +344,42 @@ export class LlamaAgent {
                     }, this.abortController?.signal, !this.sentContextImages.includes(this.contextImage)? this.contextImage : "");
                     if (this.contextImage) this.sentContextImages.push(this.contextImage)
                     if (!data) {
+                        this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${iterationsCount}`);
                         this.logText += "No response from AI" + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         this.app.llamaWebviewProvider.setState("AI not responding")
                         return "No response from AI";
                     }
+                    if (data.error?.type === "exceed_context_size_error") {
+                        this.app.logger.addEventLog(
+                            'AGENT',
+                            'CONTEXT_ERROR',
+                            `iteration=${iterationsCount} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
+                        );
+                        this.logText += "Error: " + data.error.message + "  \n";
+                        if (typeof data.error.n_prompt_tokens === 'number' && typeof data.error.n_ctx === 'number') {
+                            this.logText += `Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`;
+                        }
+                        this.app.llamaWebviewProvider.logInUi(this.logText);
+
+                        const summarized = await this.summarizeToFitCurrentBudget(this.contextImage);
+                        if (summarized) {
+                            this.app.logger.addEventLog('AGENT', 'CONTEXT_RETRY', `iteration=${iterationsCount}`);
+                            continue;
+                        }
+
+                        this.app.llamaWebviewProvider.setState("Context limit exceeded")
+                        return data.error.message;
+                    }
+
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
                     if (!streamed && response) {
                         this.logText += response + "  \n";
+                    }
+                    if (data.truncated) {
+                        this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${iterationsCount} | finish_reason=${finishReason ?? 'unknown'}`);
+                        this.logText += "  \nWarning: response was truncated by the context window.  \n";
                     }
                     this.logText += "  \nTotal iterations: " + iterationsCount + "  \n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);

@@ -195,6 +195,9 @@ export class ModelService {
         await details.killCmd();
         if (model.localStartCommand) await details.shellCmd(this.sanitizeCommand(model.localStartCommand ?? ""));
         await this.app.persistence.setValue(this.getSelectedProp(type), model);
+        if (type === ModelType.Tools) {
+            this.app.llamaChatModelProvider.notifyModelsChanged();
+        }
         if (type == ModelType.Tools && model?.isKeyRequired !== undefined && model.isKeyRequired){
             const apiKey = this.app.persistence.getApiKey(model.endpoint??"");
             if (apiKey){
