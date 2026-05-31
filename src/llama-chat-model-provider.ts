@@ -10,8 +10,9 @@ import {
     extractRuntimeContextSize,
     isLikelyLlamaCppProvider,
     OpenAICompatibleModel,
-    resolveRequestMaxOutputTokens,
     resolveModelTokenLimits,
+    resolveBoundedMaxOutputTokens,
+    resolveRequestMaxOutputTokens,
 } from './language-model-token-limits';
 import { Utils } from './utils';
 
@@ -197,9 +198,14 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             });
         }
         this.recordConversationBudget(trace, promptTokenEstimate, openaiMessages.length);
+        const boundedMaxOutputTokens = resolveBoundedMaxOutputTokens({
+            maxInputTokens: runtimeTokenLimits.maxInputTokens,
+            maxOutputTokens: this.getPositiveTokenLimit(runtimeTokenLimits.maxOutputTokens, DEFAULT_MAX_OUTPUT_TOKENS),
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        });
         const chosenMaxTokens = resolveRequestMaxOutputTokens({
             maxInputTokens: runtimeTokenLimits.maxInputTokens,
-            maxOutputTokens: Math.min(this.getPositiveTokenLimit(runtimeTokenLimits.maxOutputTokens, DEFAULT_MAX_OUTPUT_TOKENS), DEFAULT_MAX_OUTPUT_TOKENS),
+            maxOutputTokens: boundedMaxOutputTokens,
             promptTokenEstimate,
             defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
             contextSafetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
@@ -210,7 +216,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             promptTokens: promptTokenEstimate,
             promptCountSource: exactPromptTokens === undefined ? 'fallback' : 'exact',
             maxInputTokens: runtimeTokenLimits.maxInputTokens,
-            maxOutputTokens: Math.min(this.getPositiveTokenLimit(runtimeTokenLimits.maxOutputTokens, DEFAULT_MAX_OUTPUT_TOKENS), DEFAULT_MAX_OUTPUT_TOKENS),
+            maxOutputTokens: boundedMaxOutputTokens,
             chosenMaxTokens,
             safetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
         });

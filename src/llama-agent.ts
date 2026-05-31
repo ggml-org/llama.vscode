@@ -7,7 +7,7 @@ import { Plugin } from './plugin';
 import * as fs from 'fs';
 import { SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 import path from "path";
-import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS } from './language-model-token-limits';
+import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 
 
 interface Frontmatter {
@@ -209,10 +209,11 @@ export class LlamaAgent {
 
     private async summarizeToFitCurrentBudget(imagePath = ""): Promise<boolean> {
         const tokenLimits = await this.app.llamaServer.getToolsModelTokenLimits();
-        const reservedOutputTokens = Math.max(
-            1024,
-            Math.min(tokenLimits.maxOutputTokens, DEFAULT_MAX_OUTPUT_TOKENS)
-        );
+        const reservedOutputTokens = Math.max(1024, resolveBoundedMaxOutputTokens({
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: tokenLimits.maxOutputTokens,
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        }));
         const maxPromptTokens = Math.max(
             1,
             tokenLimits.maxInputTokens - reservedOutputTokens - DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS

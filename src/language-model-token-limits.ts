@@ -1,6 +1,7 @@
 export const DEFAULT_MAX_INPUT_TOKENS = 8192;
 export const DEFAULT_MAX_OUTPUT_TOKENS = 4096;
 export const DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS = 256;
+export const DEFAULT_MAX_OUTPUT_TOKENS_CONTEXT_DIVISOR = 4;
 
 // Fallback-only heuristic for degraded mode.
 //
@@ -129,10 +130,7 @@ export function extractRuntimeContextSize(propsResponse: unknown): number | unde
 export function resolveRequestMaxOutputTokens(
     options: ResolveRequestMaxOutputTokensOptions = {}
 ): number {
-    const requestedMaxOutputTokens =
-        getPositiveInteger(options.maxOutputTokens)
-        ?? options.defaultMaxOutputTokens
-        ?? DEFAULT_MAX_OUTPUT_TOKENS;
+    const requestedMaxOutputTokens = resolveBoundedMaxOutputTokens(options);
     const maxInputTokens = getPositiveInteger(options.maxInputTokens);
     const promptTokenEstimate = getPositiveInteger(options.promptTokenEstimate) ?? 0;
     const contextSafetyMarginTokens =
@@ -148,6 +146,25 @@ export function resolveRequestMaxOutputTokens(
     }
 
     return Math.max(1, Math.min(requestedMaxOutputTokens, remainingContextTokens));
+}
+
+export function resolveBoundedMaxOutputTokens(
+    options: Pick<ResolveRequestMaxOutputTokensOptions, 'maxInputTokens' | 'maxOutputTokens' | 'defaultMaxOutputTokens'> = {}
+): number {
+    const requestedMaxOutputTokens =
+        getPositiveInteger(options.maxOutputTokens)
+        ?? options.defaultMaxOutputTokens
+        ?? DEFAULT_MAX_OUTPUT_TOKENS;
+    const maxInputTokens = getPositiveInteger(options.maxInputTokens);
+
+    if (maxInputTokens === undefined) {
+        return requestedMaxOutputTokens;
+    }
+
+    return Math.max(
+        1,
+        Math.min(requestedMaxOutputTokens, Math.floor(maxInputTokens / DEFAULT_MAX_OUTPUT_TOKENS_CONTEXT_DIVISOR))
+    );
 }
 
 function extractModelTokenLimit(

@@ -17,6 +17,7 @@ import {
     isLikelyLlamaCppProvider,
     OpenAICompatibleModel,
     resolveModelTokenLimits,
+    resolveBoundedMaxOutputTokens,
     resolveRequestMaxOutputTokens,
     ResolvedModelTokenLimits,
 } from './language-model-token-limits';
@@ -877,9 +878,14 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 fallbackReason: 'exact_count_unavailable',
             });
         }
+        const boundedMaxOutputTokens = resolveBoundedMaxOutputTokens({
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: tokenLimits.maxOutputTokens,
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        });
         request.max_tokens = resolveRequestMaxOutputTokens({
             maxInputTokens: tokenLimits.maxInputTokens,
-            maxOutputTokens: Math.min(tokenLimits.maxOutputTokens, DEFAULT_MAX_OUTPUT_TOKENS),
+            maxOutputTokens: boundedMaxOutputTokens,
             promptTokenEstimate,
             defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
             contextSafetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
@@ -890,7 +896,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             promptTokens: promptTokenEstimate,
             promptCountSource: exactPromptTokens === undefined ? 'fallback' : 'exact',
             maxInputTokens: tokenLimits.maxInputTokens,
-            maxOutputTokens: Math.min(tokenLimits.maxOutputTokens, DEFAULT_MAX_OUTPUT_TOKENS),
+            maxOutputTokens: boundedMaxOutputTokens,
             chosenMaxTokens: request.max_tokens as number,
             safetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
         });

@@ -9,6 +9,7 @@ import {
     estimateTokenCount,
     extractRuntimeContextSize,
     isLikelyLlamaCppProvider,
+    resolveBoundedMaxOutputTokens,
     resolveRequestMaxOutputTokens,
     resolveModelTokenLimits,
 } from '../../language-model-token-limits';
@@ -127,6 +128,25 @@ suite('Language Model Token Limits Test Suite', () => {
         });
 
         assert.strictEqual(maxTokens, 1);
+    });
+
+    test('caps requested output tokens to one quarter of the context window', () => {
+        const maxTokens = resolveBoundedMaxOutputTokens({
+            maxInputTokens: 65536,
+            maxOutputTokens: 65536,
+        });
+
+        assert.strictEqual(maxTokens, 16384);
+    });
+
+    test('applies the quarter-window cap before remaining-context clamping', () => {
+        const maxTokens = resolveRequestMaxOutputTokens({
+            maxInputTokens: 65536,
+            maxOutputTokens: 65536,
+            promptTokenEstimate: 23000,
+        });
+
+        assert.strictEqual(maxTokens, 16384);
     });
 
     test('estimates token counts for structured payloads', () => {
