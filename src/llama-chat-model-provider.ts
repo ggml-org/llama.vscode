@@ -11,6 +11,7 @@ import {
     isLikelyLlamaCppProvider,
     OpenAICompatibleModel,
     resolveModelTokenLimits,
+    resolvePublishedModelTokenLimits,
     resolveBoundedMaxOutputTokens,
     resolveRequestMaxOutputTokens,
 } from './language-model-token-limits';
@@ -97,7 +98,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             const runtimeContextSizes = await this.getRuntimeContextSizes(endpoint, response.data.data, requestConfig);
 
             return response.data.data.map((model) => {
-                const tokenLimits = resolveModelTokenLimits(model, {
+                const tokenLimits = resolvePublishedModelTokenLimits(model, {
                     configuredMaxInputTokens: this.app.configuration.lm_max_input_tokens,
                     configuredMaxOutputTokens: this.app.configuration.lm_max_output_tokens,
                     runtimeContextSize: runtimeContextSizes.get(model.id),

@@ -10,6 +10,7 @@ import {
     extractRuntimeContextSize,
     isLikelyLlamaCppProvider,
     resolveBoundedMaxOutputTokens,
+    resolvePublishedModelTokenLimits,
     resolveRequestMaxOutputTokens,
     resolveModelTokenLimits,
 } from '../../language-model-token-limits';
@@ -50,6 +51,37 @@ suite('Language Model Token Limits Test Suite', () => {
         assert.strictEqual(runtimeContextSize, 262144);
         assert.strictEqual(limits.maxInputTokens, 262144);
         assert.strictEqual(limits.maxOutputTokens, 262144);
+    });
+
+    test('publishes shared-context llama.cpp limits as a prompt and output partition', () => {
+        const limits = resolvePublishedModelTokenLimits(
+            {
+                id: 'gemma-3',
+                owned_by: 'llamacpp',
+            },
+            {
+                runtimeContextSize: 65536,
+            }
+        );
+
+        assert.strictEqual(limits.maxInputTokens, 49152);
+        assert.strictEqual(limits.maxOutputTokens, 16384);
+    });
+
+    test('publishes configured llama.cpp output overrides within the same total context window', () => {
+        const limits = resolvePublishedModelTokenLimits(
+            {
+                id: 'gemma-3',
+                owned_by: 'llamacpp',
+            },
+            {
+                runtimeContextSize: 65536,
+                configuredMaxOutputTokens: 8192,
+            }
+        );
+
+        assert.strictEqual(limits.maxInputTokens, 57344);
+        assert.strictEqual(limits.maxOutputTokens, 8192);
     });
 
     test('honors explicit overrides and detects model output limits', () => {

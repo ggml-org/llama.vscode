@@ -79,6 +79,11 @@ export interface ResolvedModelTokenLimits {
     maxOutputTokens: number;
 }
 
+export interface PublishedModelTokenLimits {
+	maxInputTokens: number;
+	maxOutputTokens: number;
+}
+
 interface ResolveRequestMaxOutputTokensOptions {
     maxInputTokens?: number;
     maxOutputTokens?: number;
@@ -118,6 +123,28 @@ export function resolveModelTokenLimits(
             ?? llamaCppOutputFallback
             ?? options.defaultMaxOutputTokens
             ?? DEFAULT_MAX_OUTPUT_TOKENS,
+    };
+}
+
+export function resolvePublishedModelTokenLimits(
+    model: OpenAICompatibleModel,
+    options: ResolveModelTokenLimitsOptions = {}
+): PublishedModelTokenLimits {
+    const resolvedLimits = resolveModelTokenLimits(model, options);
+
+    if (!usesInputLimitAsOutputFallback(model)) {
+        return resolvedLimits;
+    }
+
+    const publishedMaxOutputTokens = resolveBoundedMaxOutputTokens({
+        maxInputTokens: resolvedLimits.maxInputTokens,
+        maxOutputTokens: resolvedLimits.maxOutputTokens,
+        defaultMaxOutputTokens: options.defaultMaxOutputTokens,
+    });
+
+    return {
+        maxInputTokens: Math.max(1, resolvedLimits.maxInputTokens - publishedMaxOutputTokens),
+        maxOutputTokens: publishedMaxOutputTokens,
     };
 }
 

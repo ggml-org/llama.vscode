@@ -131,6 +131,59 @@ suite('LlamaChatModelProvider Test Suite', () => {
 		assert.strictEqual(postCalled, false);
 	});
 
+		test('publishes llama.cpp runtime context as a shared prompt and output budget', async () => {
+			(axios as typeof axios & { get: typeof axios.get }).get = (async (url: string) => {
+				if (url.endsWith('/v1/models')) {
+					return {
+						data: {
+							data: [
+								{
+									id: 'mock-model',
+									owned_by: 'llamacpp',
+									meta: {
+										n_ctx_train: 131072,
+									},
+								},
+							],
+						},
+					};
+				}
+
+				if (url.includes('/props')) {
+					return {
+						data: {
+							default_generation_settings: {
+								n_ctx: 65536,
+							},
+						},
+					};
+				}
+
+				throw new Error(`Unexpected GET ${url}`);
+			}) as typeof axios.get;
+
+			const provider = new LlamaChatModelProvider(new MockApplication() as unknown as Application);
+			const models = await provider.provideLanguageModelChatInformation(
+				{} as vscode.PrepareLanguageModelChatModelOptions,
+				new vscode.CancellationTokenSource().token,
+			);
+
+			assert.deepStrictEqual(models, [
+				{
+					id: 'mock-model',
+					name: 'mock-model',
+					family: 'llama-vscode',
+					version: '1',
+					maxInputTokens: 49152,
+					maxOutputTokens: 16384,
+					capabilities: {
+						toolCalling: true,
+						imageInput: false,
+					},
+				},
+			]);
+		});
+
 	test('flushes the final SSE chunk when the stream ends without a trailing newline', async () => {
 		(axios as typeof axios & { get: typeof axios.get }).get = (async (url: string) => {
 			if (url.endsWith('/v1/models')) {
