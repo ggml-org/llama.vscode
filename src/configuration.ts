@@ -103,6 +103,8 @@ export class Configuration {
     chats_max_tokens = 64000;
     chats_summarize_old_msgs = false;
     chats_msgs_keep = 50
+    lm_max_input_tokens = 0;
+    lm_max_output_tokens = 0;
     max_parallel_completions = 3
     completion_models_list = new Array();
     embeddings_models_list = new Array();
@@ -256,6 +258,8 @@ export class Configuration {
         this.max_parallel_completions = Number(config.get<number>("max_parallel_completions"));
         this.chats_summarize_old_msgs = Boolean(config.get<boolean>("chats_summarize_old_msgs"));
         this.chats_msgs_keep = Number(config.get<number>("chats_msgs_keep"));
+        this.lm_max_input_tokens = Number(config.get<number>("lm_max_input_tokens"));
+        this.lm_max_output_tokens = Number(config.get<number>("lm_max_output_tokens"));
         this.skills_folder = String(config.get<string>("skills_folder"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];

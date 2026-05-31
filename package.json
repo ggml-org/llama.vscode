@@ -2179,6 +2179,16 @@
           "default": 64000,
           "description": "Max number of tokens per chat (1 token ~4 chars). If the chat is longer, the initial part will be summarized. This is approximate - the detection is by counting the chars in a chat (assuming 1 token is 4 chars)."
         },
+        "llama-vscode.lm_max_input_tokens": {
+          "type": "number",
+          "default": 0,
+          "description": "Max input tokens advertised to VS Code for models provided through the Copilot model list. Set to 0 to auto-detect from provider metadata or llama.cpp runtime properties when available. Set a positive value to force an override."
+        },
+        "llama-vscode.lm_max_output_tokens": {
+          "type": "number",
+          "default": 0,
+          "description": "Max output tokens advertised to VS Code for models provided through the Copilot model list. Set to 0 to auto-detect from provider metadata when available and otherwise use the extension default. Set a positive value to force an override. The advertised output limit is also used as the max_tokens request cap for chat completions from the VS Code LM provider."
+        },
         "llama-vscode.chats_summarize_old_msgs": {
           "type": "boolean",
           "default": false,

@@ -225,6 +225,12 @@ export class Application {
                 this.selectedToolsModel = model??Application.emptyModel;
                 break;
         }
+        if (type === ModelType.Tools) {
+            // VS Code caches LM capabilities for the selected provider/model entry.
+            // Refresh them immediately when the tools model changes so the live picker
+            // does not keep showing stale fallback limits such as the old 12K budget.
+            this.llamaChatModelProvider.notifyModelsChanged();
+        }
         this.llamaWebviewProvider.updateLlamaView();
     }
 
