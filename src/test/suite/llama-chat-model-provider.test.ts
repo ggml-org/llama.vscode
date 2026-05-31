@@ -263,4 +263,76 @@ suite('LlamaChatModelProvider Test Suite', () => {
 			}
 		);
 	});
+
+	test('rejects reasoning-only streamed responses that exhaust the output budget', async () => {
+		(axios as typeof axios & { get: typeof axios.get }).get = (async (url: string) => {
+			if (url.endsWith('/v1/models')) {
+				return {
+					data: {
+						data: [
+							{
+								id: 'mock-model',
+								owned_by: 'llamacpp',
+							},
+						],
+					},
+				};
+			}
+
+			if (url.includes('/props')) {
+				return {
+					data: {
+						default_generation_settings: {
+							n_ctx: 65536,
+						},
+					},
+				};
+			}
+
+			throw new Error(`Unexpected GET ${url}`);
+		}) as typeof axios.get;
+
+		(axios as typeof axios & { post: typeof axios.post }).post = (async () => ({
+			data: Readable.from([
+				'data: {"choices":[{"delta":{"reasoning_content":"thinking"}}]}\n',
+				'data: {"choices":[{"delta":{},"finish_reason":"length"}]}\n',
+				'data: [DONE]\n'
+			]),
+		})) as typeof axios.post;
+
+		const provider = new LlamaChatModelProvider(new MockApplication() as unknown as Application);
+
+		await assert.rejects(
+			() => provider.provideLanguageModelChatResponse(
+				{
+					id: 'mock-model',
+					name: 'mock-model',
+					family: 'llama-vscode',
+					version: '1',
+					maxInputTokens: 65536,
+					maxOutputTokens: 4096,
+					capabilities: {
+						toolCalling: true,
+						imageInput: false,
+					},
+				},
+				[
+					{
+						role: vscode.LanguageModelChatMessageRole.User,
+						content: [new vscode.LanguageModelTextPart('say hello')],
+					},
+				] as unknown as readonly vscode.LanguageModelChatRequestMessage[],
+				{} as vscode.ProvideLanguageModelChatResponseOptions,
+				{ report: () => undefined },
+				new vscode.CancellationTokenSource().token,
+			),
+			(error: unknown) => {
+				assert.ok(error instanceof Error);
+				assert.strictEqual(error.name, 'LanguageModelProviderError');
+				assert.match(error.message, /entire output budget on internal reasoning/i);
+				assert.strictEqual(error.stack, undefined);
+				return true;
+			}
+		);
+	});
 });

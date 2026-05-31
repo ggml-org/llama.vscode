@@ -263,6 +263,8 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             let reportedResponsePart = false;
             let payloadCount = 0;
             let contentChunkCount = 0;
+            let reasoningChunkCount = 0;
+            let reasoningCharCount = 0;
             let toolCallDeltaCount = 0;
             let doneReceived = false;
             let lastFinishReason: string | undefined;
@@ -299,6 +301,22 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                 readable.removeAllListeners();
             };
 
+            const collectReasoningDelta = (delta: Record<string, unknown>) => {
+                const reasoningContent =
+                    typeof delta.reasoning_content === 'string'
+                        ? delta.reasoning_content
+                        : typeof delta.reasoningContent === 'string'
+                            ? delta.reasoningContent
+                            : undefined;
+
+                if (!reasoningContent) {
+                    return;
+                }
+
+                reasoningChunkCount += 1;
+                reasoningCharCount += reasoningContent.length;
+            };
+
             const processPayload = (payload: string): boolean => {
                 if (payload === '[DONE]') {
                     doneReceived = true;
@@ -329,7 +347,8 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                         lastFinishReason = choice.finish_reason;
                     }
 
-                    const delta = choice.delta ?? {};
+                    const delta = (choice.delta ?? {}) as Record<string, unknown>;
+                    collectReasoningDelta(delta);
                     if (typeof delta.content === 'string') {
                         reportTextPart(delta.content);
                     }
@@ -410,6 +429,8 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                             `model=${model.id}`,
                             `payloads=${payloadCount}`,
                             `content_chunks=${contentChunkCount}`,
+                            `reasoning_chunks=${reasoningChunkCount}`,
+                            `reasoning_chars=${reasoningCharCount}`,
                             `tool_call_deltas=${toolCallDeltaCount}`,
                             `final_tool_calls=${toolCalls.filter(tc => tc.id && tc.name).length}`,
                             `done_received=${doneReceived}`,
@@ -417,7 +438,11 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                         ].filter(Boolean).join(' | ')
                     );
 
-                    rejectOnce(this.createEmptyResponseError());
+                    rejectOnce(
+                        reasoningChunkCount > 0 && lastFinishReason === 'length'
+                            ? this.createReasoningOnlyEmptyResponseError()
+                            : this.createEmptyResponseError()
+                    );
                     return;
                 }
 
@@ -1001,6 +1026,15 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
     private createEmptyResponseError(): Error & { cause?: unknown } {
         const error = new Error(
             'The model returned an empty response. Try again, compact the conversation again, or start a new chat.'
+        ) as Error & { cause?: unknown };
+        error.name = 'LanguageModelProviderError';
+        error.stack = undefined;
+        return error;
+    }
+
+    private createReasoningOnlyEmptyResponseError(): Error & { cause?: unknown } {
+        const error = new Error(
+            'The model used the entire output budget on internal reasoning and returned no visible answer. Try again, compact the conversation again, start a new chat, or disable reasoning for this model.'
         ) as Error & { cause?: unknown };
         error.name = 'LanguageModelProviderError';
         error.stack = undefined;
