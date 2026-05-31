@@ -8,6 +8,8 @@ import { LlamaChatModelProvider } from '../../llama-chat-model-provider';
 import { Application } from '../../application';
 
 class MockApplication {
+	eventLogs: string[] = [];
+
 	configuration = {
 		ai_api_version: 'v1',
 		lm_max_input_tokens: 0,
@@ -23,7 +25,9 @@ class MockApplication {
 	};
 
 	logger = {
-		addEventLog: () => undefined,
+		addEventLog: (group: string, event: string, details: string) => {
+			this.eventLogs.push([group, event, details].join(' | '));
+		},
 	};
 
 	llamaServer = {
@@ -192,6 +196,78 @@ suite('LlamaChatModelProvider Test Suite', () => {
 			reportedParts.map(part => part instanceof vscode.LanguageModelTextPart ? part.value : part.constructor.name),
 			['final answer']
 		);
+	});
+
+	test('logs per-turn usage from a usage-only final SSE chunk', async () => {
+		(axios as typeof axios & { get: typeof axios.get }).get = (async (url: string) => {
+			if (url.endsWith('/v1/models')) {
+				return {
+					data: {
+						data: [
+							{
+								id: 'mock-model',
+								owned_by: 'llamacpp',
+							},
+						],
+					},
+				};
+			}
+
+			if (url.includes('/props')) {
+				return {
+					data: {
+						default_generation_settings: {
+							n_ctx: 65536,
+						},
+					},
+				};
+			}
+
+			throw new Error(`Unexpected GET ${url}`);
+		}) as typeof axios.get;
+
+		(axios as typeof axios & { post: typeof axios.post }).post = (async () => ({
+			data: Readable.from([
+				'data: {"choices":[{"delta":{"content":"final answer"}}]}\n',
+				'data: {"choices":[],"usage":{"prompt_tokens":100,"completion_tokens":50,"total_tokens":150,"completion_tokens_details":{"reasoning_tokens":20},"prompt_tokens_details":{"cached_tokens":7}}}\n',
+				'data: [DONE]\n'
+			]),
+		})) as typeof axios.post;
+
+		const app = new MockApplication();
+		const provider = new LlamaChatModelProvider(app as unknown as Application);
+
+		await provider.provideLanguageModelChatResponse(
+			{
+				id: 'mock-model',
+				name: 'mock-model',
+				family: 'llama-vscode',
+				version: '1',
+				maxInputTokens: 65536,
+				maxOutputTokens: 4096,
+				capabilities: {
+					toolCalling: true,
+					imageInput: false,
+				},
+			},
+			[
+				{
+					role: vscode.LanguageModelChatMessageRole.User,
+					content: [new vscode.LanguageModelTextPart('say hello')],
+				},
+			] as unknown as readonly vscode.LanguageModelChatRequestMessage[],
+			{} as vscode.ProvideLanguageModelChatResponseOptions,
+			{ report: () => undefined },
+			new vscode.CancellationTokenSource().token,
+		);
+
+		const usageLog = app.eventLogs.find(entry => entry.includes('CHAT_COMPLETIONS_POST_RESPONSE'));
+		assert.ok(usageLog);
+		assert.match(usageLog!, /prompt_tokens=100/);
+		assert.match(usageLog!, /completion_tokens=50/);
+		assert.match(usageLog!, /total_tokens=150/);
+		assert.match(usageLog!, /reasoning_tokens=20/);
+		assert.match(usageLog!, /cached_prompt_tokens=7/);
 	});
 
 	test('rejects an empty streamed response explicitly', async () => {

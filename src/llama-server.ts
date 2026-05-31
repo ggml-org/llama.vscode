@@ -459,6 +459,30 @@ export class LlamaServer {
         this.app.logger.addEventLog('API', `${label}_${method}_RESPONSE`, [url, this.formatTraceDetails(trace), details].filter(Boolean).join(' | '));
     }
 
+    private formatUsageLogDetails(usage: Record<string, unknown> | undefined, tokensCached?: number): string[] {
+        const completionTokenDetails = this.getUsageRecordField(usage, 'completion_tokens_details');
+        const promptTokenDetails = this.getUsageRecordField(usage, 'prompt_tokens_details');
+        const cachedPromptTokens = this.getUsageNumberField(promptTokenDetails, 'cached_tokens');
+
+        return [
+            `prompt_tokens=${this.getUsageNumberField(usage, 'prompt_tokens') ?? 'unknown'}`,
+            `completion_tokens=${this.getUsageNumberField(usage, 'completion_tokens') ?? 'unknown'}`,
+            `total_tokens=${this.getUsageNumberField(usage, 'total_tokens') ?? 'unknown'}`,
+            `reasoning_tokens=${this.getUsageNumberField(completionTokenDetails, 'reasoning_tokens') ?? 'unknown'}`,
+            `cached_prompt_tokens=${cachedPromptTokens ?? tokensCached ?? 'unknown'}`,
+        ];
+    }
+
+    private getUsageRecordField(record: Record<string, unknown> | undefined, field: string): Record<string, unknown> | undefined {
+        const value = record?.[field];
+        return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+    }
+
+    private getUsageNumberField(record: Record<string, unknown> | undefined, field: string): number | undefined {
+        const value = record?.[field];
+        return typeof value === 'number' ? value : undefined;
+    }
+
     private logApiError(label: string, method: string, url: string, error: unknown, details = "", trace?: RequestTraceContext) {
         const apiError = this.extractApiError(error);
         this.app.logger.addEventLog(
@@ -936,7 +960,13 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                         'TOOLS_STREAM',
                         'POST',
                         uri,
-                        `finish_reason=${finishReason ?? 'unknown'} | truncated=${responseData.truncated === true} | content_length=${fullContent.length} | tool_calls=${toolCalls.length}`,
+                        [
+                            `finish_reason=${finishReason ?? 'unknown'}`,
+                            `truncated=${responseData.truncated === true}`,
+                            `content_length=${fullContent.length}`,
+                            `tool_calls=${toolCalls.length}`,
+                            ...this.formatUsageLogDetails(responseData.usage as Record<string, unknown> | undefined, responseData.tokens_cached),
+                        ].join(' | '),
                         trace
                     );
                     resolve({

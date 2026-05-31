@@ -274,6 +274,7 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
             let toolCallDeltaCount = 0;
             let doneReceived = false;
             let lastFinishReason: string | undefined;
+            let responseUsage: Record<string, unknown> | undefined;
 
             const resolveOnce = () => {
                 if (settled) {
@@ -334,6 +335,9 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                 try {
                     payloadCount += 1;
                     const json = JSON.parse(payload);
+                    if (json?.usage && typeof json.usage === 'object') {
+                        responseUsage = json.usage as Record<string, unknown>;
+                    }
                     if (json?.error) {
                         rejectStreamError(this.normalizeProviderApiError(json.error), json.error);
                         return true;
@@ -422,6 +426,22 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
                         }
                     }
                 }
+
+                this.app.logger.addEventLog(
+                    'API',
+                    'CHAT_COMPLETIONS_POST_RESPONSE',
+                    [
+                        completionsUrl,
+                        `request_id=${trace.requestId}`,
+                        `caller=${trace.caller}`,
+                        trace.conversationId ? `conversation_id=${trace.conversationId}` : '',
+                        typeof trace.conversationTurn === 'number' ? `conversation_turn=${trace.conversationTurn}` : '',
+                        `model=${model.id}`,
+                        `chosen_max_tokens=${chosenMaxTokens}`,
+                        lastFinishReason ? `finish_reason=${lastFinishReason}` : '',
+                        ...this.formatUsageLogFields(responseUsage),
+                    ].filter(Boolean).join(' | ')
+                );
 
                 if (!reportedResponsePart) {
                     this.app.logger.addEventLog(
@@ -906,6 +926,29 @@ export class LlamaChatModelProvider implements vscode.LanguageModelChatProvider 
 
     private getPositiveTokenLimit(value: number, fallback: number): number {
         return Number.isFinite(value) && value > 0 ? value : fallback;
+    }
+
+    private formatUsageLogFields(usage: Record<string, unknown> | undefined): string[] {
+        const completionTokenDetails = this.getRecordField(usage, 'completion_tokens_details');
+        const promptTokenDetails = this.getRecordField(usage, 'prompt_tokens_details');
+
+        return [
+            `prompt_tokens=${this.getNumberField(usage, 'prompt_tokens') ?? 'unknown'}`,
+            `completion_tokens=${this.getNumberField(usage, 'completion_tokens') ?? 'unknown'}`,
+            `total_tokens=${this.getNumberField(usage, 'total_tokens') ?? 'unknown'}`,
+            `reasoning_tokens=${this.getNumberField(completionTokenDetails, 'reasoning_tokens') ?? 'unknown'}`,
+            `cached_prompt_tokens=${this.getNumberField(promptTokenDetails, 'cached_tokens') ?? 'unknown'}`,
+        ];
+    }
+
+    private getRecordField(record: Record<string, unknown> | undefined, field: string): Record<string, unknown> | undefined {
+        const value = record?.[field];
+        return value && typeof value === 'object' ? value as Record<string, unknown> : undefined;
+    }
+
+    private getNumberField(record: Record<string, unknown> | undefined, field: string): number | undefined {
+        const value = record?.[field];
+        return typeof value === 'number' ? value : undefined;
     }
 
     private async getExactPromptTokens(
