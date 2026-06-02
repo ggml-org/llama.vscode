@@ -69,6 +69,69 @@ export class ChatService {
         }
     }
 
+    deleteCurrentChat = async () => {
+        console.log('deleteCurrentChat called');
+        try {
+            const currentChat = this.app.getChat();
+            console.log('Got current chat, has ID:', !!currentChat?.id, 'name:', currentChat?.name);
+            
+            if (!currentChat || !currentChat.id) {
+                console.log('No current chat to delete - showing info message');
+                vscode.window.showInformationMessage("No chat to delete.");
+                return;
+            }
+            
+            console.log('Asking user for confirmation');
+            const shouldDelete = await Utils.confirmAction(
+                "Are you sure you want to delete the current chat?",
+                "name: " + currentChat.name + "\ndescription: " + currentChat.description
+            );
+            console.log('User confirmed deletion:', shouldDelete);
+            
+            if (shouldDelete) {
+                console.log('Getting chats list from persistence');
+                let chatsList = this.app.persistence.getChats();
+                console.log('Chats list length before:', chatsList?.length);
+                
+                if (!chatsList || chatsList.length === 0) {
+                    console.log('Chat list is empty');
+                    return;
+                }
+                
+                const index = chatsList.findIndex((ch: Chat) => ch.id === currentChat.id);
+                console.log('Chat index to delete:', index);
+                
+                if (index !== -1) {
+                    console.log('Splicing chat at index:', index);
+                    chatsList.splice(index, 1);
+                    console.log('Chats list length after splice:', chatsList.length);
+                    
+                    console.log('Saving chats to persistence');
+                    await this.app.persistence.setChats(chatsList);
+                    console.log('Persistence updated');
+                    
+                    console.log('Updating current chat selection');
+                    await this.selectUpdateChat({ name: "", id: "" });
+                    console.log('Chat selection updated');
+                    
+                    console.log('Showing success message');
+                    vscode.window.showInformationMessage("The chat '" + currentChat.name + "' is deleted.");
+                    console.log('Delete completed successfully');
+                } else {
+                    console.log('Chat not found in list at index:', index);
+                }
+            } else {
+                console.log('User cancelled deletion');
+            }
+        } catch (error) {
+            console.error('Error in deleteCurrentChat:', error instanceof Error ? error.message : String(error));
+            if (error instanceof Error) {
+                console.error('Error stack:', error.stack);
+            }
+            vscode.window.showErrorMessage('Error: ' + (error instanceof Error ? error.message : String(error)));
+        }
+    }
+
     public getChatActions(): vscode.QuickPickItem[] {
         return [
             {

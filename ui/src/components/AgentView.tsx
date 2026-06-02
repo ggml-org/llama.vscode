@@ -211,6 +211,12 @@ const AgentView: React.FC<AgentViewProps> = ({
     });
   };
 
+  const handleDeleteCurrentChat = () => {
+    vscode.postMessage({
+      command: 'deleteCurrentChat'
+    });
+  };
+
   const handleFileSelect = (fileLongName: string) => {
     // Send the selected file to the extension
     setShowFileSelector(false);
@@ -356,11 +362,29 @@ const AgentView: React.FC<AgentViewProps> = ({
                 New Chat
               </button>
               <button
+                onClick={() => {
+                  vscode.postMessage({
+                    command: 'deleteCurrentChat'
+                  });
+                }}
+                className="header-btn secondary"
+                title="Delete Current Chat"
+              >
+                🗑️
+              </button>
+              <button
                 onClick={handleChatsHistory}
                 className="header-btn secondary"
                 title="View Chats History And Load Old Chats"
               >
                 Chats History
+              </button>
+              <button
+                onClick={handleDeleteCurrentChat}
+                className="header-btn secondary"
+                title="Delete This Chat"
+              >
+                🗑️
               </button>
 
               <button
