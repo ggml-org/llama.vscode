@@ -268,7 +268,7 @@ export class Tools {
 
         try {
             if (!this.app.configuration.tool_permit_file_changes){  
-                let [yesApply, yesDontAsk] = await Utils.showYesYesdontaskNoDialog("Do you permit file " + filePath + " to be changed?")
+                let [yesApply, yesDontAsk] = await Utils.confirmFilePermissionAction("Do you permit file to be changed?", filePath)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
                     vscode.window.showInformationMessage("Setting tool_permit_file_changes is set to true.")
