@@ -39,7 +39,8 @@ body {
   flex-direction: column;
   background-color: var(--vscode-editor-background);
   color: var(--vscode-editor-foreground);
-  overflow: hidden; /* Prevent any overflow issues */
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 /* Modern Header */
