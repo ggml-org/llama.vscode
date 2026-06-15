@@ -42,6 +42,10 @@ Note: also available at [Open VSX](https://open-vsx.org/extension/ggml-org/llama
 
 ### `llama.cpp` setup
 
+**Prerequisites:**
+- For macOS: [Homebrew](https://brew.sh) must be installed
+- For Windows: Windows Package Manager (winget) is required
+
 Show llama-vscode menu by clicking on llama-vscode in the status bar or Ctrl+Shift+M and select "Install/Upgrade llama.cpp". This will install llama.cpp automatically for Mac and Windows. For Linux get the [latest binaries](https://github.com/ggerganov/llama.cpp/releases) and add the bin folder to the path.
 
 Once you have llama.cpp installed, you can select env for your needs from llama-vscode menu "Select/start env..."

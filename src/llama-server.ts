@@ -5,6 +5,7 @@ import { LlmModel, LlamaChatResponse, LlamaResponse, ChatMessage } from "./types
 import { Utils } from "./utils";
 import * as cp from 'child_process';
 import * as util from 'util';
+import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ModelType, SUPPORTED_IMG_FILE_EXTS } from "./constants";
@@ -1252,8 +1253,23 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         this.vsCodeCommandTerminal.sendText(`echo "Executing: ${command}"`);
         try {
             // Execute command programmatically for reliable output
-            const { stdout, stderr } = await exec(command);
-            // Show output in   terminal
+            // Use the user's login shell so PATH and shell startup files are sourced.
+            const platform = os.platform();
+            let execCommand = command;
+            if (platform === 'linux' || platform === 'darwin') {
+                const userShell = process.env.SHELL || '/bin/bash';
+                const shellName = path.basename(userShell);
+                const escapedCommand = command.replace(/'/g, "'\\''");
+                if (shellName === 'bash' || shellName === 'zsh' || shellName === 'ksh' || shellName === 'sh') {
+                    execCommand = `${userShell} -ilc '${escapedCommand}'`;
+                } else if (shellName === 'fish') {
+                    execCommand = `${userShell} -l -c '${escapedCommand}'`;
+                } else {
+                    execCommand = `${userShell} -c '${escapedCommand}'`;
+                }
+            }
+            const { stdout, stderr } = await exec(execCommand, { shell: '/bin/bash' });
+            // Show output in terminal
             this.vsCodeCommandTerminal.sendText(`echo "Command completed successfully"`);
             this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
 
