@@ -362,19 +362,30 @@ export class Menu {
     }
 
     public async installLlamacpp() {
-        if (process.platform != 'darwin' && process.platform != 'win32') {
-            vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
+        if (process.platform != 'darwin' && process.platform != 'win32' && process.platform != 'linux') {
+            vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows and Linux (with brew package manager) for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
         } else {
             await this.app.llamaServer.killCommandCmd();
             const windowsArch = os.machine().toLowerCase();
             const wingetArch = windowsArch === "arm64" ? "arm64" : windowsArch === "x64" || windowsArch === "amd64" ? "x64" : "";
-            let terminalCommand = process.platform === 'darwin'
-                ? "brew install llama.cpp"
-                : process.platform === 'win32'
-                    ? `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`
-                    : "";
-            // await this.app.llamaServer.shellCommandCmd(terminalCommand);
-            await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand)
+            let terminalCommand = '';
+            if (process.platform === 'darwin' || process.platform === 'linux') {
+                try {
+                    const { stdout } = await this.app.llamaServer.executeCommandWithTerminalFeedback('command -v brew');
+                    if (!stdout || !stdout.trim()) {
+                        throw new Error('brew not found');
+                    }
+                    terminalCommand = "brew install llama.cpp";
+                } catch (error) {
+                    vscode.window.showErrorMessage("Homebrew is not installed. Please install Homebrew from https://brew.sh before proceeding.");
+                    return;
+                }
+            } else if (process.platform === 'win32') {
+                terminalCommand = `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`;
+            }
+            if (terminalCommand) {
+                await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand);
+            }
         }
     }   
 
