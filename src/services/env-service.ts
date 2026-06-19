@@ -132,7 +132,7 @@ export class EnvService {
                 envStartLastUsed: env.envStartLastUsed ?? currentEnvStartLastUsed,
                 complEnabled: env.complEnabled ?? currentComplEnabled,
             };
-            shouldSelect = await Utils.confirmEnvAction(
+            shouldSelect = await this.app.dialogs.confirmAction(
                 "You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started.\n\n Do you want to continue?",
                 this.getEnvDetailsAsString(tempEnv)
             );
@@ -254,7 +254,7 @@ export class EnvService {
 
     private async persistEnv(newEnv: Env, envsList: Env[], settingName: string): Promise<void> {
         let envDetails = this.getEnvDetailsAsString(newEnv);
-        const shouldAddEnv = await Utils.confirmAction("A new env will be added. Do you want to add the env?", envDetails);
+        const shouldAddEnv = await this.app.dialogs.confirmAction("A new env will be added. Do you want to add the env?", envDetails);
 
         if (shouldAddEnv) {
             envsList.push(newEnv);
@@ -268,7 +268,7 @@ export class EnvService {
         const envItem = await vscode.window.showQuickPick(envsItems);
         if (envItem) {
             let envIndex = parseInt(envItem.label.split(". ")[0], 10) - 1;
-            const shouldDeleteEnv = await Utils.confirmAction("Are you sure you want to delete the following env?",
+            const shouldDeleteEnv = await this.app.dialogs.confirmAction("Are you sure you want to delete the following env?",
                 this.getEnvDetailsAsString(envsList[envIndex])
             );
             if (shouldDeleteEnv) {
@@ -288,7 +288,7 @@ export class EnvService {
             let envIndex = parseInt(envItem.label.split(". ")[0], 10) - 1;
             let selectedEnv = allEnvs[envIndex];
             let envDetails = this.getEnvDetailsAsString(selectedEnv);
-            await Utils.showOkDialog(envDetails);
+            await this.app.dialogs.showOkDialog(envDetails);
         }
     }
 
@@ -315,7 +315,7 @@ export class EnvService {
         if (envItem) {
             let envIndex = parseInt(envItem.label.split(". ")[0], 10) - 1;
             let selectedEnv = allEnvs[envIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following env? \n\n" +
+            let shouldExport = await this.app.dialogs.showYesNoDialog("Do you want to export the following env? \n\n" +
                 this.getEnvDetailsAsString(selectedEnv)
             );
 
@@ -458,7 +458,7 @@ export class EnvService {
     }
 
     public showCurrentEnv() {
-        Utils.showOkDialog(this.getSelectionsAsString());
+        this.app.dialogs.showOkDialog(this.getSelectionsAsString());
     }
 
     private getSelectionsAsString() {

@@ -87,7 +87,7 @@ export class AgentCommandService {
         const model = await vscode.window.showQuickPick(modelsItems);
         if (model) {
             let modelIndex = parseInt(model.label.split(". ")[0], 10) - 1;
-            const shoulDeleteModel = await Utils.confirmAction("Are you sure you want to delete the agent command below?", 
+            const shoulDeleteModel = await this.app.dialogs.confirmAction("Are you sure you want to delete the agent command below?", 
                 this.getAgentCommandDetailsAsString(agentCommands[modelIndex])
             );
             if (shoulDeleteModel) {
@@ -111,14 +111,14 @@ export class AgentCommandService {
     }
 
     public async showAgentCommandDetails(selectedAgentCommand: any) {
-        await Utils.showOkDialog(
+        await this.app.dialogs.showOkDialog(
             this.getAgentCommandDetailsAsString(selectedAgentCommand)
         );
     }
 
     private async persistAgentCommandToSetting(newAgentCommand: AgentCommand, agentCommands: any[], settingName: string) {
         let modelDetails = this.getAgentCommandDetailsAsString(newAgentCommand);
-        const shouldAddModel = await Utils.confirmAction("A new agent command will be added. Do you want to add the agent command?", modelDetails);
+        const shouldAddModel = await this.app.dialogs.confirmAction("A new agent command will be added. Do you want to add the agent command?", modelDetails);
 
         if (shouldAddModel) {
             agentCommands.push(newAgentCommand);
@@ -135,7 +135,7 @@ export class AgentCommandService {
         if (agentCommand) {
             let modelIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
             let selectedAgentCommand =  allAgentCommands[modelIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent command? \n\n" +
+            let shouldExport = await this.app.dialogs.showYesNoDialog("Do you want to export the following agent command? \n\n" +
             this.getAgentCommandDetailsAsString(selectedAgentCommand)
             );
 

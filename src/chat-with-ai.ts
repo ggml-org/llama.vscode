@@ -62,7 +62,7 @@ export class ChatWithAi {
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            await Utils.suggestModelSelection(
+            await this.app.dialogs.suggestModelSelection(
                 "Select a chat or tools model run by llama-server or an env with chat or tools model run on llama-server to chat with AI.",
                 "After the chat/tools model is loaded, try again opening Chat with AI.",
                 "No endpoint for the chat or tools model. Select a chat or tools model run on llama-server or an env with chat or tools model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat. ",

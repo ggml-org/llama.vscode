@@ -58,9 +58,6 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'showChatsHistory':
                         this.app.chatService.selectChatFromList();
                         break;
-                    case 'deleteCurrentChat':
-                        await this.deleteCurrentChat(webviewView);
-                        break;
                     case 'configureTools':
                         await this.app.tools.selectTools()
                         break;
@@ -149,7 +146,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         break;
                     case 'selectAgent':
                         let agentsList = this.app.configuration.agents_list
-                        let shouldContinue = await Utils.showYesNoDialog("This will remove the current conversation. Do you want to continue?")
+                        let shouldContinue = await this.app.dialogs.showYesNoDialog("This will remove the current conversation. Do you want to continue?")
                         if (shouldContinue) {
                             await this.app.agentService.pickAndSelectAgent(agentsList)
                             await this.clearChatText(webviewView);
@@ -340,12 +337,10 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                         this.updateSettingInEnvView(message.key, settingValue);
                         break;
                     case 'deleteCurrentChat':
-                        console.log('Delete current chat triggered');
                         try {
                             await this.app.chatService.deleteCurrentChat();
                             console.log('Chat deleted successfully');
                             await this.clearChatText(webviewView);
-                            console.log('Chat view cleared');
                         } catch (error) {
                             console.error('Error deleting chat:', error);
                             vscode.window.showErrorMessage('Error deleting chat: ' + (error instanceof Error ? error.message : String(error)));
@@ -387,42 +382,6 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             command: 'updateContextImage',
             image: ""
         });
-    }
-
-    private async deleteCurrentChat(webviewView: vscode.WebviewView) {
-        const currentChat = this.app.getChat();
-        if (!currentChat || !currentChat.id) {
-            vscode.window.showInformationMessage("No chat to delete. Start a new conversation first.");
-            return;
-        }
-        
-        let chatsList = this.app.persistence.getChats();
-        if (!chatsList || chatsList.length === 0) {
-            vscode.window.showInformationMessage("No saved chats to delete.");
-            return;
-        }
-
-        // Show confirmation dialog with action buttons
-        const confirmed = await vscode.window.showWarningMessage(
-            `Delete chat "${currentChat.name || 'Untitled'}"?`,
-            { modal: true },
-            "Delete"
-        );
-
-        if (confirmed === "Delete") {
-            // Find and remove the current chat from the list
-            const chatIndex = chatsList.findIndex((chat: any) => chat.id === currentChat.id);
-            if (chatIndex !== -1) {
-                chatsList.splice(chatIndex, 1);
-                await this.app.persistence.setChats(chatsList);
-                
-                // Clear the UI after deletion
-                await this.clearChatText(webviewView);
-                vscode.window.showInformationMessage(`Chat "${currentChat.name || 'Untitled'}" has been deleted.`);
-            } else {
-                vscode.window.showWarningMessage("Could not find the chat to delete.");
-            }
-        }
     }
 
     public addEditAgent(agent: Agent) {

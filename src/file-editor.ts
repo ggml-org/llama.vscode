@@ -21,7 +21,7 @@ export class FileEditor {
             chatUrl = chatEndpoint ? chatEndpoint + '/' : '';
         }
         if (!chatUrl) {
-            await Utils.suggestModelSelection(
+            await this.app.dialogs.suggestModelSelection(
                 'Select a chat or tools model or an env with chat or tools model to edit files with AI.',
                 'After the chat model is loaded, try again editing files with AI.',
                 'No endpoint for the chat model. Select an env with chat model or enter the endpoint of a running llama.cpp server with chat model in setting endpoint_chat.',
@@ -43,7 +43,7 @@ export class FileEditor {
             ignoreFocusOut: true
         });
         if (!glob) return;
-        let shouldContinue = Utils.showYesNoDialog(
+        let shouldContinue = this.app.dialogs.showYesNoDialog(
             "You requested an edit of multiple files with AI. " + 
             "\n\nGlob pattern (what files to edit): " + glob +
             "\nPrompt: " + prompt +

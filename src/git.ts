@@ -20,7 +20,7 @@ export class Git {
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
         if (!chatUrl) {
-            await Utils.suggestModelSelection(
+            await this.app.dialogs.suggestModelSelection(
                 "Select a chat or tools model or an env with chat or tools model to generate a commit message.",
                 "After the chat/tools model is loaded, try again generating commit message.",
                 "No endpoint for the chat model. Select a chat or tools model or an env with chat or tools model or enter the endpoint of a server with chat model in setting endpoint_chat.",

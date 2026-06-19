@@ -40,7 +40,7 @@ export class Architect {
             let lastEnv = this.app.persistence.getValue("selectedEnv")
             if (lastEnv) {
                 if (this.app.configuration.env_start_last_used_confirm) {
-                    let [shouldSelect, dontAskAgain]  = await Utils.showYesYesdontaskNoDialog("You are about the select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
+                    let [shouldSelect, dontAskAgain]  = await this.app.dialogs.showYesYesdontaskNoDialog("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
                                                                         this.app.envService.getEnvDetailsAsString(lastEnv) +
                                                                         "\n\n Do you want to continue?"
                                                                         );
@@ -511,11 +511,12 @@ export class Architect {
 
     private async installUpgradeLlamaCpp(isFirstStart: any) {
         if (!this.app.configuration.ask_install_llamacpp) return;
-        let result = await Utils.executeTerminalCommand("llama-server --version");
-        if (result.includes("command not found") || result.includes("is not recognized")) {
+        let { stdout, stderr }  = await this.app.llamaServer.executeCommandWithTerminalFeedback("llama-server --version");
+        stderr = stderr.toLowerCase();
+        if (stderr.includes("command not found") || stderr.includes("command failed") || stderr.includes("is not recognized")) {
             let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension.";
             if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted.";
-            let [shouldInstall, shouldStopAsking] = await Utils.showYesNoNodontAskDialog(questionInstall, "Confirm");
+            let [shouldInstall, shouldStopAsking] = await this.app.dialogs.showYesNoNodontAskDialog(questionInstall, "Confirm");
             if (shouldInstall) {
                 await this.app.menu.installLlamacpp();
                 this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
@@ -532,7 +533,7 @@ export class Architect {
             let lastUpgradeDateStr = this.app.persistence.getGlobalValue("last_llama_cpp");
             if (!lastUpgradeDateStr || Utils.isTimeToUpgrade(new Date(lastUpgradeDateStr), new Date(), this.app.configuration.ask_upgrade_llamacpp_hours)) {
                 let questionInstall = "Do you want to upgrade llama.cpp (used for running local models)? (recommended).";
-                let [shouldInstall, shouldStopAsking] = await Utils.showYesNoNodontAskDialog(questionInstall, "Confirm");
+                let [shouldInstall, shouldStopAsking] = await this.app.dialogs.showYesNoNodontAskDialog(questionInstall, "Confirm");
                 if (shouldInstall) {
                     await this.app.menu.installLlamacpp();
                     this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());

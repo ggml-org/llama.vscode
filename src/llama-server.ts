@@ -788,13 +788,13 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
         if (!endpoint) {
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
-            const shouldSelectModel = await Utils.showUserChoiceDialog(selectionMessate, "Select")
+            const shouldSelectModel = await this.app.dialogs.showUserChoiceDialog(selectionMessate, "Select")
             if (shouldSelectModel){
                 this.app.llamaWebviewProvider.showEnvView();
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
                 return;
             } else {
-                const shouldDisable = await Utils.showYesNoDialog("Do you want to disable completions? (You could enable them from llama-vscode menu.)")
+                const shouldDisable = await this.app.dialogs.showYesNoDialog("Do you want to disable completions? (You could enable them from llama-vscode menu.)")
                 if (shouldDisable) {
                     await this.app.menu.setCompletion(false);
                     vscode.window.showInformationMessage("The completions are disabled. You could enable them from llama-vscode menu.")
@@ -1271,12 +1271,33 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             const { stdout, stderr } = await exec(execCommand, { shell: '/bin/bash' });
             // Show output in terminal
             this.vsCodeCommandTerminal.sendText(`echo "Command completed successfully"`);
-            this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
+            // this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
 
-            return { stdout, stderr };
+            // Filter out harmless TTY warnings that occur because cp.exec doesn't allocate a real TTY.
+            const harmlessTtyWarnings = [
+                'cannot set terminal process group',
+                'no job control in this shell',
+            ];
+            const cleanedStderr = stderr
+                .split('\n')
+                .filter((line: string) => !harmlessTtyWarnings.some(warning => line.includes(warning)))
+                .join('\n');
+            if (cleanedStderr) {
+                this.vsCodeCommandTerminal.sendText(`echo "${cleanedStderr.trim()}"`);
+            }
+            return { stdout, stderr: cleanedStderr };
         } catch (error: any) {
             this.vsCodeCommandTerminal.sendText(`echo "Command failed: ${error.message}"`);
-            return { stdout: "", stderr: error.message };
+            // In catch block, error.stderr may also contain these warnings
+            const harmlessTtyWarnings = [
+                'cannot set terminal process group',
+                'no job control in this shell',
+            ];
+            const cleanedStderr = (error.stderr ?? error.message ?? '')
+                .split('\n')
+                .filter((line: string) => !harmlessTtyWarnings.some(warning => line.includes(warning)))
+                .join('\n');
+            return { stdout: error.stdout ?? "", stderr: cleanedStderr };
         } finally {
             // Keep terminal open for a bit, then dispose
             // setTimeout(() => terminal.dispose(), 5000);

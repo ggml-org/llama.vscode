@@ -67,7 +67,7 @@ export class HfModelStrategy implements IAddStrategy {
             isKeyRequired: isKeyRequired
         };
 
-        const shouldAddModel = await Utils.confirmAction("You have entered:",
+        const shouldAddModel = await this.app.dialogs.confirmAction("You have entered:",
             this.getModelDetailsAsString(newHfModel) +
             "\nDo you want to add a model with these properties?"
         );
@@ -88,7 +88,7 @@ export class HfModelStrategy implements IAddStrategy {
             details.modelsList.push(newHfModel);
             this.app.configuration.updateConfigValue(details.modelsListSettingName, details.modelsList);
             vscode.window.showInformationMessage("The model is added: " + newHfModel.name)
-            const shouldSelect = await Utils.confirmAction("Do you want to select/start the newly added model?", "");
+            const shouldSelect = await this.app.dialogs.confirmAction("Do you want to select/start the newly added model?", "");
             if (shouldSelect) {
                 await this.app.modelService.selectStartModel(newHfModel, modelType, details);
             }
@@ -233,7 +233,7 @@ export class HfModelStrategy implements IAddStrategy {
         let shouldOverwrite = false;
         let modelSameName = modelsList.find(model => model.name === uniqueName);
         while (uniqueName && !shouldOverwrite && modelSameName !== undefined) {
-            shouldOverwrite = await Utils.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
+            shouldOverwrite = await this.app.dialogs.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
                 "Existing model:\n" +
                 this.getModelDetailsAsString(modelSameName) +
                 "\n\nNew model:\n" +
