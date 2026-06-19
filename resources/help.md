@@ -120,7 +120,24 @@ You could delete the GGUF files from this folder. If they are missing, but are n
 
 
 
-## Edit Agent 
+## Dialogs
+
+### What are dialogs
+The messages to the users are shown in dialog windows. There are two types of dialogs:
+- Popup dialogs - the messages are shown in a popup window.
+- Dialogs in the editor - the messages are shown in the editor.
+
+The popup dialogs in some OS don't support scrolling, so they are not very good for long messages. The text from the pupup dialogs can't be copied to the clipboard.  
+
+The dialogs in the editor support scrolling, so they are good for long messages. The text from the pupup dialogs can be copied to the clipboard.
+
+### How to use them
+llama-vscode uses popup dialogs for short messages and dialogs in the editor for long messages.  
+The setting popup_max_chars (default 160) determines the maximum number of characters in the popup dialogs. If the message is longer than this number, it will be shown in a dialog in the editor.
+
+
+Settings:
+- popup_max_chars - determines what message to the user should be shown in a popup dialog (less than this number). If the message is longer, it will be shown in a dialog in the editor.## Edit Agent 
 
 ### Overview
 Edit agent view is used for adding and editing agents. From there it is also possible to delete and copy an existing agent as a new one. The identifier of an agent is it's name. For now there is no tools model as part of the agent (the currently selected tools model will be used)
@@ -218,6 +235,54 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.48 is released (01.06.2026)
+## What is new
+
+Thanks to @danielrobbins we have the following improvements:
+
+- Fix chat context budgeting and overflow handling  
+This is the main fix. The extension now behaves as a modern llama.cpp client that trusts and leverages live runtime information that the server makes available, including actual calls to get real tokenization numbers from the server when possible. Uses the full server API surface, and fails correctly when the budget is wrong.
+
+- Fix empty streamed chat responses after compaction  
+This fixes a streaming bug where a valid final response could be dropped and show up as empty.
+
+- Polish empty-response diagnostics UI  
+This improves the user-facing error and logging when the provider gets an empty response (clear reason rather than general error)
+
+- Handle reasoning-only empty chat responses  
+This handles the case where a reasoning model uses up the whole response budget internally and returns no visible text, causing an error.
+
+- Raise chat output cap to quarter context window  
+This removes an overly small fixed output limit and replaces it with a more reasonable cap based on the model’s context size (output cap is 0.25 of context window, which is reasonable as an emergency failsafe.)
+
+- Log per-turn chat token usage  
+This adds per-turn token usage logging so it is easier to see what each request and response is actually consuming.
+
+- Fix shared-context model metadata display  
+This fixes the context size shown in the VS Code model UI so shared-context llama.cpp models no longer appear to have roughly double their real window size (original PR fixed this to not report 12K context window)
+
+
+## Version 0.0.47 is released (04.05.2026)
+## What is new
+
+- Multiline field for Edit with AI  
+- Qwen3.5 models added as predefined (2B, 4B, 9B) - good for tools and chat  
+- API Key is used (if needed and provided) on getting list of models on adding OpenAI Compatible model
+
+
+## Version 0.0.46 is released (29.04.2026)
+## What is new
+
+llama.vscode could provide models for VS Code Copilot now:
+1. Start tools model from llama-vscode (local or external)  
+2. In VS Code Copilot show the models list -> Other Models -> Manage Models  
+3. Make the models (all models available by the application serving the tools model are shown) you want to use visible (click on the left of the model name)  
+4. Select the desired model from Copilot and start using it
+
+Not needed tools from Copilot could be unchecked to reduce contex size if local model is used.
+
+
+
 ## Version 0.0.45 is released (04.03.2026)
 ## What is new
 
@@ -304,7 +369,7 @@ llama-vscode is an extension for code completion, chat with ai and agentic codin
 - For agentic coding - select 'Show Llama Agent' from llama.vscode menu (or Ctrl+Shift+A) and start typing your questions or requests (uses tools model and embeddings model for some tools, most intelligence needed, local usage supported, but you could also use external, paid providers for better results)
 
 
-If you want to use llama-vscode only for code completion - you could disable RAG from   llama-vscode menu to avoid indexing files.
+If you want to use llama-vscode only for code completion - you could disable RAG from llama-vscode menu to avoid indexing files.
 
 
 If you are an existing user - you could continue using llama-vscode as before.
@@ -766,6 +831,14 @@ There are two ways to configure rules:
 - Create a new rules file under name llama-vscode-rules.md in the root of the project.
 - In llama-vscode setting Agent_rules enter a path to a rules file. It could be relative to the project root or absolute path. If this is specified, the file llama-vscode-rules.md will be ignored.
 ## Setup llama.cpp server for Linux 
+
+Make sure you have brew package manager installed (from https://brew.sh/). You could install brew with the command 
+```bash
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+```   
+Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if not yet done). After that add/select the models you want to use. 
+
+Alternatively you could do it manually:
 
 1. Download the release files for your OS from [llama.cpp releases.](https://github.com/ggerganov/llama.cpp/releases) (or build from source).  
 2. Add the bin folder to PATH, so that it is globally available
