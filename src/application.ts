@@ -31,6 +31,7 @@ import { ModelType, PERSISTENCE_KEYS } from "./constants";
 import { ApiKeyService } from "./services/api-key-service";
 import { OpenAiCompModelStrategy } from "./services/openai-comp-model-strategy";
 import { LlamaChatModelProvider } from "./llama-chat-model-provider";
+import { Dialogs } from "./dialogs";
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -65,6 +66,7 @@ export class Application {
     public chatService: ChatService
     public apiKeyService: ApiKeyService
     public llamaChatModelProvider: LlamaChatModelProvider
+    public dialogs: Dialogs
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -108,6 +110,7 @@ export class Application {
         this.chatService = new ChatService(this) 
         this.apiKeyService = new ApiKeyService(this)
         this.llamaChatModelProvider = new LlamaChatModelProvider(this);
+        this.dialogs = new Dialogs(this);
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {

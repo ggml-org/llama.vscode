@@ -57,7 +57,7 @@ export class ChatService {
         const chatsItems: QuickPickItem[] = Utils.getStandardQpList(chatList, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
-            const shoulDeleteChat = await Utils.confirmAction("Are you sure you want to delete the chat below?", 
+            const shoulDeleteChat = await this.app.dialogs.confirmAction("Are you sure you want to delete the chat below?", 
                 "name: " + chat.label + "\ndescription: " + chat.description
             );
             if (shoulDeleteChat) {
@@ -82,7 +82,7 @@ export class ChatService {
             }
             
             console.log('Asking user for confirmation');
-            const shouldDelete = await Utils.confirmAction(
+            const shouldDelete = await this.app.dialogs.confirmAction(
                 "Are you sure you want to delete the current chat?",
                 "name: " + currentChat.name + "\ndescription: " + currentChat.description
             );
@@ -205,7 +205,7 @@ export class ChatService {
         if (chat) {
             let modelIndex = parseInt(chat.label.split(". ")[0], 10) - 1;
             let selectedChat =  chatsList[modelIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following chat? \n\n" +
+            let shouldExport = await this.app.dialogs.showYesNoDialog("Do you want to export the following chat? \n\n" +
                 "name: " + chat.label +
                 "\ndescription: " + chat.description
             );

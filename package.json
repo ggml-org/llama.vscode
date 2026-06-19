@@ -2164,6 +2164,11 @@
           "default": 20,
           "description": "Max number of iterations with AI when working with tools. If you are working with paid AI providers, big number here could result in higher costs."
         },
+        "llama-vscode.popup_max_chars": {
+          "type": "number",
+          "default": 160,
+          "description": "Max number of characters to display in a popup window. If the message has more chars it will be shown in editor window. Set 0 to show all messages in editor window."
+        },
         "llama-vscode.plan_review_frequency": {
           "type": "number",
           "default": 5,

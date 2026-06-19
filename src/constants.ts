@@ -246,7 +246,8 @@ export const UI_TEXT_KEYS = {
   importToolsModel: "Import tools model...",
 
   // Other
-  fileUpdated: "The file is updated"
+  fileUpdated: "The file is updated",
+  extensionName: "llama-vscode"
 } as const;
 
 export const PERSISTENCE_KEYS = {

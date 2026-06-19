@@ -115,6 +115,7 @@ export class Configuration {
     env_start_last_used_confirm = true;
     ask_install_llamacpp = true;
     ask_upgrade_llamacpp_hours = 24;
+    popup_max_chars = 160;
     ai_api_version = "v1";
     ai_model = "google/gemini-2.5-flash"
     agents_list = new Array();
@@ -260,6 +261,7 @@ export class Configuration {
         this.chats_msgs_keep = Number(config.get<number>("chats_msgs_keep"));
         this.lm_max_input_tokens = Number(config.get<number>("lm_max_input_tokens"));
         this.lm_max_output_tokens = Number(config.get<number>("lm_max_output_tokens"));
+        this.popup_max_chars = Number(config.get<number>("popup_max_chars"));
         this.skills_folder = String(config.get<string>("skills_folder"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];

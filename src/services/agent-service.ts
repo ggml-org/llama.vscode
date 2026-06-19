@@ -162,7 +162,7 @@ export class AgentService {
 
     private async persistNewAgent(newAgent: Agent, agentsList: Agent[], settingName: string, confirmMessage: string): Promise<void> {
         let agentDetails = this.getAgentDetailsAsString(newAgent);
-        const shouldAddAgent = await Utils.confirmAction(confirmMessage, agentDetails);
+        const shouldAddAgent = await this.app.dialogs.confirmAction(confirmMessage, agentDetails);
 
         if (shouldAddAgent) {
             agentsList.push(newAgent);
@@ -173,7 +173,7 @@ export class AgentService {
 
     private async persistEditedAgent(editedAgent: Agent, agentsList: Agent[], settingName: string): Promise<void> {
         let agentDetails = this.getAgentDetailsAsString(editedAgent);
-        const shouldAddAgent = await Utils.confirmAction("Do you want to update agent?", agentDetails);
+        const shouldAddAgent = await this.app.dialogs.confirmAction("Do you want to update agent?", agentDetails);
         
         if (shouldAddAgent) {
             let agentExisting = agentsList.find(agn => agn.name.trim() == editedAgent.name.trim())
@@ -211,7 +211,7 @@ export class AgentService {
         const agentItem = await vscode.window.showQuickPick(agentsItems);
         if (agentItem) {
             let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
-            const shouldDeleteAgent = await Utils.confirmAction("Are you sure you want to delete the following agent?",
+            const shouldDeleteAgent = await this.app.dialogs.confirmAction("Are you sure you want to delete the following agent?",
                 this.getAgentDetailsAsString(agentsList[agentIndex])
             );
             if (shouldDeleteAgent) {
@@ -290,7 +290,7 @@ export class AgentService {
 
     public async showAgentDetails(selectedAgent: Agent) {
         let agentDetails = this.getAgentDetailsAsString(selectedAgent);
-        await Utils.showOkDialog(agentDetails);
+        await this.app.dialogs.showOkDialog(agentDetails);
     }
 
     async exportAgent(agentsList: Agent[]): Promise<void> {
@@ -301,7 +301,7 @@ export class AgentService {
         if (agentItem) {
             let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
             let selectedAgent = allAgents[agentIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following agent? \n\n" +
+            let shouldExport = await this.app.dialogs.showYesNoDialog("Do you want to export the following agent? \n\n" +
                 this.getAgentDetailsAsString(selectedAgent)
             );
 

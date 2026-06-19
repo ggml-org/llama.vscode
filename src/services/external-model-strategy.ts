@@ -47,7 +47,7 @@ export class ExternalModelStrategy implements IAddStrategy {
             value: ''
         });
         aiModel = this.sanitizeInput(aiModel || '');
-        const isKeyRequired = await Utils.confirmAction(`Is API key required for this endpoint (${endpoint})?`, "");
+        const isKeyRequired = await this.app.dialogs.confirmAction(`Is API key required for this endpoint (${endpoint})?`, "");
         let newModel: LlmModel = {
             name: name,
             localStartCommand: "",
@@ -56,7 +56,7 @@ export class ExternalModelStrategy implements IAddStrategy {
             isKeyRequired: isKeyRequired
         };
 
-        const shouldAddModel = await Utils.confirmAction("You have entered:",
+        const shouldAddModel = await this.app.dialogs.confirmAction("You have entered:",
             "\nname: " + name +
             "\nlocal start command: " +
             "\nendpoint: " + endpoint +
@@ -93,7 +93,7 @@ export class ExternalModelStrategy implements IAddStrategy {
         let shouldOverwrite = false;
         let modelSameName = modelsList.find(model => model.name === uniqueName);
         while (uniqueName && !shouldOverwrite && modelSameName !== undefined) {
-            shouldOverwrite = await Utils.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
+            shouldOverwrite = await this.app.dialogs.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
                 "Existing model:\n" +
                 this.getModelDetailsAsString(modelSameName) +
                 "\n\nNew model:\n" +

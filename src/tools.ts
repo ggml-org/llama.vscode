@@ -59,7 +59,7 @@ export class Tools {
 
         let commandOutput = "";
         if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
-            let [yesApply, yesDontAsk] = await Utils.showYesYesdontaskNoDialog("Do you give a permission to execute the terminal command:\n" + command + 
+            let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog("Do you give a permission to execute the terminal command:\n" + command + 
                 "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
             if (yesDontAsk) {
                 this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
@@ -215,7 +215,7 @@ export class Tools {
 
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
-            if (!this.app.configuration.tool_permit_file_changes && !await Utils.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
+            if (!this.app.configuration.tool_permit_file_changes && !await this.app.dialogs.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
                 return Utils.MSG_NO_UESR_PERMISSION;
 
             }
@@ -268,7 +268,7 @@ export class Tools {
 
         try {
             if (!this.app.configuration.tool_permit_file_changes){  
-                let [yesApply, yesDontAsk] = await Utils.confirmFilePermissionAction("Do you permit file to be changed?", filePath)
+                let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog(`Do you permit file ${filePath} to be changed?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
                     vscode.window.showInformationMessage("Setting tool_permit_file_changes is set to true.")

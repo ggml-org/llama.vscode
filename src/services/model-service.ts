@@ -224,7 +224,7 @@ export class ModelService {
         const modelItem = await vscode.window.showQuickPick(modelsItems);
         if (modelItem) {
             let modelIndex = parseInt(modelItem.label.split(". ")[0], 10) - 1;
-            const shouldDeleteModel = await Utils.confirmAction("Are you sure you want to delete the model below?",
+            const shouldDeleteModel = await this.app.dialogs.confirmAction("Are you sure you want to delete the model below?",
                 this.getDetails(modelsList[modelIndex])
             );
             if (shouldDeleteModel) {
@@ -248,7 +248,7 @@ export class ModelService {
     }
 
     public async showModelDetails(model: LlmModel): Promise<void> {
-        await Utils.showOkDialog("Model details: \n\n" + this.getDetails(model));
+        await this.app.dialogs.showOkDialog("Model details: \n\n" + this.getDetails(model));
     }
 
     async exportModel(type: ModelType, modelsList: LlmModel[]): Promise<void> {
@@ -259,7 +259,7 @@ export class ModelService {
         if (modelItem) {
             let modelIndex = parseInt(modelItem.label.split(". ")[0], 10) - 1;
             let selectedModel = allModels[modelIndex];
-            let shouldExport = await Utils.showYesNoDialog("Do you want to export the following model? \n\n" +
+            let shouldExport = await this.app.dialogs.showYesNoDialog("Do you want to export the following model? \n\n" +
                 this.getDetails(selectedModel)
             );
 
@@ -307,7 +307,7 @@ export class ModelService {
         if (newModel.aiModel) newModel.aiModel = this.sanitizeInput(newModel.aiModel);
 
         const modelDetails = this.getDetails(newModel);
-        const shouldAddModel = await Utils.confirmAction("A new model will be added. Do you want to add the model?", modelDetails);
+        const shouldAddModel = await this.app.dialogs.confirmAction("A new model will be added. Do you want to add the model?", modelDetails);
 
         if (shouldAddModel) {
             modelList.push(newModel);
@@ -437,7 +437,7 @@ export class ModelService {
             targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
         }
         if (!targetUrl) {
-            await Utils.suggestModelSelection(
+            await this.app.dialogs.suggestModelSelection(
                 "Select a tools model or an env with tools model to use Llama Agent.",
                 "After the tools model is loaded, try again opening llama agent.",
                 "No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools.",

@@ -43,7 +43,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
                     placeHolder: 'endpoint (URL to the API) of an OpenAI compatible provider',
                     prompt: 'example: http://localhost:8080 or https://openrauter.ai/api'
                 })??""
-                isKeyRequired = await Utils.confirmAction(`Is API key required for this endpoint (${endpoint})?`, "");
+                isKeyRequired = await this.app.dialogs.confirmAction(`Is API key required for this endpoint (${endpoint})?`, "");
             }
             if (!endpoint){
                 vscode.window.showWarningMessage("Endpoint is not provided!")
@@ -79,7 +79,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
                 isKeyRequired: isKeyRequired
             };
 
-            const shouldAddModel = await Utils.confirmAction("You have entered:",
+            const shouldAddModel = await this.app.dialogs.confirmAction("You have entered:",
                 this.getModelDetailsAsString(newModel) +
                 "\n\nDo you want to add a model with these properties?"
             );
@@ -100,7 +100,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
                 details.modelsList.push(newModel);
                 this.app.configuration.updateConfigValue(details.modelsListSettingName, details.modelsList);
                 vscode.window.showInformationMessage("The model is added: " + newModel.name)
-                const shouldSelect = await Utils.confirmAction("Do you want to select/start the newly added model?", "");
+                const shouldSelect = await this.app.dialogs.confirmAction("Do you want to select/start the newly added model?", "");
                 if (shouldSelect) {
                     await this.app.modelService.selectStartModel(newModel, modelType, details);
                 }
@@ -161,7 +161,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
         let shouldOverwrite = false;
         let modelSameName = modelsList.find(model => model.name === uniqueName);
         while (uniqueName && !shouldOverwrite && modelSameName !== undefined) {
-            shouldOverwrite = await Utils.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
+            shouldOverwrite = await this.app.dialogs.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
                 "Existing model:\n" +
                 this.getModelDetailsAsString(modelSameName) +
                 "\n\nNew model:\n" +
