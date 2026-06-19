@@ -1268,7 +1268,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                     execCommand = `${userShell} -c '${escapedCommand}'`;
                 }
             }
-            const { stdout, stderr } = await exec(execCommand, { shell: '/bin/bash' });
+            const { stdout, stderr } = await exec(execCommand);
             // Show output in terminal
             this.vsCodeCommandTerminal.sendText(`echo "Command completed successfully"`);
             // this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
