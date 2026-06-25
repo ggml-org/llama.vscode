@@ -2286,7 +2286,7 @@
     "format": "prettier --write --ignore-path .gitignore '**/*'"
   },
   "dependencies": {
-    "axios": "^1.1.2",
+    "axios": "^1.16.0",
     "globby": "^14.1.0",
     "ignore": "^7.0.4",
     "js-yaml": "^4.1.1",
