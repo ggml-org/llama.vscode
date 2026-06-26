@@ -927,7 +927,10 @@ Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if
 
 The instructions below are left for a reference, but now it is possible to do it easier - add a model from the menu and select it.
 
-#### Prerequisites - [Homebrew](https://brew.sh/)
+#### With shellscript:  
+Go to https://llama.app/, copy the install command and run it in a shell.
+
+#### With brew. Prerequisites - [Homebrew](https://brew.sh/)
 
 ### Code completion server
 *Used for*  
@@ -1024,11 +1027,11 @@ Download the release files for Windows for llama.cpp from [releases](https://git
 #### Run llama.cpp server  
 No GPUs   
 ```bash
-`llama serve --fim-qwen-1.5b-default --port 8012`  
+`llama serve.exe --fim-qwen-1.5b-default --port 8012`  
 ```
 With GPUs     
 ```bash
-`llama serve --fim-qwen-1.5b-default --port 8012 -ngl 99`  
+`llama serve.exe --fim-qwen-1.5b-default --port 8012 -ngl 99`  
 ```  
 If you've installed llama.cpp with winget you could skip the .exe suffix and use just llama serve in the commands.  
 
@@ -1052,21 +1055,21 @@ Same like code completion server, but use chat model and a little bit different 
 
 CPU-only:  
 ```bash
-`llama serve -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011`  
+`llama serve.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011`  
 ```
 
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM  
 ```bash
-`llama serve -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
+`llama serve.exe -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama serve -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
+`llama serve.exe -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama serve -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99` 
+`llama serve.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99` 
 ```
 
 
@@ -1080,7 +1083,7 @@ With Nvidia GPUs and installed cuda drivers
 *Instructions*  
 Same like code completion server, but use embeddings model and a little bit different parameters.   
 ```bash
-`llama serve -hf nomic-embed-text-v2-moe-q8_0.gguf --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
+`llama serve.exe -hf nomic-embed-text-v2-moe-q8_0.gguf --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
 ## Skills
 
