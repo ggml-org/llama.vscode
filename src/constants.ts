@@ -65,17 +65,17 @@ export const MODEL_TYPE_CONFIG = {
 } as const;
 
 export const LOCAL_MODEL_TEMPLATES = {
-  [ModelType.Completion]: 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
-  [ModelType.Chat]: 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
-  [ModelType.Embeddings]: 'llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
-  [ModelType.Tools]: 'llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER'
+  [ModelType.Completion]: 'llama serve -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
+  [ModelType.Chat]: 'llama serve -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
+  [ModelType.Embeddings]: 'llama serve -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
+  [ModelType.Tools]: 'llama serve -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER'
 } as const;
 
 export const HF_MODEL_TEMPLATES = {
-  [ModelType.Completion]: 'llama-server -hf MODEL_PLACEHOLDER -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
-  [ModelType.Chat]: 'llama-server -hf MODEL_PLACEHOLDER -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
-  [ModelType.Embeddings]: 'llama-server -hf MODEL_PLACEHOLDER -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
-  [ModelType.Tools]: 'llama-server -hf MODEL_PLACEHOLDER --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER'
+  [ModelType.Completion]: 'llama serve -hf MODEL_PLACEHOLDER -ngl 99 -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
+  [ModelType.Chat]: 'llama serve -hf MODEL_PLACEHOLDER -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
+  [ModelType.Embeddings]: 'llama serve -hf MODEL_PLACEHOLDER -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER',
+  [ModelType.Tools]: 'llama serve -hf MODEL_PLACEHOLDER --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port PORT_PLACEHOLDER --host HOST_PLACEHOLDER'
 } as const;
 
 export const SETTING_TO_MODEL_TYPE: Record<string, ModelType> = {

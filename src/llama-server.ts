@@ -1134,6 +1134,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             return;
         }
         try {
+            launchCmd = this.useNewLaunchCommand(launchCmd);
             this.vsCodeFimTerminal = vscode.window.createTerminal({
                 name: 'llama.cpp Completion Terminal'
             });
@@ -1152,6 +1153,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             return;
         }
         try {
+            launchCmd = this.useNewLaunchCommand(launchCmd);
             this.vsCodeChatTerminal = vscode.window.createTerminal({
                 name: 'llama.cpp Chat Terminal'
             });
@@ -1170,6 +1172,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             return;
         }
         try {
+            launchCmd = this.useNewLaunchCommand(launchCmd);
             this.vsCodeEmbeddingsTerminal = vscode.window.createTerminal({
                 name: 'llama.cpp Embeddings Terminal'
             });
@@ -1188,6 +1191,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             return;
         }
         try {
+            launchCmd = this.useNewLaunchCommand(launchCmd);
             this.vsCodeToolsTerminal = vscode.window.createTerminal({
                 name: 'llama.cpp Tools Terminal'
             });
@@ -1366,6 +1370,16 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         }
     }
 
+
+    private useNewLaunchCommand(launchCmd: string) {
+        const oldCommand = "llama-server ";
+        const newCommand = "llama serve ";
+        if (launchCmd.startsWith("llama-server ")) {
+            launchCmd = launchCmd;
+            launchCmd = newCommand + launchCmd.substring(newCommand.length);
+        }
+        return launchCmd;
+    }
 
     private getChatModelProperties() {
         let selectedModel: LlmModel = this.app.getChatModel();

@@ -349,7 +349,7 @@ export class Menu {
                 this.app.llamaWebviewProvider.showAgentView();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModels):
-                this.app.dialogs.showOkDialog("The automatically downloaded models (llama-server started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\<user_name>\\AppData\\Local\\llama.cpp. \nIn Mac or Linux the folder could be /users/<user_name>/Library/Caches/llama.cpp. \nYou could delete them from the folder.");
+                this.app.dialogs.showOkDialog("The automatically downloaded models (llama serve started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\YourUsername\\.cache\\huggingface\\hub. \nIn Mac and Linux ~/.cache/huggingface/hub. \nYou could delete them from the folder.");
                 break;
             case "$(book) " + this.app.configuration.getUiText(UI_TEXT_KEYS.viewDocumentation):
                 await vscode.env.openExternal(vscode.Uri.parse('https://github.com/ggml-org/llama.vscode/wiki'));
@@ -363,7 +363,7 @@ export class Menu {
 
     public async installLlamacpp() {
         if (process.platform != 'darwin' && process.platform != 'win32' && process.platform != 'linux') {
-            vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows and Linux (with brew package manager) for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
+            vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows and Linux for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
         } else {
             await this.app.llamaServer.killCommandCmd();
             const windowsArch = os.machine().toLowerCase();
@@ -371,17 +371,27 @@ export class Menu {
             let terminalCommand = '';
             if (process.platform === 'darwin' || process.platform === 'linux') {
                 try {
-                    const { stdout, stderr } = await this.app.llamaServer.executeCommandWithTerminalFeedback('command -v brew');
-                    if (!stdout || !stdout.trim()) {
-                        throw new Error('brew not found');
+                    const useShellScript = await this.app.dialogs.showInstallLlamacppDialog("How to install llama.cpp?","shell script", "brew")
+                    if (useShellScript) {
+                        terminalCommand = "curl -LsSf https://llama.app/install.sh | sh";
+                    } else {
+                        const { stdout, stderr } = await this.app.llamaServer.executeCommandWithTerminalFeedback('command -v brew');
+                        if (!stdout || !stdout.trim()) {
+                            throw new Error('brew not found');
+                        }
+                        terminalCommand = "brew install -y llama.cpp";
                     }
-                    terminalCommand = "brew install -y llama.cpp";
                 } catch (error) {
                     vscode.window.showErrorMessage("Homebrew is not installed (llama.cpp is installed with brew). Please install Homebrew from https://brew.sh before proceeding.");
                     return;
                 }
             } else if (process.platform === 'win32') {
-                terminalCommand = `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`;
+                const useWinget = await this.app.dialogs.showInstallLlamacppDialog("How to install llama.cpp?","winget", "shell script")
+                    if (useWinget) {
+                        terminalCommand = `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`;
+                    } else {
+                        terminalCommand = "irm https://llama.app/install.ps1 | iex";
+                    }
             }
             if (terminalCommand) {
                 await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand);
@@ -394,7 +404,7 @@ export class Menu {
             "\n\nTL;DR,: install llama.cpp, select env, start using" +
             "\n\nllama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp." +
             "\n\n1. Install llama.cpp " +
-            "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama-server)" +
+            "\n  - Show the extension menu by clicking llama-vscode in the status bar or by Ctrl+Shift+M and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama serve)" +
             "\n\n2. Select env (group of models) for your needs from llama-vscode menu." +
             "\n  - This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on env)" +
             "\n\n3. Start using llama-vscode" +

@@ -75,40 +75,40 @@ Here are recommended settings, depending on the amount of VRAM that you have:
 - More than 64GB VRAM:
 
   ```bash
-  llama-server --fim-qwen-30b-default
+  llama serve --fim-qwen-30b-default
   ```
 
 - More than 16GB VRAM:
 
   ```bash
-  llama-server --fim-qwen-7b-default
+  llama serve --fim-qwen-7b-default
   ```
 
 - Less than 16GB VRAM:
 
   ```bash
-  llama-server --fim-qwen-3b-default
+  llama serve --fim-qwen-3b-default
   ```
 
 - Less than 8GB VRAM:
 
   ```bash
-  llama-server --fim-qwen-1.5b-default
+  llama serve --fim-qwen-1.5b-default
   ```
 
 <details>
   <summary>CPU-only configs</summary>
 
-These are `llama-server` settings for CPU-only hardware. Note that the quality will be significantly lower:
+These are `llama serve` settings for CPU-only hardware. Note that the quality will be significantly lower:
 
 ```bash
-llama-server \
+llama serve \
     -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF \
     --port 8012 -ub 512 -b 512 --ctx-size 0 --cache-reuse 256
 ```
 
 ```bash
-llama-server \
+llama serve \
     -hf ggml-org/Qwen2.5-Coder-0.5B-Q8_0-GGUF \
     --port 8012 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256
 ```
