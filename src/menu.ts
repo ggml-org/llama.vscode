@@ -386,11 +386,11 @@ export class Menu {
                     return;
                 }
             } else if (process.platform === 'win32') {
-                const useShellScript = await this.app.dialogs.showInstallLlamacppDialog("How to install llama.cpp?","shell script", "winget")
-                    if (useShellScript) {
-                        terminalCommand = "irm https://llama.app/install.ps1 | iex";
-                    } else {
+                const useWinget = await this.app.dialogs.showInstallLlamacppDialog("How to install llama.cpp?","winget", "shell script")
+                    if (useWinget) {
                         terminalCommand = `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`;
+                    } else {
+                        terminalCommand = "irm https://llama.app/install.ps1 | iex";
                     }
             }
             if (terminalCommand) {
