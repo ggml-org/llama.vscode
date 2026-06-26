@@ -511,7 +511,7 @@ export class Architect {
 
     private async installUpgradeLlamaCpp(isFirstStart: any) {
         if (!this.app.configuration.ask_install_llamacpp) return;
-        let { stdout, stderr }  = await this.app.llamaServer.executeCommandWithTerminalFeedback("llama-server --version");
+        let { stdout, stderr }  = await this.app.llamaServer.executeCommandWithTerminalFeedback("llama serve --version");
         stderr = stderr.toLowerCase();
         if (stderr.includes("command not found") || stderr.includes("command failed") || stderr.includes("is not recognized")) {
             let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension.";

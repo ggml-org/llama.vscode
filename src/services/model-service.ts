@@ -339,7 +339,7 @@ export class ModelService {
                 modelsItems.push({
                     label: i + ". " + prefix + model.name,
                     description: model.localStartCommand,
-                    detail: "Selects the model" + (model.localStartCommand ? ", downloads the model (if not yet done) and starts a llama-server with it." : "")
+                    detail: "Selects the model" + (model.localStartCommand ? ", downloads the model (if not yet done) and starts a llama serve with it." : "")
                 });
             } else {
                 modelsItems.push({

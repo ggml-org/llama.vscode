@@ -14,10 +14,10 @@ export class LocalModelStrategy implements IAddStrategy {
     async add(details: ModelTypeDetails): Promise<void> {
         const hostEndpoint = "http://" + details.newModelHost;
         const modelListToLocalCommand = new Map([
-            ["completion_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port " + details.newModelPort + " --host " + details.newModelHost],
-            ["chat_models_list", 'llama-server -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + details.newModelPort + " --host " + details.newModelHost],
-            ["embeddings_models_list", "llama-server -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + details.newModelPort + " --host " + details.newModelHost],
-            ["tools_models_list", "llama-server -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + details.newModelPort + " --host " + details.newModelHost]
+            ["completion_models_list", "llama serve -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 --port " + details.newModelPort + " --host " + details.newModelHost],
+            ["chat_models_list", 'llama serve -hf <model name from hugging face, i.e: ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF> -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port ' + details.newModelPort + " --host " + details.newModelHost],
+            ["embeddings_models_list", "llama serve -hf <model name from hugging face, i.e: ggml-org/Nomic-Embed-Text-V2-GGUF> -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port " + details.newModelPort + " --host " + details.newModelHost],
+            ["tools_models_list", "llama serve -hf <model name from hugging face, i.e: unsloth/Qwen3-30B-A3B-Instruct-2507-GGUF:Q8_0> --jinja  -ngl 99 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port " + details.newModelPort + " --host " + details.newModelHost]
         ]);
 
         let name = await Utils.getValidatedInput(
@@ -40,7 +40,7 @@ export class LocalModelStrategy implements IAddStrategy {
             (input) => input.trim() !== '',
             5,
             {
-                placeHolder: 'A command to start the model locally, i.e. llama-server -m model_name.gguf --port '+ details.newModelPort + '. (required for local model)',
+                placeHolder: 'A command to start the model locally, i.e. llama serve -m model_name.gguf --port '+ details.newModelPort + '. (required for local model)',
                 value: modelListToLocalCommand.get(details.modelsListSettingName) || ''
             }
         );

@@ -80,6 +80,21 @@ export class Dialogs {
         return result;
     }
 
+    showInstallLlamacppDialog = async (message: string, label1: string, label2: string): Promise<boolean> => {            
+        const dialogDetails: DialogDetails = {
+            message: UI_TEXT_KEYS.extensionName,
+            details: message,
+            title: "Confirmation",
+            buttons: [
+                { label: label1, response: "true", default: true },
+                { label: label2, response: "false" },
+            ]
+        }
+
+        const [result] = await this.showCustomDialog(dialogDetails) as [boolean]
+        return result;
+    }
+
     showYesYesdontaskNoDialog = async (message: string): Promise<[boolean, boolean]> => {
         if (message.length < this.app.configuration.popup_max_chars) {
             const choice = await vscode.window.showInformationMessage(

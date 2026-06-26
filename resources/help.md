@@ -96,7 +96,7 @@ llama-vscode provides to the users the posibility to partially create their own 
 Configure the description of the tool and the returned result, enable the tool and ask the agent questions related to the tool.
 
 Settings:
-- Tool_custom_tool_description: Description of the tool. This description will be used by the AI to decide if this tool should be used. Example: "Use this tool for information about llama.cpp and llama-server - how to build it, how to use it, options, etc."
+- Tool_custom_tool_description: Description of the tool. This description will be used by the AI to decide if this tool should be used. Example: "Use this tool for information about llama.cpp and llama serve - how to build it, how to use it, options, etc."
 - Custom_tool_source: What should be returned by the tool. Could be file or a web page. Eample:  https://blog.steelph0enix.dev/posts/llama-cpp-guide/ ​The tool returns the content of the file or the web page.
 
 
@@ -359,7 +359,7 @@ llama-vscode is an extension for code completion, chat with ai and agentic codin
 
 ### How to use it 
 1. Install llama.cpp  
-- Show llama-vscode menu by clicking "llama-vscode" in the status bar or by Ctrl+Shift+M, and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama-server)
+- Show llama-vscode menu by clicking "llama-vscode" in the status bar or by Ctrl+Shift+M, and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama serve)
 2. Select env (group of models) for your needs from llama-vscode menu.  
 - This will download (only the first time) the models and run llama.cpp servers locally (or use external servers endpoints, depends on env)
 3. Start using llama-vscode  
@@ -420,7 +420,7 @@ https://github.com/user-attachments/assets/dd9da21a-6f57-477d-a55c-e4ff60b1ecb8
 ## Use as local AI runner (as LM Studio, Ollama, etc.) 
 
 ### Overview
-llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . Models are searched in Huggingface. After a model is selected, llama-vscode automatically downloads it and starts a llama-server with it. With this the user could start chatting with an AI.
+llama-vscode could be used as a local AI runner (as LM Studio, Ollama, etc.) . Models are searched in Huggingface. After a model is selected, llama-vscode automatically downloads it and starts a llama serve with it. With this the user could start chatting with an AI.
 
 ### How to use it
 1. From llama-vscode menu select "Use as local AI runner" - llama view will be opened with buttons "llama.cpp", "Add", "Select", "Chat".
@@ -485,7 +485,7 @@ An agent could be imported from a .json file - select a file to import it.
 ### Overview
 Chat models configurations are stored and could be reused. For simplicity the term "chat models" will be used as a synonim for chat models configurations.
 Chat models could be for local models (run by llama-vscode) and for externally run servers.
-They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+They have properties: name, local start command (llama serve command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
  
 
 Chat models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
@@ -558,7 +558,7 @@ A chat could be imported from a .json file - select a file to import it.
 ### Overview
 Completion models configurations are stored and could be reused. For simplicity the term "completion models" will be used as a synonim for Completion models configurations.
 Completion models could be for local models (run by llama-vscode) and for externally run servers.
-They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+They have properties: name, local start command (llama serve command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
  
 
 Completion models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
@@ -606,7 +606,7 @@ A model could be imported from a .json file - select a file to import it.## Mana
 ### Overview
 Embeddings models configurations are stored and could be reused. For simplicity the term "embeddings models" will be used as a synonim for embeddings models configurations.
 Embeddings models could be for local models (run by llama-vscode) and for externally run servers.
-They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+They have properties: name, local start command (llama serve command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
  
 
 Embeddings models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
@@ -702,7 +702,7 @@ https://github.com/user-attachments/assets/3b8dffcc-bcdc-4981-b181-ffc52fe43075
 ### Overview
 Tools models configurations are stored and could be reused. For simplicity the term "tools models" will be used as a synonim for tools models configurations.
 Tools models could be for local models (run by llama-vscode) and for externally run servers.
-They have properties: name, local start command (llama-server command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
+They have properties: name, local start command (llama serve command to start a server with this model locally), ai model (as required by the provider), endpoint, is key required  
  
 
 Tools models configurations could be added/deleted/viewed/selected/deselected/added from huggingface/exported/imported
@@ -857,21 +857,21 @@ The configurations below are left for a reference, but now it is possible to do 
 CPU only
 
 ```bash
-llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --port 8012 -ub 512 -b 512 --ctx-size 0 --cache-reuse 256
+llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --port 8012 -ub 512 -b 512 --ctx-size 0 --cache-reuse 256
 ```
 
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM 
 ```bash 
-`llama-server --fim-qwen-7b-default -ngl 99`  
+`llama serve --fim-qwen-7b-default -ngl 99`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama-server --fim-qwen-3b-default -ngl 99`  
+`llama serve --fim-qwen-3b-default -ngl 99`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama-server --fim-qwen-1.5b-default -ngl 99`  
+`llama serve --fim-qwen-1.5b-default -ngl 99`  
 ```
 If the file is not available (first time) it will be downloaded (this could take some time) and after that llama.cpp server will be started.  
   
@@ -891,21 +891,21 @@ Same like code completion server, but use chat model and a little bit different 
 
 CPU-only:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 
 
@@ -919,7 +919,7 @@ With Nvidia GPUs and installed cuda drivers
 *Instructions*  
 Same like code completion server, but use embeddings model and a little bit different parameters. 
 ```bash  
-`llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
+`llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
 ### Setup llama.cpp servers for Mac  
 
@@ -946,11 +946,11 @@ The instructions below are left for a reference, but now it is possible to do it
 2. Download the LLM model and run llama.cpp server (combined in one command)  
 - If you have more than 16GB VRAM:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 - If you have less than 16GB VRAM:  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 If the file is not available (first time) it will be downloaded (this could take some time) and after that llama.cpp server will be started. 
 
@@ -969,21 +969,21 @@ Same like code completion server, but use chat model and a little bit different 
 
 CPU-only:
 ```bash  
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF --port 8011 -np 2`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama-server -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2` 
+`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF --port 8011 -np 2` 
 ```
 
 ### Embeddings server  
@@ -996,7 +996,7 @@ With Nvidia GPUs and installed cuda drivers
 *Instructions*  
 Same like code completion server, but use embeddings model and a little bit different parameters.   
 ```bash
-`llama-server -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
+`llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
 
 ### Setup llama.cpp servers for Windows  
@@ -1024,13 +1024,13 @@ Download the release files for Windows for llama.cpp from [releases](https://git
 #### Run llama.cpp server  
 No GPUs   
 ```bash
-`llama-server.exe --fim-qwen-1.5b-default --port 8012`  
+`llama serve --fim-qwen-1.5b-default --port 8012`  
 ```
 With GPUs     
 ```bash
-`llama-server.exe --fim-qwen-1.5b-default --port 8012 -ngl 99`  
+`llama serve --fim-qwen-1.5b-default --port 8012 -ngl 99`  
 ```  
-If you've installed llama.cpp with winget you could skip the .exe suffix and use just llama-server in the commands.  
+If you've installed llama.cpp with winget you could skip the .exe suffix and use just llama serve in the commands.  
 
 Now you could start using llama-vscode extension for code completion.  
 
@@ -1052,21 +1052,21 @@ Same like code completion server, but use chat model and a little bit different 
 
 CPU-only:  
 ```bash
-`llama-server.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011`  
+`llama serve -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011`  
 ```
 
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM  
 ```bash
-`llama-server.exe -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
+`llama serve -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama-server.exe -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
+`llama serve -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama-server.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99` 
+`llama serve -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99` 
 ```
 
 
@@ -1080,7 +1080,7 @@ With Nvidia GPUs and installed cuda drivers
 *Instructions*  
 Same like code completion server, but use embeddings model and a little bit different parameters.   
 ```bash
-`llama-server.exe -hf nomic-embed-text-v2-moe-q8_0.gguf --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
+`llama serve -hf nomic-embed-text-v2-moe-q8_0.gguf --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
 ## Skills
 
