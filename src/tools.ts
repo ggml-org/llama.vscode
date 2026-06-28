@@ -57,7 +57,6 @@ export class Tools {
         
         if (command == undefined) return "The terminal command is not provided."
 
-        let commandOutput = "";
         if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
             let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog("Do you give a permission to execute the terminal command:\n" + command + 
                 "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
@@ -66,11 +65,10 @@ export class Tools {
                 vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
             }
             if (!yesApply) return "The user doesn't give a permission to execute this command.";;
-        } else {
-            let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
-            commandOutput = (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
         }
-        return commandOutput;
+        
+        let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
+        return (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
     }
 
     public runTerminalCommandDesc = async (args: string ) => {
