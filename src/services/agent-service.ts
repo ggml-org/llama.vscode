@@ -255,25 +255,6 @@ export class AgentService {
                 this.app.llamaWebviewProvider.addEditAgent(newAgent)
             }, 500);
         }
-        
-        // let agentsItems: QuickPickItem[] = this.getStandardQpList(agentsList, "");
-        // agentsItems = agentsItems.concat(this.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[], "(predefined) ", agentsList.length));
-        // const agentItem = await vscode.window.showQuickPick(agentsItems);
-        // if (agentItem) {
-        //     let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
-        //     this.app.llamaWebviewProvider.showAgentEditor();
-        //     const selectedAgent = agentsList[agentIndex];
-        //     const newAgent: Agent = {
-        //         name: "Copyt of " + selectedAgent.name,
-        //         description: selectedAgent.description,
-        //         systemInstruction: selectedAgent.systemInstruction,
-        //         tools: selectedAgent.tools
-        //     }
-        //     setTimeout(() => {
-        //         this.app.llamaWebviewProvider.addEditAgent(newAgent)
-        //     }, 500);
-            
-       // }
     }
 
     async viewAgent(agentsList: Agent[]): Promise<void> {
