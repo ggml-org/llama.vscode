@@ -32,6 +32,7 @@ export class LlamaAgent {
     public contextImage: string = "";
     public sentContextImages: string[] = [];
     private abortController: AbortController | null = null;
+    private inSessionText: string = ""
 
     constructor(application: Application) {
         this.app = application;
@@ -166,6 +167,11 @@ export class LlamaAgent {
     run = async (query:string, agentCommand?:string) => {
         
         await this.askAgent(query, agentCommand);
+    }
+
+    setInSessionText = async (inSessionText:string) => {
+        
+        this.inSessionText += inSessionText.trim();
     }
 
     private async summarize(): Promise<boolean> {
@@ -381,6 +387,7 @@ export class LlamaAgent {
                         this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${iterationsCount} | finish_reason=${finishReason ?? 'unknown'}`);
                         this.logText += "  \nWarning: response was truncated by the context window.  \n";
                     }
+                     
                     this.logText += "  \nTotal iterations: " + iterationsCount + "  \n"
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
@@ -392,12 +399,15 @@ export class LlamaAgent {
                         return "agent stopped"
                     }
                     this.messages.push(data.choices[0].message);
-                    if (finishReason != "tool_calls" && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
+                    if (!this.inSessionText 
+                        && finishReason != "tool_calls" 
+                        && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
                         this.logText += "  \n" + "Finish reason: " + finishReason
                         if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "  \n"
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         break;
                     }
+                    
                     let toolCalls:any = data.choices[0].message.tool_calls;
                     if (toolCalls != undefined && toolCalls.length > 0){
                         for (const oneToolCall of toolCalls){
@@ -450,6 +460,12 @@ export class LlamaAgent {
                                 this.messages.push(toolCallsResult)
                             }
                         }
+                    }
+                    
+                    if (this.inSessionText){
+                        this.logText += "\n\n***" + this.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n"
+                        this.messages.push({"role": "user", "content": this.inSessionText})
+                        this.inSessionText = ""
                     }
                 } catch (error) {
                     // Handle the error

@@ -49,6 +49,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     case 'sendText':
                         this.app.llamaAgent.run(message.text);
                         break;
+                    case 'sendInSessionText':
+                        this.app.llamaAgent.setInSessionText(message.text)
+                        break;
                     case 'sendAgentCommand':
                         this.app.llamaAgent.run(message.text, message.agentCommand);
                         break;

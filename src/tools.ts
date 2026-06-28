@@ -57,7 +57,7 @@ export class Tools {
         
         if (command == undefined) return "The terminal command is not provided."
 
-        if ( (!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
+        if ((!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
             let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog("Do you give a permission to execute the terminal command:\n" + command + 
                 "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
             if (yesDontAsk) {

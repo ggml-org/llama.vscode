@@ -141,10 +141,17 @@ const AgentView: React.FC<AgentViewProps> = ({
   const handleSendText = () => {
     if (inputText.trim()) {
       // Send text to the extension
-      vscode.postMessage({
-        command: 'sendText',
-        text: inputText
-      });
+      if (currentState.includes('working')){
+        vscode.postMessage({
+          command: 'sendInSessionText',
+          text: inputText
+        });
+      } else {
+        vscode.postMessage({
+          command: 'sendText',
+          text: inputText
+        });
+      }
       setInputText('');
       setCurrentState('AI is working...');
     }
@@ -512,6 +519,15 @@ const AgentView: React.FC<AgentViewProps> = ({
                   >
                     🖼️
                   </button>
+                  {currentState.includes('working') && (
+                    <button
+                    onClick={handleSendText}
+                    className={`modern-btn ${inputText.trim() === '' ? 'secondary' : ''}`}
+                    title={"Send in current session (between tool calls)"}
+                  >
+                    {'➤'}
+                  </button>
+                  )}
                 </div>
               </div>
             </div>
