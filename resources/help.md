@@ -235,6 +235,23 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.50 is released (26.06.2026)
+## What is new
+
+* Option for using standard shell script for llama.cpp installation (brew / winget also available)
+* Use "llama server" instead of llama-server to start a local server
+* Added one predefined local model with Multi Token Prediction: Qwen3.6-27B-GGUF:Q8_0 MTP (LOCAL) (VRAM>20)
+
+
+## Version 0.0.49 is released (26.06.2026)
+## What is new
+
+* User dialogs are now two types - popup dialogs (for short texts) and dialogs in editor (for long texts)
+* Setting popup_max_chars (default 160) determines what is the max length of short texts (popup dialogs used for them)
+* Automatic installation of llama.cpp on Linux, provided brew package manager is available
+* Delete Chat button added in the llama-vscode panel
+
+
 ## Version 0.0.48 is released (01.06.2026)
 ## What is new
 
@@ -393,10 +410,11 @@ Llama agent asks for permission for executing terminal command. However, if the 
 ### How to use it 
 The best wey to prepare the environment for the agent is by selecting an Env (group of models). So, below is the standard workflow:
 1. Select "Show Llama Agent" from llama-vscode menu or Ctrl+Shift+A to show Llama Agent. 
-2. Click "Select Env" button and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter) llama-vscode will ask for api key if needed.
-3. Write your request and send it with Enter or the "Send" button.
+2. Click "Select Env" button and select env, which supports agent, for your needes. This will download the required models and start llama.cpp servers with them. For the external servers (like OpenRouter)   llama-vscode will ask for api key if needed.  
+3. Write your request and send it with Enter or the "Send" button.  
+4. During the agent loop you could also send prompt - enter a prompt and press Enter or click the second "Send" button (on the right side)
 
-You could also use the agent only with tools model selected. In this case the tool search_source will not work (requires chat and embeddins server)
+You could also use the agent only with tools model selected. In this case the tool search_source will use tools instead of chat server and filtering with embeddins server will be skipped.
 
 Optional
 - You could add files to the context with the @ button or just by entering "@". 
