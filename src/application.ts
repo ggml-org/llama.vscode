@@ -182,7 +182,7 @@ export class Application {
     }
 
     isComplModelSelected = (): boolean => {
-        return this.selectedComplModel != undefined && this.selectedComplModel.name. trim() != "";
+        return this.selectedComplModel != undefined && this.selectedComplModel.name.trim() != "";
     }
 
     isChatModelSelected = (): boolean => {

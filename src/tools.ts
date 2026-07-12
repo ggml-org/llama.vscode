@@ -214,7 +214,7 @@ export class Tools {
         let result = "No errors found."
 
         if (params.filePath){
-            const uri = vscode.Uri.file(params.filePath);
+            const uri = vscode.Uri.file(Utils.getAbsolutFilePath(params.filePath));
             result = Utils.getErrors(uri);
         } else {
             result= Utils.getAllErrors();
