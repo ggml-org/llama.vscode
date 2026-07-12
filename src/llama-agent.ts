@@ -74,7 +74,7 @@ export class LlamaAgent {
             if (fs.existsSync(absolutePath)) {
                 projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
             }          
-        }       
+        }
         const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
         if (fs.existsSync(agentsAbsolutePath)) {
             projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
@@ -87,6 +87,25 @@ export class LlamaAgent {
         if (fs.existsSync(userInstructionsPath)) {
             projectContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
         }
+
+        if (this.app.configuration.auto_memory_enabled) {
+            let auto_memory = this.app.prompts.AUTO_MEMORY_PROMPT;
+            let auto_memory_folder = path.join(this.app.extensionContext.storageUri?.fsPath || "", "auto_memory");
+            if (!fs.existsSync(auto_memory_folder)) {
+                fs.mkdirSync(auto_memory_folder, { recursive: true });
+            }
+            auto_memory = this.app.prompts.replacePlaceholders(auto_memory, {
+                "auto_memory_folder": auto_memory_folder,
+                "max_auto_memory_files": this.app.configuration.max_auto_memory_files.toString()
+            });
+            let auto_memory_files = fs.readdirSync(auto_memory_folder).filter(file => file.endsWith('.md'));
+            if (auto_memory_files.length > 0) {
+                auto_memory += "  \n\nCurent auto memory files (" + auto_memory_files.length + "):  \n";
+                auto_memory += auto_memory_files.join("  \n");
+            }
+            projectContext += "  \n\n" + auto_memory;
+        }
+
         this.messages = [
             {
                 "role": "system",

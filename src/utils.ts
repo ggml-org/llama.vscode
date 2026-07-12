@@ -807,4 +807,113 @@ export class Utils {
             return vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
     }
+
+    static getErrors(uri: vscode.Uri): string {
+        const diagnostics = vscode.languages.getDiagnostics(uri);
+        
+        if (diagnostics.length === 0) {
+            return 'No diagnostics found.';
+        }
+        
+        const lines: string[] = [];
+        lines.push(`Diagnostics for ${uri.fsPath}:`);
+        lines.push('='.repeat(50));
+        
+        diagnostics.forEach((diag, index) => {
+            const severity = Utils.getSeverityString(diag.severity);
+            const line = diag.range.start.line + 1;
+            const col = diag.range.start.character + 1;
+            const source = diag.source || 'unknown';
+            
+            lines.push(`[${index + 1}] ${severity} (${source}): ${diag.message}`);
+            lines.push(`    at line ${line}, column ${col}`);
+            if (diag.code) {
+                lines.push(`    code: ${diag.code}`);
+            }
+            lines.push('');
+        });
+        
+        return lines.join('\n');
+    }
+
+
+    static getAllErrors(): string {
+        const allDiagnostics = vscode.languages.getDiagnostics();
+        
+        if (allDiagnostics.length === 0) {
+            return '✅ No diagnostics found in the workspace.';
+        }
+        
+        // Count total issues by severity
+        let totalErrors = 0;
+        let totalWarnings = 0;
+        let totalInfo = 0;
+        let totalHints = 0;
+        
+        const sections: string[] = [];
+        sections.push('📊 WORKSPACE DIAGNOSTICS SUMMARY');
+        sections.push('='.repeat(50));
+        
+        // Process each file
+        allDiagnostics.forEach(([uri, diagnostics]) => {
+            if (diagnostics.length === 0) return;
+            
+            const filePath = uri.fsPath;
+            const fileName = filePath.split('/').pop() || filePath;
+            
+            // Count issues in this file
+            const errors = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Error);
+            const warnings = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Warning);
+            const info = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Information);
+            const hints = diagnostics.filter(d => d.severity === vscode.DiagnosticSeverity.Hint);
+            
+            totalErrors += errors.length;
+            totalWarnings += warnings.length;
+            totalInfo += info.length;
+            totalHints += hints.length;
+            
+            sections.push('');
+            sections.push(`📁 ${fileName}`);
+            sections.push(`   Path: ${filePath}`);
+            sections.push(`   Issues: ${diagnostics.length} total (${errors.length} errors, ${warnings.length} warnings, ${info.length} info, ${hints.length} hints)`);
+            
+            // Show individual diagnostics for this file
+            diagnostics.forEach((diag) => {
+                const severity = Utils.getSeverityString(diag.severity);
+                const line = diag.range.start.line + 1;
+                const col = diag.range.start.character + 1;
+                const source = diag.source ? ` [${diag.source}]` : '';
+                
+                sections.push(`     ${severity}${source}: ${diag.message} (line ${line}, col ${col})`);
+            });
+        });
+        
+        // Add summary at the top (or bottom)
+        const summary = [
+            '',
+            '='.repeat(50),
+            '📈 TOTAL SUMMARY:',
+            `   ${allDiagnostics.reduce((sum, [_, diags]) => sum + diags.length, 0)} total issues`,
+            `   ${totalErrors} errors`,
+            `   ${totalWarnings} warnings`,
+            `   ${totalInfo} info messages`,
+            `   ${totalHints} hints`,
+            `   ${allDiagnostics.filter(([_, diags]) => diags.length > 0).length} files with issues`
+        ];
+        
+        // Insert summary at the beginning
+        sections.splice(1, 0, ...summary);
+        
+        return sections.join('\n');
+    }
+
+    static getSeverityString(severity: vscode.DiagnosticSeverity): string {
+        switch (severity) {
+            case vscode.DiagnosticSeverity.Error: return 'ERROR';
+            case vscode.DiagnosticSeverity.Warning: return 'WARNING';
+            case vscode.DiagnosticSeverity.Information: return 'INFO';
+            case vscode.DiagnosticSeverity.Hint: return 'HINT';
+            default: return 'UNKNOWN';
+        }
+    }
 }

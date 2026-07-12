@@ -33,7 +33,9 @@ export class Tools {
         this.toolsFunc.set("llama_vscode_help", this.llamaVscodeHelp)     
         this.toolsFunc.set("update_todo_list", this.updateTodoList) 
         this.toolsFunc.set("delegate_task", this.delegateTask) 
-        this.toolsFunc.set("create_agent", this.createAgent) 
+        this.toolsFunc.set("create_agent", this.createAgent)
+        this.toolsFunc.set("get_errors", this.getErrors) 
+        this.toolsFunc.set("rename_symbol", this.renameSymbol)
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
         this.toolsFuncDesc.set("read_file", this.readFileDesc)
@@ -50,6 +52,8 @@ export class Tools {
         this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc);
         this.toolsFuncDesc.set("delegate_task", this.delegateTaskDesc)
         this.toolsFuncDesc.set("create_agent ", this.createAgentDesc);
+        this.toolsFuncDesc.set("get_errors ", this.getErrorsDesc);
+        this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -204,6 +208,100 @@ export class Tools {
         let params = JSON.parse(args);
         return "Regex search for: " + params.regex;
     }
+
+    public getErrors = async (args: string ) => {
+        let params = JSON.parse(args);
+        let result = "No errors found."
+
+        if (params.filePath){
+            const uri = vscode.Uri.file(params.filePath);
+            result = Utils.getErrors(uri);
+        } else {
+            result= Utils.getAllErrors();
+        }
+         return result;
+    }   
+
+    public getErrorsDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+        let result = "Getting all errors."
+        if (params.filePath) result = "Getting errors for: " + params.filePath;
+        return result;
+    }
+
+    public renameSymbol = async (args: string ) => {
+        let params = JSON.parse(args);
+
+        // Validate required parameters
+        if (!params.symbol || !params.newName || !params.lineContent) {
+            return "Parameters 'symbol', 'newName', and 'lineContent' are required.";
+        }
+
+        let uri: vscode.Uri;
+        if (params.url) {
+            uri = vscode.Uri.parse(params.url);
+        } else if (params.filePath) {
+            const absolutePath = Utils.getAbsolutFilePath(params.filePath);
+            if (!absolutePath) {
+                return `File not found: ${params.filePath}`;
+            }
+            uri = vscode.Uri.file(absolutePath);
+        } else {
+            return "Either 'url' or 'filePath' must be provided.";
+        }
+
+        try {
+            const document = await vscode.workspace.openTextDocument(uri);
+            const lineContent = params.lineContent;
+
+            // Find the line containing lineContent
+            let targetLine = -1;
+            for (let i = 0; i < document.lineCount; i++) {
+                const lineText = document.lineAt(i).text;
+                if (lineText.includes(lineContent)) {
+                    targetLine = i;
+                    break;
+                }
+            }
+
+            if (targetLine === -1) {
+                return `Could not find line containing: ${lineContent}`;
+            }
+
+            // Find the symbol's position in the line
+            const lineText = document.lineAt(targetLine).text;
+            const startIndex = lineText.indexOf(params.symbol);
+            if (startIndex === -1) {
+                return `Symbol '${params.symbol}' not found in the line: ${lineText}`;
+            }
+
+            const position = new vscode.Position(targetLine, startIndex);
+
+            // Execute rename
+            const edits = await vscode.commands.executeCommand<vscode.WorkspaceEdit>(
+                'vscode.executeDocumentRenameProvider',
+                uri,
+                position,
+                params.newName
+            );
+
+            if (!edits) {
+                return `No edits returned for renaming ${params.symbol} to ${params.newName}.`;
+            }
+
+            await vscode.workspace.applyEdit(edits);
+            return `The symbol ${params.symbol} is successfully renamed. to ${params.newName}`;
+        } catch (error) {
+            return `Error renaming symbol: ${error instanceof Error ? error.message : String(error)}`;
+        }
+    }   
+
+    public renameSymbolDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+
+        return "Renaming symbol '" + params.symbol + "' to '" + params.newName + "' in file: " + params.filePath;
+    }
+
 
     public deleteFile = async (args: string ) => {
         let params = JSON.parse(args);
@@ -484,8 +582,6 @@ export class Tools {
     
     public createAgentDesc = async (args: string) => {
         let ret = "create_agent tool is executed. \n\n"
-        // let params = JSON.parse(args);
-        // if (params.task && params.subagent_name) ret += "subagent: " +  params.subagent_name + "\ntask: " + params.task
         return ret.split(/\r?\n/).join("  \n")
     }
     
@@ -804,6 +900,62 @@ export class Tools {
                             },
                             "task": {
                                 "description": "Description of the task to be delegated to the subagent.",
+                                "type": "string",
+                            },
+                        },
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_get_errors_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "get_errors",
+                    "description": this.app.prompts.TOOL_GET_ERRORS_DESCRIPTION,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filePath": {
+                                "description": "The absolute paths to the files or folders to check for errors. Omit 'filePaths' when retrieving all errors.",
+                                "type": "string",
+                            },
+                        },
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_rename_symbol_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "rename_symbol",
+                    "description": this.app.prompts.TOOL_RENAME_SYMBOL_DESCRIPTION,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "filePath": {
+                                "description": "A workspace-relative file path where the symbol appears (e.g. \"src/utils/helpers.ts\"). Provide either \"uri\" or \"filePath\".",
+                                "type": "string",
+                            },
+                            "lineContent": {
+                                "description": "A substring of the line of code where the symbol appears. Used to locate the exact position. Must be actual text from the file.",
+                                "type": "string",
+                            },
+                            "newName": {
+                                "description": "The new name for the symbol.",
+                                "type": "string",
+                            },
+                            "symbol": {
+                                "description": "The exact current name of the symbol to rename.",
+                                "type": "string",
+                            },
+                            "url": {
+                                "description": "A full URI of a file where the symbol appears (e.g. \"file:///path/to/file.ts\"). Provide either \"uri\" or \"filePath\".",
                                 "type": "string",
                             },
                         },

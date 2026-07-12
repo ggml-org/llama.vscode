@@ -67,6 +67,7 @@ export class Application {
     public apiKeyService: ApiKeyService
     public llamaChatModelProvider: LlamaChatModelProvider
     public dialogs: Dialogs
+    public extensionContext: vscode.ExtensionContext
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -79,6 +80,7 @@ export class Application {
     private modelState: Map<string, string> = new Map()
 
     private constructor(context: vscode.ExtensionContext) {
+        this.extensionContext = context
         this.configuration = new Configuration()
         this.llamaServer = new LlamaServer(this)
         this.extraContext = new ExtraContext(this)

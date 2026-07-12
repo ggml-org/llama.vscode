@@ -501,7 +501,9 @@
                 "edit_file",
                 "ask_user",
                 "update_todo_list",
-                "delegate_task"
+                "delegate_task",
+                "get_errors",
+                "rename_symbol"
               ]
             },
             {
@@ -1945,6 +1947,16 @@
           "default": true,
           "description": "Enable/disable tool create_agent"
         },
+        "llama-vscode.tool_get_errors_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool get_errors"
+        },
+        "llama-vscode.tool_rename_symbol_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool rename_symbol"
+        },
         "llama-vscode.tools_custom": {
           "type": "array",
           "description": "Array of tool definitions for REST requests to LLM",
@@ -2163,6 +2175,16 @@
           "type": "number",
           "default": 20,
           "description": "Max number of iterations with AI when working with tools. If you are working with paid AI providers, big number here could result in higher costs."
+        },
+        "llama-vscode.auto_memory_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable auto memory (automatically accumulate knowledge across sessions)"
+        },
+        "llama-vscode.max_auto_memory_files": {
+          "type": "number",
+          "default": 10,
+          "description": "Max number of .md files to store in auto memory. The AI will be instructed  to reorganize the auto memory files if they are more than the limit."
         },
         "llama-vscode.popup_max_chars": {
           "type": "number",

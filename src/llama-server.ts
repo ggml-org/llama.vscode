@@ -790,7 +790,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
             const shouldSelectModel = await this.app.dialogs.showUserChoiceDialog(selectionMessate, "Select")
             if (shouldSelectModel){
-                this.app.llamaWebviewProvider.showEnvView();
+                this.app.llamaWebviewProvider.showEnvViewInUi();
                 vscode.window.showInformationMessage("After the completion model is loaded, try again using code completion.")
                 return;
             } else {

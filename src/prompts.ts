@@ -285,6 +285,35 @@ If the delegation fails, an error status with details will be returned.`
 TOOL_CREATE_AGENT_DESCRIPTION = `Creates a new agent in the system. The agent's configuration must be provided as a JSON string conforming to the schema defined in the description of property "agent_json". 
 Upon successful creation, returns a confirmation message containing the unique identifier of the new agent. Ensure that any tool names listed in the tools field correspond to existing tools in the system.`
 
+// Reused from copilot. Thanks for keeping it open source.
+TOOL_GET_ERRORS_DESCRIPTION = `Get any compile or lint errors in a specific file or across all files. If the user mentions errors or problems in a file, they may be referring to these. 
+Use the tool to see the same errors that the user is seeing. If the user asks you to analyze all errors, or does not specify a file, use this tool to gather errors for all files. 
+Also use this tool after editing a file to validate the change.`
+
+// Reused from copilot. Thanks for keeping it open source.
+TOOL_RENAME_SYMBOL_DESCRIPTION = `Rename a code symbol across the workspace using the language server's rename functionality. This performs a precise, semantics-aware rename that updates all references.
+
+Input:
+- "symbol": The exact current name of the symbol to rename.
+- "newName": The new name for the symbol.
+- "uri": A full URI (e.g. "file:///path/to/file.ts") of a file where the symbol appears. Provide either "uri" or "filePath".
+- "filePath": A workspace-relative file path (e.g. "src/utils/helpers.ts") of a file where the symbol appears. Provide either "uri" or "filePath".
+- "lineContent": A substring of the line of code where the symbol appears. This is used to locate the exact position in the file. Must be the actual text from the file - do NOT fabricate it.
+
+IMPORTANT: The file and line do NOT need to be the definition of the symbol. Any occurrence works - a usage, an import, a call site, etc. You can pick whichever occurrence is most convenient.
+
+If the tool returns an error, retry with corrected input - ensure the file path is correct, the line content matches the actual file content, and the symbol name appears in that line.
+
+If the file's language has no rename provider registered, the tool returns an error.`
+
+AUTO_MEMORY_PROMPT = `Use folder {auto_memory_folder} for persistent memory (auto memory). ONLY in this folder create, read, update and delete *.md files for persistent auto memory across conversations for the current project.
+Store codebase conventions, build commands, project structure facts, verified practices, user preferences, etc..
+Use descriptive file names for each note, e.g. "project_structure.md", "build_commands.md", "user_preferences.md". From the files names you should be able to determine if you need to read the file content. 
+Keep the number of files in the auto memory folder folder not more than {max_auto_memory_files}. If there are more files - reorganize and make them not more than the limit.
+IMPORTANT: Before creating new auto memory files, first view what already exists. This helps avoid duplicates and maintain organized notes.
+STORE PERSISTENT .MD FILES ONLY IN FOLDER {auto_memory_folder}.`
+
+
 PROPERTY_AGENT_JSON_DESCRIPTION = `A JSON string that defines the agent to be created. The object must include the following fields:
 
     name (string): The name of the agent.

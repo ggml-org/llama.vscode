@@ -13,7 +13,23 @@ Example:
 1. Select several lines of source code
 2. Press Ctrl+Shift+A (or right click and select "llama-vscode: Show Llama Agent") - this will attach the selected lines to the prompt
 3. Inside the agent prompt press "/" and select "explain"
-The agent will explain the selected code.## Chat with AI about llama-vscode  
+The agent will explain the selected code.## Skills
+
+### Overview
+Llama-vscode support a simple auto memory for storing persistent data across conversations. The logic is as follows:
+- The persistent memory is stored by the agent (when it considers necessary or if the user explicitly asks) in .md files in a project specific auto memory folder (for example /home/<user>/.config/Code/User/workspaceStorage/<project_id>/ggml-org.llama-vscode/auto_memory). (The agent is asked to use descriptive file names)
+- On starting a chat with the agent, the list of the .md files names in the auto memory folder is added to the prompt. 
+- The agent decides, based on the file name, what auto memory file to read (if any)
+
+### How to use it
+1. Make sure the setting auto_memory_enabled is checked (checked by default)
+2. Make sure the setting max_auto_memory_files is greater than 0 (10 by default)
+3. Start using the agent - it will automatically store the information, which it considers important for the future conversation in auto memory (or the user could explicitly ask something to be saved in auto memory).
+
+Settings:
+- auto_memory_enabled: If auto memory is enabled
+- max_auto_memory_files: The max number of files to keep in auto memory (this is a hint to the AI not a strict limit)
+## Chat with AI about llama-vscode  
 
 ### Requred servers
 - Tools server
@@ -54,7 +70,7 @@ https://github.com/user-attachments/assets/97bb1418-dcea-4a49-8332-13b2ab4da661
 ![Code completion](https://private-user-images.githubusercontent.com/1991296/405712196-b19499d9-f50d-49d4-9dff-ff3e8ba23757.gif?jwt=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NDY5NDc1NDEsIm5iZiI6MTc0Njk0NzI0MSwicGF0aCI6Ii8xOTkxMjk2LzQwNTcxMjE5Ni1iMTk0OTlkOS1mNTBkLTQ5ZDQtOWRmZi1mZjNlOGJhMjM3NTcuZ2lmP1gtQW16LUFsZ29yaXRobT1BV1M0LUhNQUMtU0hBMjU2JlgtQW16LUNyZWRlbnRpYWw9QUtJQVZDT0RZTFNBNTNQUUs0WkElMkYyMDI1MDUxMSUyRnVzLWVhc3QtMSUyRnMzJTJGYXdzNF9yZXF1ZXN0JlgtQW16LURhdGU9MjAyNTA1MTFUMDcwNzIxWiZYLUFtei1FeHBpcmVzPTMwMCZYLUFtei1TaWduYXR1cmU9NmZiMmI0NGYzNTkyZGZkMTM5Njk3M2NjZDFhMjFiNTFkMjVkMmY4MGQ5ZDQ2ZDQ0MDgzOWI2YjM5NTY0NzM2OSZYLUFtei1TaWduZWRIZWFkZXJzPWhvc3QifQ.P150YJh87_y1pin20aWIuKoPzivmDjZF0iAemQlk_ok)## Copilot Chat Model Provider
 
 ### Overview
-Llama-vscode could be used as a VS Code copilot chat model provider. With other words llama-vscode could provide models for the copilot. The provided models could be from local models or openrouter.com or other appliation, which servers the tools models for llama-vscode. This way you could automatically download and start locally models by llama.cpp and llama-vscode and use them with Copilot for free.
+Llama-vscode could be used as a VS Code copilot chat model provider. With other words llama-vscode could provide models for the copilot. The provided models could be from local models, openrouter.com or other appliation, which serves the tools models for llama-vscode. This way you could automatically download and start locally models by llama.cpp and llama-vscode and use them with Copilot for free.
 
 ### How to use it
 1. Select/Start tools model from llama-vscode (local or external)  
@@ -64,6 +80,7 @@ Llama-vscode could be used as a VS Code copilot chat model provider. With other 
 <img width="1404" height="754" alt="CopilotManageModels" src="https://github.com/user-attachments/assets/dc861aa1-db86-46ff-83c1-98c7a435ad06" />
   
 3. Make the models (all models available by the application serving the tools model are shown) you want to use visible (click on the left of the model name)  
+
 4. Select the desired model from Copilot and start using it
 ## Custom eval tool
 
@@ -233,6 +250,23 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/dca91333-687e-4856-b187-25df50d17b1c" />
 
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
+
+
+## Version 0.0.52 is released (13.07.2026)
+## What is new
+
+- New tool get_errors for getting file or project errors (prompts reused from copilot)
+- New tool rename_symbol for renaming a symbol (variable, function, etc. in the whole project) (prompts reused from copilot)
+- Auto memory added: settings auto_memory_enabled (true by default), max_auto_memory_files (10 by default). The agent could store persistent memory across conversations automatically (project specific).
+
+
+## Version 0.0.51 is released (28.06.2026)
+## What is new
+
+- Agent UI is changed - a button is added for sending a prompt during agent loop (entering text and Enter has the same effect)
+- If a prompt is sent during the agent loop - the LLM receives it at earliest possible time
+- A bug with calling terminal command is fixed
+
 
 
 ## Version 0.0.50 is released (26.06.2026)

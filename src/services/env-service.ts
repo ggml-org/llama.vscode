@@ -52,7 +52,7 @@ export class EnvService {
                 await this.selectEnv(this.app.configuration.envs_list, true);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.addEnv):
-                this.app.llamaWebviewProvider.showEnvView();
+                this.app.llamaWebviewProvider.showEnvViewInUi();
                 break;
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.deleteEnv):
