@@ -226,7 +226,7 @@ export class Menu {
                 this.app.envService.showCurrentEnv();
                 break;
             case (this.app.configuration.getUiText(UI_TEXT_KEYS.showLlamaAgent) ?? "") + " (Ctrl+Shif+A)":
-                await this.app.llamaWebviewProvider.showAgentView();
+                await this.app.llamaWebviewProvider.showAgentViewInUi();
                 break;
             case (this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAI) ?? "") + " (Ctrl+;)":
                 this.app.askAi.showChatWithAi(false, undefined as any);
@@ -346,7 +346,7 @@ export class Menu {
                 if (helpAgent) {
                     await this.app.agentService.selectAgent(helpAgent);
                 }
-                this.app.llamaWebviewProvider.showAgentView();
+                this.app.llamaWebviewProvider.showAgentViewInUi();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.howToDeleteModels):
                 this.app.dialogs.showOkDialog("The automatically downloaded models (llama serve started with -hf option) are stored as follows: \nIn Windows in folder C:\\Users\\YourUsername\\.cache\\huggingface\\hub. \nIn Mac and Linux ~/.cache/huggingface/hub. \nYou could delete them from the folder.");

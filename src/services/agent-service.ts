@@ -142,8 +142,8 @@ export class AgentService {
     }
 
     async addAgent(agentsList: Agent[], settingName: string): Promise<void> {
-        this.app.llamaWebviewProvider.showAgentEditor();
-        this.app.llamaWebviewProvider.addEditAgent({name: "", description: "", systemInstruction: [], tools: []})
+        this.app.llamaWebviewProvider.showAgentEditorInUi();
+        this.app.llamaWebviewProvider.addEditAgnt({name: "", description: "", systemInstruction: [], tools: []})
     }
 
     selectTools = async (currentTools: string[]): Promise<string[]> => {
@@ -227,9 +227,9 @@ export class AgentService {
         const agentItem = await vscode.window.showQuickPick(agentsItems);
         if (agentItem) {
             let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
-            this.app.llamaWebviewProvider.showAgentEditor();
+            this.app.llamaWebviewProvider.showAgentEditorInUi();
             setTimeout(() => {
-                this.app.llamaWebviewProvider.addEditAgent(agentsList[agentIndex])
+                this.app.llamaWebviewProvider.addEditAgnt(agentsList[agentIndex])
             }, 500);
             
         }
@@ -243,7 +243,7 @@ export class AgentService {
         let agentItem = await vscode.window.showQuickPick(agentsItems);
         if (agentItem) {
             let agentIndex = parseInt(agentItem.label.split(". ")[0], 10) - 1;
-            this.app.llamaWebviewProvider.showAgentEditor();
+            this.app.llamaWebviewProvider.showAgentEditorInUi();
             const selectedAgent = allAgents[agentIndex];
             const newAgent: Agent = {
                 name: "Copy of " + agentItem.label,
@@ -252,7 +252,7 @@ export class AgentService {
                 tools: selectedAgent.tools
             }
             setTimeout(() => {
-                this.app.llamaWebviewProvider.addEditAgent(newAgent)
+                this.app.llamaWebviewProvider.addEditAgnt(newAgent)
             }, 500);
         }
     }

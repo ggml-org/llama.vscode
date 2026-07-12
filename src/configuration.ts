@@ -96,7 +96,11 @@ export class Configuration {
     tool_llama_vscode_help_enabled = true;
     tool_update_todo_list_enabled = true;
     tool_delegate_task_enabled = true;
+    tool_get_errors_enabled = true;
+    tool_rename_symbol_enabled = true;
     tools_max_iterations = 50;
+    auto_memory_enabled = true;
+    max_auto_memory_files = 10;
     plan_review_frequency = 5;
     tools_log_calls = false;
     chats_max_history = 50;
@@ -252,6 +256,10 @@ export class Configuration {
         this.tool_custom_eval_tool_description = String(config.get<string>("tool_custom_eval_tool_description"));
         this.tool_custom_eval_tool_code = String(config.get<string>("tool_custom_eval_tool_code"));
         this.tools_max_iterations = Number(config.get<number>("tools_max_iterations"));
+        this.tool_get_errors_enabled = Boolean(config.get<boolean>("tool_get_errors_enabled"));
+        this.tool_rename_symbol_enabled = Boolean(config.get<boolean>("tool_rename_symbol_enabled"));
+        this.auto_memory_enabled = Boolean(config.get<boolean>("auto_memory_enabled"));
+        this.max_auto_memory_files = Number(config.get<number>("max_auto_memory_files"));
         this.plan_review_frequency = Number(config.get<number>("plan_review_frequency"));
         this.tools_log_calls = Boolean(config.get<boolean>("tools_log_calls"));
         this.chats_max_history = Number(config.get<number>("chats_max_history"));
@@ -391,6 +399,8 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_update_task_enabled")
         || event.affectsConfiguration("llama-vscode.tool_save_plan_enabled")
         || event.affectsConfiguration("llama-vscode.tools_custom")
+        || event.affectsConfiguration("llama-vscode.tool_get_errors_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_rename_symbol_enabled")
     }
 
     setLlamaRequestConfig = () => {

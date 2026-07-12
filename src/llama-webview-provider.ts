@@ -11,16 +11,454 @@ import { ModelType, SETTING_NAME_FOR_LIST } from './constants';
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
     private _webview: vscode.WebviewView | undefined;
+    private commandHandlers: Map<string, (message: any, webviewView: vscode.WebviewView) => Promise<void>>;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
         private readonly app: Application,
         private readonly context: vscode.ExtensionContext
-    ) { }
+    ) { 
+        this.commandHandlers = new Map([
+                    ["sendText", this.sendText],
+                    ["sendInSessionText", this.sendInSessionText],
+                    ["sendAgentCommand", this.sendAgentCommand],
+                    ["clearText", this.clearText],
+                    ["showChatsHistory", this.showChatsHistory],
+                    ["configureTools", this.configureTools],
+                    ["configureEditTools", this.configureEditTools],
+                    ["stopSession", this.stopSession],
+                    ["selectModelWithTools", this.selectModelWithTools],
+                    ["selectModelForChat", this.selectModelForChat],
+                    ["selectModelForEmbeddings", this.selectModelForEmbeddings],
+                    ["selectModelForCompletion", this.selectModelForCompletion],
+                    ["deselectCompletionModel", this.deselectCompletionModel],
+                    ["moreCompletionModel", this.moreCompletionModel],
+                    ["checkModelHealth", this.checkModelHealth],
+                    ["selectAgentModel", this.selectAgentModel],
+                    ["moreChatModel", this.moreChatModel],
+                    ["moreEmbeddingsModel", this.moreEmbeddingsModel],
+                    ["moreToolsModel", this.moreToolsModel],
+                    ["moreAgent", this.moreAgent],
+                    ["deselectChatModel", this.deselectChatModel],
+                    ["deselectEmbsModel", this.deselectEmbsModel],
+                    ["deselectToolsModel", this.deselectToolsModel],
+                    ["deselectAgentModel   ", this.deselectAgentModel   ],
+                    ["deselectAgent", this.deselectAgent],
+                    ["selectEditAgent", this.selectEditAgent],
+                    ["showCompletionModel", this.showCompletionModel],
+                    ["showChatModel", this.showChatModel],
+                    ["showEmbsModel", this.showEmbsModel],
+                    ["showToolsModel", this.showToolsModel],
+                    ["showAgentDetails", this.showAgentDetails],
+                    ["selectAgent", this.selectAgent],
+                    ["chatWithAI ", this.chatWithAI ],
+                    ["installLlamacpp", this.installLlamacpp],
+                    ["addHuggingfaceModel", this.addHuggingfaceModel],
+                    ["selectEnv", this.selectEnv],
+                    ["stopEnv", this.stopEnv],
+                    ["showEnvView", this.showEnvView],
+                    ["showAgentView", this.showAgentView],
+                    ["showAgentEditor", this.showAgentEditor],
+                    ["showSelectedModels", this.showSelectedModels],
+                    ["getFileList", this.getFileList],
+                    ["getAgentCommands", this.getAgentCommands],
+                    ["getAgentTools", this.getAgentTools],
+                    ["addContextProjectFile", this.addContextProjectFile],
+                    ["removeContextProjectFile", this.removeContextProjectFile],
+                    ["selectImageFile", this.selectImageFile],
+                    ["addContextProjectImage", this.addContextProjectImage],
+                    ["removeContextProjectImage", this.removeContextProjectImage],
+                    ["addEditedAgentTool", this.addEditedAgentTool],
+                    ["removeEditedAgentTool", this.removeEditedAgentTool],
+                    ["saveEditAgent", this.saveEditAgent],
+                    ["refreshEditedAgentTool", this.refreshEditedAgentTool],
+                    ["editSelectedAgent", this.editSelectedAgent],
+                    ["addEditAgent", this.addEditAgent],
+                    ["copyAsNewAgent", this.copyAsNewAgent],
+                    ["deleteAgent", this.deleteAgent],
+                    ["openContextFile", this.openContextFile          ],
+                    ["addEnv", this.addEnv],
+                    ["toggleCompletionsEnabled", this.toggleCompletionsEnabled],
+                    ["toggleRagEnabled", this.toggleRagEnabled],
+                    ["toggleAutoStartEnv", this.toggleAutoStartEnv],
+                    ["getVscodeSetting ", this.getVscodeSetting ],
+                    ["deleteCurrentChat", this.deleteCurrentChat]
+                ]);
+    }
 
     public get webview(): vscode.WebviewView | undefined {
         return this._webview;
     }
+
+    configureEditTools = async (message: any, webviewView: vscode.WebviewView) => {
+        const selectedTools = await this.app.agentService.selectTools(message.tools)
+        this.app.agentService.resetEditedAgentTools();
+        selectedTools.map(toolName => this.app.agentService.addEditedAgentTools(toolName,""))
+        const selAgentTools = this.app.agentService.getEditedAgentTools();
+        webviewView.webview.postMessage({
+            command: 'updateAgentTools',
+            files: Array.from(selAgentTools.entries())
+        });
+    }
+
+    stopSession = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.llamaAgent.stopAgent()
+    }
+
+    configureTools = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.tools.selectTools()
+    }
+
+    showChatsHistory = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.chatService.selectChatFromList()
+    }
+
+    clearText = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.clearChatText(webviewView)
+    }
+
+    sendAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.llamaAgent.run(message.text, message.agentCommand)
+    }
+
+    sendInSessionText = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.llamaAgent.setInSessionText(message.text)
+    }
+
+    sendText = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.llamaAgent.run(message.text)
+    }
+
+    selectModelWithTools = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.selectAndSetModel(ModelType.Tools, this.app.configuration.tools_models_list);
+    }
+    
+    selectModelForChat = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.selectAndSetModel(ModelType.Chat, this.app.configuration.chat_models_list);
+    }
+    
+    selectModelForEmbeddings = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.selectAndSetModel(ModelType.Embeddings, this.app.configuration.embeddings_models_list);
+    }
+    
+    selectModelForCompletion = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.selectAndSetModel(ModelType.Completion, this.app.configuration.completion_models_list);
+    }
+    
+    deselectCompletionModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.deselectAndClearModel(ModelType.Completion);
+    }
+    
+    moreCompletionModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.processModelActions(ModelType.Completion);
+    }
+    
+    checkModelHealth = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.checkModelHealth(message.model);
+    }
+    
+    selectAgentModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.selectAgentModel(ModelType.Tools, this.app.configuration.tools_models_list);                        
+    }
+    
+    moreChatModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.processModelActions(ModelType.Chat);
+    }
+    
+    moreEmbeddingsModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.processModelActions(ModelType.Embeddings);
+    }
+    
+    moreToolsModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.processModelActions(ModelType.Tools);
+    }
+    
+    moreAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.agentService.processActions();
+    }
+    
+    deselectChatModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.deselectAndClearModel(ModelType.Chat);
+    }
+    
+    deselectEmbsModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.deselectAndClearModel(ModelType.Embeddings);
+    }
+    
+    deselectToolsModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.deselectAndClearModel(ModelType.Tools);
+    }
+    
+    deselectAgentModel = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.setAgentModel(undefined);
+        this.updateLlamaView();
+    }
+                    
+    deselectAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.agentService.deselectAgent();
+    }
+    
+    selectEditAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.agentService.editAgent(this.app.configuration.agents_list)
+    }
+    
+    showCompletionModel = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.modelService.showModelDetails(this.app.getComplModel());
+    }
+    
+    showChatModel = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.modelService.showModelDetails(this.app.getChatModel());
+    }
+    
+    showEmbsModel = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.modelService.showModelDetails(this.app.getEmbeddingsModel());
+    }
+    
+    showToolsModel = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.modelService.showModelDetails(this.app.getToolsModel());
+    }
+    
+    showAgentDetails = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.agentService.showAgentDetails(this.app.getAgent())
+    }
+    
+    selectAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        let agentsList = this.app.configuration.agents_list
+        let shouldContinue = await this.app.dialogs.showYesNoDialog("This will remove the current conversation. Do you want to continue?")
+        if (shouldContinue) {
+            await this.app.agentService.pickAndSelectAgent(agentsList)
+            await this.clearChatText(webviewView);
+        }
+    }
+         
+    chatWithAI = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.askAi.closeChatWithAi(false);
+        this.app.askAi.showChatWithAi(false, this.context);
+    }
+                    
+    installLlamacpp = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.menu.installLlamacpp();
+    }
+    
+    addHuggingfaceModel = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.modelService.addModel(ModelType.Chat, "hf");
+    }
+    
+    selectEnv = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.envService.selectEnv(this.app.configuration.envs_list, true);    
+    }
+
+    stopEnv = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.envService.stopEnv();    
+    }
+    
+    showEnvView = async (message: any, webviewView: vscode.WebviewView) => {
+        this.showEnvViewInUi();
+    }
+
+    
+    
+    showAgentView = async (message: any, webviewView: vscode.WebviewView) => {
+        this.showAgentViewInUi();
+    }
+    
+    showAgentEditor = async (message: any, webviewView: vscode.WebviewView) => {
+        this.showAgentEditorInUi();
+    }
+    
+    showSelectedModels = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.envService.showCurrentEnv();    
+    }
+    
+    getFileList = async (message: any, webviewView: vscode.WebviewView) => {
+        let fileKeys: string[]
+        let contextCustom = this.app.configuration.context_custom as ContextCustom
+        if (contextCustom && contextCustom.get_list) {
+            if (fs.existsSync(contextCustom.get_list)) {
+                let toolFunction = await Utils.getFunctionFromFile(contextCustom.get_list);
+                fileKeys = toolFunction()
+            } else fileKeys = (await Plugin.execute(contextCustom.get_list as keyof typeof Plugin.methods)) as string[];
+        } else {
+            fileKeys = await this.app.chatContext.getProjectFiles();
+        }
+        webviewView.webview.postMessage({
+            command: 'updateFileList',
+            files: fileKeys
+        });
+    }
+    
+    getAgentCommands = async (message: any, webviewView: vscode.WebviewView) => {
+        let agentCommands =     this.app.configuration.agent_commands.map(cmd => cmd.name +  " | " + cmd.description)
+        webviewView.webview.postMessage({
+            command: 'updateFileList',
+            files: agentCommands
+        });
+    }
+           
+    getAgentTools = async (message: any, webviewView: vscode.WebviewView) => {
+        let agentTools = this.app.tools.getTools().map(tool => tool.function.name +  " | " + tool.function.description)
+        webviewView.webview.postMessage({
+            command: 'updateFileList',
+            files: agentTools
+        });
+    }
+     
+    addContextProjectFile = async (message: any, webviewView: vscode.WebviewView) => {
+        let fileNames = message.fileLongName.split("|");
+        this.app.llamaAgent.addContextProjectFile(fileNames[1].trim(),fileNames[0].trim());
+        const contextFiles = this.app.llamaAgent.getContextProjectFiles();
+        webviewView.webview.postMessage({
+            command: 'updateContextFiles',
+            files: Array.from(contextFiles.entries())
+        });
+    }
+        
+    removeContextProjectFile = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.llamaAgent.removeContextProjectFile(message.fileLongName);
+        const updatedContextFiles = this.app.llamaAgent.getContextProjectFiles();
+        webviewView.webview.postMessage({
+            command: 'updateContextFiles',
+            files: Array.from(updatedContextFiles.entries())
+        });
+    }
+     
+    selectImageFile = async (message: any, webviewView: vscode.WebviewView) => {
+        var selImgPath = await this.app.llamaAgent.selectImageFile();
+        this.app.llamaAgent.addContextProjectImage(selImgPath)
+        webviewView.webview.postMessage({
+            command: 'updateContextImage',
+            image: selImgPath
+        });
+    }
+     
+    addContextProjectImage = async (message: any, webviewView: vscode.WebviewView) => {
+        let imagePath = message.image;
+        this.app.llamaAgent.addContextProjectImage(imagePath);
+        const contextImage = this.app.llamaAgent.getContextProjecImage();
+        webviewView.webview.postMessage({
+            command: 'updateContextImage',
+            image: contextImage
+        });
+    }
+     
+    removeContextProjectImage = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.llamaAgent.removeContextProjectImage();
+        webviewView.webview.postMessage({
+            command: 'updateContextImage',
+            files: ""
+        });
+    }
+     
+    addEditedAgentTool = async (message: any, webviewView: vscode.WebviewView) => {
+        let toolsNames = message.fileLongName.split("|");
+        this.app.agentService.addEditedAgentTools(toolsNames[0].trim(),toolsNames[1].trim());
+        const editedAgentTools = this.app.agentService.getEditedAgentTools();
+        webviewView.webview.postMessage({
+            command: 'updateAgentTools',
+            files: Array.from(editedAgentTools.entries())
+        });
+    }
+     
+    removeEditedAgentTool = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.agentService.removeEditedAgentTools(message.fileLongName);
+        const updatedTools = this.app.agentService.getEditedAgentTools();
+        webviewView.webview.postMessage({
+            command: 'updateAgentTools',
+            files: Array.from(updatedTools.entries())
+        });
+    }
+ 
+    saveEditAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        if (!message.name) {
+            vscode.window.showErrorMessage("Agent should have a name!")
+            return;
+        }
+        let agentModelToSave: LlmModel | undefined = undefined
+        if (message.toolsModel) agentModelToSave = this.app.getTmpAgentModel();
+        let agentToSave: Agent = {
+            name: message.name, 
+            description: message.description,
+            subagentEnabled: message.subagentEnabled,
+            systemInstruction: message.systemInstruction.split(/\r?\n/),
+            toolsModel: agentModelToSave,
+            tools: message.tools
+        } 
+        await this.app.agentService.addUpdateAgent(agentToSave)
+    }
+     
+    refreshEditedAgentTool = async (message: any, webviewView: vscode.WebviewView) => {
+        const refreshedTols = this.app.agentService.getEditedAgentTools();
+        webviewView.webview.postMessage({
+            command: 'updateAgentTools',
+            files: Array.from(refreshedTols.entries())
+        });
+    }
+     
+    editSelectedAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        const selectedAgent = this.app.getAgent()
+        this.addEditAgnt(selectedAgent);
+    }
+                    
+    addEditAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        let toolsModel = Application.emptyModel
+        if (message.toolsModel) toolsModel = this.app.getTmpAgentModel();
+        const newAgent: Agent = {
+            name: message.name, 
+            description: message.description,
+            subagentEnabled: message.subagentEnabled,
+            systemInstruction: message.systemInstruction, 
+            toolsModel: toolsModel,
+            tools: message.tools
+        }
+        this.addEditAgnt(newAgent);
+    }
+     
+    copyAsNewAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.agentService.copyAgent()
+    }
+    
+    deleteAgent = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.agentService.deleteAgent()
+    }
+    
+    openContextFile = async (message: any, webviewView: vscode.WebviewView) => {
+        const uri = vscode.Uri.file(message.fileLongName);
+        const document = await vscode.workspace.openTextDocument(uri);
+        await vscode.window.showTextDocument(document);
+    }
+                    
+    addEnv = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.envService.addEnv(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
+    }
+    
+    toggleCompletionsEnabled = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.configuration.updateConfigValue("enabled", message.enabled)
+    }
+    
+    toggleRagEnabled = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.configuration.updateConfigValue("rag_enabled", message.enabled)
+    }
+    
+    toggleAutoStartEnv = async (message: any, webviewView: vscode.WebviewView) => {
+        this.app.configuration.updateConfigValue("env_start_last_used", message.enabled)
+    }
+        
+    getVscodeSetting = async (message: any, webviewView: vscode.WebviewView) => {
+        const settingValue = this.app.configuration[message.key as keyof Configuration];
+        this.updateSettingInEnvView(message.key, settingValue);
+    }
+                    
+    deleteCurrentChat = async (message: any, webviewView: vscode.WebviewView) => {
+        try {
+            await this.app.chatService.deleteCurrentChat();
+            console.log('Chat deleted successfully');
+            await this.clearChatText(webviewView);
+        } catch (error) {
+            console.error('Error deleting chat:', error);
+            vscode.window.showErrorMessage('Error deleting chat: ' + (error instanceof Error ? error.message : String(error)));
+        }
+    }
+
 
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
@@ -43,315 +481,52 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         // Handle messages from the webview
         webviewView.webview.onDidReceiveMessage(
             async (message) => {
+                
+
                 console.log('Webview received message:', message);
                 console.log('Message command:', message.command);
-                switch (message.command) {
-                    case 'sendText':
-                        this.app.llamaAgent.run(message.text);
-                        break;
-                    case 'sendInSessionText':
-                        this.app.llamaAgent.setInSessionText(message.text)
-                        break;
-                    case 'sendAgentCommand':
-                        this.app.llamaAgent.run(message.text, message.agentCommand);
-                        break;
-                    case 'clearText':
-                        await this.clearChatText(webviewView);
-                        break;
-                    case 'showChatsHistory':
-                        this.app.chatService.selectChatFromList();
-                        break;
-                    case 'configureTools':
-                        await this.app.tools.selectTools()
-                        break;
-                    case 'configureEditTools':
-                        const selectedTools = await this.app.agentService.selectTools(message.tools)
-                        this.app.agentService.resetEditedAgentTools();
-                        selectedTools.map(toolName => this.app.agentService.addEditedAgentTools(toolName,""))
-                        let selAgentTools = this.app.agentService.getEditedAgentTools();
-                        webviewView.webview.postMessage({
-                            command: 'updateAgentTools',
-                            files: Array.from(selAgentTools.entries())
-                        });
-                        break;
-                    case 'stopSession':
-                        this.app.llamaAgent.stopAgent();
-                        break;
-                    case 'selectModelWithTools':
-                        await this.app.modelService.selectAndSetModel(ModelType.Tools, this.app.configuration.tools_models_list);
-                        break;
-                    case 'selectModelForChat':
-                        await this.app.modelService.selectAndSetModel(ModelType.Chat, this.app.configuration.chat_models_list);
-                        break;
-                    case 'selectModelForEmbeddings':
-                        await this.app.modelService.selectAndSetModel(ModelType.Embeddings, this.app.configuration.embeddings_models_list);
-                        break;
-                    case 'selectModelForCompletion':
-                        await this.app.modelService.selectAndSetModel(ModelType.Completion, this.app.configuration.completion_models_list);
-                        break;
-                    case 'deselectCompletionModel':
-                        await this.app.modelService.deselectAndClearModel(ModelType.Completion);
-                        break;
-                    case 'moreCompletionModel':
-                        await this.app.modelService.processModelActions(ModelType.Completion);
-                        break;
-                    case 'checkModelHealth':
-                        await this.app.modelService.checkModelHealth(message.model);
-                        break;
-                    case 'selectAgentModel':
-                        await this.app.modelService.selectAgentModel(ModelType.Tools, this.app.configuration.tools_models_list);                        
-                        break;
-                    case 'moreChatModel':
-                        await this.app.modelService.processModelActions(ModelType.Chat);
-                        break;
-                    case 'moreEmbeddingsModel':
-                        await this.app.modelService.processModelActions(ModelType.Embeddings);
-                        break;
-                    case 'moreToolsModel':
-                        await this.app.modelService.processModelActions(ModelType.Tools);
-                        break;
-                    case 'moreAgent':
-                        await this.app.agentService.processActions();
-                        break;
-                    case 'deselectChatModel':
-                        await this.app.modelService.deselectAndClearModel(ModelType.Chat);
-                        break;
-                    case 'deselectEmbsModel':
-                        await this.app.modelService.deselectAndClearModel(ModelType.Embeddings);
-                        break;
-                    case 'deselectToolsModel':
-                        await this.app.modelService.deselectAndClearModel(ModelType.Tools);
-                        break;
-                    case 'deselectAgentModel':
-                        this.app.setAgentModel(undefined);
-                        this.updateLlamaView();
-                        break;
-                    case 'deselectAgent':
-                        await this.app.agentService.deselectAgent();
-                        break;
-                    case 'selectEditAgent':
-                        await this.app.agentService.editAgent(this.app.configuration.agents_list)
-                        break;
-                    case 'showCompletionModel':
-                        this.app.modelService.showModelDetails(this.app.getComplModel());
-                        break;
-                    case 'showChatModel':
-                       this.app.modelService.showModelDetails(this.app.getChatModel());
-                        break;
-                    case 'showEmbsModel':
-                        this.app.modelService.showModelDetails(this.app.getEmbeddingsModel());
-                        break;
-                    case 'showToolsModel':
-                        this.app.modelService.showModelDetails(this.app.getToolsModel());
-                        break;
-                    case 'showAgentDetails':
-                        this.app.agentService.showAgentDetails(this.app.getAgent())
-                        break;
-                    case 'selectAgent':
-                        let agentsList = this.app.configuration.agents_list
-                        let shouldContinue = await this.app.dialogs.showYesNoDialog("This will remove the current conversation. Do you want to continue?")
-                        if (shouldContinue) {
-                            await this.app.agentService.pickAndSelectAgent(agentsList)
-                            await this.clearChatText(webviewView);
-                        }
-                        break;
-                    case 'chatWithAI':
-                        this.app.askAi.closeChatWithAi(false);
-                        this.app.askAi.showChatWithAi(false, this.context);
-                        break;
-                    case 'installLlamacpp':
-                        this.app.menu.installLlamacpp();
-                        break;
-                    case 'addHuggingfaceModel':
-                        await this.app.modelService.addModel(ModelType.Chat, "hf");
-                        break;
-                    case 'selectEnv':
-                        await this.app.envService.selectEnv(this.app.configuration.envs_list, true);    
-                        break;
-                    case 'stopEnv':
-                        await this.app.envService.stopEnv();    
-                        break;
-                    case 'showEnvView':
-                        this.showEnvView();
-                        break;
-                    case 'showAgentView':
-                        this.showAgentView();
-                        break;
-                    case 'showAgentEditor':
-                        this.showAgentEditor();
-                        break;
-                    case 'showSelectedModels':
-                        await this.app.envService.showCurrentEnv();    
-                        break;
-                    case 'getFileList':
-                        let fileKeys: string[]
-                        let contextCustom = this.app.configuration.context_custom as ContextCustom
-                        if (contextCustom && contextCustom.get_list) {
-                            if (fs.existsSync(contextCustom.get_list)) {
-                                let toolFunction = await Utils.getFunctionFromFile(contextCustom.get_list);
-                                fileKeys = toolFunction()
-                            } else fileKeys = (await Plugin.execute(contextCustom.get_list as keyof typeof Plugin.methods)) as string[];
-                        } else {
-                            fileKeys = await this.app.chatContext.getProjectFiles();
-                        }
-                        webviewView.webview.postMessage({
-                            command: 'updateFileList',
-                            files: fileKeys
-                        });
-                        break;
-                    case 'getAgentCommands':
-                        let agentCommands =     this.app.configuration.agent_commands.map(cmd => cmd.name +  " | " + cmd.description)
-                        webviewView.webview.postMessage({
-                            command: 'updateFileList',
-                            files: agentCommands
-                        });
-                        break;
-                    case 'getAgentTools':
-                        let agentTools = this.app.tools.getTools().map(tool => tool.function.name +  " | " + tool.function.description)
-                        webviewView.webview.postMessage({
-                            command: 'updateFileList',
-                            files: agentTools
-                        });
-                        break;
-                    case 'addContextProjectFile':
-                        let fileNames = message.fileLongName.split("|");
-                        this.app.llamaAgent.addContextProjectFile(fileNames[1].trim(),fileNames[0].trim());
-                        const contextFiles = this.app.llamaAgent.getContextProjectFiles();
-                        webviewView.webview.postMessage({
-                            command: 'updateContextFiles',
-                            files: Array.from(contextFiles.entries())
-                        });
-                        break;
-                    case 'removeContextProjectFile':
-                        this.app.llamaAgent.removeContextProjectFile(message.fileLongName);
-                        const updatedContextFiles = this.app.llamaAgent.getContextProjectFiles();
-                        webviewView.webview.postMessage({
-                            command: 'updateContextFiles',
-                            files: Array.from(updatedContextFiles.entries())
-                        });
-                        break;
-                    case 'selectImageFile':
-                        var selImgPath = await this.app.llamaAgent.selectImageFile();
-                        this.app.llamaAgent.addContextProjectImage(selImgPath)
-                        webviewView.webview.postMessage({
-                            command: 'updateContextImage',
-                            image: selImgPath
-                        });
-                        break;
-                    case 'addContextProjectImage':
-                        let imagePath = message.image;
-                        this.app.llamaAgent.addContextProjectImage(imagePath);
-                        const contextImage = this.app.llamaAgent.getContextProjecImage();
-                        webviewView.webview.postMessage({
-                            command: 'updateContextImage',
-                            image: contextImage
-                        });
-                        break;
-                    case 'removeContextProjectImage':
-                        this.app.llamaAgent.removeContextProjectImage();
-                        webviewView.webview.postMessage({
-                            command: 'updateContextImage',
-                            files: ""
-                        });
-                        break;
-                    case 'addEditedAgentTool':
-                        let toolsNames = message.fileLongName.split("|");
-                        this.app.agentService.addEditedAgentTools(toolsNames[0].trim(),toolsNames[1].trim());
-                        const editedAgentTools = this.app.agentService.getEditedAgentTools();
-                        webviewView.webview.postMessage({
-                            command: 'updateAgentTools',
-                            files: Array.from(editedAgentTools.entries())
-                        });
-                        break;
-                    case 'removeEditedAgentTool':
-                        this.app.agentService.removeEditedAgentTools(message.fileLongName);
-                        const updatedTools = this.app.agentService.getEditedAgentTools();
-                        webviewView.webview.postMessage({
-                            command: 'updateAgentTools',
-                            files: Array.from(updatedTools.entries())
-                        });
-                        break;
-                    case 'saveEditAgent':
-                        if (!message.name) {
-                            vscode.window.showErrorMessage("Agent should have a name!")
-                            return;
-                        }
-                        let agentModelToSave: LlmModel | undefined = undefined
-                        if (message.toolsModel) agentModelToSave = this.app.getTmpAgentModel();
-                        let agentToSave: Agent = {
-                            name: message.name, 
-                            description: message.description,
-                            subagentEnabled: message.subagentEnabled,
-                            systemInstruction: message.systemInstruction.split(/\r?\n/),
-                            toolsModel: agentModelToSave,
-                            tools: message.tools
-                        } 
-                        await this.app.agentService.addUpdateAgent(agentToSave)
-                        break;
-                    case 'refreshEditedAgentTool':
-                        const refreshedTols = this.app.agentService.getEditedAgentTools();
-                        webviewView.webview.postMessage({
-                            command: 'updateAgentTools',
-                            files: Array.from(refreshedTols.entries())
-                        });
-                        break;
-                    case 'editSelectedAgent':
-                        const selectedAgent = this.app.getAgent()
-                        this.addEditAgent(selectedAgent);
-                        break
-                    case 'addEditAgent':
-                        let toolsModel = Application.emptyModel
-                        if (message.toolsModel) toolsModel = this.app.getTmpAgentModel();
-                        const newAgent: Agent = {
-                            name: message.name, 
-                            description: message.description,
-                            subagentEnabled: message.subagentEnabled,
-                            systemInstruction: message.systemInstruction, 
-                            toolsModel: toolsModel,
-                            tools: message.tools
-                        }
-                        this.addEditAgent(newAgent);
-                        break
-                    case 'copyAsNewAgent':
-                        this.app.agentService.copyAgent()
-                        break;
-                    case 'deleteAgent':
-                        this.app.agentService.deleteAgent()
-                        break;
-                    case 'openContextFile':
-                        const uri = vscode.Uri.file(message.fileLongName);
-                        const document = await vscode.workspace.openTextDocument(uri);
-                        await vscode.window.showTextDocument(document);
-                        break;
-                    case 'addEnv':
-                        this.app.envService.addEnv(this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
-                        break;
-                    case 'toggleCompletionsEnabled':
-                        this.app.configuration.updateConfigValue("enabled", message.enabled)
-                        break;
-                    case 'toggleRagEnabled':
-                        this.app.configuration.updateConfigValue("rag_enabled", message.enabled)
-                        break;
-                    case 'toggleAutoStartEnv':
-                        this.app.configuration.updateConfigValue("env_start_last_used", message.enabled)
-                        break;
-                    case 'getVscodeSetting':
-                        const settingValue = this.app.configuration[message.key as keyof Configuration];
-                        this.updateSettingInEnvView(message.key, settingValue);
-                        break;
-                    case 'deleteCurrentChat':
-                        try {
-                            await this.app.chatService.deleteCurrentChat();
-                            console.log('Chat deleted successfully');
-                            await this.clearChatText(webviewView);
-                        } catch (error) {
-                            console.error('Error deleting chat:', error);
-                            vscode.window.showErrorMessage('Error deleting chat: ' + (error instanceof Error ? error.message : String(error)));
-                        }
-                        break;
-                    default:
-                        console.log('Unknown command:', message.command);
+
+                const handler = this.commandHandlers.get(message.command);
+                if (handler) {
+                    return await handler(message, webviewView);
+                } else {
+                    console.log('Unknown command:', message.command);
                 }
+                    // case 'sendText':
+                    //     this.app.llamaAgent.run(message.text);
+                    //     break;
+                    // case 'sendInSessionText':
+                    //     this.app.llamaAgent.setInSessionText(message.text)
+                    //     break;
+                    // case 'sendAgentCommand':
+                    //     this.app.llamaAgent.run(message.text, message.agentCommand);
+                    //     break;
+                    // case 'clearText':
+                    //     await this.clearChatText(webviewView);
+                    //     break;
+                    // case 'showChatsHistory':
+                    //     this.app.chatService.selectChatFromList();
+                    //     break;
+                    // case 'configureTools':
+                    //     await this.app.tools.selectTools()
+                    //     break;
+                    // case 'configureEditTools':
+                    //     const selectedTools = await this.app.agentService.selectTools(message.tools)
+                    //     this.app.agentService.resetEditedAgentTools();
+                    //     selectedTools.map(toolName => this.app.agentService.addEditedAgentTools(toolName,""))
+                    //     let selAgentTools = this.app.agentService.getEditedAgentTools();
+                    //     webviewView.webview.postMessage({
+                    //         command: 'updateAgentTools',
+                    //         files: Array.from(selAgentTools.entries())
+                    //     });
+                    //     break;
+                    // case 'stopSession':
+                    //     this.app.llamaAgent.stopAgent();
+                    //     break;
+                    
+                //     default:
+                //         console.log('Unknown command:', message.command);
+                // }
             }
         );
 
@@ -387,7 +562,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    public addEditAgent(agent: Agent) {
+    public addEditAgnt(agent: Agent) {
         this.app.agentService.resetEditedAgentTools();
         agent.tools?.map(tool => this.app.agentService.addEditedAgentTools(tool, ""));
         const edAgtools = this.app.agentService.getEditedAgentTools();
@@ -517,7 +692,12 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    public async showAgentView() {
+    public showEnvViewInUi() {
+        vscode.commands.executeCommand('extension.showLlamaWebview');
+        setTimeout(() => this.setView("addenv"), 500);
+    }
+
+    public async showAgentViewInUi() {
         let isModelAvailable = await this.app.modelService.checkForToolsModel();
         if (isModelAvailable) {
             vscode.commands.executeCommand('extension.showLlamaWebview');
@@ -532,12 +712,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         }
     }
 
-    public showEnvView() {
-        vscode.commands.executeCommand('extension.showLlamaWebview');
-        setTimeout(() => this.setView("addenv"), 500);
-    } 
+     
 
-    public showAgentEditor() {
+    public showAgentEditorInUi() {
         vscode.commands.executeCommand('extension.showLlamaWebview');
         setTimeout(() => this.setView("agenteditor"), 400);
     } 

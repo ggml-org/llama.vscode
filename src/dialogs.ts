@@ -50,7 +50,7 @@ export class Dialogs {
     suggestModelSelection = async (choiceMsg: string, yesMsg: string, noMsg: string, app: Application) => {
         const shouldSelectModel = await this.showUserChoiceDialog(choiceMsg, "Select");
         if (shouldSelectModel) {
-            app.llamaWebviewProvider.showEnvView();
+            app.llamaWebviewProvider.showEnvViewInUi();
             vscode.window.showInformationMessage(yesMsg);
         } else {
             vscode.window.showErrorMessage(noMsg);
@@ -93,7 +93,7 @@ export class Dialogs {
 
         const [result] = await this.showCustomDialog(dialogDetails) as [boolean]
         return result;
-    }
+    }   
 
     showYesYesdontaskNoDialog = async (message: string): Promise<[boolean, boolean]> => {
         if (message.length < this.app.configuration.popup_max_chars) {
