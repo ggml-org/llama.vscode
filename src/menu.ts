@@ -37,7 +37,7 @@ export class Menu {
     handleMenuSelection = async (selected: vscode.QuickPickItem, currentLanguage: string | undefined, languageSettings: Record<string, boolean>, context: vscode.ExtensionContext) => {              
         const label = selected.label;
 
-        if (await this.handleActionsMenuItems(label)) return
+        if (await this.handleActionsMenuItems(label, context)) return
         if (await this.handleEntitiesMenuItems(label)) return
         if (await this.handleHelpMenuItems(label)) return
         if (await this.handleTrainingMenuItems(label)) return
@@ -210,7 +210,7 @@ export class Menu {
         return menuItems;
     }
 
-    private async handleActionsMenuItems(label: string): Promise<boolean> {
+    private async handleActionsMenuItems(label: string, context: vscode.ExtensionContext): Promise<boolean> {
         let isHandled = true;
         switch (label) {
             case this.app.configuration.getUiText(UI_TEXT_KEYS.selectStartEnv):
@@ -229,7 +229,7 @@ export class Menu {
                 await this.app.llamaWebviewProvider.showAgentViewInUi();
                 break;
             case (this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAI) ?? "") + " (Ctrl+;)":
-                this.app.askAi.showChatWithAi(false, undefined as any);
+                this.app.askAi.showChatWithAi(false, context);
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.useAsLocalAIRunner):
                 vscode.commands.executeCommand('extension.showLlamaWebview');

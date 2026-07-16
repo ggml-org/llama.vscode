@@ -73,6 +73,7 @@ export class Configuration {
     rag_max_embedding_filter_chunks = 5
     rag_max_context_files = 3
     rag_max_context_file_chars = 10000
+    rag_ignore_file = ""
 
     tool_run_terminal_command_enabled = true;
     tool_create_agent_enabled = true;
@@ -215,6 +216,7 @@ export class Configuration {
         this.n_suffix = Number(config.get<number>("n_suffix"));
         this.n_predict = Number(config.get<number>("n_predict"));
         this.rag_chunk_max_chars = Number(config.get<number>("rag_chunk_max_chars"));
+        this.rag_ignore_file = String(config.get<string>("rag_ignore_file"));
         this.t_max_prompt_ms = Number(config.get<number>("t_max_prompt_ms"));
         this.t_max_predict_ms = Number(config.get<number>("t_max_predict_ms"));
         this.show_info = Boolean(config.get<boolean>("show_info"));
@@ -373,7 +375,8 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.rag_max_lines_per_chunk")
         || event.affectsConfiguration("llama-vscode.rag_max_files")
         || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line")
-        || event.affectsConfiguration("llama-vscode.rag_enabled");
+        || event.affectsConfiguration("llama-vscode.rag_enabled")
+        || event.affectsConfiguration("llama-vscode.rag_ignore_file")
     }
 
     isToolChanged = (event: vscode.ConfigurationChangeEvent) => {

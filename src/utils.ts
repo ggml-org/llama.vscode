@@ -916,4 +916,15 @@ export class Utils {
             default: return 'UNKNOWN';
         }
     }
+
+    static isFilePath(filePath: string): boolean {
+        try {
+            // Check if the path is a real file
+            fs.accessSync(filePath, fs.constants.F_OK);
+            return true;
+        } catch (error) {
+            // If an error occurs, the path is not a real file
+            return false;
+        }
+    }   
 }

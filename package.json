@@ -673,6 +673,8 @@
                 "llama_vscode_help: returns the documentation for llama-vscode extension",
                 "update_todo_list: creates or updates a todo list (plan)",
                 "delegate_task: delegates a task to a subagent and returns only the result (the subagent executes in another session, which reduces the context size)",
+                "get_errors: returns the errors from a file or the whole project",
+                "rename_symbol: renames a symbol in the code base",
                 "create_agent: creates a new agent from the provided json string",
                 "",
                 "    Once all information is collected, construct a JSON object with the appropriate keys. Ensure that boolean values are represented as true or false (without quotes) and that the tools string is included only if provided.",
@@ -1936,6 +1938,11 @@
           "type": "number",
           "default": 5000,
           "description": "max chars for a context file. If the file is bigger it will be cut to avoid too big context."
+        },
+        "llama-vscode.rag_ignore_file": {
+          "type": "string",
+          "default": "",
+          "description": "File name (no long path, just name, for example .ragignore), which contains list of files/folders to ignore for RAG search. The file content should follow the .gitignore format. The project could contain many files with this name in different folders for big projects (similar to .gitignore files)."
         },
         "llama-vscode.tool_run_terminal_command_enabled": {
           "type": "boolean",
