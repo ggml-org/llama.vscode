@@ -339,13 +339,24 @@ export class ChatContext {
         const result: vscode.Uri[] = [];
         const igMap = new Map<string, ignore.Ignore>();
 
-        // First pass: Collect all .gitignore files and their rules
-        const gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', '');
-        await Promise.all(gitignoreUris.map(async uri => {
+        // First pass: Collect all .gitignore and rag ignore files and their rules
+        let ignoreUris: vscode.Uri[] = []
+        let ragIgnoreFile = this.app.configuration.rag_ignore_file.trim();
+        if (ragIgnoreFile && ragIgnoreFile.trim() != "") {
+            ignoreUris = await vscode.workspace.findFiles('**/' + ragIgnoreFile, '');
+        }
+        
+        let gitignoreUris = await vscode.workspace.findFiles('**/.gitignore', '');
+        ignoreUris = ignoreUris.concat(gitignoreUris)
+        await Promise.all(ignoreUris.map(async uri => {
             try {
                 const content = await vscode.workspace.fs.readFile(uri);
                 const dir = path.dirname(uri.fsPath);
-                igMap.set(dir, ignore().add(content.toString()));
+                if (!igMap.has(dir)) {
+                    igMap.set(dir, ignore().add(content.toString()));
+                } else {
+                    igMap.get(dir)?.add(content.toString());
+                }
             } catch (error) {
                 console.error(`Error reading .gitignore at ${uri.fsPath}:`, error);
             }

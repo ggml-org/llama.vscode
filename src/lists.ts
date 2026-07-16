@@ -972,6 +972,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "llama_vscode_help: returns the documentation for llama-vscode extension",
                 "update_todo_list: creates or updates a todo list (plan)",
                 "delegate_task: delegates a task to a subagent and returns only the result (the subagent executes in another session, which reduces the context size)",
+                "get_errors: returns the errors from a file or the whole project",
+                "rename_symbol: renames a symbol in the code base",
                 "create_agent: creates a new agent from the provided json string",
                 "",
                 "    Once all information is collected, construct a JSON object with the appropriate keys. Ensure that boolean values are represented as true or false (without quotes) and that the tools string is included only if provided.",
