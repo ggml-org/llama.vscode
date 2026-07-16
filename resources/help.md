@@ -252,6 +252,14 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.53 is released (16.07.2026)
+## What is new
+
+- New setting rag_ignore_file for excluding files/folders from RAG indexing
+- Fix for showing Chat with AI window inside VS Code
+- Fix in agent chat - a failed request to AI doesn't prevent the following requests in the same chat
+
+
 ## Version 0.0.52 is released (13.07.2026)
 ## What is new
 
