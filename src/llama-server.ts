@@ -27,7 +27,7 @@ const STATUS_OK = 200;
 
 export interface LlamaToolsResponse {
     choices: [{
-        message:{content?: string | null, tool_calls?:[{id:string, function: {name:string, arguments: string}}]},
+        message:{role?: string, content?: string | null, tool_calls?:[{id:string, function: {name:string, arguments: string}}]},
         finish_reason?: string,
         error?: LlamaApiError,
     }];
@@ -725,7 +725,7 @@ export class LlamaServer {
     private createErrorResponse(error: LlamaApiError): LlamaToolsResponse {
         return {
             choices: [{
-                message: { content: error.message },
+                message: { role: 'assistant', content: error.message },
                 finish_reason: 'error',
                 error,
             }],
