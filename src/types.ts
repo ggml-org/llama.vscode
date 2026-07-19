@@ -4,7 +4,8 @@ export interface IAddStrategy {
 
 export interface ChatMessage {
   role: string; // or just 'string' if you need more roles
-  content: string;
+  content?: string;
+  tools?: any
   tool_call_id?: string
 }
 
@@ -82,7 +83,7 @@ export interface Chat {
     name: string,
     description?: string,
     id: string,
-    messages?: chatMessage[],
+    messages?: ChatMessage[],
     log?: string,
     defaultAgent?: Agent
 }

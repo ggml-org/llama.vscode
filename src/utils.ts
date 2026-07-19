@@ -812,7 +812,7 @@ export class Utils {
         const diagnostics = vscode.languages.getDiagnostics(uri);
         
         if (diagnostics.length === 0) {
-            return 'No diagnostics found.';
+            return '';
         }
         
         const lines: string[] = [];

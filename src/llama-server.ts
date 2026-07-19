@@ -411,18 +411,32 @@ export class LlamaServer {
         return filteredMsgs;
     }
 
-    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "") {
+    private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "", iterationsCount = 0, endpoint = "") {
         this.app.tools.addSelectedTools();
-        const filteredMsgs = this.buildToolsMessages(messages, imagePath);
+        let toolChoice = "auto";
+        let allTools = [...this.app.tools.getTools(),  ...this.app.tools.vscodeTools]
+        
+        if (model.trim() == "kimi-k3" && endpoint.toLowerCase().includes("api.moonshot.ai")) {
+            allTools = [this.app.tools.getSearchToolsTool()];
+            if (iterationsCount == 1) toolChoice = "required"
+            else if (this.app.tools.getLastSearchToolsResult().length > 0) {
+                const systemToolsMsg = {
+                        "role": "system",
+                        "tools": this.app.tools.getLastSearchToolsResult()
+                        }
+                messages.push(systemToolsMsg);
+            }
+        } 
+        let filteredMsgs = this.buildToolsMessages(messages, imagePath);
+        
+        
 
-            return {
+        return {
             "messages": filteredMsgs,
             "stream": stream,
-            "temperature": 0.8,
-            "top_p": 0.95,
             ...(model.trim() != "" && { model: model}),
-            "tools": [...this.app.tools.getTools(),  ...this.app.tools.vscodeTools],
-            "tool_choice": "auto"
+            "tools": allTools,
+            "tool_choice": toolChoice
         };
     }
 
@@ -436,7 +450,8 @@ export class LlamaServer {
             return `${index}:${typeof role === 'string' ? role : 'missing-role'}`;
         });
 
-        return `count=${messages.length}; roles=[${roles.join(', ')}]`;
+        const result = `count=${messages.length}; roles=[${roles.join(', ')}]`;
+        return result;
     }
 
     private formatTraceDetails(trace?: RequestTraceContext): string {
@@ -489,7 +504,7 @@ export class LlamaServer {
         this.app.logger.addEventLog(
             'API',
             `${label}_${method}_ERROR`,
-            [url, this.formatTraceDetails(trace), details, `error=${apiError.message.replace(/\r?\n/g, ' ')}`].filter(Boolean).join(' | ')
+            [url, this.formatTraceDetails(trace), details, `error=${apiError.message}`].filter(Boolean).join(' | ')
         );
     }
 
@@ -664,8 +679,8 @@ export class LlamaServer {
             const details = [
                 `endpoint=${endpoint}`,
                 `model=${model || 'none'}`,
-                this.summarizeTemplateMessages(templateMessages as unknown[]),
-                `error=${apiError.message.replace(/\r?\n/g, ' ')}`,
+                 this.summarizeTemplateMessages(templateMessages as unknown[]),
+                `error=${apiError}`,
             ].join(' | ');
 
             this.logApiError('APPLY_TEMPLATE', 'POST', templateUrl, error, `model=${model || 'none'} | ${this.summarizeTemplateMessages(templateMessages as unknown[])}`, trace);
@@ -861,10 +876,10 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         onDelta?: (delta: string) => void,
         abortSignal?: AbortSignal,
         imagePath = "",
-        trace: RequestTraceContext = this.createRequestTrace(isSummarization ? 'agent-summary' : 'agent')
+        iterationsCount = 0
     ): Promise<LlamaToolsResponse | undefined> => {
         const { endpoint, model, requestConfig } = this.getToolsRequestDetails();
-
+        const trace: RequestTraceContext = this.createRequestTrace(isSummarization ? 'agent-summary' : 'agent')
         let uri = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/chat/completions`;
         let request: any;
 
@@ -886,7 +901,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         }
 
         // Streaming branch for tools/agent calls
-        request = this.createToolsRequestPayload(messages, model, true, imagePath);
+        request = this.createToolsRequestPayload(messages, model, true, imagePath, iterationsCount, endpoint);
         const tokenLimits = await this.getToolsModelTokenLimits();
         const exactPromptTokens = await this.countToolsPromptTokens(messages, imagePath, {
             endpoint,
@@ -944,6 +959,9 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 request,
                 { ...requestConfig, responseType: 'stream' as const, signal: abortSignal }
             );
+
+            // The search_tools result (if any) is already used in the request and is not needed anymore
+            this.app.tools.clearToolSearch();
 
             return await new Promise<LlamaToolsResponse | undefined>((resolve) => {
                 const readable = streamResponse.data as NodeJS.ReadableStream;

@@ -362,11 +362,18 @@ export class LlamaAgent {
                     }
                     await this.summarizeToFitCurrentBudget(this.contextImage);
                     let streamed = "";
-                    let data:any = await this.app.llamaServer.getAgentCompletion(this.messages, false, (delta: string) => {
-                        streamed += delta;
-                        this.logText += delta;
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
-                    }, this.abortController?.signal, !this.sentContextImages.includes(this.contextImage)? this.contextImage : "");
+                    let data:any = await this.app.llamaServer.getAgentCompletion(
+                                                                this.messages, 
+                                                                false, 
+                                                                (delta: string) => {
+                                                                    streamed += delta;
+                                                                    this.logText += delta;
+                                                                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                                                                }, 
+                                                                this.abortController?.signal, 
+                                                                !this.sentContextImages.includes(this.contextImage)? this.contextImage : "",
+                                                                iterationsCount
+                                                            );
                     if (this.contextImage) this.sentContextImages.push(this.contextImage)
                     if (!data) {
                         this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${iterationsCount}`);
