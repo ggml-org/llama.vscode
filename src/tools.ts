@@ -16,6 +16,7 @@ export class Tools {
     private tools: any[] = [];
     vscodeTools: any[] = [];
     vscodeToolsSelected: Map<string, boolean> = new Map();
+    private lastSearchToolsResult: any[] = [];
     
     constructor(application: Application) {
         this.app = application;
@@ -36,6 +37,7 @@ export class Tools {
         this.toolsFunc.set("create_agent", this.createAgent)
         this.toolsFunc.set("get_errors", this.getErrors) 
         this.toolsFunc.set("rename_symbol", this.renameSymbol)
+        this.toolsFunc.set("search_tools", this.searchTools),
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
         this.toolsFuncDesc.set("read_file", this.readFileDesc)
@@ -54,6 +56,7 @@ export class Tools {
         this.toolsFuncDesc.set("create_agent ", this.createAgentDesc);
         this.toolsFuncDesc.set("get_errors ", this.getErrorsDesc);
         this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
+        this.toolsFuncDesc.set("search_tools", this.searchToolsDesc);
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -215,7 +218,8 @@ export class Tools {
 
         if (params.filePath){
             const uri = vscode.Uri.file(Utils.getAbsolutFilePath(params.filePath));
-            result = Utils.getErrors(uri);
+            const errors = Utils.getErrors(uri);
+            if (errors) result = errors;
         } else {
             result= Utils.getAllErrors();
         }
@@ -302,6 +306,61 @@ export class Tools {
         return "Renaming symbol '" + params.symbol + "' to '" + params.newName + "' in file: " + params.filePath;
     }
 
+    public searchTools = async (args: string ) => {
+        let params = JSON.parse(args);
+        const query = params.query
+        // Search tools with keywords matching params.query
+        
+        if (query == undefined || String(query).trim() == "") return "The search query is not provided."
+
+        this.app.tools.addSelectedTools()
+        const allTools = this.tools.concat(this.vscodeTools)
+        // 1. Extract the descriptions of the selected tools
+        const toolTexts = allTools.map(tool => (tool?.function?.name ?? "") + " " + (tool?.function?.description ?? ""))
+        const tokenize = (text: string): string[] => {
+            return text.split(/([A-Z]?[a-z]+)|[_\-\.\s]+/)
+            .filter(Boolean) // Remove empty strings from the result
+            .map(word => word.toLowerCase());
+        }
+        const tokenizedDocs = toolTexts.map(tokenize);
+        // 2. Search for the query in the tools descriptions and score the results - use Utils.computeBM25Stats
+        //    There is an example in file src/chat-context.ts line 152, function rankTexts
+        const stats = Utils.computeBM25Stats(tokenizedDocs);
+        const queryTerms = Array.from(new Set(tokenize(String(query))));
+        const scoredTools = allTools
+            .map((tool, index) => ({
+                tool: tool,
+                score: Utils.bm25Score(queryTerms, index, stats),
+            }))
+            .sort((a, b) => b.score - a.score)
+        // 3. Find the top 5 results, which are above the threshold
+        const threshold = 0;
+        const topTools = scoredTools.filter(scoredTool => scoredTool.score > threshold).slice(0, 5)
+        // 4. Store the top 5 results in this.lastSearchToolsResult
+        const current = this.lastSearchToolsResult || [];
+        const existingNames = new Set();
+        for (const tool of current) {
+            const name = tool.function?.name;
+            if (name != null) existingNames.add(name);
+        }
+        this.lastSearchToolsResult = current.concat(
+            topTools.map(scoredTool => scoredTool.tool).filter(tool => {
+                const name = tool.function?.name;
+                return name != null && !existingNames.has(name);
+            })
+        );
+        // 5. Return the top 5 results as string for the LLM prompt - tool name + description (cut up to 50 chars)
+        if (this.lastSearchToolsResult.length == 0) return "No tools found matching the query '" + query + "'."
+        return "Top matching tools: \n" + topTools
+            .map(scoredTool => "- " + (scoredTool.tool?.function?.name ?? "unknown") + ": " + String(scoredTool.tool?.function?.description ?? "").slice(0, 50))
+            .join("\n");
+    }   
+
+    public searchToolsDesc = async (args: string ) => {
+        let params = JSON.parse(args);
+
+        return "Searching tools for keywords '" + params.query+ "'";
+    }
 
     public deleteFile = async (args: string ) => {
         let params = JSON.parse(args);
@@ -375,9 +434,10 @@ export class Tools {
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
                 this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
             }
+            const uri = vscode.Uri.file(Utils.getAbsolutFilePath(filePath));
             return resultEdit;
         } catch (error) {
-            console.error('Error changes since last commit:', error);
+            console.error('Error editing file ' + filePath + ":", error);
             throw error;
         }        
     }
@@ -965,6 +1025,9 @@ export class Tools {
                 }
             }
             ] : []),
+            ...(this.app.configuration.tool_search_tools_enabled ? [
+            this.getSearchToolsTool(),
+            ] : []),
         ] 
         
         for (let tool of this.app.configuration.tools_custom){
@@ -1047,7 +1110,6 @@ export class Tools {
     }
 
     addSelectedTools = () => {
-        this.vscodeToolsSelected.set("mcp_playwright_browser_navigate", true)
         this.vscodeTools = [];
         for (let tool of vscode.lm.tools) {
             if (this.vscodeToolsSelected.has(tool.name) && tool.inputSchema && tool.inputSchema  && 'properties' in tool.inputSchema) {
@@ -1119,4 +1181,35 @@ export class Tools {
     private getToolEnabledPropertyName(toolName: string): string {
         return "tool_" + toolName + "_enabled";
     }
+
+    clearToolSearch = () => {
+        this.lastSearchToolsResult = [];
+    }
+
+    getLastSearchToolsResult = () => {
+        return this.lastSearchToolsResult;
+    }
+
+    
+    getSearchToolsTool = () => {
+        return {
+                "type": "function",
+                "function": {
+                    "name": "search_tools",
+                    "description": "Search available tools by keyword and return matching tool names and summaries",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "description": "Search keyword, e.g. github or database",
+                                "type": "string",
+                            },
+                        },
+                        "required": ["query"],
+                    },
+                    "strict": true
+                }
+            }        
+    }
+        
 }

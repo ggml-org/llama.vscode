@@ -42,7 +42,7 @@ export class ExternalModelStrategy implements IAddStrategy {
         }
         endpoint = this.sanitizeInput(endpoint);
         let aiModel = await vscode.window.showInputBox({
-            placeHolder: 'Model name, exactly as expected by the provider, i.e. kimi-latest ',
+            placeHolder: 'Model name, exactly as expected by the provider, i.e. kimi-k3 ',
             prompt: 'Enter model name as expected by the provider (leave empty if llama serve is used)',
             value: ''
         });
