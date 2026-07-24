@@ -151,18 +151,16 @@ export class ModelService {
         let allModels = modelsList.concat(PREDEFINED_LISTS.get(type) as LlmModel[])
         let modelsItems: QuickPickItem[] = this.getModels(modelsList, "", true);
         modelsItems = modelsItems.concat(this.getModels(PREDEFINED_LISTS.get(type) as LlmModel[], "(predefined) ", true, modelsList.length));
-
-        const launchToEndpoint = new Map([
-            ["launch_completion", "endpoint"],
-            ["launch_chat", "endpoint_chat"],
-            ["launch_embeddings", "endpoint_embeddings"],
-            ["launch_tools", "endpoint_tools"]
-        ]);
-        
         modelsItems.push({ label: (modelsItems.length + 1) + ". Use settings", description: "" });
 
         const selectedModelItem = await vscode.window.showQuickPick(modelsItems);
         if (selectedModelItem) {
+            const launchToEndpoint = new Map([
+                ["launch_completion", "endpoint"],
+                ["launch_chat", "endpoint_chat"],
+                ["launch_embeddings", "endpoint_embeddings"],
+                ["launch_tools", "endpoint_tools"]
+            ]);
             let model: LlmModel;
             if (parseInt(selectedModelItem.label.split(". ")[0], 10) == modelsItems.length) {
                 // Use settings

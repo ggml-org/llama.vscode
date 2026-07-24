@@ -252,6 +252,18 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.55 is released (24.07.2026)
+## What is new
+- Now you could access your llama-vscode agents from your phone with a Telegram bot. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
+
+
+## Version 0.0.54 is released (19.07.2026)
+## What is new
+- Added predefined kimi k3 tools models for OpenRouter and moonshot.ai
+- Implemented dynamically loaded tools (tools on demand) feature for Kimi K3 (works only for moonshot.ai). This optimizes the token usage and reduces the price of using kimi k3. [More details]( https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading)
+- Added predefined copilot agent (uses system prompt based on VS Code copilot system prompt)
+
+
 ## Version 0.0.53 is released (16.07.2026)
 ## What is new
 
@@ -1185,6 +1197,39 @@ This is implemented with the tool delegate_task. If the delegate_task tool is en
 3. Write a prompt, for which it is good idea to use the subagent. Alternatively, you could directly ask in the prompt to use the subagent.
 
 The agent "Agent creator" makes it easier to create agents (which could be used as subagents).
+## Telegram Bot
+
+### Requred servers
+- Tools server
+- Embeddings server (if search_source tool is used)
+
+### Overview
+You can program from your phone with llama-vscode and Telegram. Part of the agent functionality of llama-vscode could be used from Telegram (i.e. from phone) via a Telegram Bot.  The user creates a Telegram Bot and sets it's token in setting telegram_api_token. After that all messages to this bot are forwarded to the agent in llama-vscode. The AI agent answers are sent to the user in Telegram. For security reasons, only users from a white list (setting telegram_bot_users) are allowed to use the bot.  
+
+### How to use it 
+1. Create a Telegram Bot and set it's token in setting telegram_api_token. Creating a bot in Telegram is simple - open bot @BotFather, click Start and execute the command /newbot. There you will see the bot API token.
+2. Set the bot API token in setting telegram_api_token
+3. Find your user id in Telegram (in Telegram bot @userinfobot send "/start") and add it to setting telegram_bot_users
+4. Enable the bot in setting telegram_bot_enabled
+5. From your Telegram (for example from your phone) send a message to the bot
+The message will be forwarded to the agent in llama-vscode and the bot will send back the answer.
+Here are the commands (messages, which starts with "/"), which the bot can execute (if the message doesn't start with "/", it is sent to the agent) :
+/env - shows the current tools model and agent
+/models - shows the available models
+/agents - shows the available agents 
+/set-model n - sets the model to the n-th model. (models numbers are available from command /models)
+/set-agent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
+/stop - stops the agent 
+/status - shows the current status of the agent 
+/chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned 
+/help - shows help information for using the bot
+
+### Settings:
+- telegram_api_token - Telegram Bot token
+- telegram_bot_users - List of users, which are allowed to use the bot.
+- telegram_bot_enabled - Enable/disable the bot
+- telegram_chunk_size - The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message.
+
 ## Update todos tool
 
 ### Overview

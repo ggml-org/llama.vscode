@@ -492,41 +492,6 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 } else {
                     console.log('Unknown command:', message.command);
                 }
-                    // case 'sendText':
-                    //     this.app.llamaAgent.run(message.text);
-                    //     break;
-                    // case 'sendInSessionText':
-                    //     this.app.llamaAgent.setInSessionText(message.text)
-                    //     break;
-                    // case 'sendAgentCommand':
-                    //     this.app.llamaAgent.run(message.text, message.agentCommand);
-                    //     break;
-                    // case 'clearText':
-                    //     await this.clearChatText(webviewView);
-                    //     break;
-                    // case 'showChatsHistory':
-                    //     this.app.chatService.selectChatFromList();
-                    //     break;
-                    // case 'configureTools':
-                    //     await this.app.tools.selectTools()
-                    //     break;
-                    // case 'configureEditTools':
-                    //     const selectedTools = await this.app.agentService.selectTools(message.tools)
-                    //     this.app.agentService.resetEditedAgentTools();
-                    //     selectedTools.map(toolName => this.app.agentService.addEditedAgentTools(toolName,""))
-                    //     let selAgentTools = this.app.agentService.getEditedAgentTools();
-                    //     webviewView.webview.postMessage({
-                    //         command: 'updateAgentTools',
-                    //         files: Array.from(selAgentTools.entries())
-                    //     });
-                    //     break;
-                    // case 'stopSession':
-                    //     this.app.llamaAgent.stopAgent();
-                    //     break;
-                    
-                //     default:
-                //         console.log('Unknown command:', message.command);
-                // }
             }
         );
 
