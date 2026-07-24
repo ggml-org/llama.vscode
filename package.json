@@ -507,7 +507,7 @@
               ]
             },
             {
-              "name": "Unite test writer",
+              "name": "Unit test writer",
               "description": "Writes the unit tests. The input should provide a path to a source file to be tested.",
               "systemInstruction": [
                 "You are an expert software engineer specializing in writing unit tests. Your task is to generate high‑quality, reliable, and maintainable unit tests based on the user’s instructions and the provided source code. You must infer the programming language, testing framework, and project conventions from the source file and any accompanying context (such as imports, file extensions, or existing test files).",
@@ -2282,6 +2282,26 @@
           "type": "string",
           "default": "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>",
           "description": "The prompt template to be used for the OpenAI compatible endpoint."
+        },
+        "llama-vscode.telegram_api_token": {
+          "type": "string",
+          "default": "",
+          "description": "The Telegram API Key token for your Telegram Bot. How create your bot: in Telegram open bot @BotFather, click Start and execute the command /newbot. There you will see the bot API token."
+        },
+        "llama-vscode.telegram_bot_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable/disable Telegram Bot. If enabled and telegram_api_token is provided, the agent prompts could be sent from phones (with telegram message to the bot)."
+        },
+        "llama-vscode.telegram_bot_users": {
+          "type": "string",
+          "default": "",
+          "description": "Comma separated list of Telegram users IDs, which are authorized to send messages to the bot. This is a security restriction. You could find your telegram user ID by sending command /start to @userinfobot."
+        },
+        "llama-vscode.telegram_chunk_size": {
+          "type": "number",
+          "default": 250,
+          "description": "The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message."
         }
       }
     },
@@ -2324,6 +2344,7 @@
     "globby": "^14.1.0",
     "ignore": "^7.0.4",
     "js-yaml": "^4.1.1",
+    "node-telegram-bot-api": "^1.2.0",
     "openai": "^4.80.1",
     "picomatch": "^4.0.2",
     "remark-gfm": "^4.0.1",

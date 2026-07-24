@@ -761,7 +761,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               ]
             },
             {
-              "name": "Unite test writer",
+              "name": "Unit test writer",
               "description": "Writes the unit tests. The input should provide a path to a source file to be tested.",
               "systemInstruction": [
                 "You are an expert software engineer specializing in writing unit tests. Your task is to generate high‑quality, reliable, and maintainable unit tests based on the user’s instructions and the provided source code. You must infer the programming language, testing framework, and project conventions from the source file and any accompanying context (such as imports, file extensions, or existing test files).",

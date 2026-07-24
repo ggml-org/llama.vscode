@@ -245,6 +245,34 @@ export const UI_TEXT_KEYS = {
   exportToolsModel: "Export tools model...",
   importToolsModel: "Import tools model...",
 
+  // Telegram bot
+  telegramTheUser: "the user",
+  telegramUserNotAuthorized: "is not authorized to access the agent. Add the user ID in setting telegram_bot_users of llama-vscode extension. You could find your telegram user ID by sending command /start to @userinfobot.",
+  telegramStopRequestSent: "Stop request is sent to the agent.",
+  telegramAgentRunningWait: "The agent is already running. Please wait for it to finish.",
+  telegramAgentRunning: "The agent is running",
+  telegramAgentNotRunnin: "The agent is NOT running",
+  telegramHelpSendPrompt: "Send a prompt to the bot in this chat and it will be forwarded to your llama-vscode agent.",
+  telegramHelpConfigure: "You could also configure the agent and get additional information with bot commands (starting with '/').",
+  telegramHelpAgentCommands: "You could execute llama-vscode agent commands - use prefix '//' for example //about .",
+  telegramEnterCorrectAgent: "Please enter correct agent number. (see the numbers with /agents command).",
+  telegramAgentSetTo: "Agent set to",
+  telegramAgentNotFound: "Agent not found.",
+  telegramEnterAgentNumber: "Please enter agent number.",
+  telegramEnterCorrectModel: "Please enter correct model number. (see the numbers with /models command).",
+  telegramModelSetTo: "Model set to",
+  telegramUnknownCommand: "Unknown command",
+  telegramCmdEnvDesc: "shows the current tools model and agent",
+  telegramCmdModelsDesc: "shows the available models",
+  telegramCmdAgentsDesc: "shows the available agents",
+  telegramCmdSetModelDesc: "sets the model to the n-th model. (models numbers are available from command /models)",
+  telegramCmdSetAgentDesc: "sets the agent to the n-th agent. (agents numbers are available from command /agents)",
+  telegramCmdStopDesc: "stops the agent",
+  telegramCmdStatusDesc: "shows the current status of the agent",
+  telegramCmdChatDesc: "gets the last n characters of the current chat. If n is not specified, the last 1000 characters are returned.",
+  telegramCmdHelpDesc: "gets help for using this bot",
+  telegramAvailableCommands: "The available bot commands are:",
+
   // Other
   fileUpdated: "The file is updated",
   extensionName: "llama-vscode"
@@ -275,6 +303,18 @@ export const PREDEFINED_LISTS_KEYS = {
   ENVS: SETTING_NAME_FOR_LIST.ENVS,
   AGENTS: SETTING_NAME_FOR_LIST.AGENTS,
   AGENT_COMMANDS: SETTING_NAME_FOR_LIST.AGENT_COMMANDS,
+} as const;
+
+export const TELEGRAM_BOT_COMMANDS = {
+  SHOW_CHAT: "/chat" as const,
+  SHOW_ENVIRONMENT: "/env" as const,
+  SHOW_MODELS: "/models" as const,
+  SHOW_AGENTS: "/agents" as const,
+  SET_MODEL: "/set-model" as const,
+  SET_AGENT: "/set-agent" as const,
+  STOP_AGENT: "/stop" as const,
+  SHOW_AGENT_STATUS: "/status" as const,
+  SHOW_HELP: "/help" as const,
 } as const;
 
 export enum OpenAiProvidersKeys {

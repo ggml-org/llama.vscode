@@ -32,6 +32,7 @@ import { ApiKeyService } from "./services/api-key-service";
 import { OpenAiCompModelStrategy } from "./services/openai-comp-model-strategy";
 import { LlamaChatModelProvider } from "./llama-chat-model-provider";
 import { Dialogs } from "./dialogs";
+import { TelegramBot } from "./telegram-bot";
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -67,6 +68,7 @@ export class Application {
     public apiKeyService: ApiKeyService
     public llamaChatModelProvider: LlamaChatModelProvider
     public dialogs: Dialogs
+    public telegramBot: TelegramBot
     public extensionContext: vscode.ExtensionContext
 
     private selectedComplModel: LlmModel = Application.emptyModel
@@ -113,6 +115,7 @@ export class Application {
         this.apiKeyService = new ApiKeyService(this)
         this.llamaChatModelProvider = new LlamaChatModelProvider(this);
         this.dialogs = new Dialogs(this);
+        this.telegramBot = new TelegramBot(this);
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {

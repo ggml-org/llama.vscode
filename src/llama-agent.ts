@@ -33,6 +33,8 @@ export class LlamaAgent {
     public sentContextImages: string[] = [];
     private abortController: AbortController | null = null;
     private inSessionText: string = ""
+    private isTlgrBotRequest: boolean = false;
+    private agentInProgress: boolean = false;
 
     constructor(application: Application) {
         this.app = application;
@@ -40,6 +42,12 @@ export class LlamaAgent {
     }
 
     getAgentLogText = () => this.logText;
+
+    isAgentInProgress = () => this.agentInProgress;
+
+
+    setTelegramBotRequest = (isTlgReq: boolean) => this.isTlgrBotRequest = isTlgReq
+    isTelegramBotRequest = (): boolean => this.isTlgrBotRequest;
 
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
@@ -183,9 +191,9 @@ export class LlamaAgent {
         return this.contextImage;
     }
 
-    run = async (query:string, agentCommand?:string) => {
+    run = async (query:string, agentCommand?:string, isTelegramBotReq:boolean=false) => {
         
-        await this.askAgent(query, agentCommand);
+        await this.askAgent(query, agentCommand, isTelegramBotReq);
     }
 
     setInSessionText = async (inSessionText:string) => {
@@ -275,20 +283,23 @@ export class LlamaAgent {
         return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
     }
 
-    askAgent = async (query:string, agentCommand?:string): Promise<string> => {
+    askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
             let response = ""
+            
             const originalQuery = query;
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
-            this.logText += "***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n"; // Make sure markdown shows new lines correctly
-
+            this.updateLogText("***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n");
+            this.isTlgrBotRequest = isTelegramBotReq
+            this.setAgentState("AI is working...", true)
             
             if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
                 vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.")
-                this.app.llamaWebviewProvider.setState("AI is stopped")
+                this.setAgentState("AI is stopped", false)
+                this.updateLogText("Tools model is not selected")
+                this.app.llamaWebviewProvider.logInUi(this.logText);
                 return "Tools model is not selected"
             }
-            
             // Get the skills
             const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
             let skillsDesc = this.getSkillsDesc(skillsFolder)
@@ -346,9 +357,9 @@ export class LlamaAgent {
             while (iterationsCount < this.app.configuration.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
                     this.app.statusbar.showTextInfo("agent stopped");
-                    this.logText += "\n\n" + "Session stopped." + "  \n"
+                    this.updateLogText("\n\n" + "Session stopped." + "  \n")
                     this.app.llamaWebviewProvider.logInUi(this.logText);
-                    this.app.llamaWebviewProvider.setState("AI is stopped")
+                    this.setAgentState("AI is stopped", false)
                     this.resetMessages();
                     return "agent stopped"
                 }
@@ -362,11 +373,18 @@ export class LlamaAgent {
                     }
                     await this.summarizeToFitCurrentBudget(this.contextImage);
                     let streamed = "";
+                    let deltaBuffer = ""
+                    const maxChunkSize = this.app.configuration.telegram_chunk_size
                     let data:any = await this.app.llamaServer.getAgentCompletion(
                                                                 this.messages, 
                                                                 false, 
                                                                 (delta: string) => {
                                                                     streamed += delta;
+                                                                    deltaBuffer += delta;
+                                                                    if (this.isTlgrBotRequest && deltaBuffer.length > maxChunkSize) {
+                                                                        this.app.telegramBot.sendResponse(deltaBuffer); 
+                                                                        deltaBuffer = ""
+                                                                    }
                                                                     this.logText += delta;
                                                                     this.app.llamaWebviewProvider.logInUi(this.logText);
                                                                 }, 
@@ -374,12 +392,15 @@ export class LlamaAgent {
                                                                 !this.sentContextImages.includes(this.contextImage)? this.contextImage : "",
                                                                 iterationsCount
                                                             );
+                    if (this.isTlgrBotRequest && deltaBuffer.length > 0) {
+                        this.app.telegramBot.sendResponse(deltaBuffer); 
+                    }
                     if (this.contextImage) this.sentContextImages.push(this.contextImage)
                     if (!data) {
                         this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${iterationsCount}`);
-                        this.logText += "No response from AI" + "  \n"
+                        this.updateLogText("No response from AI" + "  \n")
                         this.app.llamaWebviewProvider.logInUi(this.logText);
-                        this.app.llamaWebviewProvider.setState("AI not responding")
+                        this.setAgentState("AI not responding", false)
                         return "No response from AI";
                     }
                     if (data.error?.type === "exceed_context_size_error") {
@@ -388,9 +409,9 @@ export class LlamaAgent {
                             'CONTEXT_ERROR',
                             `iteration=${iterationsCount} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
                         );
-                        this.logText += "Error: " + data.error.message + "  \n";
+                        this.updateLogText("Error: " + data.error.message + "  \n");
                         if (typeof data.error.n_prompt_tokens === 'number' && typeof data.error.n_ctx === 'number') {
-                            this.logText += `Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`;
+                            this.updateLogText(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
                         }
                         this.app.llamaWebviewProvider.logInUi(this.logText);
 
@@ -400,27 +421,27 @@ export class LlamaAgent {
                             continue;
                         }
 
-                        this.app.llamaWebviewProvider.setState("Context limit exceeded")
+                        this.setAgentState("Context limit exceeded", false)
                         return data.error.message;
                     }
 
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
                     if (!streamed && response) {
-                        this.logText += response + "  \n";
+                        this.updateLogText(response + "  \n");
                     }
                     if (data.truncated) {
                         this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${iterationsCount} | finish_reason=${finishReason ?? 'unknown'}`);
-                        this.logText += "  \nWarning: response was truncated by the context window.  \n";
+                        this.updateLogText("  \nWarning: response was truncated by the context window.  \n");
                     }
                      
-                    this.logText += "  \nTotal iterations: " + iterationsCount + "  \n"
+                    this.updateLogText("  \nTotal iterations: " + iterationsCount + "  \n")
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
                         this.app.statusbar.showTextInfo("agent stopped");
-                        this.logText += "\n\n" + "Session stopped." + "\n"
+                        this.updateLogText("\n\n" + "Session stopped." + "\n")
                         this.app.llamaWebviewProvider.logInUi(this.logText);
-                        this.app.llamaWebviewProvider.setState("AI is stopped")
+                        this.setAgentState("AI is stopped", false);
                         this.resetMessages();
                         return "agent stopped"
                     }
@@ -428,8 +449,8 @@ export class LlamaAgent {
                     if (!this.inSessionText 
                         && finishReason != "tool_calls" 
                         && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
-                        this.logText += "  \n" + "Finish reason: " + finishReason
-                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logText += "Error: " + data.choices[0].error.message + "  \n"
+                        this.updateLogText("  \n" + "Finish reason: " + finishReason)
+                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.updateLogText("Error: " + data.choices[0].error.message + "  \n")
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         break;
                     }
@@ -438,8 +459,8 @@ export class LlamaAgent {
                     if (toolCalls != undefined && toolCalls.length > 0){
                         for (const oneToolCall of toolCalls){
                             if (oneToolCall && oneToolCall.function){
-                                this.logText += "  \ntool: " + oneToolCall.function.name + "  \n";
-                                if (this.app.configuration.tools_log_calls) this.logText += "  \narguments: " + oneToolCall.function.arguments
+                                this.updateLogText("  \ntool: " + oneToolCall.function.name + "  \n");
+                                if (this.app.configuration.tools_log_calls) this.updateLogText("  \narguments: " + oneToolCall.function.arguments)
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 let commandOutput = "Tool not found";
                                 try {
@@ -448,7 +469,7 @@ export class LlamaAgent {
                                         let commandDescription = ""
                                         if (toolFuncDesc){
                                             commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
-                                            this.logText += commandDescription + "\n\n"
+                                            this.updateLogText(commandDescription + "\n\n")
                                             this.app.llamaWebviewProvider.logInUi(this.logText);
                                         }   
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
@@ -457,7 +478,7 @@ export class LlamaAgent {
                                             if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) { 
                                                 changedFiles.add(commandDescription);
                                                 if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
-                                                    this.logText += commandOutput + "\n\n"
+                                                    this.updateLogText(commandOutput + "\n\n")
                                                     this.app.llamaWebviewProvider.logInUi(this.logText);
                                                 }
                                             }
@@ -472,11 +493,11 @@ export class LlamaAgent {
                                     // Handle the error
                                     console.error("An error occurred:", error);
                                     commandOutput = "Error during the execution of tool: " + oneToolCall.function.name
-                                    this.logText += "Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n";
+                                    this.updateLogText("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
                                     this.app.llamaWebviewProvider.logInUi(this.logText);
                                 }
 
-                                if (this.app.configuration.tools_log_calls) this.logText += "result:  \n" + commandOutput + "  \n"
+                                if (this.app.configuration.tools_log_calls) this.updateLogText("result:  \n" + commandOutput + "  \n")
                                 this.app.llamaWebviewProvider.logInUi(this.logText);
                                 toolCallsResult = {           
                                             "role": "tool",
@@ -489,25 +510,25 @@ export class LlamaAgent {
                     }
                     
                     if (this.inSessionText){
-                        this.logText += "\n\n***" + this.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n"
+                        this.updateLogText("\n\n***" + this.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n")
                         this.messages.push({"role": "user", "content": this.inSessionText})
                         this.inSessionText = ""
                     }
                 } catch (error) {
                     // Handle the error
                     console.error("An error occurred:", error);
-                    this.logText += "An error occurred: " + error + "\n\n";
+                    this.updateLogText("An error occurred: " + error + "\n\n");
                     this.app.llamaWebviewProvider.logInUi(this.logText);
-                    this.app.llamaWebviewProvider.setState("Error")
+                    this.setAgentState("Error", false)
                     return "An error occurred: " + error;
                 }
             }
-            if (changedFiles.size + deletedFiles.size > 0) this.logText += "\n\nFiles changes:  \n"
-            if (changedFiles.size > 0) this.logText += Array.from(changedFiles).join("  \n") + "  \n"
-            if (deletedFiles.size > 0) this.logText += Array.from(deletedFiles).join("  \n") + "  \n"
-            this.logText += "  \nAgent session finished. \n\n"
+            if (changedFiles.size + deletedFiles.size > 0) this.updateLogText("\n\nFiles changes:  \n")
+            if (changedFiles.size > 0) this.updateLogText(Array.from(changedFiles).join("  \n") + "  \n")
+            if (deletedFiles.size > 0) this.updateLogText(Array.from(deletedFiles).join("  \n") + "  \n")
+            this.updateLogText("  \nAgent session finished. \n\n")
             this.app.llamaWebviewProvider.logInUi(this.logText);
-            this.app.llamaWebviewProvider.setState("AI finished")
+            this.setAgentState("AI finished", false)
             await this.updateChat();
             
             // Clean up AbortController
@@ -544,6 +565,16 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
+    }
+
+    private setAgentState(uiState: string, isInProgress: boolean) {
+        this.app.llamaWebviewProvider.setState(uiState);
+        this.agentInProgress = isInProgress;
+    }
+
+    private updateLogText(logDelta: string) {
+        if (this.isTlgrBotRequest) this.app.telegramBot.sendResponse(logDelta); 
+        this.logText += logDelta;
     }
 
     public async updateChat() {

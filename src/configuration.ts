@@ -137,7 +137,10 @@ export class Configuration {
     axiosRequestConfigEmbeddings = {};
     disabledLanguages: string[] = [];
     languageSettings:Record<string, boolean> = {}
-    
+    telegram_api_token = ""
+    telegram_bot_enabled = false;
+    telegram_bot_users = ""
+    telegram_chunk_size = 250;
 
     // TODO: change to snake_case for consistency
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000;
@@ -299,6 +302,10 @@ export class Configuration {
         this.health_check_chat_enabled = Boolean(config.get<boolean>("health_check_chat_enabled"));
         this.health_check_embs_enabled = Boolean(config.get<boolean>("health_check_embs_enabled"));
         this.health_check_tools_enabled = Boolean(config.get<boolean>("health_check_tools_enabled"));
+        this.telegram_api_token = String(config.get<string>("telegram_api_token"));
+        this.telegram_bot_enabled = Boolean(config.get<boolean>("telegram_bot_enabled"));
+        this.telegram_bot_users = String(config.get<string>("telegram_bot_users"));
+        this.telegram_chunk_size = Number(config.get<number>("telegram_chunk_size"));
     };
 
     private normalizeAgents(rawAgents: unknown): Agent[] {
@@ -379,6 +386,13 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.rag_max_chars_per_chunk_line")
         || event.affectsConfiguration("llama-vscode.rag_enabled")
         || event.affectsConfiguration("llama-vscode.rag_ignore_file")
+    }
+
+    isTelegramBotConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
+        return event.affectsConfiguration("llama-vscode.telegram_api_token")
+        || event.affectsConfiguration("llama-vscode.telegram_bot_enabled")
+        || event.affectsConfiguration("llama-vscode.telegram_bot_users")
+        || event.affectsConfiguration("llama-vscode.telegram_chunk_size");
     }
 
     isToolChanged = (event: vscode.ConfigurationChangeEvent) => {

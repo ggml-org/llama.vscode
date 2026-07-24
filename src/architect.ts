@@ -79,6 +79,7 @@ export class Architect {
             if (this.app.configuration.isRagConfigChanged(event)) this.init();
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
             if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
+            if (this.app.configuration.isTelegramBotConfigChanged(event)) this.app.telegramBot.createBot(this.app.configuration.telegram_api_token);
         });
         context.subscriptions.push(configurationChangeDisp);
     }
