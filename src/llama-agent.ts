@@ -96,12 +96,12 @@ export class LlamaAgent {
             projectContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
         }
 
-        if (this.app.configuration.auto_memory_enabled) {
+        if (this.app.configuration.auto_memory_enabled && this.app.extensionContext.storageUri?.fsPath) {
             let auto_memory = this.app.prompts.AUTO_MEMORY_PROMPT;
-            let auto_memory_folder = path.join(this.app.extensionContext.storageUri?.fsPath || "", "auto_memory");
-            if (!fs.existsSync(auto_memory_folder)) {
+            let auto_memory_folder = path.join(this.app.extensionContext.storageUri?.fsPath, "auto_memory");
+            if (this.app.extensionContext.storageUri?.fsPath && !fs.existsSync(auto_memory_folder)) {
                 fs.mkdirSync(auto_memory_folder, { recursive: true });
-            }
+            } 
             auto_memory = this.app.prompts.replacePlaceholders(auto_memory, {
                 "auto_memory_folder": auto_memory_folder,
                 "max_auto_memory_files": this.app.configuration.max_auto_memory_files.toString()
