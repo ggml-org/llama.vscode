@@ -45,9 +45,42 @@ export class LlamaAgent {
 
     isAgentInProgress = () => this.agentInProgress;
 
-
     setTelegramBotRequest = (isTlgReq: boolean) => this.isTlgrBotRequest = isTlgReq
+    
     isTelegramBotRequest = (): boolean => this.isTlgrBotRequest;
+
+    preprocessCommandPrompt = async (prompt: string): Promise<string> => {
+        const regex = /!`(.+?)`/g;
+        const matches = Array.from(prompt.matchAll(regex));
+        if (matches.length === 0) {
+            return prompt;
+        }
+
+        const replacements = await Promise.all(
+            matches.map(async (match) => {
+                const command = match[1].trim();
+                try {
+                    const { stdout, stderr } = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
+                    if (stderr) {
+                        return `Error executing '${command}': ${stderr}`;
+                    }
+                    return stdout;
+                } catch (error) {
+                    return `Error executing '${command}': ${error}`;
+                }
+            })
+        );
+
+        let result = prompt;
+        for (let i = matches.length - 1; i >= 0; i--) {
+            const match = matches[i];
+            if (match.index){
+                result = result.substring(0, match.index) + replacements[i] + result.substring(match.index + match[0].length);
+            }
+        }
+
+        return result;
+    };
 
     resetMessages = () => {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
@@ -334,7 +367,9 @@ export class LlamaAgent {
             if (agentCommand) {
                 const commands = this.app.configuration.agent_commands as AgentCommand[];
                 const commandDetails = commands.find( cmd => cmd.name === agentCommand)                 
-                if (commandDetails) query += "\n\n " + commandDetails.prompt
+                if (commandDetails) {
+                    query += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
+                }
             }
 
             this.messages.push(

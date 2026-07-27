@@ -3,10 +3,11 @@
 ### What are agent commands
 Agent commands are a way to reuse often used prompts. They could be used to describe complex workflows or for simple instructions.   
 Agent commands are stored in setting agent_commands and llama-vscode menu item "Agent commands..." could be used to manage them.
-In future they could be extended with additional context, specificatlly prepared by llama-vscode for each command.
+The command prompt could contain terminal commands in format !'<terminal_command>' (as in claude code.). The command prompt is preprocessed and the terminal commands are executed and replaced with the the result of the execution. Example: !'pwd' will be replaced with the the current directory.
 
 ### How to use them
 Prerequisite: tools model is selected.
+You could create agent commands from llama-vscode menu item "Agent commands..."\"Add agent command...". For creating a command with longer prompts you could export an existing command with "Agent commands..."\"Export agent command..." in a .json file, change the name and the prompt in the file and then import the new command with "Agent commands..."\"Import agent command...". 
 
 In agent prompt text area press "/" - the available agent commands will be shown and could be selected. When selected, the command name is replaced with the longer prompt for this command and is sent to the AI model.  
 Example:  
@@ -250,6 +251,13 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/dca91333-687e-4856-b187-25df50d17b1c" />
 
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
+
+
+## Version 0.0.56 is released (27.07.2026)
+## What is new
+- Telegram bot commands exteded and simplified. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
+- Agent commands prompt could now include terminal commands in format !'<terminal_command>'. The prompt is preprocessed - the commands are executed and replaced with the result of the execution in the prompt.
+- Kimi K3 - dynamically loaded tools (tools on demand) fix - prevent sending the same tool definition several times.
 
 
 ## Version 0.0.55 is released (24.07.2026)
@@ -1204,7 +1212,7 @@ The agent "Agent creator" makes it easier to create agents (which could be used 
 - Embeddings server (if search_source tool is used)
 
 ### Overview
-You can program from your phone with llama-vscode and Telegram. Part of the agent functionality of llama-vscode could be used from Telegram (i.e. from phone) via a Telegram Bot.  The user creates a Telegram Bot and sets it's token in setting telegram_api_token. After that all messages to this bot are forwarded to the agent in llama-vscode. The AI agent answers are sent to the user in Telegram. For security reasons, only users from a white list (setting telegram_bot_users) are allowed to use the bot.  
+You can program from your phone with llama-vscode and Telegram. Part of the agent functionality of llama-vscode could be used from Telegram (i.e. from phone) via a Telegram Bot.  The user creates a Telegram Bot and sets it's token in setting telegram_api_token. After that all messages to this bot are forwarded to the agent in llama-vscode. The AI agent answers are sent to the user in Telegram. For security reasons, only users from a white list (setting telegram_bot_users) are allowed to use the bot. The bot answers, for example to /help command, are provided in the language, which is set in setting "Language". 
 
 ### How to use it 
 1. Create a Telegram Bot and set it's token in setting telegram_api_token. Creating a bot in Telegram is simple - open bot @BotFather, click Start and execute the command /newbot. There you will see the bot API token.
@@ -1217,11 +1225,14 @@ Here are the commands (messages, which starts with "/"), which the bot can execu
 /env - shows the current tools model and agent
 /models - shows the available models
 /agents - shows the available agents 
-/set-model n - sets the model to the n-th model. (models numbers are available from command /models)
-/set-agent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
+/setmodel n - sets the model to the n-th model. (models numbers are available from command /models)
+/setagent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
 /stop - stops the agent 
 /status - shows the current status of the agent 
-/chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned 
+/chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned
+/newchat - stops the current chat and starts a new chat
+/setlang xx - sets the language, which is used by the bot: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)
+/ - shows available commands
 /help - shows help information for using the bot
 
 ### Settings:
@@ -1229,6 +1240,7 @@ Here are the commands (messages, which starts with "/"), which the bot can execu
 - telegram_bot_users - List of users, which are allowed to use the bot.
 - telegram_bot_enabled - Enable/disable the bot
 - telegram_chunk_size - The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message.
+- language - The language, on which the bot provides help and other bot specific answers.
 
 ## Update todos tool
 
