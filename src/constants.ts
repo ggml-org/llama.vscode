@@ -261,6 +261,9 @@ export const UI_TEXT_KEYS = {
   telegramEnterAgentNumber: "Please enter agent number.",
   telegramEnterCorrectModel: "Please enter correct model number. (see the numbers with /models command).",
   telegramModelSetTo: "Model set to",
+  telegramEnterCorrectLanguage: "Please enter correct language.", 
+  telegramAvailableLanguages: "The available languages are:",
+  telegramLanguageSetTo: "The language is set to",
   telegramUnknownCommand: "Unknown command",
   telegramCmdEnvDesc: "shows the current tools model and agent",
   telegramCmdModelsDesc: "shows the available models",
@@ -271,7 +274,13 @@ export const UI_TEXT_KEYS = {
   telegramCmdStatusDesc: "shows the current status of the agent",
   telegramCmdChatDesc: "gets the last n characters of the current chat. If n is not specified, the last 1000 characters are returned.",
   telegramCmdHelpDesc: "gets help for using this bot",
+  telegramCmdShowCommandsDesc: "shows the available bot commands",
+  telegramCmdSetLangDesc: "Sets the bot language to the provided language.",
+  telegramCmdNewChatDesc: "Stops the current chat and starts a new one.",
+  telegramNewChatRequested: "New chat is requested.",
   telegramAvailableCommands: "The available bot commands are:",
+  telegramCurrentChat: "Current chat:",
+
 
   // Other
   fileUpdated: "The file is updated",
@@ -310,10 +319,13 @@ export const TELEGRAM_BOT_COMMANDS = {
   SHOW_ENVIRONMENT: "/env" as const,
   SHOW_MODELS: "/models" as const,
   SHOW_AGENTS: "/agents" as const,
-  SET_MODEL: "/set-model" as const,
-  SET_AGENT: "/set-agent" as const,
+  SET_MODEL: "/setmodel" as const,
+  SET_AGENT: "/setagent" as const,
   STOP_AGENT: "/stop" as const,
+  SET_LANGUAGE: "/setlang" as const,
+  NEW_CHAT: "/newchat" as const,
   SHOW_AGENT_STATUS: "/status" as const,
+  SHOW_COMMANDS: "/" as const,
   SHOW_HELP: "/help" as const,
 } as const;
 

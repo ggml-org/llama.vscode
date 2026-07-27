@@ -411,6 +411,28 @@ export class LlamaServer {
         return filteredMsgs;
     }
 
+    private getOnlyNewTools(newTools: any, messages: ChatMessage[]): any {
+        let sentToolsNames = new Set<string>()
+        for (const msg of messages){
+            if (msg.role == "system" && msg.tools) {
+                for (const tool of msg.tools) {
+                    sentToolsNames.add(tool.function.name);
+                }
+            }
+        }
+
+        let uniqueTools = []
+        for (const tool of newTools){
+            if (!sentToolsNames.has(tool.function.name)){
+                uniqueTools.push(tool)
+                sentToolsNames.add(tool.function.name)
+            }
+        }
+
+        return uniqueTools;
+    }
+
+
     private createToolsRequestPayload(messages: ChatMessage[], model: string, stream = false, imagePath: string = "", iterationsCount = 0, endpoint = "") {
         this.app.tools.addSelectedTools();
         let toolChoice = "auto";
@@ -420,11 +442,14 @@ export class LlamaServer {
             allTools = [this.app.tools.getSearchToolsTool()];
             if (iterationsCount == 1) toolChoice = "required"
             else if (this.app.tools.getLastSearchToolsResult().length > 0) {
-                const systemToolsMsg = {
-                        "role": "system",
-                        "tools": this.app.tools.getLastSearchToolsResult()
-                        }
-                messages.push(systemToolsMsg);
+                const newTools = this.getOnlyNewTools(this.app.tools.getLastSearchToolsResult(), messages)
+                if (newTools) {
+                    const systemToolsMsg = {
+                            "role": "system",
+                            "tools": newTools
+                            }
+                    messages.push(systemToolsMsg);
+                    }
             }
         } 
         let filteredMsgs = this.buildToolsMessages(messages, imagePath);

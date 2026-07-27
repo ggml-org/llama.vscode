@@ -17,6 +17,11 @@ export class TelegramBot {
         }
     }
 
+    getAvailableLanguagesMsg = () => {
+        return this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableLanguages) +
+                    " bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)"
+    }
+
     createBot = (token: string) => {
         if (this.bot) {
             this.bot.close();
@@ -24,11 +29,19 @@ export class TelegramBot {
         try {
             if (this.app.configuration.telegram_bot_enabled && token) {
                 this.bot = new TelegramBotApi(token, {polling: true});
+                
                 this.bot.on("message", this.handleMessage);
                 this.app.logger.addEventLog("TELEGRAM", "BOT_CREATED", "Telegram bot created and polling started.");
             }
         } catch (error) {
             this.app.logger.addEventLog("TELEGRAM", "BOT_CREATE_ERROR", "Failed to create telegram bot: " + error);
+        }
+    }
+
+    closeBot = () => {
+        if (this.bot) {
+            this.bot.close();
+            this.bot = null;
         }
     }
 
@@ -81,14 +94,24 @@ export class TelegramBot {
             case TELEGRAM_BOT_COMMANDS.STOP_AGENT:
                 this.app.llamaAgent.stopAgent()
                 this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramStopRequestSent)??"");
-                return; 
+                return;
+            case TELEGRAM_BOT_COMMANDS.NEW_CHAT:
+                this.app.llamaAgent.stopAgent()
+                this.app.llamaAgent.resetMessages();
+                this.app.llamaAgent.resetContext();
+                await this.app.chatService.selectUpdateChat({ name: "", id: "" });
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramNewChatRequested)??"");
+                return;
             case TELEGRAM_BOT_COMMANDS.SHOW_AGENT_STATUS:
                 if (this.app.llamaAgent.isAgentInProgress()) {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAgentRunning)??"");
                 } else {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAgentNotRunnin)??"");
                 }
-                return;    
+                return; 
+            case TELEGRAM_BOT_COMMANDS.SHOW_COMMANDS:
+                this.sendResponse(this.getCommandsHelp());
+                return;   
             case TELEGRAM_BOT_COMMANDS.SHOW_HELP:
                 this.sendResponse(
                     this.app.configuration.getUiText(UI_TEXT_KEYS.telegramHelpSendPrompt) + " \n" +
@@ -108,7 +131,7 @@ export class TelegramBot {
                     maxChatChars = 1000;
                 }
             }
-            const msgChat = "Current chat: \n" + this.app.llamaAgent.getAgentLogText().slice(-maxChatChars);
+            const msgChat = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCurrentChat) + " \n" + this.app.llamaAgent.getAgentLogText().slice(-maxChatChars);
             await this.sendResponse(msgChat);
             return;
         }
@@ -129,11 +152,11 @@ export class TelegramBot {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAgentSetTo) + " " + agent.name);
                     return;
                 } else {
-                    this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAgentNotFound)??"");
+                    this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectAgent)??"");
                     return;
                 }
             } else {
-                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterAgentNumber)??"");
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectAgent)??"");
                 return;
             }
         }
@@ -159,6 +182,27 @@ export class TelegramBot {
                 }
             } else {
                 this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectModel)??"");
+                return;
+            }
+        }
+
+        if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.SET_LANGUAGE)){
+            let language = receivedMessage.split(" ")[1];
+            const acceptedLanguages = ['bg', 'en', 'ru', 'de', 'es', 'fr', 'ch']
+            const enterLanguageMsg =  `${this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectLanguage)??""} ${this.getAvailableLanguagesMsg()}`
+            if (language){
+                language = language.trim().toLowerCase()
+                if (acceptedLanguages.includes(language)) {
+                    await this.app.configuration.updateConfigValue("language" ,language);
+                    this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramLanguageSetTo) + " " + language);
+                    return;
+                } else {
+                    
+                    this.sendResponse(enterLanguageMsg);
+                    return;
+                }
+            } else {
+                this.sendResponse(enterLanguageMsg);
                 return;
             }
         }
@@ -190,7 +234,12 @@ export class TelegramBot {
                 TELEGRAM_BOT_COMMANDS.STOP_AGENT + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdStopDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_AGENT_STATUS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdStatusDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_CHAT + " n - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdChatDesc) + "\n" +
+                TELEGRAM_BOT_COMMANDS.NEW_CHAT + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdNewChatDesc) + "\n" + 
+                TELEGRAM_BOT_COMMANDS.SET_LANGUAGE + " xx - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdSetLangDesc) +
+                    " " + this.getAvailableLanguagesMsg() + "\n" + 
+                TELEGRAM_BOT_COMMANDS.SHOW_COMMANDS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdShowCommandsDesc) + "\n" +
                 TELEGRAM_BOT_COMMANDS.SHOW_HELP + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdHelpDesc)
+                
     }
 
     sendResponse = async (response: string) => {
