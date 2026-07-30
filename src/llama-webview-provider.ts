@@ -662,7 +662,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         setTimeout(() => this.setView("addenv"), 500);
     }
 
-    public async showAgentViewInUi() {
+    public async showAgentViewInUi(prompt: string = "") {
         let isModelAvailable = await this.app.modelService.checkForToolsModel();
         if (isModelAvailable) {
             vscode.commands.executeCommand('extension.showLlamaWebview');
@@ -670,7 +670,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             setTimeout(() => {
                 if (this.webview) {
                     this.webview.webview.postMessage({
-                        command: 'focusTextarea'
+                        command: 'focusTextarea',
+                        text: prompt
                     });
                 }
             }, 100);

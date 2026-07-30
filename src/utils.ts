@@ -20,7 +20,7 @@ interface BM25Stats {
 }
 
 export class Utils {
-    static MSG_NO_UESR_PERMISSION = "The user doesn't give a permission to execute the request!";
+    static MSG_NO_USER_PERMISSION = "The user doesn't give a permission to execute the request!";
     static EMPTY_CHAT = {name: "", id: ""}
 
     static getLeadingSpaces = (input: string): string => {
@@ -926,5 +926,44 @@ export class Utils {
             // If an error occurs, the path is not a real file
             return false;
         }
-    }   
+    }
+
+    static async openProjectFolder(projectPath: string) {
+        try {
+            const folderPath = path.resolve(projectPath);
+            const folderUri = vscode.Uri.file(folderPath);
+            
+            // Verify folder exists
+            await vscode.workspace.fs.readDirectory(folderUri);
+            
+            // Check if it's already open
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            const alreadyOpen = workspaceFolders?.some(
+                workspace => workspace.uri.fsPath === folderUri.fsPath
+            );
+            
+            if (alreadyOpen) {
+                vscode.window.showInformationMessage(`Project '${projectPath}' is already open.`);
+                return;
+            }
+            
+            // Ask user if they want to open in current window or new window
+            const option = await vscode.window.showInformationMessage(
+                `Open project '${projectPath}'?`,
+                'Open in Current Window',
+                'Open in New Window'
+            );
+            
+            if (option) {
+                const forceNewWindow = option === 'Open in New Window';
+                await vscode.commands.executeCommand(
+                    'vscode.openFolder', 
+                    folderUri, 
+                    { forceNewWindow }
+                );
+            }
+        } catch (error) {
+            vscode.window.showErrorMessage(`Failed to open project: ${error}`);
+        }
+    }
 }

@@ -1,7 +1,7 @@
 
 import TelegramBotApi, { Message } from "node-telegram-bot-api";
 import {Application} from "./application";
-import { ModelType, PREDEFINED_LISTS_KEYS, TELEGRAM_BOT_COMMANDS, UI_TEXT_KEYS } from "./constants";
+import { CONFIRMATION_STATE, ModelType, PREDEFINED_LISTS_KEYS, TELEGRAM_BOT_COMMANDS, UI_TEXT_KEYS } from "./constants";
 import { PREDEFINED_LISTS } from "./lists";
 import { Agent, LlmModel } from "./types";
 
@@ -60,7 +60,7 @@ export class TelegramBot {
             || receivedMessage == "/start") {
                 return;
             }
-        if (this.app.llamaAgent.isAgentInProgress()) {
+        if (this.app.llamaAgent.isAgentInProgress() && this.app.llamaAgent.getConfirmationState() != CONFIRMATION_STATE.WAITING) {
             if (receivedMessage.toLocaleLowerCase().trim() =="/stop") {
                 this.app.llamaAgent.stopAgent()
                 this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramStopRequestSent)??"");
@@ -77,7 +77,7 @@ export class TelegramBot {
                 return; 
             case TELEGRAM_BOT_COMMANDS.SHOW_MODELS:
                 const propModelsCount = this.app.configuration.tools_models_list.length
-                const msgModels = "Available models: \n" +
+                const msgModels = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableModels) + " \n" +
                                     this.getAllModelsList()
                                     .map((mdl, index) => `${index + 1}. ${index >= propModelsCount ? "(predefined) " + mdl.name : mdl.name}`)
                                     .join("\n ");
@@ -86,15 +86,23 @@ export class TelegramBot {
             case TELEGRAM_BOT_COMMANDS.SHOW_AGENTS:
                 const propAgentsCount = this.app.configuration.agents_list.length
                 const allAgents = this.getAllAgentsList();
-                const msgAgents = "Available agents: \n" +
+                const msgAgents = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableAgents) + " \n" +
                         allAgents.map((agent, index) => `${index+1}. ${index >= propAgentsCount ? "(predefined) " + agent.name : agent.name}`)
                         .join("\n ");
                 this.sendResponse(msgAgents);
+                return;
+            case TELEGRAM_BOT_COMMANDS.SHOW_TOOLS:
+                const toolsList: Map<string, boolean> = this.app.tools.getLlamaVscodeToolsMap();
+                const msgTools = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableTools) + " \n" +
+                    Array.from(toolsList.keys()).map((tool, index) => `${index+1}. ${toolsList.get(tool) ? "✓ " + tool : tool}`)
+                        .join("\n ")
+                this.sendResponse(msgTools);
                 return;
             case TELEGRAM_BOT_COMMANDS.STOP_AGENT:
                 this.app.llamaAgent.stopAgent()
                 this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramStopRequestSent)??"");
                 return;
+            case TELEGRAM_BOT_COMMANDS.NEW_CHAT_SHORT:
             case TELEGRAM_BOT_COMMANDS.NEW_CHAT:
                 this.app.llamaAgent.stopAgent()
                 this.app.llamaAgent.resetMessages();
@@ -186,6 +194,66 @@ export class TelegramBot {
             }
         }
 
+        if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.ADD_TOOLS)){
+            const toolNumbers = receivedMessage.slice(TELEGRAM_BOT_COMMANDS.ADD_TOOLS.length).split(",");
+            let msgAddedTools = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAddedTools)??""
+            let msgNotAddedToolsNubers = []
+            if (toolNumbers){
+                const allTools = Array.from(this.app.tools.getLlamaVscodeToolsMap().keys());
+                let toolsToAdd  = [];
+                for (const number of toolNumbers){
+                    const toolNumber = Number(number);
+                    if (!isNaN(toolNumber) && toolNumber > 0 && toolNumber <= allTools.length) {
+                        const toolName = allTools[toolNumber-1] 
+                        toolsToAdd.push(toolName);
+                        this.app.tools.addLlamaVscodeTools(toolsToAdd);
+                        msgAddedTools += "\n" +  toolName
+                    } else {
+                        msgNotAddedToolsNubers.push(toolNumber)
+                    }
+                }
+                let finalResponse = msgAddedTools;
+                if (msgNotAddedToolsNubers.length > 0) {
+                    finalResponse += "\n\n" + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramToolsIncorrectNumbers) + " " + msgNotAddedToolsNubers.join(",") + " "  + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectTools);
+                }
+                this.sendResponse(finalResponse);
+                return;
+            } else {
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectTools)??"");
+                return;
+            }
+        }
+
+        if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.REMOVE_TOOLS)){
+            const toolNumbers = receivedMessage.slice(TELEGRAM_BOT_COMMANDS.REMOVE_TOOLS.length).split(",");
+            let msgRemovedTools = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramRemovedTools)??""
+            let msgNotRemovedToolsNubers = []
+            if (toolNumbers){
+                const allTools = Array.from(this.app.tools.getLlamaVscodeToolsMap().keys());
+                let toolsToRemove  = [];
+                for (const number of toolNumbers){
+                    const toolNumber = Number(number);
+                    if (!isNaN(toolNumber) && toolNumber > 0 && toolNumber <= allTools.length) {
+                        const toolName = allTools[toolNumber-1] 
+                        toolsToRemove.push(toolName);
+                        this.app.tools.removeLlamaVscodeTools(toolsToRemove);
+                        msgRemovedTools += "\n" +  toolName
+                    } else {
+                        msgNotRemovedToolsNubers.push(toolNumber)
+                    }
+                }
+                let finalResponse = msgRemovedTools;
+                if (msgNotRemovedToolsNubers.length > 0) {
+                    finalResponse += "\n\n" + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramToolsIncorrectNumbers) + " " + msgNotRemovedToolsNubers.join(",") + " "  + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectTools);
+                }
+                this.sendResponse(finalResponse);
+                return;
+            } else {
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectTools)??"");
+                return;
+            }
+        }
+
         if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.SET_LANGUAGE)){
             let language = receivedMessage.split(" ")[1];
             const acceptedLanguages = ['bg', 'en', 'ru', 'de', 'es', 'fr', 'ch']
@@ -217,6 +285,27 @@ export class TelegramBot {
             return;
         }
 
+        if (this.app.llamaAgent.getConfirmationState() == CONFIRMATION_STATE.WAITING){
+            const answer = receivedMessage.toLowerCase().trim();
+            if (answer == CONFIRMATION_STATE.YES) {
+                this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.YES);
+                return;
+            } else if (answer == CONFIRMATION_STATE.NO) {
+                this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.NO);
+                return;
+            } else if (answer == CONFIRMATION_STATE.YES_DONT_ASK) {
+                this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.YES_DONT_ASK);
+                return;
+            } else{ 
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAnswerFirst) + "\n" +
+                                    this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAnswerExactly)) 
+                this.sendResponse(CONFIRMATION_STATE.YES);
+                this.sendResponse(CONFIRMATION_STATE.NO);
+                this.sendResponse(CONFIRMATION_STATE.YES_DONT_ASK);
+                return;
+            }
+        }
+
         try {
             await this.app.llamaAgent.run(receivedMessage, command, true);
         } catch (error) {
@@ -234,10 +323,14 @@ export class TelegramBot {
                 TELEGRAM_BOT_COMMANDS.STOP_AGENT + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdStopDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_AGENT_STATUS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdStatusDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_CHAT + " n - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdChatDesc) + "\n" +
-                TELEGRAM_BOT_COMMANDS.NEW_CHAT + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdNewChatDesc) + "\n" + 
+                TELEGRAM_BOT_COMMANDS.NEW_CHAT + ", " + TELEGRAM_BOT_COMMANDS.NEW_CHAT_SHORT + " - " 
+                    + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdNewChatDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SET_LANGUAGE + " xx - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdSetLangDesc) +
                     " " + this.getAvailableLanguagesMsg() + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_COMMANDS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdShowCommandsDesc) + "\n" +
+                TELEGRAM_BOT_COMMANDS.SHOW_TOOLS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdToolsDesc) + "\n" + 
+                TELEGRAM_BOT_COMMANDS.ADD_TOOLS + " x,y,z - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdAddToolsDesc) + "\n" + 
+                TELEGRAM_BOT_COMMANDS.REMOVE_TOOLS + " x,y,z - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdRemoveToolsDesc) + "\n" +
                 TELEGRAM_BOT_COMMANDS.SHOW_HELP + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdHelpDesc)
                 
     }

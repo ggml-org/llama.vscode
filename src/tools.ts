@@ -4,7 +4,7 @@ import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
 import { Plugin } from './plugin';
-import { UI_TEXT_KEYS } from "./constants";
+import { CONFIRMATION_STATE, UI_TEXT_KEYS } from "./constants";
 import { Chat, Agent } from "./types";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
@@ -65,7 +65,7 @@ export class Tools {
         if (command == undefined) return "The terminal command is not provided."
 
         if ((!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
-            let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog("Do you give a permission to execute the terminal command:\n" + command + 
+            let [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command + 
                 "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
             if (yesDontAsk) {
                 this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
@@ -370,9 +370,23 @@ export class Tools {
 
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
-            if (!this.app.configuration.tool_permit_file_changes && !await this.app.dialogs.showYesNoDialog("Do you give a permission to delete file:\n" + absolutePath)) {
-                return Utils.MSG_NO_UESR_PERMISSION;
-
+            // Restrict deletion to project folder
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders || workspaceFolders.length === 0) {
+                return "Cannot delete file: no workspace folder open.";
+            }
+            const workspaceRoot = workspaceFolders[0].uri.fsPath;
+            const relativePath = path.relative(workspaceRoot, absolutePath);
+            if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
+                return `Deletion not allowed: ${filePath} is outside the project folder.`;
+            }
+            if (!this.app.configuration.tool_permit_file_delete){  
+                let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be deleted?`)
+                if (yesDontAsk) {
+                    this.app.configuration.updateConfigValue("tool_permit_file_delete", true)
+                    vscode.window.showInformationMessage("Setting tool_permit_file_delete is set to true.")
+                }
+                if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
             if (!fs.existsSync(absolutePath)) {
                 return `File not found at ${filePath}`;
@@ -423,12 +437,12 @@ export class Tools {
 
         try {
             if (!this.app.configuration.tool_permit_file_changes){  
-                let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog(`Do you permit file ${filePath} to be changed?`)
+                let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
                     vscode.window.showInformationMessage("Setting tool_permit_file_changes is set to true.")
                 }
-                if (!yesApply) return Utils.MSG_NO_UESR_PERMISSION;
+                if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
             let resultEdit = await Utils.applyEdits(changes)
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
@@ -1054,6 +1068,26 @@ export class Tools {
         return this.tools;
     }
 
+    getLlamaVscodeToolsMap = (): Map<string, boolean> => {
+        let llamaVscodeTools: Map<string, boolean> = new Map()
+        for (let internalTool of this.toolsFunc.keys()){
+            llamaVscodeTools.set(internalTool,(this.app.configuration as { [key: string]: any; })[this.getToolEnabledPropertyName(internalTool)])
+        }
+        return llamaVscodeTools;
+    }
+
+    addLlamaVscodeTools = async (tools: string[] ) => {
+        for (let internalTool of tools){
+            await this.app.configuration.updateConfigValue(this.getToolEnabledPropertyName(internalTool), true);
+        }
+    }
+
+    removeLlamaVscodeTools = async (tools: string[] ) => {
+        for (let internalTool of tools){
+            await this.app.configuration.updateConfigValue(this.getToolEnabledPropertyName(internalTool), false);
+        }
+    }
+
     selectTools = async () => {
         // Define items with initial selection state
         const toolItems: vscode.QuickPickItem[] = []
@@ -1138,6 +1172,55 @@ export class Tools {
                 this.vscodeTools.push(newTool);
             }
 
+        }
+    }
+
+    private async confirmToolPermission(confirmText: string): Promise<[any, any]> {
+        // Show confirmation dialog and a question to the Telegram user (if enabled)
+        this.confirmToolDialogRequest(confirmText);
+        if (this.app.configuration.telegram_bot_enabled) {
+            this.app.telegramBot.sendResponse(confirmText + "\n\n" + 
+                this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAnswerExactly))
+            this.app.telegramBot.sendResponse(CONFIRMATION_STATE.YES);
+            this.app.telegramBot.sendResponse(CONFIRMATION_STATE.NO);
+            this.app.telegramBot.sendResponse(CONFIRMATION_STATE.YES_DONT_ASK);
+        }
+        this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.WAITING);
+        // loop and check every 300 ms for an answer (confirmationState change)
+        const startTime = Date.now();
+        const timeout = 60*this.app.configuration.tools_permission_timeout;
+        // if the answer is not received after tools_permission_timeout (setting) seconds, change the confirmationState to Inactive and assume the user answered with No
+        while (this.app.llamaAgent.getConfirmationState() == CONFIRMATION_STATE.WAITING && Date.now() - startTime < 1000*timeout) {
+            // wait 300 ms for the next check with a promise
+            await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        if (this.app.llamaAgent.getConfirmationState() == CONFIRMATION_STATE.WAITING
+                && Date.now() - startTime >= 1000*timeout) {
+            this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.INACTIVE);
+            return [false, false];
+        } else {
+            const confState = this.app.llamaAgent.getConfirmationState();
+            this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.INACTIVE);            
+            if (confState == CONFIRMATION_STATE.NO) return [false, false];
+            else if (confState == CONFIRMATION_STATE.YES_DONT_ASK) return [true, true]; 
+            else if (confState == CONFIRMATION_STATE.YES) return [true, false];
+            else return [false, false];
+        }
+        
+    }
+
+    private async confirmToolDialogRequest(confirmText: string) {
+
+        let [yesApply, yesDontAsk] = await this.app.dialogs.showYesYesdontaskNoDialog(confirmText);
+        // This confirmation mechanism works without question identifier, which is simple.
+        // Potentially, this could lead to confirming a different question 
+        // (a new one, which is not yet answered, while this one is answered by Telegram and therefore dialog not closed), 
+        // but accept the risk as after 60s the question is automatically answered with NO (so this should happen within 30s interval)
+        // If the answer is already given by other channel - just ignore it
+        if (this.app.llamaAgent.getConfirmationState() == CONFIRMATION_STATE.WAITING){
+            if (yesApply && !yesDontAsk) this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.YES);
+            if (yesApply && yesDontAsk) this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.YES_DONT_ASK);
+            if (!yesApply) this.app.llamaAgent.setConfirmationState(CONFIRMATION_STATE.NO);
         }
     }
 

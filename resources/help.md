@@ -123,7 +123,35 @@ https://github.com/user-attachments/assets/46602f8c-bd45-4794-9f5c-6ebe262c396a
 
 https://github.com/user-attachments/assets/50baa8c3-f426-4901-a443-8882da644800
 
-## Delete models  
+## Deep links
+
+### Overview
+Llama-vscode supports deep links. For example, the link [vscode://ggml-org.llama-vscode?view=env](vscode://ggml-org.llama-vscode?view=env) launches VS Code and shows the env view.  
+If you use the project parameter with a local folder path in the link, it will open the project. For example, [vscode://ggml-org.llama-vscode?project=~/myproject](vscode://ggml-org.llama-vscode?project=~/myproject) loads the folder ~/myproject in VS Code. 
+
+
+### How to use it
+Click the link to have VS Code display the requested view and load the specified project folder.  
+To create a custom link, start with `vscode://ggml-org.llama-vscode?` and add desired parameters.
+
+#### Parameters:
+Available parameters include view, project, prompt (only applicable when used with view=agent) and filter (only applicable when used with the view=settings).
+
+View parameter accepts these values:
+- env - displays the env view
+- agent - displays the agent view
+- edit-agent - displays the agent editor view
+- menu - displays the Llama-vscode menu
+- chat-with-ai - displays the chat interface (requires a llama.cpp model to be selected for Chat or Tools)
+- settings - displays the Llama-vscode settings (if filter is provided, settings will be filtered by the specified value)
+
+Project parameter accepts a local folder path. Example: [vscode://ggml-org.llama-vscode?project=C:/projects/myproject](vscode://ggml-org.llama-vscode?project=C:/projects/myproject)
+
+Prompt accepts text vlaue - it will be used as a prompt for the agent. example: [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello). 
+
+Filter parameter accepts a text string. Example: [vscode://ggml-org.llama-vscode?view=settings&filter=timeout](vscode://ggml-org.llama-vscode?view=settings&filter=timeout)
+
+All parameter values (mainly prompt and filter) should be URL encoded (for example the space character should be encoded as %20).## Delete models  
 
 ### Overview
 Llama-vscode automatically downloads (if not yet done) models (LLMs) from [Huggingface](https://huggingface.co/) if a local model (or env) is selected. The downloaded models are GGUF files. Once downloaded, the models are reused. The LLMs could take a lot of space on your hard disk. For example gpt-oss-20b-GGUF is 12GB.
@@ -252,6 +280,14 @@ Settings:
 
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
+
+## Version 0.0.57 is released (31.07.2026)
+## What is new
+- Telegram bot - user confirmation of terminal commands, changing or deleting files is now possible from Telegram. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
+- Deep links support added. Now VS Code and and a llama-vscode view could be opened from a link. Example [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello) opens VS Code and llama-vscode agent and writes in the prompt box "Hello". [More details](https://github.com/ggml-org/llama.vscode/wiki/Deep-link)
+- Logo changed
+- New setting tool_permit_file_delete - allow or deny deletion of files. Now the setting tool_permit_file_changes is only for file changes.
+- New setting tools_permission_timeout - The timeout (in seconds) for providing tool execution permission. If not answered withing this timeout, the agent will assume a silent answer with No. Default 600 seconds. 
 
 ## Version 0.0.56 is released (27.07.2026)
 ## What is new
@@ -1212,35 +1248,49 @@ The agent "Agent creator" makes it easier to create agents (which could be used 
 - Embeddings server (if search_source tool is used)
 
 ### Overview
-You can program from your phone with llama-vscode and Telegram. Part of the agent functionality of llama-vscode could be used from Telegram (i.e. from phone) via a Telegram Bot.  The user creates a Telegram Bot and sets it's token in setting telegram_api_token. After that all messages to this bot are forwarded to the agent in llama-vscode. The AI agent answers are sent to the user in Telegram. For security reasons, only users from a white list (setting telegram_bot_users) are allowed to use the bot. The bot answers, for example to /help command, are provided in the language, which is set in setting "Language". 
+You can program from your phone with llama-vscode and Telegram. Part of the agent functionality of llama-vscode could be used from Telegram (i.e. from phone) via a Telegram Bot.  The user creates a Telegram Bot and sets it's token in setting telegram_api_token. After that all messages to this bot are forwarded to the agent in llama-vscode. The AI agent answers are sent to the user in Telegram. For security reasons, only users from a white list (setting telegram_bot_users) are allowed to use the bot. The bot answers, for example to /help command, are provided in the language, which is set in setting "Language". The user could also confirm permission requests for terminal commands, changing and deleting files from Telegram.
 
 ### How to use it 
-1. Create a Telegram Bot and set it's token in setting telegram_api_token. Creating a bot in Telegram is simple - open bot @BotFather, click Start and execute the command /newbot. There you will see the bot API token.
+1. Create a Telegram Bot. Creating a bot in Telegram is simple - open bot @BotFather, click Start and execute the command /newbot. There you will see the bot API token.
 2. Set the bot API token in setting telegram_api_token
-3. Find your user id in Telegram (in Telegram bot @userinfobot send "/start") and add it to setting telegram_bot_users
-4. Enable the bot in setting telegram_bot_enabled
-5. From your Telegram (for example from your phone) send a message to the bot
-The message will be forwarded to the agent in llama-vscode and the bot will send back the answer.
-Here are the commands (messages, which starts with "/"), which the bot can execute (if the message doesn't start with "/", it is sent to the agent) :
-/env - shows the current tools model and agent
-/models - shows the available models
-/agents - shows the available agents 
-/setmodel n - sets the model to the n-th model. (models numbers are available from command /models)
-/setagent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
-/stop - stops the agent 
-/status - shows the current status of the agent 
-/chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned
-/newchat - stops the current chat and starts a new chat
-/setlang xx - sets the language, which is used by the bot: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)
-/ - shows available commands
-/help - shows help information for using the bot
+3. Find your user id in Telegram (in Telegram bot @userinofobot send "/start") and add it to setting telegram_bot_users
+4. Enable the bot in setting telegram_bot_enabled  
 
-### Settings:
-- telegram_api_token - Telegram Bot token
-- telegram_bot_users - List of users, which are allowed to use the bot.
-- telegram_bot_enabled - Enable/disable the bot
-- telegram_chunk_size - The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message.
-- language - The language, on which the bot provides help and other bot specific answers.
+Every message to your Telegram bot (from 1.) will be forwarded to the agent in llama-vscode and the bot will send back the answer.  
+Here are the commands (messages, which start with "/"), which the bot can execute (if the message doesn't start with "/", it is sent to the agent) :  
+- /env - shows the current tools model and agent
+- /models - shows the available models
+- /agents - shows the available agents 
+- /setmodel n - sets the model to the n-th model. (models numbers are available from command /models)
+- /setagent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
+- /tools - lists all tools with a check for the active ones
+- /addtools x,y,z - sets the active tools (x,y,z are the numbers of the tools from /tools command)
+- /removetools x,y,z - removes the tools (x,y,z are the numbers of the tools from /tools command)  
+- /stop - stops the agent 
+- /status - shows the current status of the agent 
+- /chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned
+- /newchat - stops the current chat and starts a new chat
+- /setlang xx - sets the language, which is used by the bot: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)
+- / - shows available commands
+- /help - shows help information for using the bot
+
+### Settings:  
+- telegram_api_token - Telegram Bot token  
+- telegram_bot_users - List of users, which are allowed to use the bot.  
+- telegram_bot_enabled - Enable/disable the bot.   
+- telegram_chunk_size - The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message.    
+- language - The language, on which the bot provides help and other bot specific answers.  
+- tools_permission_timeout - The timeout (in seconds) for givint tool execution permission. If not answered withing this timeout, the agent will assume a silent answer with No. Default 600 seconds.
+
+<img width="320" height="711" alt="telegram1" src="https://github.com/user-attachments/assets/7ce2b664-24de-40e2-b1ff-fde17287a9d6" />
+
+<img width="320" height="711" alt="telegram2" src="https://github.com/user-attachments/assets/a0f7abdd-7665-4008-b1bb-8b79e3e90eb8" />
+
+<img width="320" height="711" alt="telegram3" src="https://github.com/user-attachments/assets/6d7ee073-2b57-4937-9145-a4427a666ddf" />
+
+
+
+
 
 ## Update todos tool
 

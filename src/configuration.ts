@@ -84,6 +84,7 @@ export class Configuration {
     tool_delete_file_enabled = true;
     tool_permit_some_terminal_commands = false;
     tool_permit_file_changes = false
+    tool_permit_file_delete = false
     tool_get_diff_enabled = false;
     tool_edit_file_enabled = true;
     tool_ask_user_enabled = true;
@@ -141,6 +142,7 @@ export class Configuration {
     telegram_bot_enabled = false;
     telegram_bot_users = ""
     telegram_chunk_size = 250;
+    tools_permission_timeout = 600;
 
     // TODO: change to snake_case for consistency
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000;
@@ -248,6 +250,7 @@ export class Configuration {
         this.tool_delete_file_enabled = Boolean(config.get<boolean>("tool_delete_file_enabled"));
         this.tool_permit_some_terminal_commands = Boolean(config.get<boolean>("tool_permit_some_terminal_commands"));
         this.tool_permit_file_changes = Boolean(config.get<boolean>("tool_permit_file_changes"));
+        this. tool_permit_file_delete = Boolean(config.get<boolean>("tool_permit_file_delete"));
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
@@ -306,6 +309,7 @@ export class Configuration {
         this.telegram_bot_enabled = Boolean(config.get<boolean>("telegram_bot_enabled"));
         this.telegram_bot_users = String(config.get<string>("telegram_bot_users"));
         this.telegram_chunk_size = Number(config.get<number>("telegram_chunk_size"));
+        this.tools_permission_timeout = Number(config.get<number>("tools_permission_timeout"));
     };
 
     private normalizeAgents(rawAgents: unknown): Agent[] {

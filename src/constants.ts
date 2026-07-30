@@ -280,6 +280,18 @@ export const UI_TEXT_KEYS = {
   telegramNewChatRequested: "New chat is requested.",
   telegramAvailableCommands: "The available bot commands are:",
   telegramCurrentChat: "Current chat:",
+  telegramCmdToolsDesc: "shows all tools, active with a ✓ prefix",
+  telegramCmdAddToolsDesc: "adds the provided tools. (tools numbers are available from command /tools)",
+  telegramCmdRemoveToolsDesc: "removes the provided tools. (tools numbers are available from command /tools)",
+  telegramAvailableModels: "Available models:",
+  telegramAvailableAgents: "Available agents:",
+  telegramAvailableTools: "Available tools:",
+  telegramEnterCorrectTools: "Please enter correct tools numbers (see the numbers with /tools command).",
+  telegramToolsIncorrectNumbers: "Tools with incorrect numbers:",
+  telegramRemovedTools:  "Removed tools:",
+  telegramAddedTools: "Added tools:",
+  telegramAnswerExactly: "Answer exacly with one of the following:",
+  telegramAnswerFirst: "Answer the question first.",
 
 
   // Other
@@ -292,6 +304,14 @@ export const PERSISTENCE_KEYS = {
   SELECTED_AGENT: 'selectedAgent' as const,
   SELECTED_ENV: 'selectedEnv' as const,
   EXTENSION_VERSION: 'extensionVersion' as const,
+} as const;
+
+export const CONFIRMATION_STATE = {
+  INACTIVE: 'inactive' as const,
+  WAITING: 'waiting' as const,
+  YES: 'yes' as const,
+  NO: 'no' as const,
+  YES_DONT_ASK: "yes, don't ask again" as const,
 } as const;
 
 export const SETTING_NAME_FOR_LIST = {
@@ -324,8 +344,12 @@ export const TELEGRAM_BOT_COMMANDS = {
   STOP_AGENT: "/stop" as const,
   SET_LANGUAGE: "/setlang" as const,
   NEW_CHAT: "/newchat" as const,
+  NEW_CHAT_SHORT: "/new" as const,
   SHOW_AGENT_STATUS: "/status" as const,
   SHOW_COMMANDS: "/" as const,
+  SHOW_TOOLS: "/tools" as const,
+  ADD_TOOLS: "/addtools" as const,
+  REMOVE_TOOLS: "/removetools" as const,
   SHOW_HELP: "/help" as const,
 } as const;
 
