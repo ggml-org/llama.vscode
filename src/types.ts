@@ -1,3 +1,5 @@
+import { CONFIRMATION_STATE } from "./constants";
+
 export interface IAddStrategy {
     add(details: ModelTypeDetails): Promise<void>;
 }
@@ -122,4 +124,3 @@ export interface ContextCustom {
     get_list: string
     get_item_context: string
 }
-

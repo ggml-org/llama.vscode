@@ -102,6 +102,9 @@ const AgentView: React.FC<AgentViewProps> = ({
           if (textareaRef.current) {
             textareaRef.current.focus();
           }
+          if (message.text) {
+            setInputText(message.text);
+          }
           break;
         case 'updateCurrentState':
           setCurrentState(message.text || '');

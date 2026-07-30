@@ -13,7 +13,8 @@
     "onLanguage:plaintext",
     "onLanguage:javascript",
     "onLanguage:typescript",
-    "onCommand.acceptFirstLine"
+    "onCommand.acceptFirstLine",
+    "onUri"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -2086,7 +2087,12 @@
         "llama-vscode.tool_permit_file_changes": {
           "type": "boolean",
           "default": false,
-          "description": "Permit AI to edit and delete files without user confirmation"
+          "description": "Permit AI to edit files without user confirmation"
+        },
+        "llama-vscode.tool_permit_file_delete": {
+          "type": "boolean",
+          "default": false,
+          "description": "Permit AI to delete files in project folder without user confirmation"
         },
         "llama-vscode.tool_search_source_enabled": {
           "type": "boolean",
@@ -2302,6 +2308,11 @@
           "type": "number",
           "default": 250,
           "description": "The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message."
+        },
+        "llama-vscode.tools_permission_timeout": {
+          "type": "number",
+          "default": 600,
+          "description": "How long (in seconds) should the agent wait for user permission of a tool execution. If the answer is not received in this time, the agent assumes that the user rejects the tool execution."
         }
       }
     },

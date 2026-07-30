@@ -447,6 +447,54 @@ export class Architect {
         );
     }
 
+    registerUriHandler = (context: vscode.ExtensionContext) => {
+        const uriHandler: vscode.UriHandler = {
+            handleUri: async (uri: vscode.Uri) => {
+                await this.handleUri(uri);
+            }
+        };
+        context.subscriptions.push(vscode.window.registerUriHandler(uriHandler));
+    }
+
+    private handleUri = async (uri: vscode.Uri) => {
+        const queryParams = new URLSearchParams(uri.query);
+        const project = queryParams.get('project');
+        if (project) {
+            await Utils.openProjectFolder(project);
+        }
+        const view = queryParams.get('view');
+        switch (view) {
+            case 'env':
+                this.app.llamaWebviewProvider.showEnvViewInUi();
+                break;
+            case 'agent':
+                const prompt = queryParams.get('prompt');
+                if (prompt) this.app.llamaWebviewProvider.showAgentViewInUi(prompt)
+                else this.app.llamaWebviewProvider.showAgentViewInUi();
+                break;
+            case 'edit-agent':
+                this.app.llamaWebviewProvider.showAgentEditorInUi();
+                break;
+            case 'menu':
+                this.app.menu.showMenu(this.app.extensionContext);
+                break;
+            case 'chat-with-ai':
+                this.app.askAi.showChatWithAi(false, this.app.extensionContext);
+                break;
+            case 'settings':
+                const filter = queryParams.get('filter');
+                let settingsFilter = 'llama-vscode'
+                if (filter) settingsFilter += " " + filter
+                vscode.commands.executeCommand('workbench.action.openSettings', settingsFilter);
+                break;
+            default:
+                // if unknown view or no view provided, show env view
+                this.app.llamaWebviewProvider.showEnvViewInUi();
+                break;
+        }
+        
+    }
+
     registerWebviewProvider = (context: vscode.ExtensionContext) => {
         const webviewProvider = vscode.window.registerWebviewViewProvider(
             LlamaWebviewProvider.viewType,

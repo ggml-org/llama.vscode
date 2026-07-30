@@ -26,6 +26,7 @@ export class LlamaAgent {
     private app: Application
     private lastStopRequestTime = Date.now();
     private messages: ChatMessage[] = []
+    private confirmationState: string = ""; // Use consts CONFIRMATION_STATE.*
     private logText = ""
     public contexProjectFiles: Map<string,string> = new Map();
     public sentContextFiles: Map<string,string> = new Map();
@@ -44,6 +45,10 @@ export class LlamaAgent {
     getAgentLogText = () => this.logText;
 
     isAgentInProgress = () => this.agentInProgress;
+
+    getConfirmationState = () => this.confirmationState;
+
+    setConfirmationState = (confirmationState:string) => this.confirmationState = confirmationState;
 
     setTelegramBotRequest = (isTlgReq: boolean) => this.isTlgrBotRequest = isTlgReq
     
@@ -510,14 +515,14 @@ export class LlamaAgent {
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                         if (toolFunc) {
                                             commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) { 
+                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
                                                 changedFiles.add(commandDescription);
                                                 if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
                                                     this.updateLogText(commandOutput + "\n\n")
                                                     this.app.llamaWebviewProvider.logInUi(this.logText);
                                                 }
                                             }
-                                            if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_UESR_PERMISSION) deletedFiles.add(commandDescription);
+                                            if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) deletedFiles.add(commandDescription);
                                         }
                                     }
                                     if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
@@ -527,7 +532,8 @@ export class LlamaAgent {
                                 } catch (error) {
                                     // Handle the error
                                     console.error("An error occurred:", error);
-                                    commandOutput = "Error during the execution of tool: " + oneToolCall.function.name
+                                    commandOutput = "Error during the execution of tool " + oneToolCall.function.name + ": " + error
+                                    commandOutput = commandOutput.slice(0, 400);
                                     this.updateLogText("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
                                     this.app.llamaWebviewProvider.logInUi(this.logText);
                                 }

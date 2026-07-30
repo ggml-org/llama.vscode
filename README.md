@@ -13,7 +13,7 @@ Local LLM-assisted text completion, chat with AI and agentic coding extension fo
 - Auto-suggest on input
 - Accept a suggestion with `Tab`
 - Accept the first line of a suggestion with `Shift + Tab`
-- Accept the next word with `Ctrl/Cmd + Right`
+- Accept the next word with `Ctrl/Cmd + Right Arrow`
 - Toggle the suggestion manually by pressing `Ctrl + L`
 - Control max text generation time
 - Configure scope of context around the cursor
@@ -21,11 +21,14 @@ Local LLM-assisted text completion, chat with AI and agentic coding extension fo
 - [Supports very large contexts even on low-end hardware via smart context reuse](https://github.com/ggerganov/llama.cpp/pull/9787)
 - Display performance stats
 - Llama Agent for agentic coding
+- Access to the llama-vscode agents from phone via a Telegram bot
+- Deep links [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello) opens VS Code (if not open), shows lama-vscode agent view and enters "Hello" as a prompt
+- Kimi K3 - support for [dynamically loaded tools](https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading) (tools on demand) when used from moonshot.ai.
 - Add/remove/export/import for models - completion, chat, embeddings and tools
 - Model selection - for completion, chat, embeddings and tools
 - Env (group of models) concept introduced. Selecting/Deselecting env selects/deselects all the models in it
 - Add/remove/export/import for env
-- Predefined models (including OpenAI gpt-oss 20B added as a local one) 
+- Predefined models - both local and external
 - Predefined envs for different use cases - only completion, chat + completion, chat + agent, loccal full package (with gpt-oss 20B), etc.
 - MCP tools selection for the agent (from VS Code installed MCP Servers)
 - Search and download models from Huggingface directly from llama-vscode
@@ -41,6 +44,7 @@ Install the [llama-vscode](https://marketplace.visualstudio.com/items?itemName=g
 Note: also available at [Open VSX](https://open-vsx.org/extension/ggml-org/llama-vscode)
 
 ### `llama.cpp` setup
+- Now automatic on starting llama-vscode - from the [official llama.cpp shell script](https://llama.app/) or from brew (Mac, Linux) or Winget (Windows). The details below for the manual installation are left for reference.
 
 **Prerequisites:**
 - For macOS: [Homebrew](https://brew.sh) must be installed
