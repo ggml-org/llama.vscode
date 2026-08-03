@@ -4,21 +4,21 @@ export const PREDEFINED_LISTS = new Map<string, any>([
     [PREDEFINED_LISTS_KEYS.COMPLETIONS, [
             {
               "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
-              "localStartCommand": "llama serve --fim-qwen-1.5b-default -ngl 99 --port 8012",
+              "localStartCommand": "llama serve --fim-qwen-1.5b-default --port 8012",
               "endpoint": "http://localhost:8012",
               "aiModel": "",
               "isKeyRequired": false
             },
             {
               "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
-              "localStartCommand": "llama serve --fim-qwen-3b-default -ngl 99 --port 8012",
+              "localStartCommand": "llama serve --fim-qwen-3b-default --port 8012",
               "endpoint": "http://localhost:8012",
               "aiModel": "",
               "isKeyRequired": false
             },
             {
               "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
-              "localStartCommand": "llama serve --fim-qwen-7b-default -ngl 99 --port 8012",
+              "localStartCommand": "llama serve --fim-qwen-7b-default --port 8012",
               "endpoint": "http://localhost:8012",
               "aiModel": "",
               "isKeyRequired": false
@@ -34,22 +34,22 @@ export const PREDEFINED_LISTS = new Map<string, any>([
 [PREDEFINED_LISTS_KEYS.CHATS, [
             {
               "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
               "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
               "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
               "name": "Qwen2.5-Coder-14B-Instruct-Q8_0-GGUF (> 32GB VRAM)",
-              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-14B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+              "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-14B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
               "endpoint": "http://127.0.0.1:8011"
             },
             {
@@ -66,7 +66,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
             },
             {
               "name": "OpenAI gpt-oss 20B",
-              "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8011",
+              "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --reasoning-format none -np 2 --port 8011",
               "endpoint": "http://localhost:8011",
               "aiModel": "",
               "isKeyRequired": false
@@ -96,21 +96,21 @@ export const PREDEFINED_LISTS = new Map<string, any>([
             },
             {
               "name": "Qwen3.5-4B-GGUF:Q8_0 (LOCAL) (VRAM>6GB)",
-              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-4B-GGUF:Q8_0 --jinja -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
+              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-4B-GGUF:Q8_0 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
               "endpoint": "http://localhost:8009",
               "aiModel": "",
               "isKeyRequired": false
             },
             {
               "name": "Qwen3.5-9B-GGUF:Q8_0 (LOCAL) (VRAM>12GB)",
-              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-9B-GGUF:Q8_0 --jinja -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
+              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-9B-GGUF:Q8_0 -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
               "endpoint": "http://localhost:8009",
               "aiModel": "",
               "isKeyRequired": false
             },
             {
               "name": "OpenAI gpt-oss 20B (LOCAL) (> 19GB VRAM)",
-              "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
+              "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --reasoning-format none -np 2 --port 8009",
               "endpoint": "http://localhost:8009",
               "aiModel": "",
               "isKeyRequired": false
@@ -203,24 +203,24 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Everything local, gpt-oss 20B for agent",
               "completion": {
                 "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-1.5b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-1.5b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
                 "name": "OpenAI gpt-oss 20B",
-                "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
+                "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --reasoning-format none -np 2 --port 8009",
                 "endpoint": "http://localhost:8009",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -231,24 +231,24 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Everything local, gpt-oss 20B for agent",
               "completion": {
                 "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-3b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-3b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
                 "name": "OpenAI gpt-oss 20B",
-                "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
+                "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --reasoning-format none -np 2 --port 8009",
                 "endpoint": "http://localhost:8009",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -259,24 +259,24 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Everything local, gpt-oss 20B for agent",
               "completion": {
                 "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-7b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-7b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
               },
               "chat": {
                 "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
                 "name": "OpenAI gpt-oss 20B",
-                "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --jinja --reasoning-format none -np 2 --port 8009",
+                "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --reasoning-format none -np 2 --port 8009",
                 "endpoint": "http://localhost:8009",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -319,7 +319,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Only for code completions model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
               "completion": {
                 "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-1.5b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-1.5b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -351,7 +351,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Only for completions, model Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM | HD: 3,2 GB)",
               "completion": {
                 "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-3b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-3b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -383,7 +383,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Only for code completions, model Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
               "completion": {
                 "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM | HD: 8.1 GB)",
-                "localStartCommand": "llama serve --fim-qwen-7b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-7b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
@@ -440,12 +440,12 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
@@ -462,7 +462,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
@@ -483,12 +483,12 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               },
               "chat": {
                 "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
@@ -505,12 +505,12 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
@@ -525,19 +525,19 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "The minimal configuration for completions (local), chat (local) and agent (remote - OpenRouter), requires OpenRouter API key for agent",
               "completion": {
                 "name": "Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-1.5b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-1.5b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
@@ -552,19 +552,19 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Agent qwen 3 from OpenRouter, completions & chat - medium size models, embeddings (<= 32GB VRAM))",
               "completion": {
                 "name": "Qwen2.5-Coder-3B-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-3b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-3b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
               },
               "chat": {
                 "name": "Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF (<= 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
@@ -579,19 +579,19 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "description": "Agent - qwen 3 from OpenRouter (API key required), completions, chat (>32 GB VRAM) ",
               "completion": {
                 "name": "Qwen2.5-Coder-7B-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama serve --fim-qwen-7b-default -ngl 99 --port 8012",
+                "localStartCommand": "llama serve --fim-qwen-7b-default --port 8012",
                 "endpoint": "http://localhost:8012",
                 "aiModel": "",
                 "isKeyRequired": false
               },
               "chat": {
                 "name": "Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF (> 16GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {
@@ -610,12 +610,12 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               },
               "chat": {
                 "name": "Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
-                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ngl 99 -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
+                "localStartCommand": "llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF -ub 1024 -b 1024 --ctx-size 0 --cache-reuse 256 -np 2 --port 8011",
                 "endpoint": "http://127.0.0.1:8011"
               },
               "embeddings": {
                 "name": "Nomic-Embed-Text-V2-GGUF",
-                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ngl 99 -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
+                "localStartCommand": "llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF -ub 2048 -b 2048 --ctx-size 2048 --embeddings --port 8010",
                 "endpoint": "http://127.0.0.1:8010"
               },
               "tools": {

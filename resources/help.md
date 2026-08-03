@@ -1002,15 +1002,15 @@ llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF --port 8012 -ub 512 -b 512
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM 
 ```bash 
-`llama serve --fim-qwen-7b-default -ngl 99`  
+`llama serve --fim-qwen-7b-default`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama serve --fim-qwen-3b-default -ngl 99`  
+`llama serve --fim-qwen-3b-default`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama serve --fim-qwen-1.5b-default -ngl 99`  
+`llama serve --fim-qwen-1.5b-default`  
 ```
 If the file is not available (first time) it will be downloaded (this could take some time) and after that llama.cpp server will be started.  
   
@@ -1088,11 +1088,11 @@ Go to https://llama.app/, copy the install command and run it in a shell.
 2. Download the LLM model and run llama.cpp server (combined in one command)  
 - If you have more than 16GB VRAM:  
 ```bash
-`llama serve -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-7B-Q8_0-GGUF:Q8_0 --port 8012 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 - If you have less than 16GB VRAM:  
 ```bash
-`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -ngl 99 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
+`llama serve -hf ggml-org/Qwen2.5-Coder-1.5B-Q8_0-GGUF:Q8_0 --port 8012 -fa -ub 1024 -b 1024 -dt 0.1 --ctx-size 0 --cache-reuse 256`  
 ```
 If the file is not available (first time) it will be downloaded (this could take some time) and after that llama.cpp server will be started. 
 
@@ -1170,7 +1170,7 @@ No GPUs
 ```
 With GPUs     
 ```bash
-`llama serve.exe --fim-qwen-1.5b-default --port 8012 -ngl 99`  
+`llama serve.exe --fim-qwen-1.5b-default --port 8012`  
 ```  
 If you've installed llama.cpp with winget you could skip the .exe suffix and use just llama serve in the commands.  
 
@@ -1200,15 +1200,15 @@ CPU-only:
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM  
 ```bash
-`llama serve.exe -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
+`llama serve.exe -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama serve.exe -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99`  
+`llama serve.exe -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama serve.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011 -np 2 -ngl 99` 
+`llama serve.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011` 
 ```
 
 
