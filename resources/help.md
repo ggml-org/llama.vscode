@@ -86,7 +86,7 @@ Llama-vscode could be used as a VS Code copilot chat model provider. With other 
 ## Custom eval tool
 
 ### Overview
-llama-vscode provides to the users the posibility to partially create their own tool. Custom eval tool is a simple one - has one parameters and and uses the provided by the user javascript function to calculate the result.
+llama-vscode provides to the users the posibility to partially create their own tool. Custom eval tool is a simple one - has one parameters and provideds it to the user javascript function to calculate the result.
 
 ### How to use it
 Configure the description of the tool, the parameter description and provide a javascript function (one parameter, returns string) to be called when the tool is used.
@@ -102,36 +102,52 @@ Settings:
 https://github.com/user-attachments/assets/fb12d56f-61e8-409b-b888-0a524167e116
 
 
-https://github.com/user-attachments/assets/7e928fc3-da14-4834-a414-0f8e23593155
-
-
-## Custom tool
+https://github.com/user-attachments/assets/7e928fc3-da14-4834-a414-0f8e23593155## Custom tool
 
 ### Overview
-llama-vscode provides to the users the posibility to partially create their own tool. Custom tool is a simple one - has not parameters and returns always the same result.
+llama-vscode provides to the users the possibility to partially create their own tool. Custom tool is a simple one - has not parameters and returns always the same result.
 
 ### How to use it
 Configure the description of the tool and the returned result, enable the tool and ask the agent questions related to the tool.
 
 Settings:
 - Tool_custom_tool_description: Description of the tool. This description will be used by the AI to decide if this tool should be used. Example: "Use this tool for information about llama.cpp and llama serve - how to build it, how to use it, options, etc."
-- Custom_tool_source: What should be returned by the tool. Could be file or a web page. Eample:  https://blog.steelph0enix.dev/posts/llama-cpp-guide/ ​The tool returns the content of the file or the web page.
+- Custom_tool_source: What should be returned by the tool. Could be a file, a web page. Example: "https://blog.steelph0enix.dev/posts/llama-cpp-guide/" for a web page.
 
 
 https://github.com/user-attachments/assets/46602f8c-bd45-4794-9f5c-6ebe262c396a
 
 
-https://github.com/user-attachments/assets/50baa8c3-f426-4901-a443-8882da644800
-
-## Deep links
+https://github.com/user-attachments/assets/50baa8c3-f426-4901-a443-8882da644800## Deep links
 
 ### Overview
 Llama-vscode supports deep links. For example, the link [vscode://ggml-org.llama-vscode?view=env](vscode://ggml-org.llama-vscode?view=env) launches VS Code and shows the env view.  
-If you use the project parameter with a local folder path in the link, it will open the project. For example, [vscode://ggml-org.llama-vscode?project=~/myproject](vscode://ggml-org.llama-vscode?project=~/myproject) loads the folder ~/myproject in VS Code. 
+If you use the project parameter with a local folder path in the link, it will open the project. For example, [vscode://ggml-org.llama-vscode?project=~/myproject](vscode://ggml-org.llama-vscode?project=~/myproject) loads the folder ~/myproject in VS Code.  
+It works in a similar was as the mailto: links, which open a mail client.
 
 
 ### How to use it
-Click the link to have VS Code display the requested view and load the specified project folder.  
+Click the link to have VS Code display the requested view and load the specified project folder.  For security reasosons, some platforms don't allow links different than http:// and https:// (for example github links from markdown). Some browsers don't allow deep links for security reasons. You can also open the link from the command line:
+
+Linux:
+```bash
+xdg-open "vscode://ggml-org.llama-vscode?view=env"
+```
+Windows PowerShell:
+```bash
+Start-Process "vscode://ggml-org.llama-vscode?view=env"
+```
+
+Windows comd:
+```bash
+start "" "vscode://ggml-org.llama-vscode?view=env"
+```
+
+Mac:
+```bash
+open "vscode://ggml-org.llama-vscode?view=env"
+```
+
 To create a custom link, start with `vscode://ggml-org.llama-vscode?` and add desired parameters.
 
 #### Parameters:
@@ -145,7 +161,7 @@ View parameter accepts these values:
 - chat-with-ai - displays the chat interface (requires a llama.cpp model to be selected for Chat or Tools)
 - settings - displays the Llama-vscode settings (if filter is provided, settings will be filtered by the specified value)
 
-Project parameter accepts a local folder path. Example: [vscode://ggml-org.llama-vscode?project=C:/projects/myproject](vscode://ggml-org.llama-vscode?project=C:/projects/myproject)
+Project parameter accepts a local folder path. Example: [vscode://ggml-org.llama-vscode?project=C:/projects/myproject](vscode://ggml-org.llama-vscode?project=C:/projects/myproject). Before opening the project, make sure you know this folder to avoid security issues.
 
 Prompt accepts text vlaue - it will be used as a prompt for the agent. example: [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello). 
 
@@ -281,13 +297,20 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.58 is released (03.08.2026)
+## What is new
+- New agent commands were added - disable_completions, enable_completions, disable_rag, enable_rag, select_help_agent, select_tools_model_kimi_k3 (Kimi K3 tools on demand), etc.
+
+
 ## Version 0.0.57 is released (31.07.2026)
 ## What is new
+- Telegram bot - new commands /tools, /addtools, /removetools [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 - Telegram bot - user confirmation of terminal commands, changing or deleting files is now possible from Telegram. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 - Deep links support added. Now VS Code and and a llama-vscode view could be opened from a link. Example [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello) opens VS Code and llama-vscode agent and writes in the prompt box "Hello". [More details](https://github.com/ggml-org/llama.vscode/wiki/Deep-link)
 - Logo changed
 - New setting tool_permit_file_delete - allow or deny deletion of files. Now the setting tool_permit_file_changes is only for file changes.
 - New setting tools_permission_timeout - The timeout (in seconds) for providing tool execution permission. If not answered withing this timeout, the agent will assume a silent answer with No. Default 600 seconds. 
+
 
 ## Version 0.0.56 is released (27.07.2026)
 ## What is new
@@ -1269,7 +1292,7 @@ Here are the commands (messages, which start with "/"), which the bot can execut
 - /stop - stops the agent 
 - /status - shows the current status of the agent 
 - /chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned
-- /newchat - stops the current chat and starts a new chat
+- /newchat, /new - stops the current chat and starts a new chat
 - /setlang xx - sets the language, which is used by the bot: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)
 - / - shows available commands
 - /help - shows help information for using the bot
@@ -1280,7 +1303,7 @@ Here are the commands (messages, which start with "/"), which the bot can execut
 - telegram_bot_enabled - Enable/disable the bot.   
 - telegram_chunk_size - The size of the chunks (in chars), which are sent as AI response to Telegram. Each chunk is a separate message.    
 - language - The language, on which the bot provides help and other bot specific answers.  
-- tools_permission_timeout - The timeout (in seconds) for givint tool execution permission. If not answered withing this timeout, the agent will assume a silent answer with No. Default 600 seconds.
+- tools_permission_timeout - The timeout (in seconds) for giving tool execution permission. If not answered within this timeout, the agent will assume a silent answer with No. Default 600 seconds.
 
 <img width="320" height="711" alt="telegram1" src="https://github.com/user-attachments/assets/7ce2b664-24de-40e2-b1ff-fde17287a9d6" />
 

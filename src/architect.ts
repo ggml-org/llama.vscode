@@ -76,13 +76,17 @@ export class Architect {
         let configurationChangeDisp = vscode.workspace.onDidChangeConfiguration((event) => {
             const config = vscode.workspace.getConfiguration("llama-vscode");
             this.app.configuration.updateOnEvent(event, config);
-            if (this.app.configuration.isRagConfigChanged(event)) this.init();
+            if (this.app.configuration.isRagConfigChanged(event)){
+                this.app.llamaWebviewProvider.updateSettingsInView();
+                this.init();
+            }
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
             if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
             if (this.app.configuration.isTelegramBotConfigChanged(event)){
                 if (this.app.configuration.telegram_bot_enabled) this.app.telegramBot.createBot(this.app.configuration.telegram_api_token);
                 else this.app.telegramBot.closeBot();
             } 
+            if (this.app.configuration.isCompletionsEnabledConfigChanged(event)) this.app.statusbar.updateStatusBarText();
         });
         context.subscriptions.push(configurationChangeDisp);
     }

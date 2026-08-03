@@ -5,9 +5,10 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
+import { PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
+import { PREDEFINED_LISTS } from "./lists";
 
 
 interface Frontmatter {
@@ -329,6 +330,29 @@ export class LlamaAgent {
             let finishReason:string|undefined = "tool_calls"
             this.updateLogText("***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n");
             this.isTlgrBotRequest = isTelegramBotReq
+            let agentCommandPrompt  = ""
+            if (agentCommand) {
+                let commands = this.app.configuration.agent_commands as AgentCommand[];
+                commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
+                const commandDetails = commands.find( cmd => cmd.name === agentCommand)     
+                if (commandDetails) {     
+                    let prompt =  commandDetails.prompt.join("\n")
+                    if (Utils.isFilePath(prompt))
+                        prompt = await fs.promises.readFile(path.join(prompt), 'utf-8')              
+                    if (commandDetails.isScript) {
+                        const scriptResult = await this.app.dslInterpreter.execute(prompt)    
+                        if (commandDetails.noPrompt) { 
+                            this.setAgentState("AI is stopped", false)
+                            this.updateLogText(`${scriptResult} \n\n`)
+                            this.app.llamaWebviewProvider.logInUi(this.logText);
+                            return scriptResult;
+                        } else {
+                            agentCommandPrompt += "\n\n " + scriptResult
+                        }
+                    } else agentCommandPrompt += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
+                }
+            }
+            
             this.setAgentState("AI is working...", true)
             
             if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
@@ -369,13 +393,7 @@ export class LlamaAgent {
                 query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
             }
 
-            if (agentCommand) {
-                const commands = this.app.configuration.agent_commands as AgentCommand[];
-                const commandDetails = commands.find( cmd => cmd.name === agentCommand)                 
-                if (commandDetails) {
-                    query += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
-                }
-            }
+            if (agentCommandPrompt) query += agentCommandPrompt            
 
             this.messages.push(
                             {

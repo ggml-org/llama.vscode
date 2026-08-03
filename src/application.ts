@@ -33,6 +33,8 @@ import { OpenAiCompModelStrategy } from "./services/openai-comp-model-strategy";
 import { LlamaChatModelProvider } from "./llama-chat-model-provider";
 import { Dialogs } from "./dialogs";
 import { TelegramBot } from "./telegram-bot";
+import { DslInterpreter } from "./dsl-interpreter";
+import { DslCommands } from "./dsl-commands"
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -70,6 +72,8 @@ export class Application {
     public dialogs: Dialogs
     public telegramBot: TelegramBot
     public extensionContext: vscode.ExtensionContext
+    public dslInterpreter: DslInterpreter
+    public dslCommands: DslCommands
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -116,6 +120,8 @@ export class Application {
         this.llamaChatModelProvider = new LlamaChatModelProvider(this);
         this.dialogs = new Dialogs(this);
         this.telegramBot = new TelegramBot(this);
+        this.dslInterpreter = new DslInterpreter(this);
+        this.dslCommands = new DslCommands(this);
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {

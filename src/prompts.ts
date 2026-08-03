@@ -162,7 +162,7 @@ When making changes, you MUST use the SEARCH/REPLACE block format as follows:
 \`\`\`diff
 filename.py
 <<<<<<< SEARCH  
-// original text lines that should be found and replaced  
+// original text lines that should be found and replaced (with all spaces, tabs, etc.. EXACT MATCH is needed)  
 =======  
 // new text lines that will replace the original content  
 >>>>>>> REPLACE  

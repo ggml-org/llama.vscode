@@ -43,7 +43,7 @@ export class FileEditor {
             ignoreFocusOut: true
         });
         if (!glob) return;
-        let shouldContinue = this.app.dialogs.showYesNoDialog(
+        let shouldContinue = await this.app.dialogs.showYesNoDialog(
             "You requested an edit of multiple files with AI. " + 
             "\n\nGlob pattern (what files to edit): " + glob +
             "\nPrompt: " + prompt +
@@ -51,6 +51,8 @@ export class FileEditor {
         if (!shouldContinue) return;
 
         const files = await vscode.workspace.findFiles(glob);
+        console.log('Total files to edit:', files.length);
+        this.app.statusbar.showTextInfo('Editing files...');
         if (!files || files.length === 0) {
             vscode.window.showInformationMessage('No files matched the glob pattern.');
             return;
@@ -101,7 +103,9 @@ export class FileEditor {
                 }
                 if (!token.isCancellationRequested) {
                     vscode.window.showInformationMessage(`Edited ${processed} of ${total} files.`);
+                    this.app.statusbar.showTextInfo(`Edited ${processed} of ${total}`);
                 }
+                this.app.statusbar.showTextInfo(``)
             }
         );
     }

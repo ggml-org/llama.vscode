@@ -2,11 +2,12 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
 import { Application } from './application';
-import { LlmModel, Env, Agent, ContextCustom } from './types';
+import { LlmModel, Env, Agent, ContextCustom, AgentCommand } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
-import { ModelType, SETTING_NAME_FOR_LIST } from './constants';
+import { ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from './constants';
+import { PREDEFINED_LISTS } from './lists';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -288,7 +289,16 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     getAgentCommands = async (message: any, webviewView: vscode.WebviewView) => {
-        let agentCommands =     this.app.configuration.agent_commands.map(cmd => cmd.name +  " | " + cmd.description)
+        let commands =  this.app.configuration.agent_commands
+        commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
+        
+        if (this.app.configuration.enabled) commands = commands.filter(cmd => cmd.name != "enable_completions")
+        else commands = commands.filter(cmd => cmd.name != "disable_completions")
+        
+        if (this.app.configuration.rag_enabled) commands = commands.filter(cmd => cmd.name != "enable_rag")
+        else commands = commands.filter(cmd => cmd.name != "disable_rag")
+        
+        let agentCommands =  commands.map(cmd => cmd.name +  " | " + cmd.description)
         webviewView.webview.postMessage({
             command: 'updateFileList',
             files: agentCommands
@@ -551,7 +561,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    private updateSettingsInView(){
+    public updateSettingsInView(){
         this.updateSettingInEnvView('enabled', this.app.configuration.enabled);
         this.updateSettingInEnvView('rag_enabled', this.app.configuration.rag_enabled);
         this.updateSettingInEnvView('env_start_last_used', this.app.configuration.env_start_last_used);
@@ -660,6 +670,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public showEnvViewInUi() {
         vscode.commands.executeCommand('extension.showLlamaWebview');
         setTimeout(() => this.setView("addenv"), 500);
+        // Wait 500 ms before setting the view
+        setTimeout(() => this.updateLlamaView(), 500);
+        
     }
 
     public async showAgentViewInUi(prompt: string = "") {

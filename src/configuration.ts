@@ -392,6 +392,10 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.rag_ignore_file")
     }
 
+    isCompletionsEnabledConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
+        return event.affectsConfiguration("llama-vscode.enabled")
+    }
+
     isTelegramBotConfigChanged = (event: vscode.ConfigurationChangeEvent) => {
         return event.affectsConfiguration("llama-vscode.telegram_api_token")
         || event.affectsConfiguration("llama-vscode.telegram_bot_enabled")
