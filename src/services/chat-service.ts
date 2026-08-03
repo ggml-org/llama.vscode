@@ -19,7 +19,8 @@ export class ChatService {
             vscode.window.showInformationMessage("No chats in the history.")
             return;
         }
-        const chatsItems: QuickPickItem[] = Utils.getStandardQpList(chatsList, "");
+        
+        let chatsItems: QuickPickItem[] = Utils.getStandardQpList(chatsList, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let futureChat: Chat;

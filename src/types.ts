@@ -72,8 +72,10 @@ export interface Agent {
 export interface AgentCommand {
     name: string,
     description?: string,
-    prompt: string[]
-    context?: string[]
+    prompt: string[],
+    context?: string[],
+    noPrompt?: boolean,
+    isScript?: boolean
 }
 
 export interface chatMessage {

@@ -80,24 +80,16 @@ export const PREDEFINED_LISTS = new Map<string, any>([
             }
           ]],
 [PREDEFINED_LISTS_KEYS.TOOLS,
-    [
+    [       {
+              "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU or VRAM>3GB)",
+              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --port 8009 --host 127.0.0.1",
+              "endpoint": "http://localhost:8009",
+              "aiModel": "",
+              "isKeyRequired": false
+            },
             {
               "name": "Qwen3.6-27B-GGUF:Q8_0 MTP (LOCAL) (VRAM>20)",
               "localStartCommand": 'llama serve -hf ggml-org/Qwen3.6-27B-GGUF:Q8_0 --spec-draft-hf ggml-org/Qwen3.5-0.8B-GGUF:Q8_0 --ctx-size 262144 --batch-size 2048 --ubatch-size 2048 --chat-template-kwargs {"preserve_thinking": true}',
-              "endpoint": "http://localhost:8009",
-              "aiModel": "",
-              "isKeyRequired": false
-            },
-            {
-              "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU)",
-              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --jinja  -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
-              "endpoint": "http://localhost:8009",
-              "aiModel": "",
-              "isKeyRequired": false
-            },
-            {
-              "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (VRAM>3GB)",
-              "localStartCommand": "llama serve -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --jinja -ngl 99  -c 0 -ub 1024 -b 1024 --cache-reuse 256 --port 8009 --host 127.0.0.1",
               "endpoint": "http://localhost:8009",
               "aiModel": "",
               "isKeyRequired": false
@@ -1112,6 +1104,114 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               ],
               "context": [
               ]
-            }
+            },
+            {
+              "name": "disable_completions",
+              "prompt": [
+                "setSetting enabled false"
+              ],
+              "description": "Disables code completion for all languages",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "enable_completions",
+              "prompt": [
+                "setSetting enabled true"
+              ],
+              "description": "Enables code completion for all languages",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "disable_rag",
+              "prompt": [
+                "setSetting rag_enabled false"
+              ],
+              "description": "Disables RAG indexing (RAG is not needed for code completion)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "enable_rag",
+              "prompt": [
+                "setSetting rag_enabled true"
+              ],
+              "description": "Enables RAG indexing (RAG is used for code search and other agent related operations.)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_help_agent",
+              "prompt": [
+                "setAgent llama-vscode help"
+              ],
+              "description": "Selects llama-vscode help agent to answer questions about llama-vscode",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_default_agent",
+              "prompt": [
+                "setAgent default"
+              ],
+              "description": "Selects default agent",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_compl_model_qwen2.5_1.5B",
+              "prompt": [
+                "setCompletionModel Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)"
+              ],
+              "description": "Selects completion model Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_chat_model_qwen2.5_1.5B_instruct",
+              "prompt": [
+                "setChatModel Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)"
+              ],
+              "description": "Selects chat model Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_embs_model_nomic",
+              "prompt": [
+                "setEmbeddigsModel Nomic-Embed-Text-V2-GGU"
+              ],
+              "description": "Selects embeddings model Nomic-Embed-Text-V2-GGU",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_tools_model_qwen_3.5_2B",
+              "prompt": [
+                "setToolsModel Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU or VRAM>3GB)"
+              ],
+              "description": "Selects tools model Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU or VRAM>3GB)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_tools_model_qwen_3.5_9B",
+              "prompt": [
+                "setToolsModel Qwen3.5-9B-GGUF:Q8_0 (LOCAL) (VRAM>12GB)"
+              ],
+              "description": "Selects tools model Qwen3.5-9B-GGUF:Q8_0 (LOCAL) (VRAM>12GB)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "select_tools_model_kimi_k3",
+              "prompt": [
+                "setToolsModel Kimi K3 tools on demand 1M context $3/M input, $15/M output (moonshot.ai)"
+              ],
+              "description": "Selects tools model Kimi K3 tools on demand 1M context $3/M input, $15/M output (moonshot.ai)",
+              "noPrompt": true,
+              "isScript": true
+            },
           ]],
 ])

@@ -193,6 +193,8 @@ export class AgentCommandService {
             "\nname: " + selectedAgentCommand.name +
             "\ndescription: " + selectedAgentCommand.description +
             "\nprompt: \n" + selectedAgentCommand.prompt.join("\n") +
+            "\nis script: " + selectedAgentCommand.isScript +
+            "\nno prompt to the agent: " + selectedAgentCommand.noPrompt +
             "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
 }
