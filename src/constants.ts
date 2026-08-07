@@ -90,6 +90,12 @@ export enum AGENT_NAME {
   llamaVscodeHelp = 'llama-vscode help'
 }
 
+export const AGENT_COMMAND = {
+  scrip_file_suffix: '.lvs',
+  type_preffix_script: 's', //should be one character
+  type_preffix_prompt: 'p' //should be one character
+}
+
 export const UI_TEXT_KEYS = {
   // Agent command texts
   enterName: "Enter agent command name",
@@ -367,4 +373,4 @@ export const SUPPORTED_IMG_FILE_EXTS: { [key: string]: string } = {
     '.jpg': 'image/jpeg',
     '.png': 'image/png',
     '.webp': 'image/webp'
-} as const;;
+} as const;

@@ -5,7 +5,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
+import { AGENT_COMMAND, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
@@ -279,7 +279,7 @@ export class LlamaAgent {
         }
     }
 
-    private async summarizeToFitCurrentBudget(imagePath = ""): Promise<boolean> {
+    public async summarizeToFitCurrentBudget(imagePath = ""): Promise<boolean> {
         const tokenLimits = await this.app.llamaServer.getToolsModelTokenLimits();
         const reservedOutputTokens = Math.max(1024, resolveBoundedMaxOutputTokens({
             maxInputTokens: tokenLimits.maxInputTokens,
@@ -334,7 +334,21 @@ export class LlamaAgent {
             if (agentCommand) {
                 let commands = this.app.configuration.agent_commands as AgentCommand[];
                 commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
-                const commandDetails = commands.find( cmd => cmd.name === agentCommand)     
+                let commandDetails = commands.find( cmd => cmd.name === agentCommand)
+                if (!commandDetails 
+                    && agentCommand.toLowerCase().endsWith(AGENT_COMMAND.scrip_file_suffix)){
+                    const scriptFilePath = path.join(this.app.configuration.scripts_folder, agentCommand)
+                    if (fs.existsSync(scriptFilePath)) {
+                        const script = fs.readFileSync(scriptFilePath, 'utf-8')              
+                        commandDetails = {
+                            name: "script",
+                            description: "Run a script file",
+                            prompt: [script],
+                            isScript: true,
+                            noPrompt: true,
+                        }
+                    }
+                }     
                 if (commandDetails) {     
                     let prompt =  commandDetails.prompt.join("\n")
                     if (Utils.isFilePath(prompt))

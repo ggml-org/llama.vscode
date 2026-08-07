@@ -1213,5 +1213,15 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "noPrompt": true,
               "isScript": true
             },
+            {
+              "name": "select_env_only_compl_cpu",
+              "prompt": [
+                "setEnv Local, only completions - CPU (HD: 1.6 GB)"
+              ],
+              "description": "Selectsenv - only comletions - CPU (HD: 1.6 GB)",
+              "noPrompt": true,
+              "isScript": true
+            },
+            
           ]],
 ])

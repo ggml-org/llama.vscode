@@ -2,7 +2,9 @@ import {Application} from "./application";
 import vscode, { QuickPickItem } from "vscode";
 import os from "os";
 import { Utils } from "./utils";
-import { ModelType, AGENT_NAME, UI_TEXT_KEYS, UiView } from "./constants";
+import { ModelType, AGENT_NAME, UI_TEXT_KEYS, UiView, PREDEFINED_LISTS_KEYS } from "./constants";
+import { PREDEFINED_LISTS } from "./lists";
+import { Agent } from "./types";
 
 export class Menu {
     private app: Application
@@ -342,7 +344,9 @@ export class Menu {
                 this.showHowToUseLlamaVscode();
                 break;
             case this.app.configuration.getUiText(UI_TEXT_KEYS.chatWithAIAboutLlamaVscode):
-                const helpAgent = this.app.configuration.agents_list.find(a => a.name === AGENT_NAME.llamaVscodeHelp);
+                const allAgents = this.app.configuration.agents_list
+                    .concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+                const helpAgent = allAgents.find(a => a.name === AGENT_NAME.llamaVscodeHelp);
                 if (helpAgent) {
                     await this.app.agentService.selectAgent(helpAgent);
                 }

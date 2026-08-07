@@ -10,12 +10,27 @@ export class DslInterpreter {
     execute = async (script: string): Promise<any> => {
         const commandsMap = this.app.dslCommands.commandsFunc;
 
-        // Execution context. For now it only keeps the result of the last
-        // executed command, but it is designed to be extended with variables
-        // and operator state in the future.
-        const context: { lastResult?: any; variables: Map<string, any> } = {
+        // Execution context with variables and the stack of conditional blocks.
+        // Each control frame describes one enclosing `if` block:
+        //   ifTaken - the `if` condition evaluated to true
+        //   elseSeen - an `else` for this block was already encountered
+        //   active  - lines in the current section of this block should execute
+        interface ControlFrame {
+            ifTaken: boolean;
+            elseSeen: boolean;
+            active: boolean;
+        }
+        const context: { lastResult?: any; variables: Map<string, any>; conditionStack: ControlFrame[] } = {
             lastResult: undefined,
-            variables: new Map<string, any>()
+            variables: new Map<string, any>(),
+            conditionStack: []
+        };
+
+        // Helper function to substitute variables in a string
+        const substituteVariables = (str: string): string => {
+            return str.replace(/\$(\w+)/g, (_, varName) => {
+                return `"${context.variables.get(varName) || ''}"` ;
+            });
         };
 
         // Each command is on a separate line.
@@ -24,24 +39,144 @@ export class DslInterpreter {
         for (const rawLine of lines) {
             const line = rawLine.trim();
 
-            // Skip empty lines.
-            if (line.length === 0) {
+            // Skip empty lines and comment lines.
+            if (line.length === 0 || line.trim().startsWith("//")) {
                 continue;
             }
 
-            // Handle "return" statement: the value after return is returned
-            // from the execute method and the script execution stops.
-            if (line === "return" || line.startsWith("return ")) {
-                const returnValue = line.slice("return".length).trim();
-                return returnValue;
+            const isIf = line.startsWith('if ');
+            const isElse = line === 'else' || line.startsWith('else ');
+            const isEndif = line === 'endif' || line.startsWith('endif ');
+
+            // Handle the if/else/endif control-flow commands first so they are
+            // processed both when the current block is active and when it is
+            // being skipped.
+            if (isIf) {
+                // Handle if conditions. A nested `if` that appears while its
+                // enclosing block is skipped simply pushes a non-active frame
+                // so that its matching `else`/`endif` are tracked correctly.
+                const parentActive = context.conditionStack.every((frame) => frame.active);
+                const condition = line.substring(3).trim();
+                const substitutedCondition = substituteVariables(condition);
+                const parts = substitutedCondition.match(/(".*?"|'.*?'|`.*?`|\S+)/g) || [];
+
+                if (parts.length !== 3) {
+                    throw new Error('Invalid if condition syntax. Use: if $var == "value" (quotes required for spaces)');
+                }
+
+                const left = parts[0].replace(/^["'`]|["]$|['`]$|[`]$/g, '');
+                const operator = parts[1];
+                const right = parts[2].replace(/^["'`]|["]$|['`]$|[`]$/g, '');
+                
+                const areOperandsNumbes = Number(left) && Number(right)
+                const leftOperand = areOperandsNumbes ? Number(left) : left
+                const rightOperand = areOperandsNumbes ? Number(right) : right
+                let conditionResult = false;
+                switch (operator) {
+                    case '==':
+                        conditionResult = leftOperand === rightOperand;
+                        break;
+                    case '!=':
+                        conditionResult = leftOperand !== rightOperand;
+                        break;
+                    case '>':
+                        conditionResult = leftOperand > rightOperand;
+                        break;
+                    case '>=':
+                        conditionResult = leftOperand >= rightOperand;
+                        break;
+                    case '<':
+                        conditionResult = leftOperand < rightOperand;
+                        break;
+                    case '<=':
+                        conditionResult = leftOperand <= rightOperand;
+                        break;
+                    default:
+                        throw new Error(`Unsupported operator in if condition: ${operator}`);
+                }
+
+                context.conditionStack.push({
+                    ifTaken: parentActive && conditionResult,
+                    elseSeen: false,
+                    active: parentActive && conditionResult
+                });
+                continue;
             }
 
-            await this.executeLine(line, commandsMap, context);
+            if (isElse) {
+                const frame = context.conditionStack[context.conditionStack.length - 1];
+                if (!frame) {
+                    throw new Error('Syntax error: "else" without a matching "if"');
+                }
+                if (frame.elseSeen) {
+                    throw new Error('Syntax error: multiple "else" for the same "if"');
+                }
+                frame.elseSeen = true;
+                // The else branch runs only when the `if` condition was false.
+                frame.active = !frame.ifTaken;
+                continue;
+            }
+
+            if (isEndif) {
+                if (context.conditionStack.length === 0) {
+                    throw new Error('Syntax error: "endif" without a matching "if"');
+                }
+                context.conditionStack.pop();
+                continue;
+            }
+
+            // Skip the lines that are inside a non-active conditional block.
+            if (context.conditionStack.some((frame) => !frame.active)) {
+                continue;
+            }
+
+            // Handle "return" statement with variable substitution
+            if (line === "return" || line.startsWith("return ")) {
+                const returnValue = line.slice("return".length).trim();
+                const substitutedValue = substituteVariables(returnValue);
+                return substitutedValue;
+            }
+
+            // Handle variable assignment
+            if (line.startsWith('set ')) {
+                const args = line.substring(4).trim();
+                const [varName, ...valueParts] = args.split(' ');
+                const valueCommand = valueParts.join(' ');
+                
+                if (valueCommand) {
+                    // Substitute variables in the command first
+                    const substitutedCommand = substituteVariables(valueCommand);
+                    // Execute the command and capture result
+                    let result = ""
+                    if (!commandsMap.get(substitutedCommand.split(" ")[0].toLowerCase())){
+                        result = this.app.dslCommands.stripArgumentValue(substitutedCommand)
+                    } else {
+                        result = await this.executeLine(substitutedCommand, commandsMap, context);
+                    }
+                    context.variables.set(varName, result);
+                } else {
+                    context.variables.set(varName, '');
+                }
+                continue;
+            }
+
+            // For regular commands, substitute variables and execute
+            const substitutedLine = substituteVariables(line);
+            try {
+                await this.executeLine(substitutedLine, commandsMap, context);
+            } catch (err){
+                if (err instanceof Error){
+                    console.log(err.message)
+                    return err.message
+                } 
+            }
         }
 
-        // If there was only one command (line), the return value of this
-        // command is the return value of the script. For multiple commands,
-        // the result of the last executed command is returned.
+        if (context.conditionStack.length > 0) {
+            throw new Error('Syntax error: missing "endif" for an "if" block');
+        }
+
+        // Return the last result if no explicit return
         return context.lastResult;
     }
 
