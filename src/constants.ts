@@ -309,6 +309,7 @@ export const PERSISTENCE_KEYS = {
   SELECTED_CHAT: 'selectedChat' as const,
   SELECTED_AGENT: 'selectedAgent' as const,
   SELECTED_ENV: 'selectedEnv' as const,
+  LAST_USED_ENV: 'lastUsedEnv' as const,
   EXTENSION_VERSION: 'extensionVersion' as const,
 } as const;
 

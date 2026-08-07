@@ -443,7 +443,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     toggleAutoStartEnv = async (message: any, webviewView: vscode.WebviewView) => {
-        this.app.configuration.updateConfigValue("env_start_last_used", message.enabled)
+        await this.app.configuration.updateEnvStartLastUsed(message.enabled)
     }
         
     getVscodeSetting = async (message: any, webviewView: vscode.WebviewView) => {
@@ -783,4 +783,4 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         </body>
         </html>`;
     }
-} 
+}

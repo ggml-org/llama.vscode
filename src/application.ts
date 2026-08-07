@@ -262,9 +262,14 @@ export class Application {
         this.llamaWebviewProvider.updateLlamaView();
     }
 
-    public setSelectedEnv(env: Env): void {
+    public async setSelectedEnv(env: Env, persist: boolean = true): Promise<void> {
         this.selectedEnv = env;
-        this.persistence.setValue(PERSISTENCE_KEYS.SELECTED_ENV, env);
         this.llamaWebviewProvider.updateLlamaView();
-    } 
+        if (persist) {
+            await Promise.all([
+                this.persistence.setValue(PERSISTENCE_KEYS.SELECTED_ENV, env),
+                this.persistence.setGlobalValue(PERSISTENCE_KEYS.LAST_USED_ENV, env),
+            ]);
+        }
+    }
 }

@@ -295,10 +295,9 @@ export class Configuration {
         this.agents_list = this.normalizeAgents(config.get("agents_list") ?? new Array());
         this.agent_rules = String(config.get<string>("agent_rules"));
         this.agent_commands = config.get("agent_commands")??new Array();
-        this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
+        this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", false));
         this.tools_custom = config.get("tools_custom")??new Array();
         this.context_custom = config.get("context_custom")??{};
-        this.env_start_last_used = Boolean(config.get<boolean>("env_start_last_used", true));
         this.env_start_last_used_confirm = Boolean(config.get<boolean>("env_start_last_used_confirm", true));
         this.ask_install_llamacpp = Boolean(config.get<boolean>("ask_install_llamacpp", true));
         this.ask_upgrade_llamacpp_hours = Number(config.get<number>("ask_upgrade_llamacpp_hours"));
@@ -372,7 +371,6 @@ export class Configuration {
             this.setLlamaRequestConfig();
             this.setOpenAiClient();
         }
-        if (event.affectsConfiguration("llama-vscode.env_start_last_used")) this.updateConfigValue("env_start_last_used_confirm", true);
     };
 
     isEnvViewSettingChanged = (event: vscode.ConfigurationChangeEvent) => {
@@ -505,7 +503,31 @@ export class Configuration {
         return true;
     }
 
-    updateConfigValue = async (settingName: string, value: any) => {
-        await this.config.update(settingName, value, true);
+    getEnvStartLastUsedScope = (): vscode.ConfigurationTarget => {
+        const inspected = this.config.inspect<boolean>("env_start_last_used");
+        if (inspected?.workspaceValue !== undefined) return vscode.ConfigurationTarget.Workspace;
+        if (inspected?.globalValue !== undefined) return vscode.ConfigurationTarget.Global;
+        return vscode.ConfigurationTarget.Workspace;
+    }
+
+    updateEnvStartLastUsed = async (value: boolean) => {
+        const inspected = this.config.inspect<boolean>("env_start_last_used");
+        const target = inspected?.workspaceValue !== undefined
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.Global;
+        await this.updateConfigValue("env_start_last_used", value, target);
+    }
+
+    updateEnvStartLastUsedConfirm = async (value: boolean) => {
+        const confirm = this.config.inspect<boolean>("env_start_last_used_confirm");
+        const target = this.getEnvStartLastUsedScope() === vscode.ConfigurationTarget.Workspace
+            || confirm?.workspaceValue !== undefined
+            ? vscode.ConfigurationTarget.Workspace
+            : vscode.ConfigurationTarget.Global;
+        await this.updateConfigValue("env_start_last_used_confirm", value, target);
+    }
+
+    updateConfigValue = async (settingName: string, value: any, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global) => {
+        await this.config.update(settingName, value, target);
     }
 }
