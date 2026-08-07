@@ -2,6 +2,7 @@ import {Application} from "./application";
 import { LlamaResponse } from "./types";
 import vscode from "vscode";
 import {Utils} from "./utils";
+import { isAxiosError } from "axios";
 
 interface CompletionDetails {
     completions: string[];
@@ -145,7 +146,16 @@ export class Completion {
             if (err instanceof Error) {
                 vscode.window.showInformationMessage(err.message);
                 errorMessage = err.message
+                if (isAxiosError(err) && err.response?.data?.error?.message) {
+                    // Field 'n_cmpl': Value must be between 1 <= value <= 4, but got 7
+                    let dataErrMsg = err.response?.data?.error?.message
+                    if (dataErrMsg.startsWith("Field 'n_cmpl': Value must be between")) dataErrMsg +='; Set setting Max_parallel_completions within the range for n_cmpl.'
+                    vscode.window.showInformationMessage(dataErrMsg);
+                    errorMessage += " " + dataErrMsg;
+                }
+                
             }
+             
             this.isRequestInProgress = false
             this.app.logger.addEventLog(group, "ERROR_RETURN", errorMessage)
             return [];

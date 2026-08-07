@@ -5,7 +5,7 @@ import { Agent, AgentCommand } from "../types";
 import { Utils } from "../utils";
 import * as fs from 'fs';
 import * as path from 'path';
-import { PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, UI_TEXT_KEYS } from "../constants";
+import { AGENT_COMMAND, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, UI_TEXT_KEYS } from "../constants";
 import { PREDEFINED_LISTS } from "../lists";
 
 export class AgentCommandService {
@@ -33,6 +33,17 @@ export class AgentCommandService {
                 label: this.app.configuration.getUiText(UI_TEXT_KEYS.importAgentCommand) ?? ""
             },
         ];
+    }
+
+    removePreffix = (agentCommandName: string): string => {
+        let strippedCommand = agentCommandName;
+        if (agentCommandName.startsWith(`[${AGENT_COMMAND.type_preffix_script}]`)) {
+            strippedCommand = agentCommandName.slice(`[${AGENT_COMMAND.type_preffix_script}]`.length);
+        } else if (agentCommandName.startsWith(`[${AGENT_COMMAND.type_preffix_prompt}]`)) {
+            strippedCommand = agentCommandName.slice(`[${AGENT_COMMAND.type_preffix_prompt}]`.length);
+        }
+
+        return strippedCommand;
     }
 
     async processActions(selected: QuickPickItem): Promise<void> {
@@ -71,14 +82,28 @@ export class AgentCommandService {
         if (!name) return;
 
         const command = await vscode.window.showInputBox({
-            prompt: "Enter the command",
-            validateInput: (value) => value ? null : "Command is required"
+            prompt: "Enter path to the file with prompt/script (or prompt/scrip)",
+            validateInput: (value) => value ? null : "file path/or text value is required"
         });
         if (!command) return;
 
+        const notPrompt = await vscode.window.showInputBox({
+            prompt: "Does this command send a prompt to the agent? Answer with yes or no (y or n is also OK)",
+            validateInput: (value) => value ? null : "Answer is required"
+        });
+        if (!notPrompt) return;
+        const isNotPrompt = notPrompt.trim().toLocaleLowerCase() == "no" || notPrompt.trim().toLocaleLowerCase() == "n"
+
+        const isScriptAns = await vscode.window.showInputBox({
+            prompt: "Is it script (i.e. not prompt)? Answer with yes or no (y or n is also OK)",
+            validateInput: (value) => value ? null : "Answer is required"
+        });
+        if (!isScriptAns) return;
+        const isScript = isScriptAns.trim().toLocaleLowerCase() == "yes" || isScriptAns.trim().toLocaleLowerCase() == "y"
+
         const description = await vscode.window.showInputBox({ prompt: "Enter description (optional)" });
 
-        const newCommand: AgentCommand = { name, prompt: [command], description: description || "" };
+        const newCommand: AgentCommand = { name, prompt: [command], description: description || "", noPrompt: isNotPrompt, isScript: isScript };
         await this.persistAgentCommandToSetting(newCommand, this.app.configuration.agent_commands, settingName);
     }
 
@@ -114,6 +139,25 @@ export class AgentCommandService {
         await this.app.dialogs.showOkDialog(
             this.getAgentCommandDetailsAsString(selectedAgentCommand)
         );
+    }
+
+    getAgentCommandsList = () => {
+        let commands =  this.app.configuration.agent_commands as AgentCommand[]
+        commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[]) as AgentCommand[]
+        
+        if (this.app.configuration.enabled) commands = commands.filter(cmd => cmd.name != "enable_completions")
+        else commands = commands.filter(cmd => cmd.name != "disable_completions")
+        
+        if (this.app.configuration.rag_enabled) commands = commands.filter(cmd => cmd.name != "enable_rag")
+        else commands = commands.filter(cmd => cmd.name != "disable_rag")
+        
+        let agentCommands =  commands.map(cmd => `[${cmd.noPrompt?AGENT_COMMAND.type_preffix_script:AGENT_COMMAND.type_preffix_prompt}]${cmd.name} | ${cmd.description}`)
+        
+        const scriptsFolder = path.join(this.app.configuration.scripts_folder, "")
+        let scriptCommands = fs.readdirSync(scriptsFolder, { withFileTypes: true }).filter(dirent => dirent.isFile() && dirent.name.toLowerCase().endsWith(".lvs")).map(dirent => `[${AGENT_COMMAND.type_preffix_script}]${dirent.name}`)
+        agentCommands = agentCommands.concat(scriptCommands)
+        
+        return agentCommands;
     }
 
     private async persistAgentCommandToSetting(newAgentCommand: AgentCommand, agentCommands: any[], settingName: string) {

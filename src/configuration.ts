@@ -49,6 +49,7 @@ export class Configuration {
     ring_scope = 1024;
     ring_update_ms = 1000;
     skills_folder = ""
+    scripts_folder = ""
     language = "en";
     health_check_interval_s = 30;
     health_check_compl_enabled = false;
@@ -281,6 +282,7 @@ export class Configuration {
         this.lm_max_output_tokens = Number(config.get<number>("lm_max_output_tokens"));
         this.popup_max_chars = Number(config.get<number>("popup_max_chars"));
         this.skills_folder = String(config.get<string>("skills_folder"));
+        this.scripts_folder = String(config.get<string>("scripts_folder"));
         this.language = String(config.get<string>("language"));
         this.disabledLanguages = config.get<string[]>("disabledLanguages") || [];
         this.enabled = Boolean(config.get<boolean>("enabled", true));

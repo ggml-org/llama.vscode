@@ -6,7 +6,7 @@ import { LlmModel, Env, Agent, ContextCustom, AgentCommand } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
-import { ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from './constants';
+import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from './constants';
 import { PREDEFINED_LISTS } from './lists';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
@@ -119,7 +119,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     sendAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
-        this.app.llamaAgent.run(message.text, message.agentCommand)
+        const agentCommand = this.app.agentCommandService.removePreffix(message.agentCommand)
+        this.app.llamaAgent.run(agentCommand, agentCommand)
     }
 
     sendInSessionText = async (message: any, webviewView: vscode.WebviewView) => {
@@ -289,16 +290,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     getAgentCommands = async (message: any, webviewView: vscode.WebviewView) => {
-        let commands =  this.app.configuration.agent_commands
-        commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
+        const agentCommands = this.app.agentCommandService.getAgentCommandsList()
         
-        if (this.app.configuration.enabled) commands = commands.filter(cmd => cmd.name != "enable_completions")
-        else commands = commands.filter(cmd => cmd.name != "disable_completions")
-        
-        if (this.app.configuration.rag_enabled) commands = commands.filter(cmd => cmd.name != "enable_rag")
-        else commands = commands.filter(cmd => cmd.name != "disable_rag")
-        
-        let agentCommands =  commands.map(cmd => cmd.name +  " | " + cmd.description)
         webviewView.webview.postMessage({
             command: 'updateFileList',
             files: agentCommands

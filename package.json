@@ -1615,7 +1615,12 @@
         "llama-vscode.skills_folder": {
           "type": "string",
           "default": "",
-          "description": "The folder, where are the skills are stored. If empty , <project_folder>/skills will be used."
+          "description": "The folder, where the skills are stored. If empty , <project_folder>/skills will be used."
+        },
+        "llama-vscode.scripts_folder": {
+          "type": "string",
+          "default": "",
+          "description": "The folder, where llama-vscode scripts are stored."
         },
         "llama-vscode.language": {
           "type": "string",

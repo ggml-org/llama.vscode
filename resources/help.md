@@ -1,12 +1,21 @@
 ## Agent commands
 
 ### What are agent commands
-Agent commands are a way to reuse often used prompts. They could be used to describe complex workflows or for simple instructions.   
-Agent commands are stored in setting agent_commands and llama-vscode menu item "Agent commands..." could be used to manage them.
+There are two types of agent commands:  
+
+#### Prompt commands
+Prompt commands send prompt to the agent (no prompt to the agent: false). They are a way to reuse often used prompts. They could be used to describe complex workflows or for simple instructions. If scripts are used, they should return the prompt, which will be sent to the agent. Skills are logically prompt commands and in the future versions they will be considered as agent prompt commands (but not yet).
+
+#### Script commands
+Script commands do not send prompt to the agent (no prompt to the agent: true, is script: true). They are actions within llama-vscode and could automate some tasks. For example select models, agents, change settings, etc.. The content of the command is intepreted as a [script](https://github.com/ggml-org/llama.vscode/wiki/Scripts) and is executed. All script files with suffix .lvs in the scripts_folder are considered as agent script commands and are shown on entering "/" in the agent prompt field.
+
+Agent commands are stored in setting agent_commands and llama-vscode menu item "Agent commands..." could be used to manage them.  
 The command prompt could contain terminal commands in format !'<terminal_command>' (as in claude code.). The command prompt is preprocessed and the terminal commands are executed and replaced with the the result of the execution. Example: !'pwd' will be replaced with the the current directory.
 
+The prompt field of the command could be a path to a file. Before executing the command, the file is read and the content is used as the prompt field value. The file cold contain a prompt or a script.
+
 ### How to use them
-Prerequisite: tools model is selected.
+Prerequisite for prompt commands: tools model is selected  
 You could create agent commands from llama-vscode menu item "Agent commands..."\"Add agent command...". For creating a command with longer prompts you could export an existing command with "Agent commands..."\"Export agent command..." in a .json file, change the name and the prompt in the file and then import the new command with "Agent commands..."\"Import agent command...". 
 
 In agent prompt text area press "/" - the available agent commands will be shown and could be selected. When selected, the command name is replaced with the longer prompt for this command and is sent to the AI model.  
@@ -297,13 +306,22 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.59 is released (07.08.2026)
+### What is new
+- [Scripts](https://github.com/ggml-org/llama.vscode/wiki/Scripts) are introduced - something like macroses for llama-vscode. Scripts are written in a simple DSL language, which supports execution of llama-vscode commands for selecting/deselecting models, agent, env, changing settings, executing terminal commands etc. The scripts also support variables, if/else statements and comments. The scripts could be used as a content of the agent commands (agent commands are shown by pressing / in the agent prompt field). The plan is in future the scripts to be used in the hooks (not yet introduced)
+- The agent commands, which send prompt to the agent are now visualized with [p] preffix, while those, which execute scripts and do not send prompt are visualized with [s] preffix.
+- New setting scripts_folder - the files in this folder with extension .lvs are considered as agent script commands and are shown on entering "/" in the agent prompt field. Those commands do not send prompt to the agent.
+- More informative errors in case of problems with code completion.
+- Telegram bot - the /chat command for showing the current chat (last xx chars) is availabe even while the agent is running.
+
+
 ## Version 0.0.58 is released (03.08.2026)
-## What is new
+### What is new
 - New agent commands were added - disable_completions, enable_completions, disable_rag, enable_rag, select_help_agent, select_tools_model_kimi_k3 (Kimi K3 tools on demand), etc.
 
 
 ## Version 0.0.57 is released (31.07.2026)
-## What is new
+### What is new
 - Telegram bot - new commands /tools, /addtools, /removetools [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 - Telegram bot - user confirmation of terminal commands, changing or deleting files is now possible from Telegram. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 - Deep links support added. Now VS Code and and a llama-vscode view could be opened from a link. Example [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello) opens VS Code and llama-vscode agent and writes in the prompt box "Hello". [More details](https://github.com/ggml-org/llama.vscode/wiki/Deep-link)
@@ -313,26 +331,26 @@ Settings:
 
 
 ## Version 0.0.56 is released (27.07.2026)
-## What is new
+### What is new
 - Telegram bot commands exteded and simplified. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 - Agent commands prompt could now include terminal commands in format !'<terminal_command>'. The prompt is preprocessed - the commands are executed and replaced with the result of the execution in the prompt.
 - Kimi K3 - dynamically loaded tools (tools on demand) fix - prevent sending the same tool definition several times.
 
 
 ## Version 0.0.55 is released (24.07.2026)
-## What is new
+### What is new
 - Now you could access your llama-vscode agents from your phone with a Telegram bot. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 
 
 ## Version 0.0.54 is released (19.07.2026)
-## What is new
+### What is new
 - Added predefined kimi k3 tools models for OpenRouter and moonshot.ai
 - Implemented dynamically loaded tools (tools on demand) feature for Kimi K3 (works only for moonshot.ai). This optimizes the token usage and reduces the price of using kimi k3. [More details]( https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading)
 - Added predefined copilot agent (uses system prompt based on VS Code copilot system prompt)
 
 
 ## Version 0.0.53 is released (16.07.2026)
-## What is new
+### What is new
 
 - New setting rag_ignore_file for excluding files/folders from RAG indexing
 - Fix for showing Chat with AI window inside VS Code
@@ -340,7 +358,7 @@ Settings:
 
 
 ## Version 0.0.52 is released (13.07.2026)
-## What is new
+### What is new
 
 - New tool get_errors for getting file or project errors (prompts reused from copilot)
 - New tool rename_symbol for renaming a symbol (variable, function, etc. in the whole project) (prompts reused from copilot)
@@ -348,7 +366,7 @@ Settings:
 
 
 ## Version 0.0.51 is released (28.06.2026)
-## What is new
+### What is new
 
 - Agent UI is changed - a button is added for sending a prompt during agent loop (entering text and Enter has the same effect)
 - If a prompt is sent during the agent loop - the LLM receives it at earliest possible time
@@ -356,7 +374,7 @@ Settings:
 
 
 
-## Version 0.0.50 is released (26.06.2026)
+### Version 0.0.50 is released (26.06.2026)
 ## What is new
 
 * Option for using standard shell script for llama.cpp installation (brew / winget also available)
@@ -969,6 +987,41 @@ The rules are optional. You could use rules file to add instructions to the syst
 There are two ways to configure rules:
 - Create a new rules file under name llama-vscode-rules.md in the root of the project.
 - In llama-vscode setting Agent_rules enter a path to a rules file. It could be relative to the project root or absolute path. If this is specified, the file llama-vscode-rules.md will be ignored.
+## Scripts
+
+### Overview
+Llama-vscode supports scripts. Scripts are actions within llama-vscode and could automate some tasks. For example select models, agents, change settings, etc... The scripts are in a simple language (DSL), which supports execution of llama-vscode commands, variables and if/else statements. However, the language is very simple and doesn't support the feature of the modern programming languages. It is just for automating llama-vscode tasks. They are similar to macroses in Excel (or Office applications).
+
+Example script:
+```
+set maxParallelCompl getSetting max_parallel_completions
+if $maxParallelCompl > 3
+  setSetting max_parallel_completions 3
+endif
+
+if $maxParallelCompl < 1
+  setSetting max_parallel_completions 1
+endif
+
+return The parallel completions are set in correct range
+```
+
+Variables: Use set to set varName value (no need to define them). value could be a llama-vscode command (as in the above script). User $varName to get the value. Variables have no types for now. They are represented internally as strings. However, in the if statement, if the values of the both operands are numbers, the comaprison is done as a comparison of numbers.
+
+llama-vscode commands: Some examples are getSetting <setting_name>, setSetting <setting_name> <value> setToolsModel <model_name>, setCompletionModel <model_name>, setEnv <env_name>, deselectToolsModel, deselectCompletionModel, runTerminalCommand <command>, etc.
+
+if else endif: As is visible from the example above, there are no brackets, but endif is required. The if condition supports comparison operators (>, <, ==, !=, >=, <=), but just one (and, or, not are not supported).
+
+Comments: The lines starting with // are comments and are ignored during execution.
+
+### How to use it
+For example the scripts could be used in agent commands. If the field "is script" of the agent command is true, the content of the prompt field of the agent command is interpreted as script is executed. If the prompt contains a path to a file, the content of the file is executed.
+
+
+Settings:
+-  scripts_folder: The folder where the script files are searched by default. All script files with suffix .lvs are considered agent script commands and are shown on entering "/" in the agent prompt field. Those commands do not send prompt to the agent.
+
+
 ## Setup llama.cpp server for Linux 
 
 Make sure you have brew package manager installed (from https://brew.sh/). You could install brew with the command 
@@ -1200,15 +1253,15 @@ CPU-only:
 With Nvidia GPUs and installed cuda drivers  
 - more than 16GB VRAM  
 ```bash
-`llama serve.exe -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011`  
+`llama serve.exe -hf qwen2.5-coder-7b-instruct-q8_0.gguf --port 8011 -np 2`  
 ```
 - less than 16GB VRAM  
 ```bash
-`llama serve.exe -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011`  
+`llama serve.exe -hf qwen2.5-coder-3b-instruct-q8_0.gguf --port 8011 -np 2`  
 ```
 - less than 8GB VRAM  
 ```bash
-`llama serve.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011` 
+`llama serve.exe -hf qwen2.5-coder-1.5b-instruct-q8_0.gguf --port 8011 -np 2` 
 ```
 
 

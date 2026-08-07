@@ -59,7 +59,22 @@ export class TelegramBot {
         if (!receivedMessage 
             || receivedMessage == "/start") {
                 return;
+        }
+
+        if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.SHOW_CHAT)){
+            const chatSize = receivedMessage.split(" ")[1];
+            let maxChatChars = 1000
+            if (chatSize){
+                maxChatChars = Number(chatSize);
+                if (isNaN(maxChatChars)) {
+                    maxChatChars = 1000;
+                }
             }
+            const msgChat = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCurrentChat) + " \n" + this.app.llamaAgent.getAgentLogText().slice(-maxChatChars);
+            await this.sendResponse(msgChat);
+            return;
+        }
+
         if (this.app.llamaAgent.isAgentInProgress() && this.app.llamaAgent.getConfirmationState() != CONFIRMATION_STATE.WAITING) {
             if (receivedMessage.toLocaleLowerCase().trim() =="/stop") {
                 this.app.llamaAgent.stopAgent()
@@ -130,19 +145,7 @@ export class TelegramBot {
                 return;
         }
 
-        if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.SHOW_CHAT)){
-            const chatSize = receivedMessage.split(" ")[1];
-            let maxChatChars = 1000
-            if (chatSize){
-                maxChatChars = Number(chatSize);
-                if (isNaN(maxChatChars)) {
-                    maxChatChars = 1000;
-                }
-            }
-            const msgChat = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCurrentChat) + " \n" + this.app.llamaAgent.getAgentLogText().slice(-maxChatChars);
-            await this.sendResponse(msgChat);
-            return;
-        }
+        
 
         if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.SET_AGENT)){
             const agentNumber = receivedMessage.split(" ")[1];

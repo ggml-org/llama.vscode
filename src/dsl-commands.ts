@@ -1,7 +1,8 @@
 import {Application} from "./application";
 import { ModelType, PREDEFINED_LISTS_KEYS } from "./constants";
 import { PREDEFINED_LISTS } from "./lists";
-import { Agent, LlmModel } from "./types";
+import { Agent, Env, LlmModel } from "./types";
+import { Utils } from "./utils";
 
 type CommandsMap = Map<string, (...args: any[]) => any>;
 
@@ -47,7 +48,6 @@ export class DslCommands {
         this.commandsFunc.set("addcontextimage", this.addContextImage);
         this.commandsFunc.set("removecontextimage", this.removeContextImage);
         this.commandsFunc.set("executecommand", this.executeCommand);
-        this.commandsFunc.set("executeterminalcommand", this.executeTerminalCommand);
         this.commandsFunc.set("addapikey", this.addApiKey);
         this.commandsFunc.set("deleteapikey", this.deleteApiKey);
         this.commandsFunc.set("installupgradellamacpp", this.installUpgradeLlamaCpp);
@@ -73,15 +73,37 @@ export class DslCommands {
         this.commandsFunc.set("removeagent", this.removeAgent);
         this.commandsFunc.set("exportagent", this.exportAgent);
         this.commandsFunc.set("importagent", this.importAgent);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
-        this.commandsFunc.set("run_terminal_command", this.setToolsModel);
+        this.commandsFunc.set("runterminalcommand", this.runTerminalCommand);
+        this.commandsFunc.set("showinfo", this.showInfo);
+        this.commandsFunc.set("compact", this.compact);
     }
 
+    public compact = async() => {
+        // TODO Fix summarizeToFitCurrentBudget, doesn't work for now
+        const isSummarized = await this.app.llamaAgent.summarizeToFitCurrentBudget()
+        let result = "Chat is not compacted."
+        if (isSummarized) result = "Chat is compacted"
+        return result
+    }
+
+    public stripArgumentValue = (argument: string): string => {
+        if (argument.startsWith('"') && argument.endsWith('"')) {
+            return argument.slice(1, -1);
+        }
+        if (argument.startsWith("'") && argument.endsWith("'")) {
+            return argument.slice(1, -1);
+        }
+        if (argument.startsWith('`') && argument.endsWith('`')) {
+            return argument.slice(1, -1);
+        }
+        return argument;
+    }
+
+    public runTerminalCommand = async (command: string) => {
+        let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
+        return (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
+    }
+    
     public  setToolsModel = async (modelName: string) => {
         return await this.setModel(ModelType.Tools, modelName);
     }
@@ -98,31 +120,47 @@ export class DslCommands {
         return await this.setModel(ModelType.Embeddings, modelName);
     }
 
-    public setEnv = async (args: string) => {
-        return "Not implemented"
+    public setEnv = async (envName: string) => {
+        let result = ""
+        envName = this.stripArgumentValue(envName)
+        let allEnvs = this.app.configuration.envs_list
+            .concat((PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[]))
+        const env = allEnvs.find((env) => env.name === envName);
+        if (env) {
+            this.app.envService.selectStartEnv(env, true)
+            result = `Env ${envName} is selected.`
+        } else {
+            result = `Env ${envName} is not found.`
+        }
+        
+        return result
     }
 
-    public deselectToolsModel = async (args: string) => {
-        return "Not implemented"
+    public deselectToolsModel = async () => {
+        return await this.deselectModel(ModelType.Tools);
     }
 
     public deselectCompletionModel = async (args: string) => {
-        return "Not implemented"
+        return await this.deselectModel(ModelType.Completion);
     }
 
     public deselectEmbeddigsModel = async (args: string) => {
-        return "Not implemented"
+        return await this.deselectModel(ModelType.Embeddings);
     }
 
     public deselectChatModel = async (args: string) => {
-        return "Not implemented"
+        return await this.deselectModel(ModelType.Chat);
+    }
+
+    
+
+    public deselectEnv = async (args: string) => {
+        await this.app.envService.stopEnv();
+
+        return `Env is deselected (stopped)`
     }
 
     public addToolsModel = async (args: string) => {
-        return "Not implemented"
-    }
-
-    public deselectEnv = async (args: string) => {
         return "Not implemented"
     }
 
@@ -226,10 +264,6 @@ export class DslCommands {
         return "Not implemented"
     }
 
-    public executeTerminalCommand = async (args: string) => {
-        return "Not implemented"
-    }
-
     public addApiKey = async (args: string) => {
         return "Not implemented"
     }
@@ -270,22 +304,31 @@ export class DslCommands {
     public log = async (args: string) => {
         return "Not implemented"
     }
+
+    public showInfo = async (msg: string) => {
+        await this.app.dialogs.showOkDialog(msg)
+        return "Info is shown"
+    }
     
     public setSetting = async (args: string) => {
         const splitIndex = args.indexOf(" ")
-        const settingName = args.slice(0, splitIndex)
+        let settingName = args.slice(0, splitIndex).trim().toLowerCase()
         
-        const settingValue = args.slice(splitIndex + 1)
-        // TODO Get the setting from setting name and get the type - check for types instead for settings
-        if (settingName.toLowerCase() === "enabled"
-            ||settingName.toLowerCase() === "rag_enabled") await this.app.configuration.updateConfigValue(settingName, settingValue.toLowerCase() == "true")
+        let settingValue = args.slice(splitIndex + 1)
+        settingName = this.stripArgumentValue(settingName)
+        settingValue = this.stripArgumentValue(settingValue)
+            
+        const value = this.getPropertyType(this.app.configuration, settingName as keyof typeof this.app.configuration);
+        if (typeof value == "boolean") await this.app.configuration.updateConfigValue(settingName, settingValue.toLowerCase() == "true")
+        else if (typeof value == "number") await this.app.configuration.updateConfigValue(settingName, Number(settingValue))
         else await this.app.configuration.updateConfigValue(settingName, settingValue)
         
         return `Setting ${settingName} is set to ${settingValue}`
     }
 
-    public getSetting = async (args: string) => {
-        return "Not implemented"
+    public getSetting = async (settingName: string) => {
+        const setting = this.app.configuration[settingName.trim().toLowerCase() as keyof typeof this.app.configuration]
+        return setting
     }
 
     public setChat = async (args: string) => {
@@ -317,6 +360,7 @@ export class DslCommands {
     }
 
     public setAgent = async (agentName: string) => {
+        agentName = this.stripArgumentValue(agentName)
         const agent = this.getAllAgentsList().find((agnt) => agnt.name === agentName);;
         let response = ""
         if (agent) {
@@ -349,7 +393,14 @@ export class DslCommands {
         return "Not implemented"
     }
 
+    private async deselectModel(modelType: ModelType) {
+        await this.app.modelService.deselectAndClearModel(modelType);
+
+        return `The model for ${modelType} is deselected/stopped`;
+    }
+
     private async setModel(modelType: ModelType, modelName: string) {
+        modelName = this.stripArgumentValue(modelName)
         const model = this.getAllModelsList(modelType).find((model) => model.name === modelName);
         let result = "";
         if (model) {
@@ -390,5 +441,9 @@ export class DslCommands {
     private getAllAgentsList(): Agent[] {
             return this.app.configuration.agents_list
                     .concat((PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[]))
-        }
+    }
+
+    private getPropertyType<T, K extends keyof T>(obj: T, key: K): T[K] {
+        return obj[key];
+    }
 }
