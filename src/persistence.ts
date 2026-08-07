@@ -57,8 +57,8 @@ export class Persistence {
         return this.context.workspaceState.get<Chat[]>(this.uniquePrefix + this.chatsName);
     }
 
-    deleteValue = (key: string) => {
-        this.context.workspaceState.update(this.uniquePrefix + key, undefined);
+    deleteValue = async (key: string) => {
+        await this.context.workspaceState.update(this.uniquePrefix + key, undefined);
     }
 
     setGlobalValue = async (key: string, value: any) => {
@@ -69,7 +69,7 @@ export class Persistence {
         return this.context.globalState.get(this.uniquePrefix + key);
     }
 
-    deleteGlobalValue = (key: string) => {
-        this.context.globalState.update(this.uniquePrefix + key, undefined);
+    deleteGlobalValue = async (key: string) => {
+        await this.context.globalState.update(this.uniquePrefix + key, undefined);
     }
 }
