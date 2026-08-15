@@ -306,6 +306,12 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+- Fix environment auto-start persistence
+- Add OrcaRouter as an OpenAI-compatible provider (enables adding models in the same way as from OpenRounter - from the menu)
+- Telegram bot new command "//" - shows all agent commands
+- Telegram bot - the agent commands are now requested with simeple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list)
+- Script files (suffix .lvs) from folder of the setting scripts_folder are availabe as script commands in the agent.
+
 ## Version 0.0.59 is released (07.08.2026)
 ### What is new
 - [Scripts](https://github.com/ggml-org/llama.vscode/wiki/Scripts) are introduced - something like macroses for llama-vscode. Scripts are written in a simple DSL language, which supports execution of llama-vscode commands for selecting/deselecting models, agent, env, changing settings, executing terminal commands etc. The scripts also support variables, if/else statements and comments. The scripts could be used as a content of the agent commands (agent commands are shown by pressing / in the agent prompt field). The plan is in future the scripts to be used in the hooks (not yet introduced)
@@ -1006,7 +1012,7 @@ endif
 return The parallel completions are set in correct range
 ```
 
-Variables: Use set to set varName value (no need to define them). value could be a llama-vscode command (as in the above script). User $varName to get the value. Variables have no types for now. They are represented internally as strings. However, in the if statement, if the values of the both operands are numbers, the comaprison is done as a comparison of numbers.
+Variables: Use set to set value (no need to define variables). value just a string, number or could be a llama-vscode command (as in the above script). Use $varName to get the value (note the $ prefix). Variables have no types for now. They are represented internally as strings. However, in the if statement, if the values of the both operands are numbers, the comparison is done as a comparison of numbers.
 
 llama-vscode commands: Some examples are getSetting <setting_name>, setSetting <setting_name> <value> setToolsModel <model_name>, setCompletionModel <model_name>, setEnv <env_name>, deselectToolsModel, deselectCompletionModel, runTerminalCommand <command>, etc.
 
@@ -1015,7 +1021,7 @@ if else endif: As is visible from the example above, there are no brackets, but 
 Comments: The lines starting with // are comments and are ignored during execution.
 
 ### How to use it
-For example the scripts could be used in agent commands. If the field "is script" of the agent command is true, the content of the prompt field of the agent command is interpreted as script is executed. If the prompt contains a path to a file, the content of the file is executed.
+For example the scripts could be used in agent commands. If the field "is script" of the agent command is true, the content of the prompt field of the agent command is interpreted as a script and is executed. If the prompt contains a path to a file, the content of the file is executed.
 
 
 Settings:
