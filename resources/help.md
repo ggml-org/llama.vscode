@@ -306,10 +306,12 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.60 is released (15.08.2026)
+### What is new
 - Fix environment auto-start persistence
 - Add OrcaRouter as an OpenAI-compatible provider (enables adding models in the same way as from OpenRounter - from the menu)
 - Telegram bot new command "//" - shows all agent commands
-- Telegram bot - the agent commands are now requested with simeple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list)
+- Telegram bot - the agent commands are now requested with simeple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list if it contains only acceptable chars for telegram command)
 - Script files (suffix .lvs) from folder of the setting scripts_folder are availabe as script commands in the agent.
 
 ## Version 0.0.59 is released (07.08.2026)
