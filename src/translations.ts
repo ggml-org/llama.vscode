@@ -246,5 +246,5 @@ export const translations: string[][] = [
     ["Added tools:", "Добавени инструменти:", "Hinzugefügte Werkzeuge:", "Добавленные инструменты:", "Herramientas añadidas:", "已添加的工具：", "Outils ajoutés :"],
     ["Answer exacly with one of the following:", "Отговорете точно с едно от следните:", "Antworten Sie genau mit einer der folgenden Optionen:", "Ответьте точно одним из следующих:", "Responda exactamente con una de las siguientes opciones:", "请精确回答以下选项之一：", "Répondez exactement avec l'une des options suivantes :"],
     ["Answer the question first.", "Отговорете първо на въпроса.", "Beantworten Sie zuerst die Frage.", "Сначала ответьте на вопрос.", "Responda primero a la pregunta.", "先回答问题。", "Répondez d'abord à la question."],
-
+    ["shows the available agent commands", "показва наличните команди на агента", "zeigt die verfügbaren Agenten-Befehle an", "показывает доступные команды агента", "muestra los comandos disponibles del agente", "显示可用的代理命令", "affiche les commandes d'agent disponibles"],
   ];

@@ -132,8 +132,13 @@ export class TelegramBot {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAgentNotRunnin)??"");
                 }
                 return; 
-            case TELEGRAM_BOT_COMMANDS.SHOW_COMMANDS:
+            case TELEGRAM_BOT_COMMANDS.SHOW_BOT_COMMANDS:
                 this.sendResponse(this.getCommandsHelp());
+                return;
+            case TELEGRAM_BOT_COMMANDS.SHOW_AGENT_COMMANDS:
+                let agentCommands = this.app.agentCommandService.getAgentCmdsListForTelegram()
+                agentCommands = agentCommands.map(cmd => `${cmd.endsWith(".lvs [s]")?cmd.replace(".lvs [s]", "_lvs [s]"):cmd}`)
+                this.sendResponse(agentCommands.join("\n"));
                 return;   
             case TELEGRAM_BOT_COMMANDS.SHOW_HELP:
                 this.sendResponse(
@@ -279,14 +284,20 @@ export class TelegramBot {
         }
 
         let command = ""
-        if (receivedMessage.toLowerCase().startsWith("//")){
-            command = receivedMessage.slice(2)
-        } else if (receivedMessage.toLowerCase().startsWith("/")) {
-            this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramUnknownCommand) + ": " + receivedMessage + "\n" +
-                this.getCommandsHelp()
-            );
-            return;
+        if (receivedMessage.toLowerCase().startsWith("/")){
+            command = receivedMessage.slice(1)
+            command = command.endsWith(" [s]") ? command.replace(" [s]", "") : command
+            command = command.endsWith(" [p]") ? command.replace(" [p]", "") : command
+            command = command.endsWith("_lvs") ? command.replace("_lvs", ".lvs") : command
+            if (!this.app.agentCommandService.isAgentCommand(command)){
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramUnknownCommand) + ": " + receivedMessage + "\n" +
+                    this.getCommandsHelp()
+                );
+                return;
+            }
         }
+
+
 
         if (this.app.llamaAgent.getConfirmationState() == CONFIRMATION_STATE.WAITING){
             const answer = receivedMessage.toLowerCase().trim();
@@ -330,7 +341,8 @@ export class TelegramBot {
                     + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdNewChatDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SET_LANGUAGE + " xx - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdSetLangDesc) +
                     " " + this.getAvailableLanguagesMsg() + "\n" + 
-                TELEGRAM_BOT_COMMANDS.SHOW_COMMANDS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdShowCommandsDesc) + "\n" +
+                TELEGRAM_BOT_COMMANDS.SHOW_BOT_COMMANDS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdShowCommandsDesc) + "\n" +
+                TELEGRAM_BOT_COMMANDS.SHOW_AGENT_COMMANDS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdShowAgentCommandsDesc) + "\n" +
                 TELEGRAM_BOT_COMMANDS.SHOW_TOOLS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdToolsDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.ADD_TOOLS + " x,y,z - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdAddToolsDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.REMOVE_TOOLS + " x,y,z - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdRemoveToolsDesc) + "\n" +

@@ -142,22 +142,61 @@ export class AgentCommandService {
     }
 
     getAgentCommandsList = () => {
-        let commands =  this.app.configuration.agent_commands as AgentCommand[]
-        commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[]) as AgentCommand[]
-        
-        if (this.app.configuration.enabled) commands = commands.filter(cmd => cmd.name != "enable_completions")
-        else commands = commands.filter(cmd => cmd.name != "disable_completions")
-        
-        if (this.app.configuration.rag_enabled) commands = commands.filter(cmd => cmd.name != "enable_rag")
-        else commands = commands.filter(cmd => cmd.name != "disable_rag")
+        let commands = this.getAgentCommands();
         
         let agentCommands =  commands.map(cmd => `[${cmd.noPrompt?AGENT_COMMAND.type_preffix_script:AGENT_COMMAND.type_preffix_prompt}]${cmd.name} | ${cmd.description}`)
         
         const scriptsFolder = path.join(this.app.configuration.scripts_folder, "")
-        let scriptCommands = fs.readdirSync(scriptsFolder, { withFileTypes: true }).filter(dirent => dirent.isFile() && dirent.name.toLowerCase().endsWith(".lvs")).map(dirent => `[${AGENT_COMMAND.type_preffix_script}]${dirent.name}`)
+        let scriptCommands = this.getScriptCommands()
+        scriptCommands = scriptCommands.map(dirent => `[${AGENT_COMMAND.type_preffix_script}]${dirent}`)
+        
         agentCommands = agentCommands.concat(scriptCommands)
         
         return agentCommands;
+    }
+
+    getAgentCmdsListForTelegram = () => {
+        let commands = this.getAgentCommands();
+        
+        let agentCommands =  commands.map(cmd => `/${cmd.name} [${cmd.noPrompt?AGENT_COMMAND.type_preffix_script:AGENT_COMMAND.type_preffix_prompt}] | ${cmd.description}`)
+        
+        let scriptCommands = this.getScriptCommands();
+        scriptCommands = scriptCommands.map(cmd => `/${cmd} [${AGENT_COMMAND.type_preffix_script}]`)
+        agentCommands = agentCommands.concat(scriptCommands)
+        
+        return agentCommands;
+    }
+
+    isAgentCommand = (cmdToFind: string): boolean => {
+        let isCommand = false;
+        cmdToFind = cmdToFind.trim();
+        if (this.getAgentCommands().find(cmd => cmd.name == cmdToFind)
+            ||this.getScriptCommands().find(cmd => cmd == cmdToFind)){
+            isCommand = true
+        }
+        
+        return isCommand
+    }
+
+    private getScriptCommands(): string[] {
+        let scriptCommands:string[] = []
+        const scriptsFolder = path.join(this.app.configuration.scripts_folder, "");
+        if (fs.existsSync(scriptsFolder)){
+            scriptCommands = fs.readdirSync(scriptsFolder, { withFileTypes: true }).filter(dirent => dirent.isFile() && dirent.name.toLowerCase().endsWith(".lvs")).map(file => file.name);
+        }
+        return scriptCommands;
+    }
+
+    private getAgentCommands() {
+        let commands = this.app.configuration.agent_commands as AgentCommand[];
+        commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[]) as AgentCommand[];
+
+        if (this.app.configuration.enabled) commands = commands.filter(cmd => cmd.name != "enable_completions");
+        else commands = commands.filter(cmd => cmd.name != "disable_completions");
+
+        if (this.app.configuration.rag_enabled) commands = commands.filter(cmd => cmd.name != "enable_rag");
+        else commands = commands.filter(cmd => cmd.name != "disable_rag");
+        return commands;
     }
 
     private async persistAgentCommandToSetting(newAgentCommand: AgentCommand, agentCommands: any[], settingName: string) {

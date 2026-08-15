@@ -127,7 +127,7 @@ export class AgentService {
         if (agent.name.trim() !== "") {
             vscode.window.showInformationMessage(`Agent ${agent.name} is selected.`);
         }
-    }
+    } 
 
     async deselectAgent(): Promise<void> {
         const emptyAgent = { name: "", systemInstruction: [] };
