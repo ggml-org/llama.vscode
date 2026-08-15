@@ -1160,7 +1160,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
-              "name": "select_compl_model_qwen2.5_1.5B",
+              "name": "select_compl_model_qwen2_5_1_5B",
               "prompt": [
                 "setCompletionModel Qwen2.5-Coder-1.5B-Q8_0-GGUF (<= 8GB VRAM)"
               ],
@@ -1169,7 +1169,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
-              "name": "select_chat_model_qwen2.5_1.5B_instruct",
+              "name": "select_chat_model_qwen2_5_1_5B_instruct",
               "prompt": [
                 "setChatModel Qwen2.5-Coder-1.5B-Instruct-Q8_0-GGUF (<= 8GB VRAM)"
               ],
@@ -1187,7 +1187,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
-              "name": "select_tools_model_qwen_3.5_2B",
+              "name": "select_tools_model_qwen_3_5_2B",
               "prompt": [
                 "setToolsModel Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU or VRAM>3GB)"
               ],
@@ -1196,7 +1196,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
-              "name": "select_tools_model_qwen_3.5_9B",
+              "name": "select_tools_model_qwen_3_5_9B",
               "prompt": [
                 "setToolsModel Qwen3.5-9B-GGUF:Q8_0 (LOCAL) (VRAM>12GB)"
               ],
