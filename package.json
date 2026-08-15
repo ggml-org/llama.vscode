@@ -1116,7 +1116,7 @@
         "llama-vscode.env_start_last_used": {
           "type": "boolean",
           "default": false,
-          "description": "If true - starts the last used env on startup."
+          "description": "Starts the last used env when VS Code starts. In User settings, the last used env is shared across workspaces in the current VS Code profile. In Workspace settings, each workspace remembers its own env."
         },
         "llama-vscode.ask_install_llamacpp": {
           "type": "boolean",
@@ -1131,7 +1131,7 @@
         "llama-vscode.env_start_last_used_confirm": {
           "type": "boolean",
           "default": true,
-          "description": "If true, before starting the last used env, the user is asked for confirmation. Used only if env_start_last_used = true"
+          "description": "Asks for confirmation before starting the last used env. Used only when env_start_last_used is enabled. Choosing \"Yes, don't ask again\" disables confirmation at the applicable User or Workspace scope."
         },
         "llama-vscode.auto": {
           "type": "boolean",

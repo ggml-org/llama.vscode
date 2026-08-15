@@ -127,7 +127,7 @@ export class DslCommands {
             .concat((PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.ENVS) as Env[]))
         const env = allEnvs.find((env) => env.name === envName);
         if (env) {
-            this.app.envService.selectStartEnv(env, true)
+            await this.app.envService.selectStartEnv(env, true)
             result = `Env ${envName} is selected.`
         } else {
             result = `Env ${envName} is not found.`
@@ -319,7 +319,8 @@ export class DslCommands {
         settingValue = this.stripArgumentValue(settingValue)
             
         const value = this.getPropertyType(this.app.configuration, settingName as keyof typeof this.app.configuration);
-        if (typeof value == "boolean") await this.app.configuration.updateConfigValue(settingName, settingValue.toLowerCase() == "true")
+        if (settingName == "env_start_last_used") await this.app.configuration.updateEnvStartLastUsed(settingValue.toLowerCase() == "true")
+        else if (typeof value == "boolean") await this.app.configuration.updateConfigValue(settingName, settingValue.toLowerCase() == "true")
         else if (typeof value == "number") await this.app.configuration.updateConfigValue(settingName, Number(settingValue))
         else await this.app.configuration.updateConfigValue(settingName, settingValue)
         

@@ -36,27 +36,34 @@ export class Architect {
             this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.EXTENSION_VERSION, currentVersion);
         }
         await this.installUpgradeLlamaCpp(isFirstStart);
-        if (this.app.configuration.env_start_last_used){
-            let lastEnv = this.app.persistence.getValue("selectedEnv")
-            if (lastEnv) {
-                if (this.app.configuration.env_start_last_used_confirm) {
-                    let [shouldSelect, dontAskAgain]  = await this.app.dialogs.showYesYesdontaskNoDialog("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
-                                                                        this.app.envService.getEnvDetailsAsString(lastEnv) +
-                                                                        "\n\n Do you want to continue?"
-                                                                        );
-                    if (shouldSelect) this.app.envService.selectStartEnv(lastEnv, false);
-                    if (dontAskAgain) this.app.configuration.updateConfigValue("env_start_last_used_confirm", false);
-                } else {
-                     this.app.envService.selectStartEnv(lastEnv, false);
-                }
-
-            }
+        try {
+            await this.restoreLastUsedEnv();
+        } catch (error) {
+            console.error("Failed to restore the last used env:", error);
         }
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
         if (lastAgent) this.app.agentService.selectAgent(lastAgent)
         this.app.tools.init()
+    }
+
+    private restoreLastUsedEnv = async (): Promise<void> => {
+        if (!this.app.configuration.env_start_last_used) return;
+
+        const lastEnv = this.app.envService.getPersistedEnvForAutoStart();
+        if (!lastEnv) return;
+
+        if (this.app.configuration.env_start_last_used_confirm) {
+            const [shouldSelect, dontAskAgain] = await this.app.dialogs.showYesYesdontaskNoDialog("You are about to select the env below. If there are local models inside, they will be downloaded (if not yet done) and llama.cpp server(s) will be started. \n\n" +
+                this.app.envService.getEnvDetailsAsString(lastEnv) +
+                "\n\n Do you want to continue?"
+            );
+            if (!shouldSelect) return;
+            if (dontAskAgain) await this.app.configuration.updateEnvStartLastUsedConfirm(false);
+        }
+
+        await this.app.envService.selectStartEnv(lastEnv, false, "restoration");
     }
 
     setOnSaveDeleteFileForDb = (context: vscode.ExtensionContext) => {
@@ -78,14 +85,14 @@ export class Architect {
             this.app.configuration.updateOnEvent(event, config);
             if (this.app.configuration.isRagConfigChanged(event)){
                 this.app.llamaWebviewProvider.updateSettingsInView();
-                this.init();
+                this.indexWorspaceFiles();
             }
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
             if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
             if (this.app.configuration.isTelegramBotConfigChanged(event)){
                 if (this.app.configuration.telegram_bot_enabled) this.app.telegramBot.createBot(this.app.configuration.telegram_api_token);
                 else this.app.telegramBot.closeBot();
-            } 
+            }
             if (this.app.configuration.isCompletionsEnabledConfigChanged(event)) this.app.statusbar.updateStatusBarText();
         });
         context.subscriptions.push(configurationChangeDisp);
