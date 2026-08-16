@@ -223,7 +223,7 @@ export class LlamaServer {
             "messages": [
               {
                 "role": "system",
-                "content": "You are an expert coder."
+                "content": "You are an expert coder.\n" + context
               },
               {
                 "role": "user",

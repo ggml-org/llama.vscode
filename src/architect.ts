@@ -424,12 +424,7 @@ export class Architect {
 
     registerCommandEditAllSearchFiles = (context: vscode.ExtensionContext) => {
         const editAllSearchFilesDisposable = vscode.commands.registerCommand('extension.editAllSearchFiles', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) {
-                vscode.window.showErrorMessage('No active editor!');
-                return;
-            }
-            await this.app.fileEditor.showEditAllSearchFilesPrompt(editor);
+            await this.app.fileEditor.showEditAllSearchFilesPrompt();
         });
         context.subscriptions.push(editAllSearchFilesDisposable);
     }

@@ -109,31 +109,7 @@ export class LlamaAgent {
             worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
         let projectContext = "  \n\n" + worspaceFolder;
-        if (this.app.configuration.agent_rules && this.app.configuration.agent_rules.trim().length > 0){
-            const absolutePath = Utils.getAbsolutFilePath(this.app.configuration.agent_rules);
-            if (fs.existsSync(absolutePath)) {
-                projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(this.app.configuration.agent_rules.trim(), "utf-8");    
-            } else {
-                vscode.window.showErrorMessage(`File with the user defined rules not found: ${this.app.configuration.agent_rules}`);
-            }
-        } else {
-            const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
-            if (fs.existsSync(absolutePath)) {
-                projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
-            }          
-        }
-        const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
-        if (fs.existsSync(agentsAbsolutePath)) {
-            projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
-        }
-        const soulAbsolutePath = Utils.getAbsolutFilePath("SOUL.md");
-        if (fs.existsSync(soulAbsolutePath)) {
-            projectContext += "  \n\n AI soul desription from " + soulAbsolutePath + ": \n" + fs.readFileSync(soulAbsolutePath, "utf-8");
-        }
-        const userInstructionsPath = Utils.getAbsolutFilePath("USER.md");
-        if (fs.existsSync(userInstructionsPath)) {
-            projectContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
-        }
+        projectContext += this.getMdFilesContext();
 
         if (this.app.configuration.auto_memory_enabled && this.app.extensionContext.storageUri?.fsPath) {
             let auto_memory = this.app.prompts.AUTO_MEMORY_PROMPT;
@@ -238,6 +214,36 @@ export class LlamaAgent {
     setInSessionText = async (inSessionText:string) => {
         
         this.inSessionText += inSessionText.trim();
+    }
+
+    getMdFilesContext = () => {
+        let mdFliesContext: string = "";
+        if (this.app.configuration.agent_rules && this.app.configuration.agent_rules.trim().length > 0) {
+            const absolutePath = Utils.getAbsolutFilePath(this.app.configuration.agent_rules);
+            if (fs.existsSync(absolutePath)) {
+                mdFliesContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            } else {
+                vscode.window.showErrorMessage(`File with the user defined rules from setting agent_rules not found: ${this.app.configuration.agent_rules}`);
+            }
+        } else {
+            const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
+            if (fs.existsSync(absolutePath)) {
+                mdFliesContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            }
+        }
+        const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
+        if (fs.existsSync(agentsAbsolutePath)) {
+            mdFliesContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
+        }
+        const soulAbsolutePath = Utils.getAbsolutFilePath("SOUL.md");
+        if (fs.existsSync(soulAbsolutePath)) {
+            mdFliesContext += "  \n\n AI soul desription from " + soulAbsolutePath + ": \n" + fs.readFileSync(soulAbsolutePath, "utf-8");
+        }
+        const userInstructionsPath = Utils.getAbsolutFilePath("USER.md");
+        if (fs.existsSync(userInstructionsPath)) {
+            mdFliesContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
+        }
+        return mdFliesContext;
     }
 
     private async summarize(): Promise<boolean> {
