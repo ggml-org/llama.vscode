@@ -265,7 +265,7 @@ export class TextEditor {
             return;
         }
 
-        this.app.statusbar.showThinkingInfo();
+        this.app.statusbar.showTextInfo('Editing...');
         let data: LlamaChatResponse | undefined
         try {
             try {
@@ -297,7 +297,7 @@ export class TextEditor {
             vscode.window.showErrorMessage('Error getting suggestions. Please check if llama.cpp server is running.');
             await this.cleanup();
         } finally {
-            this.app.statusbar.showInfo(undefined);
+            this.app.statusbar.showTextInfo('');
         }
     }
 

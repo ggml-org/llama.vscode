@@ -223,7 +223,7 @@ export class LlamaAgent {
             if (fs.existsSync(absolutePath)) {
                 mdFliesContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
             } else {
-                vscode.window.showErrorMessage(`File with the user defined rules from setting agent_rules not found: ${this.app.configuration.agent_rules}`);
+                vscode.window.showWarningMessage(`File with the user defined rules from setting agent_rules not found: ${this.app.configuration.agent_rules}`);
             }
         } else {
             const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
