@@ -149,16 +149,7 @@ Task:
 Expected result: 
 {expected_result}
 `
-
-TOOL_APPLY_EDITS = `
-Edits/creates file. Use this tool only if file content or at least  section of the file is already read and there is a sufficient context. Provide here exactly one file with user instruction to make one change to it using a diff-fenced format. 
-
-File is presented with its relative path followed by code fence markers and the complete file content:
-
-## How to make Edits (diff-fenced format):
-When making changes, you MUST use the SEARCH/REPLACE block format as follows:
-
-1. Basic Format Structure
+EDIT_TOOL_BASIC_STRUCTURE = `Basic Format Structure:
 \`\`\`diff
 filename.py
 <<<<<<< SEARCH  
@@ -166,7 +157,17 @@ filename.py
 =======  
 // new text lines that will replace the original content  
 >>>>>>> REPLACE  
-\`\`\`
+\`\`\``
+
+TOOL_APPLY_EDITS = `
+Edits/creates file. Use this tool only if file content or at least  section of the file is already read and there is a sufficient context. Provide here exactly one file with user instruction to make one change to it using a diff-fenced format. 
+
+File is presented with its relative path followed by code fence markers and the complete file content:
+
+## How to make Edits (diff-fenced format):
+When making changes, you MUST use the SEARCH/REPLACE block format for the input parameter as follows:
+
+1. ${this.EDIT_TOOL_BASIC_STRUCTURE}
   
 2. Format Rules: 
 - The first line must be a code fence opening marker (\`\`\`diff)  

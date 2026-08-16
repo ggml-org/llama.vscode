@@ -425,9 +425,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     openContextFile = async (message: any, webviewView: vscode.WebviewView) => {
-        const uri = vscode.Uri.file(message.fileLongName);
+        const fileParts = message.fileLongName.split("|");
+        const fileLongName = fileParts[0].trim();
+        const uri = vscode.Uri.file(fileLongName);
         const document = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(document);
+        if (fileLongName.length >=3) {
+            const firstLine = parseInt(fileParts[1].trim());
+            const secondLine = parseInt(fileParts[2].trim());
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                const range = new vscode.Range(firstLine - 1, 0, secondLine - 1, Number.MAX_SAFE_INTEGER);
+                editor.selection = new vscode.Selection(range.start, range.end);
+                editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+            }
+        }
     }
                     
     addEnv = async (message: any, webviewView: vscode.WebviewView) => {
@@ -514,6 +526,19 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 files: Array.from(contextFiles.entries())
             });
         }, 1000);
+
+        // Refresh context files when the webview becomes visible again
+        // (handles 2nd, 3rd, etc. clicks on the sidebar icon)
+        webviewView.onDidChangeVisibility(() => {
+            if (webviewView.visible) {
+                console.log('Webview became visible - refreshing context files');
+                const contextFiles = this.app.llamaAgent.getContextProjectFiles();
+                webviewView.webview.postMessage({
+                    command: 'updateContextFiles',
+                    files: Array.from(contextFiles.entries())
+                });
+            }
+        });
     }    
 
     private async clearChatText(webviewView: vscode.WebviewView) {

@@ -37,6 +37,7 @@ export class LlamaAgent {
     private inSessionText: string = ""
     private isTlgrBotRequest: boolean = false;
     private agentInProgress: boolean = false;
+    private originalQuery: string = "";
 
     constructor(application: Application) {
         this.app = application;
@@ -44,6 +45,8 @@ export class LlamaAgent {
     }
 
     getAgentLogText = () => this.logText;
+
+    getOriginalQuery = () => this.originalQuery;
 
     isAgentInProgress = () => this.agentInProgress;
 
@@ -331,7 +334,7 @@ export class LlamaAgent {
     askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
             let response = ""
             
-            const originalQuery = query;
+            this.originalQuery = query;
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
             this.updateLogText("***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n");
@@ -443,12 +446,9 @@ export class LlamaAgent {
                 }
                 iterationsCount++;                    
                 try {
-                    if (fs.existsSync(todoFile) && iterationsCount % this.app.configuration.plan_review_frequency == 0){
-                        let goal = "Task: \n" + originalQuery
-                        let currentPlan = "Below is the todo list:\n"
-                        currentPlan += fs.readFileSync(todoFile, "utf-8")
-                        this.messages.push({"role": "user", "content": goal + "\n\n" + currentPlan})                   
-                    }
+                    const remindersText = this.app.agentReminder.getReminders(iterationsCount)
+                    if (remindersText.trim() != "") this.messages.push({"role": "user", "content": remindersText})                   
+                        
                     await this.summarizeToFitCurrentBudget(this.contextImage);
                     let streamed = "";
                     let deltaBuffer = ""

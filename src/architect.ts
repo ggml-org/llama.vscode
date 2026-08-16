@@ -94,6 +94,7 @@ export class Architect {
                 else this.app.telegramBot.closeBot();
             }
             if (this.app.configuration.isCompletionsEnabledConfigChanged(event)) this.app.statusbar.updateStatusBarText();
+            if (this.app.configuration.isAgentReminderSettingChanged(event)) this.app.agentReminder.initReminders();
         });
         context.subscriptions.push(configurationChangeDisp);
     }

@@ -1575,7 +1575,12 @@
         "llama-vscode.plan_review_frequency": {
           "type": "number",
           "default": 5,
-          "description": "How often (interations count) the plan/todos should be sent to the LLM again during a session."
+          "description": "How often (interations count) the plan/todos should be sent to the LLM during a session."
+        },
+        "llama-vscode.reminder_edit_file_frequency": {
+          "type": "number",
+          "default": 5,
+          "description": "How often (interations count) the reminder how to prepare the input for the edit_fie tool should be sent to the LLM during a session."
         },
         "llama-vscode.chats_max_history": {
           "type": "number",
