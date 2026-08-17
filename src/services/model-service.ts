@@ -3,7 +3,7 @@ import { QuickPickItem } from "vscode";
 import { Application } from "../application";
 import { IAddStrategy, LlmModel, ModelTypeDetails } from "../types";
 import { Utils } from "../utils";
-import { ModelType, UI_TEXT_KEYS, MODEL_TYPE_CONFIG } from "../constants";
+import { ModelType, UI_TEXT_KEYS, MODEL_TYPE_CONFIG, PERSISTENCE_KEYS } from "../constants";
 import * as path from "path";
 import * as fs from "fs";
 import { Configuration } from "../configuration";
@@ -184,6 +184,20 @@ export class ModelService {
             return model;
         }
         return undefined
+    }
+
+    getAllModelsList = (): LlmModel[] => {
+            return this.app.configuration.tools_models_list
+                    .concat((PREDEFINED_LISTS.get(ModelType.Tools) as LlmModel[]))
+        }
+
+
+    selectDefaultModel = async (modelType: ModelType, persistenceKey: string) => {
+        const defaultModel = this.app.persistence.getGlobalValue(persistenceKey);
+        if (defaultModel) {
+            await this.app.modelService.selectStartModel(defaultModel, modelType, this.app.modelService.getTypeDetails(modelType));
+        }
+        this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     public async selectStartModel(model: LlmModel, type: ModelType, details: ModelTypeDetails) {
@@ -430,6 +444,10 @@ export class ModelService {
     public async checkForToolsModel() {
         let toolsModel = this.app.getToolsModel();
         let targetUrl = this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
+        if (!toolsModel || !toolsModel.name) {
+            await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
+            toolsModel = this.app.getToolsModel();
+        }
         if (toolsModel && toolsModel.endpoint) {
             const toolsEndpoint = Utils.trimTrailingSlash(toolsModel.endpoint);
             targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";

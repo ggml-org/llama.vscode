@@ -14,6 +14,10 @@ interface AddEnvViewProps {
   healthCheckChatEnabled?: boolean;
   healthCheckEmbsEnabled?: boolean,
   healthCheckToolsEnabled?: boolean
+  defaultCompletionModel?: string;
+  defaultChatModel?: string;
+  defaultEmbeddingsModel?: string;
+  defaultToolsModel?: string;
 }
 
 const noModelSelected = 'No model selected';
@@ -31,7 +35,11 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
   healthCheckComplEnabled = false,
   healthCheckChatEnabled  = false,
   healthCheckEmbsEnabled = false,
-  healthCheckToolsEnabled = false
+  healthCheckToolsEnabled = false,
+  defaultCompletionModel = '',
+  defaultChatModel = '',
+  defaultEmbeddingsModel = '',
+  defaultToolsModel = ''
 }) => {
   const [isCompletionsEnabled, setIsCompletionsEnabled] = useState(completionsEnabled);
   const [isRagEnabled, setIsRagEnabled] = useState(ragEnabled);
@@ -40,6 +48,10 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
   const [isHealthCheckChatEnabled, setIsHealthCheckChatEnabled] = useState(healthCheckChatEnabled);
   const [isHealthCheckEmbsEnabled, setIsHealthCheckEmbsEnabled] = useState(healthCheckEmbsEnabled);
   const [isHealthCheckToolsEnabled, setIsHealthCheckToolsEnabled] = useState(healthCheckToolsEnabled);
+  const [defaultCompletionModelState, setDefaultCompletionModel] = useState(defaultCompletionModel);
+  const [defaultChatModelState, setDefaultChatModel] = useState(defaultChatModel);
+  const [defaultEmbeddingsModelState, setDefaultEmbeddingsModel] = useState(defaultEmbeddingsModel);
+  const [defaultToolsModelState, setDefaultToolsModel] = useState(defaultToolsModel);
 
   // Get the VS Code setting on component mount
   useEffect(() => {
@@ -116,6 +128,12 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
             setIsAutoStartEnv(message.value);
             break;
         }
+      }
+      if (message.command === 'updateDefaultModels') {
+        setDefaultCompletionModel(message.completionModel || '');
+        setDefaultChatModel(message.chatModel || '');
+        setDefaultEmbeddingsModel(message.embeddingsModel || '');
+        setDefaultToolsModel(message.toolsModel || '');
       }
     };
 
@@ -273,6 +291,66 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
     });
   };
 
+  const handleSetAsDefaultCompletion = () => {
+    vscode.postMessage({
+      command: 'setAsDefault',
+      modelName: currentCompletionModel,
+      modelType: 'completion'
+    });
+  };
+
+  const handleSetAsDefaultChat = () => {
+    vscode.postMessage({
+      command: 'setAsDefault',
+      modelName: currentChatModel,
+      modelType: 'chat'
+    });
+  };
+
+  const handleSetAsDefaultEmbs = () => {
+    vscode.postMessage({
+      command: 'setAsDefault',
+      modelName: currentEmbeddingsModel,
+      modelType: 'embeddings'
+    });
+  };
+
+  const handleSetAsDefaultTools = () => {
+    vscode.postMessage({
+      command: 'setAsDefault',
+      modelName: currentToolsModel,
+      modelType: 'tools'
+    });
+  };
+
+  const handleRemoveDefaultCompletion = () => {
+    vscode.postMessage({
+      command: 'removeDefaultModel',
+      modelType: 'completion'
+    });
+  };
+
+  const handleRemoveDefaultChat = () => {
+    vscode.postMessage({
+      command: 'removeDefaultModel',
+      modelType: 'chat'
+    });
+  };
+
+  const handleRemoveDefaultEmbs = () => {
+    vscode.postMessage({
+      command: 'removeDefaultModel',
+      modelType: 'embeddings'
+    });
+  };
+
+  const handleRemoveDefaultTools = () => {
+    vscode.postMessage({
+      command: 'removeDefaultModel',
+      modelType: 'tools'
+    });
+  };
+
   const handleToggleCompletionsEnabled = (enabled: boolean) => {
     setIsCompletionsEnabled(enabled);
     vscode.postMessage({
@@ -341,6 +419,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
+            {currentCompletionModel === noModelSelected  && (
+            <button
+              onClick={handleRemoveDefaultCompletion}
+              title={`Remove the default model. (Current Default: ${defaultCompletionModelState})`}
+              className="modern-btn secondary"
+            >
+              Remove Default
+            </button>
+            )}
             {currentCompletionModel != noModelSelected  && (
               <button
               onClick={handleShowCompletionModel}
@@ -348,6 +435,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               className="modern-btn secondary"
             >
             ...
+            </button>
+            )}
+            {currentCompletionModel != noModelSelected  && (
+              <button
+              onClick={handleSetAsDefaultCompletion}
+              title={`Set the model as default. If no model is selected - the default will be used automatically (Current Default: ${defaultCompletionModelState})`}
+              className="modern-btn secondary"
+            >
+            Set as Default
             </button>
             )}
           </div>
@@ -393,6 +489,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
+            {currentChatModel === noModelSelected  && (
+            <button
+              onClick={handleRemoveDefaultChat}
+              title={`Remove the default model. (Current Default: ${defaultChatModelState})`}
+              className="modern-btn secondary"
+            >
+              Remove Default
+            </button>
+            )}
             {currentChatModel != noModelSelected  && (
               <button
               onClick={handleShowChatModel}
@@ -400,6 +505,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               className="modern-btn secondary"
             >
             ...
+            </button>
+            )}
+            {currentChatModel != noModelSelected  && (
+              <button
+              onClick={handleSetAsDefaultChat}
+              title={`Set the model as default. If no model is selected - the default will be used automatically (Current Default: ${defaultChatModelState})`}
+              className="modern-btn secondary"
+            >
+            Set as Default
             </button>
             )}
           </div>
@@ -445,6 +559,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
+            {currentEmbeddingsModel === noModelSelected  && (
+            <button
+              onClick={handleRemoveDefaultEmbs}
+              title={`Remove the default model. (Current Default: ${defaultEmbeddingsModelState})`}
+              className="modern-btn secondary"
+            >
+              Remove Default
+            </button>
+            )}
             {currentEmbeddingsModel != noModelSelected  && (
               <button
               onClick={handleShowEmbsModel}
@@ -452,6 +575,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               className="modern-btn secondary"
             >
               ...
+            </button>
+            )}
+            {currentEmbeddingsModel != noModelSelected  && (
+              <button
+              onClick={handleSetAsDefaultEmbs}
+              title={`Set the model as default. If no model is selected - the default will be used automatically (Current Default: ${defaultEmbeddingsModelState})`}
+              className="modern-btn secondary"
+            >
+              Set as Default
             </button>
             )}
           </div>
@@ -498,6 +630,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
+            {currentToolsModel === noModelSelected  && (
+            <button
+              onClick={handleRemoveDefaultTools}
+              title={`Remove the default model. (Current Default: ${defaultToolsModelState})`}
+              className="modern-btn secondary"
+            >
+              Remove Default
+            </button>
+            )}
             {currentToolsModel != noModelSelected  && (
               <button
               onClick={handleShowToolsModel}
@@ -505,6 +646,15 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               className="modern-btn secondary"
             >
               ...
+            </button>
+            )}
+            {currentToolsModel != noModelSelected  && (
+              <button
+              onClick={handleSetAsDefaultTools}
+              title={`Set the model as default. If no model is selected - the default will be used automatically (Current Default: ${defaultToolsModelState})`}
+              className="modern-btn secondary"
+            >
+              Set as Default
             </button>
             )}
           </div>

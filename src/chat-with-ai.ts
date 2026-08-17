@@ -1,6 +1,7 @@
 import {Application} from "./application";
 import * as vscode from 'vscode';
 import { Utils } from "./utils";
+import { ModelType, PERSISTENCE_KEYS } from "./constants";
 
 
 export class ChatWithAi {
@@ -57,10 +58,15 @@ export class ChatWithAi {
 
         let chatModel = this.app.getChatModel();
         if (!this.app.isChatModelSelected() && !this.app.configuration.endpoint_chat) chatModel = this.app.getToolsModel();    
+        if (!chatModel.endpoint) {
+            await this.app.modelService.selectDefaultModel(ModelType.Chat, PERSISTENCE_KEYS.DEFAULT_CHAT_MODEL);
+            chatModel = this.app.getChatModel();
+        }
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             targetUrl = chatEndpoint ? chatEndpoint + "/" : "";
         }
+        
         if (!targetUrl) {
             await this.app.dialogs.suggestModelSelection(
                 "Select a chat or tools model run by llama serve or an env with chat or tools model run on llama serve to chat with AI.",
@@ -188,4 +194,6 @@ export class ChatWithAi {
 
         return extraCont
     }
+
+    
 }

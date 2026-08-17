@@ -1,6 +1,7 @@
 import { Application } from "./application";
 import vscode from "vscode";
 import { Utils } from "./utils";
+import { ModelType, PERSISTENCE_KEYS } from "./constants";
 
 
 export class Git {
@@ -15,6 +16,10 @@ export class Git {
         if (!chatUrl) chatUrl = this.app.configuration.endpoint_tools;
         let chatModel = this.app.getChatModel();    
         if (!this.app.isChatModelSelected() && !this.app.configuration.endpoint_chat) chatModel = this.app.getToolsModel();
+        if (!chatModel.endpoint) {
+            await this.app.modelService.selectDefaultModel(ModelType.Chat, PERSISTENCE_KEYS.DEFAULT_CHAT_MODEL);
+            chatModel = this.app.getChatModel();
+        }
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";

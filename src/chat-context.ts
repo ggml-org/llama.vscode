@@ -5,6 +5,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import ignore from 'ignore';
 import { ChunkEntry } from './types'
+import { ModelType, PERSISTENCE_KEYS } from './constants';
 
 interface FileProperties {
     hash: string;
@@ -53,6 +54,11 @@ export class ChatContext {
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with BM25..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.configuration.rag_max_bm25_filter_chunks)
         let topContextChunks: ChunkEntry[];
+        if (!this.app.getEmbeddingsModel().endpoint){
+            await this.app.modelService.selectDefaultModel(ModelType.Embeddings, PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL);
+            // Wait for the embeddings model to be loaded
+            await new Promise(resolve => setTimeout(resolve, 5000));
+        }
         if ((this.app.getEmbeddingsModel().endpoint && this.app.getEmbeddingsModel().endpoint?.trim() != "") 
             || this.app.configuration.endpoint_embeddings.trim() != ""){
             this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with embeddings..."))
