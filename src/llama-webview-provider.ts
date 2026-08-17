@@ -6,7 +6,7 @@ import { LlmModel, Env, Agent, ContextCustom, AgentCommand } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
-import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from './constants';
+import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS } from './constants';
 import { PREDEFINED_LISTS } from './lists';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
@@ -83,7 +83,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["toggleRagEnabled", this.toggleRagEnabled],
                     ["toggleAutoStartEnv", this.toggleAutoStartEnv],
                     ["getVscodeSetting ", this.getVscodeSetting ],
-                    ["deleteCurrentChat", this.deleteCurrentChat]
+                    ["setAsDefault", this.setAsDefault],
+                    ["removeDefaultModel", this.removeDefaultModel],
                 ]);
     }
 
@@ -425,9 +426,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     openContextFile = async (message: any, webviewView: vscode.WebviewView) => {
-        const uri = vscode.Uri.file(message.fileLongName);
+        const fileParts = message.fileLongName.split("|");
+        const fileLongName = fileParts[0].trim();
+        const uri = vscode.Uri.file(fileLongName);
         const document = await vscode.workspace.openTextDocument(uri);
         await vscode.window.showTextDocument(document);
+        if (fileLongName.length >=3) {
+            const firstLine = parseInt(fileParts[1].trim());
+            const secondLine = parseInt(fileParts[2].trim());
+            const editor = vscode.window.activeTextEditor;
+            if (editor) {
+                const range = new vscode.Range(firstLine - 1, 0, secondLine - 1, Number.MAX_SAFE_INTEGER);
+                editor.selection = new vscode.Selection(range.start, range.end);
+                editor.revealRange(range, vscode.TextEditorRevealType.InCenterIfOutsideViewport);
+            }
+        }
     }
                     
     addEnv = async (message: any, webviewView: vscode.WebviewView) => {
@@ -463,6 +476,83 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
 
+    setAsDefault = async (message: any, webviewView: vscode.WebviewView) => {
+        const modelName = message.modelName;
+        const modelType = message.modelType as ModelType;
+        
+        if (!modelName || !modelType) {
+            console.error('Missing modelName or modelType in setAsDefault message');
+            return;
+        }
+
+        let allModels: LlmModel[] = [];
+        switch (modelType) {
+            case ModelType.Completion:
+                allModels = this.app.configuration.completion_models_list.concat(PREDEFINED_LISTS.get(ModelType.Completion) as LlmModel[]);
+                break;
+            case ModelType.Chat:
+                allModels = this.app.configuration.chat_models_list.concat(PREDEFINED_LISTS.get(ModelType.Chat) as LlmModel[]);
+                break;
+            case ModelType.Embeddings:
+                allModels = this.app.configuration.embeddings_models_list.concat(PREDEFINED_LISTS.get(ModelType.Embeddings) as LlmModel[]);
+                break;
+            case ModelType.Tools:
+                allModels = this.app.configuration.tools_models_list.concat(PREDEFINED_LISTS.get(ModelType.Tools) as LlmModel[]);
+                break;
+        }
+
+        const model = allModels.find(m => m.name === modelName);
+        if (!model) {
+            console.error(`Model ${modelName} not found for type ${modelType}`);
+            return;
+        }
+
+        switch (modelType) {
+            case ModelType.Completion:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_COMPL_MODEL, model);
+                break;
+            case ModelType.Chat:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_CHAT_MODEL, model);
+                break;
+            case ModelType.Embeddings:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL, model);
+                break;
+            case ModelType.Tools:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL, model);
+                break;
+        }
+
+        this.updateDefaultModelsInView();
+        vscode.window.showInformationMessage(`Model "${modelName}" set as default for ${modelType}`);
+    }
+
+
+    removeDefaultModel = async (message: any, webviewView: vscode.WebviewView) => {
+        const modelType = message.modelType;
+        
+        if (!modelType) {
+            console.error('Missing modelType in removeDefaultModel message');
+            return;
+        }
+
+        switch (modelType) {
+            case ModelType.Completion:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_COMPL_MODEL, null);
+                break;
+            case ModelType.Chat:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_CHAT_MODEL, null);
+                break;
+            case ModelType.Embeddings:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL, null);
+                break;
+            case ModelType.Tools:
+                this.app.persistence.setGlobalValue(PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL, null);
+                break;
+        }
+
+        this.updateDefaultModelsInView();
+        vscode.window.showInformationMessage(`Default model removed for ${modelType}`);
+    }
     public resolveWebviewView(
         webviewView: vscode.WebviewView,
         context: vscode.WebviewViewResolveContext,
@@ -514,6 +604,19 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 files: Array.from(contextFiles.entries())
             });
         }, 1000);
+
+        // Refresh context files when the webview becomes visible again
+        // (handles 2nd, 3rd, etc. clicks on the sidebar icon)
+        webviewView.onDidChangeVisibility(() => {
+            if (webviewView.visible) {
+                console.log('Webview became visible - refreshing context files');
+                const contextFiles = this.app.llamaAgent.getContextProjectFiles();
+                webviewView.webview.postMessage({
+                    command: 'updateContextFiles',
+                    files: Array.from(contextFiles.entries())
+                });
+            }
+        });
     }    
 
     private async clearChatText(webviewView: vscode.WebviewView) {
@@ -562,6 +665,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateSettingInEnvView('health_check_chat_enabled', this.app.configuration.health_check_chat_enabled);
         this.updateSettingInEnvView('health_check_embs_enabled', this.app.configuration.health_check_embs_enabled);
         this.updateSettingInEnvView('health_check_tools_enabled', this.app.configuration.health_check_tools_enabled);
+    }
+
+    private updateDefaultModelsInView() {
+        const defaultComplModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_COMPL_MODEL) as LlmModel | undefined;
+        const defaultChatModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_CHAT_MODEL) as LlmModel | undefined;
+        const defaultEmbsModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL) as LlmModel | undefined;
+        const defaultToolsModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL) as LlmModel | undefined;
+
+        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+            command: 'updateDefaultModels',
+            completionModel: defaultComplModel?.name || '',
+            chatModel: defaultChatModel?.name || '',
+            embeddingsModel: defaultEmbsModel?.name || '',
+            toolsModel: defaultToolsModel?.name || ''
+        });
     }
 
     private updateEmbsModel(status: string = "") {
@@ -697,6 +815,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateAgent();
         this.updateEnv();
         this.updateSettingsInView();
+        this.updateDefaultModelsInView();
         this.logInUi(this.app.llamaAgent.getAgentLogText())
     }
 

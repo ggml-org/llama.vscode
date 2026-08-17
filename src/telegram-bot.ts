@@ -93,10 +93,10 @@ export class TelegramBot {
             case TELEGRAM_BOT_COMMANDS.SHOW_MODELS:
                 const propModelsCount = this.app.configuration.tools_models_list.length
                 const msgModels = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableModels) + " \n" +
-                                    this.getAllModelsList()
+                                    this.app.modelService.getAllModelsList()
                                     .map((mdl, index) => `${index + 1}. ${index >= propModelsCount ? "(predefined) " + mdl.name : mdl.name}`)
                                     .join("\n ");
-                this.sendResponse(msgModels);
+                this.sendResponse(msgModels); 
                 return;
             case TELEGRAM_BOT_COMMANDS.SHOW_AGENTS:
                 const propAgentsCount = this.app.configuration.agents_list.length
@@ -187,7 +187,7 @@ export class TelegramBot {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectModel)??"");
                     return;
                 }
-                const model = this.getAllModelsList()[modelIndex];
+                const model = this.app.modelService.getAllModelsList()[modelIndex];
                 if (model) {
                     await this.app.modelService.selectStartModel(model, ModelType.Tools, this.app.modelService.getTypeDetails(ModelType.Tools))
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramModelSetTo) + " " + model.name);
@@ -364,11 +364,6 @@ export class TelegramBot {
         } catch (error) {
             this.app.logger.addEventLog("TELEGRAM", "SEND_RESPONSE_ERROR", "Failed to send bot response: " + error);
         }
-    }
-
-    private getAllModelsList(): LlmModel[] {
-        return this.app.configuration.tools_models_list
-                .concat((PREDEFINED_LISTS.get(ModelType.Tools) as LlmModel[]))
     }
 
     private getAllAgentsList(): Agent[] {

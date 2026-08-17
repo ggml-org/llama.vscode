@@ -311,6 +311,10 @@ export const PERSISTENCE_KEYS = {
   SELECTED_AGENT: 'selectedAgent' as const,
   SELECTED_ENV: 'selectedEnv' as const,
   LAST_USED_ENV: 'lastUsedEnv' as const,
+  DEFAULT_COMPL_MODEL: 'defaulComplModel' as const,
+  DEFAULT_CHAT_MODEL: 'defaulChatModel' as const,
+  DEFAULT_EMBS_MODEL: 'defaulEmbsModel' as const,
+  DEFAULT_TOOLS_MODEL: 'defaulToolsModel' as const,
   EXTENSION_VERSION: 'extensionVersion' as const,
 } as const;
 

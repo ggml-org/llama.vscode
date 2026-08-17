@@ -9,7 +9,7 @@ import { AGENT_COMMAND, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
-
+import { isAxiosError } from "axios";
 
 interface Frontmatter {
   [key: string]: any;
@@ -37,6 +37,7 @@ export class LlamaAgent {
     private inSessionText: string = ""
     private isTlgrBotRequest: boolean = false;
     private agentInProgress: boolean = false;
+    private originalQuery: string = "";
 
     constructor(application: Application) {
         this.app = application;
@@ -44,6 +45,8 @@ export class LlamaAgent {
     }
 
     getAgentLogText = () => this.logText;
+
+    getOriginalQuery = () => this.originalQuery;
 
     isAgentInProgress = () => this.agentInProgress;
 
@@ -109,31 +112,7 @@ export class LlamaAgent {
             worspaceFolder = " Project root folder: " + vscode.workspace.workspaceFolders[0].uri.fsPath;
         }
         let projectContext = "  \n\n" + worspaceFolder;
-        if (this.app.configuration.agent_rules && this.app.configuration.agent_rules.trim().length > 0){
-            const absolutePath = Utils.getAbsolutFilePath(this.app.configuration.agent_rules);
-            if (fs.existsSync(absolutePath)) {
-                projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(this.app.configuration.agent_rules.trim(), "utf-8");    
-            } else {
-                vscode.window.showErrorMessage(`File with the user defined rules not found: ${this.app.configuration.agent_rules}`);
-            }
-        } else {
-            const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
-            if (fs.existsSync(absolutePath)) {
-                projectContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
-            }          
-        }
-        const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
-        if (fs.existsSync(agentsAbsolutePath)) {
-            projectContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
-        }
-        const soulAbsolutePath = Utils.getAbsolutFilePath("SOUL.md");
-        if (fs.existsSync(soulAbsolutePath)) {
-            projectContext += "  \n\n AI soul desription from " + soulAbsolutePath + ": \n" + fs.readFileSync(soulAbsolutePath, "utf-8");
-        }
-        const userInstructionsPath = Utils.getAbsolutFilePath("USER.md");
-        if (fs.existsSync(userInstructionsPath)) {
-            projectContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
-        }
+        projectContext += this.getMdFilesContext();
 
         if (this.app.configuration.auto_memory_enabled && this.app.extensionContext.storageUri?.fsPath) {
             let auto_memory = this.app.prompts.AUTO_MEMORY_PROMPT;
@@ -240,6 +219,36 @@ export class LlamaAgent {
         this.inSessionText += inSessionText.trim();
     }
 
+    getMdFilesContext = () => {
+        let mdFliesContext: string = "";
+        if (this.app.configuration.agent_rules && this.app.configuration.agent_rules.trim().length > 0) {
+            const absolutePath = Utils.getAbsolutFilePath(this.app.configuration.agent_rules);
+            if (fs.existsSync(absolutePath)) {
+                mdFliesContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            } else {
+                vscode.window.showWarningMessage(`File with the user defined rules from setting agent_rules not found: ${this.app.configuration.agent_rules}`);
+            }
+        } else {
+            const absolutePath = Utils.getAbsolutFilePath("llama-vscode-rules.md");
+            if (fs.existsSync(absolutePath)) {
+                mdFliesContext += "  \n\nAdditional rules from the user: \n" + fs.readFileSync(absolutePath, "utf-8");
+            }
+        }
+        const agentsAbsolutePath = Utils.getAbsolutFilePath("AGENTS.md");
+        if (fs.existsSync(agentsAbsolutePath)) {
+            mdFliesContext += "  \n\nInstructions from " + agentsAbsolutePath + ": \n" + fs.readFileSync(agentsAbsolutePath, "utf-8");
+        }
+        const soulAbsolutePath = Utils.getAbsolutFilePath("SOUL.md");
+        if (fs.existsSync(soulAbsolutePath)) {
+            mdFliesContext += "  \n\n AI soul desription from " + soulAbsolutePath + ": \n" + fs.readFileSync(soulAbsolutePath, "utf-8");
+        }
+        const userInstructionsPath = Utils.getAbsolutFilePath("USER.md");
+        if (fs.existsSync(userInstructionsPath)) {
+            mdFliesContext += "  \n\nUser profile from " + userInstructionsPath + ": \n" + fs.readFileSync(userInstructionsPath, "utf-8");
+        }
+        return mdFliesContext;
+    }
+
     private async summarize(): Promise<boolean> {
         if (this.messages.length <= this.app.configuration.chats_msgs_keep) {
             return false; // Not enough messages to summarize
@@ -325,7 +334,7 @@ export class LlamaAgent {
     askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
             let response = ""
             
-            const originalQuery = query;
+            this.originalQuery = query;
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
             this.updateLogText("***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n");
@@ -437,12 +446,9 @@ export class LlamaAgent {
                 }
                 iterationsCount++;                    
                 try {
-                    if (fs.existsSync(todoFile) && iterationsCount % this.app.configuration.plan_review_frequency == 0){
-                        let goal = "Task: \n" + originalQuery
-                        let currentPlan = "Below is the todo list:\n"
-                        currentPlan += fs.readFileSync(todoFile, "utf-8")
-                        this.messages.push({"role": "user", "content": goal + "\n\n" + currentPlan})                   
-                    }
+                    const remindersText = this.app.agentReminder.getReminders(iterationsCount)
+                    if (remindersText.trim() != "") this.messages.push({"role": "user", "content": remindersText})                   
+                        
                     await this.summarizeToFitCurrentBudget(this.contextImage);
                     let streamed = "";
                     let deltaBuffer = ""
@@ -522,7 +528,7 @@ export class LlamaAgent {
                         && finishReason != "tool_calls" 
                         && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
                         this.updateLogText("  \n" + "Finish reason: " + finishReason)
-                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.updateLogText("Error: " + data.choices[0].error.message + "  \n")
+                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.updateLogText("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
                         this.app.llamaWebviewProvider.logInUi(this.logText);
                         break;
                     }
@@ -591,6 +597,9 @@ export class LlamaAgent {
                     // Handle the error
                     console.error("An error occurred:", error);
                     this.updateLogText("An error occurred: " + error + "\n\n");
+                    if (isAxiosError(error)){
+                        this.updateLogText(`Error details: ${error.response?.data?.error?.message})\n\n`);
+                    }
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     this.setAgentState("Error", false)
                     return "An error occurred: " + error;
@@ -600,6 +609,9 @@ export class LlamaAgent {
             if (changedFiles.size > 0) this.updateLogText(Array.from(changedFiles).join("  \n") + "  \n")
             if (deletedFiles.size > 0) this.updateLogText(Array.from(deletedFiles).join("  \n") + "  \n")
             this.updateLogText("  \nAgent session finished. \n\n")
+            if (iterationsCount >= this.app.configuration.tools_max_iterations) {
+                this.updateLogText(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`)
+            }
             this.app.llamaWebviewProvider.logInUi(this.logText);
             this.setAgentState("AI finished", false)
             await this.updateChat();

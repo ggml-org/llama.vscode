@@ -835,7 +835,7 @@ export class Tools {
                         "type": "object",
                         "properties": {
                             "input": {
-                                "description": `Files changes in SEARCH/REPLACE block format`,
+                                "description": `Files changes in SEARCH/REPLACE block format. SEARCH should be EXACT MATCH, including spaces tabs, etc.`,
                                 "type": "string",
                             },
                         },

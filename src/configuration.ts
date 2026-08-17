@@ -106,6 +106,7 @@ export class Configuration {
     auto_memory_enabled = true;
     max_auto_memory_files = 10;
     plan_review_frequency = 5;
+    reminder_edit_file_frequency = 5
     tools_log_calls = false;
     chats_max_history = 50;
     chats_max_tokens = 64000;
@@ -272,6 +273,7 @@ export class Configuration {
         this.auto_memory_enabled = Boolean(config.get<boolean>("auto_memory_enabled"));
         this.max_auto_memory_files = Number(config.get<number>("max_auto_memory_files"));
         this.plan_review_frequency = Number(config.get<number>("plan_review_frequency"));
+        this.reminder_edit_file_frequency = Number(config.get<number>("reminder_edit_file_frequency"));
         this.tools_log_calls = Boolean(config.get<boolean>("tools_log_calls"));
         this.chats_max_history = Number(config.get<number>("chats_max_history"));
         this.chats_max_tokens = Number(config.get<number>("chats_max_tokens"));
@@ -372,6 +374,13 @@ export class Configuration {
             this.setOpenAiClient();
         }
     };
+
+    isAgentReminderSettingChanged = (event: vscode.ConfigurationChangeEvent) => {
+        return event.affectsConfiguration("llama-vscode.reminder_edit_file_frequency")
+            || event.affectsConfiguration("llama-vscode.plan_review_frequency")
+            || event.affectsConfiguration("llama-vscode.tool_update_todo_list_enabled")
+            || event.affectsConfiguration("llama-vscode.tool_edit_file_enabled")
+    }
 
     isEnvViewSettingChanged = (event: vscode.ConfigurationChangeEvent) => {
          return event.affectsConfiguration("llama-vscode.enabled")

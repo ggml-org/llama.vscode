@@ -3,6 +3,7 @@ import { Application } from './application';
 import { Utils } from './utils';
 import { LlamaChatResponse } from "./types";
 import { Chat } from 'openai/resources';
+import { ModelType, PERSISTENCE_KEYS } from './constants';
 
 export class TextEditor {
     private app: Application;
@@ -17,6 +18,7 @@ export class TextEditor {
     private registration: vscode.Disposable | undefined;
     private suggestionUri: vscode.Uri = vscode.Uri.parse("");
     private diffTitle = 'Text Edit Suggestion';
+    private context = ""
 
     constructor(application: Application) {
         this.app = application;
@@ -37,7 +39,7 @@ export class TextEditor {
     /**
      * Multiline instructions (webview); resolves undefined if cancelled or closed.
      */
-    private showMultilineEditPrompt(): Promise<string | undefined> {
+    private showMultilineEditPrompt = (): Promise<string | undefined> => {
         const title =
             this.app.configuration.getUiText('How would you like to modify the selected text?') ??
             'How would you like to modify the selected text?';
@@ -45,6 +47,7 @@ export class TextEditor {
             this.app.configuration.getUiText('Enter your instructions for editing the text...') ??
             'Enter your instructions for editing the text...';
         const submitLabel = this.app.configuration.getUiText('Submit') ?? 'Submit';
+        const submitContextLabel = this.app.configuration.getUiText('Submit with .md files context')??'Submit with .md files context';
         const cancelLabel = this.app.configuration.getUiText('Cancel') ?? 'Cancel';
         const emptyHint =
             this.app.configuration.getUiText('Please enter editing instructions.') ??
@@ -145,6 +148,7 @@ export class TextEditor {
     <textarea id="prompt" placeholder="${this.escapeWebviewAttr(placeholder)}" autofocus></textarea>
     <div class="actions">
         <button type="button" class="primary" id="submit">${this.escapeWebviewAttr(submitLabel)}</button>
+        <button type="button" class="primary" id="submitContext" title="Adds to the context the content of the following files: \n- file from property agent_rules or if empty the file llama-vscode-rules.md (if available) from project root\n- files (if available) from prject root: AGENTS.md, USER.md, SOUL.md">${this.escapeWebviewAttr(submitContextLabel)}</button>
         <button type="button" class="secondary" id="cancel">${this.escapeWebviewAttr(cancelLabel)}</button>
     </div>
     <script>
@@ -170,6 +174,9 @@ export class TextEditor {
         });
         document.getElementById('submit').addEventListener('click', () => {
             vscode.postMessage({ command: 'submit', text: ta.value });
+        });
+        document.getElementById('submitContext').addEventListener('click', () => {
+            vscode.postMessage({ command: 'submitContext', text: ta.value });
         });
         document.getElementById('cancel').addEventListener('click', () => {
             vscode.postMessage({ command: 'cancel' });
@@ -198,6 +205,14 @@ export class TextEditor {
                         return;
                     }
                     finish(text);
+                }if (message.command === 'submitContext') {
+                    const text = typeof message.text === 'string' ? message.text : '';
+                    if (!text.trim()) {
+                        void vscode.window.showInformationMessage(emptyHint);
+                        return;
+                    }
+                    this.context = this.app.llamaAgent.getMdFilesContext();
+                    finish(text);
                 } else if (message.command === 'cancel') {
                     finish(undefined);
                 }
@@ -217,6 +232,10 @@ export class TextEditor {
         if (!chatUrl) chatUrl = this.app.configuration.endpoint_tools; 
         let chatModel = this.app.getChatModel();    
         if (!this.app.isChatModelSelected()) chatModel = this.app.getToolsModel();
+        if (!chatModel.endpoint) {
+            await this.app.modelService.selectDefaultModel(ModelType.Chat, PERSISTENCE_KEYS.DEFAULT_CHAT_MODEL);
+            chatModel = this.app.getChatModel();
+        }
         if (chatModel.endpoint) {
             const chatEndpoint = Utils.trimTrailingSlash(chatModel.endpoint)
             chatUrl = chatEndpoint ? chatEndpoint + "/" : "";
@@ -243,12 +262,7 @@ export class TextEditor {
         this.removedSpaces = result.removedSpaces
         this.selection = selection;
         this.currentEditor = editor;
-
-        // Get context from surrounding code (10 lines before and after)
-        const startLine = Math.max(0, selection.start.line - 10);
-        const endLine = Math.min(editor.document.lineCount - 1, selection.end.line + 10);
-        const contextRange = new vscode.Range(startLine, 0, endLine, editor.document.lineAt(endLine).text.length);
-        const context = editor.document.getText(contextRange);
+        this.context = "";
         
         const prompt = await this.showMultilineEditPrompt();
 
@@ -256,14 +270,14 @@ export class TextEditor {
             return;
         }
 
-        this.app.statusbar.showThinkingInfo();
+        this.app.statusbar.showTextInfo('Editing...');
         let data: LlamaChatResponse | undefined
         try {
             try {
                 data = await this.app.llamaServer.getChatEditCompletion(
                     prompt,
                     this.selectedText,
-                    context,
+                    this.context,
                     this.app.extraContext.chunks,
                     0
                 );
@@ -288,7 +302,7 @@ export class TextEditor {
             vscode.window.showErrorMessage('Error getting suggestions. Please check if llama.cpp server is running.');
             await this.cleanup();
         } finally {
-            this.app.statusbar.showInfo(undefined);
+            this.app.statusbar.showTextInfo('');
         }
     }
 

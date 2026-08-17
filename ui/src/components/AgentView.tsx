@@ -436,6 +436,7 @@ const AgentView: React.FC<AgentViewProps> = ({
                       <span
                         className="file-name clickable"
                         onClick={() => handleOpenContextFile(longName)}
+                        title={`Show ${shortName}`}
                       >
                         {shortName}
                       </span>

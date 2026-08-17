@@ -8,7 +8,7 @@ import * as util from 'util';
 import * as os from 'os';
 import * as fs from 'fs';
 import * as path from 'path';
-import { ModelType, SUPPORTED_IMG_FILE_EXTS } from "./constants";
+import { ModelType, PERSISTENCE_KEYS, SUPPORTED_IMG_FILE_EXTS } from "./constants";
 import {
     buildRuntimePropsUrl,
     DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
@@ -223,7 +223,7 @@ export class LlamaServer {
             "messages": [
               {
                 "role": "system",
-                "content": "You are an expert coder."
+                "content": "You are an expert coder.\n" + context
               },
               {
                 "role": "user",
@@ -826,6 +826,10 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
 
         // else, default to llama.cpp
         let { endpoint, model, requestConfig } = this.getComplModelProperties();
+        if (!endpoint){
+            await this.app.modelService.selectDefaultModel(ModelType.Completion, PERSISTENCE_KEYS.DEFAULT_COMPL_MODEL);
+            ({ endpoint, model, requestConfig } = this.getComplModelProperties());
+        }
         if (!endpoint) {
             const selectionMessate =  "Select a completion model or an env with completion model to use code completion (code suggestions by AI)."
             const shouldSelectModel = await this.app.dialogs.showUserChoiceDialog(selectionMessate, "Select")

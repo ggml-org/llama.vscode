@@ -94,6 +94,7 @@ export class Architect {
                 else this.app.telegramBot.closeBot();
             }
             if (this.app.configuration.isCompletionsEnabledConfigChanged(event)) this.app.statusbar.updateStatusBarText();
+            if (this.app.configuration.isAgentReminderSettingChanged(event)) this.app.agentReminder.initReminders();
         });
         context.subscriptions.push(configurationChangeDisp);
     }
@@ -424,12 +425,7 @@ export class Architect {
 
     registerCommandEditAllSearchFiles = (context: vscode.ExtensionContext) => {
         const editAllSearchFilesDisposable = vscode.commands.registerCommand('extension.editAllSearchFiles', async () => {
-            const editor = vscode.window.activeTextEditor;
-            if (!editor) {
-                vscode.window.showErrorMessage('No active editor!');
-                return;
-            }
-            await this.app.fileEditor.showEditAllSearchFilesPrompt(editor);
+            await this.app.fileEditor.showEditAllSearchFilesPrompt();
         });
         context.subscriptions.push(editAllSearchFilesDisposable);
     }
