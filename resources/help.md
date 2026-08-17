@@ -306,12 +306,19 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.61 is released (17.08.2026)
+### What is new
+- Improve edit text with AI and edit multiple files with AI - adding context from .md files is now possible
+- Fix loosing agent context files on hiding and showing agent view
+- Agent Reminders added - for example periodically reminds the agent about the correct format of the edit_file tool input parameter (setting reminder_edit_file_frequency). 
+- Default models introduced - if a model is not selected, the default one (if any) is selected automatically
+
 ## Version 0.0.60 is released (15.08.2026)
 ### What is new
 - Fix environment auto-start persistence
 - Add OrcaRouter as an OpenAI-compatible provider (enables adding models in the same way as from OpenRounter - from the menu)
 - Telegram bot new command "//" - shows all agent commands
-- Telegram bot - the agent commands are now requested with simeple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list if it contains only acceptable chars for telegram command)
+- Telegram bot - the agent commands are now requested with simple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list if it contains only acceptable chars for telegram command)
 - Script files (suffix .lvs) from folder of the setting scripts_folder are availabe as script commands in the agent.
 
 ## Version 0.0.59 is released (07.08.2026)
@@ -1355,7 +1362,8 @@ Here are the commands (messages, which start with "/"), which the bot can execut
 - /chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned
 - /newchat, /new - stops the current chat and starts a new chat
 - /setlang xx - sets the language, which is used by the bot: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)
-- / - shows available commands
+- / - shows available telegram bot commands
+- // - shows the available agent commands
 - /help - shows help information for using the bot
 
 ### Settings:  

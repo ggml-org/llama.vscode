@@ -506,63 +506,93 @@ export class Utils {
         return currentContent;
     }
 
-    static  applyEdits = async (diffText: string): Promise<string> => {
+    /**
+ * Removes the UTF-8 / UTF-16 BE BOM from the start of a string.
+ * Returns the original string if no BOM is found.
+ */
+    static stripBOMFromString = (content: string): string => {
+    // charCodeAt(0) === 0xFEFF is the BOM marker
+    if (content.charCodeAt(0) === 0xFEFF) {
+        return content.slice(1);
+    }
+    return content;
+    }
+
+    /**
+     * Checks if `substring` appears exactly once in `str`.
+     * @param str - The string to search in.
+     * @param sub - The substring to search for.
+     * @returns 0 if not found 1 if found once 2 if found more than once.
+     */
+    static containsSubstringInfo = (str: string, sub: string): number => {
+        // Empty substring appears at every index; treat as not exactly once.
+        if (sub === "") return 0;
+
+        const firstIndex = str.indexOf(sub);
+        if (firstIndex === -1) return 0;
+
+        const lastIndex = str.lastIndexOf(sub);
+        if (firstIndex === lastIndex) return 1;
+        else return 2;
+    }
+
+    static  findReplaceFile = async (filePath: string, searchText: string, replaceText: string, replaceAll: boolean): Promise<string> => {
         // Extract edit blocks from the diff-fenced format
         let ret = UI_TEXT_KEYS.fileUpdated as string;
-        let editBlocks: string[][] = [];
-        if (!diffText) return "Edit file: The input parameter is missing!";
-        const blocks = diffText.split("```diff")
-        for (const block of blocks.slice(1)){
-            editBlocks.push(Utils.extractConflictParts("```diff" + block))
-        }
-
-        if (editBlocks.length === 0) {
-            if (diffText.length > 0) editBlocks.push(Utils.extractConflictParts("```diff\n" + diffText))
-            else return "Edit file: The input parameter is missing or incorrect format!";
-        }
-
-        for (const block of editBlocks) {
-            if (block.length === 3) {
-                let filePath = block[0].trim();
-                if (filePath.startsWith("<file_path>")) filePath = filePath.slice("<file_path>".length);
-                if (filePath.endsWith("</file_path>")) filePath = filePath.slice(0,-"</file_path>".length)
-                let searchText = block[1].trim();
-                // Make sure only \n is used for new line
-                searchText = searchText.split(/\r?\n/).join("\n");
-                const replaceText = block[2].trim();
-                
-                let result = "";
-                let absolutePath = filePath;
-                if (!path.isAbsolute(filePath)) {
-                    if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                        return "File not found: " + filePath;
-                    }
-                    const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-                    absolutePath = path.join(workspaceRoot, filePath);
-                }
-                try {
-                    const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
-                    if (!fileExists){
-                        await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
-                        await fs.promises.writeFile(absolutePath, result);
-                    }
-                    // Ensure only \n is used for new line
-                    result = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
-                    // Handle empty search text case
-                    if (searchText.trim() === '') {
-                        result += '\n' + replaceText;
-                        await fs.promises.writeFile(absolutePath, result);
-                    } else if (result.includes(searchText)) {
-                        result = result.split(searchText).join(replaceText);
-                        await fs.promises.writeFile(absolutePath, result);
-                    } else {
-                        ret = "Error edititing file " + filePath + " - " + "The search text is not found in the file.";
-                    }                    
-                } catch (error) {
-                    if (error instanceof Error) ret = "Error edititing file " + filePath + " - " + error.message;
-                    else ret = "Error edititing file " + filePath + " - " + error;
-                }
+        let result = "";
+        let absolutePath = filePath;
+        if (!path.isAbsolute(filePath)) {
+            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                return "File not found: " + filePath;
             }
+            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            absolutePath = path.join(workspaceRoot, filePath);
+        } else {
+            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                return "No project folder found. Only files inside projet folder can be edited.";
+            }
+            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
+            const root = path.resolve(workspaceRoot);
+            const file = path.resolve(filePath);
+            const relative = path.relative(root, file);
+            const  isInsideWorkspace = !relative.startsWith('..') && !path.isAbsolute(relative)
+            if (!isInsideWorkspace) return "The file not is not in project folder: " + filePath;
+        }
+        try {
+            const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
+            if (!fileExists){
+                await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+                await fs.promises.writeFile(absolutePath, result);
+            }
+            // Ensure only \n is used for new line
+            result = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
+            result = Utils.stripBOMFromString(result);
+            
+            // Handle empty search text case
+            searchText = searchText.split(/\r?\n/).join("\n");
+            if (searchText.trim() === '') {
+                if (fs.existsSync(absolutePath)){
+                    result += '\n' + replaceText;
+                    await fs.promises.writeFile(absolutePath, result);
+                    return "The file is created: " + absolutePath
+                } else {
+                    ret = "File already exists. Use edit mode (non-empty search) to modify it."
+                }
+            } else {
+                if (!fs.existsSync(absolutePath)) {
+                    return "Cannot edit a non-existent file. To create a file, set search to an empty string."
+                }
+                const foundTimes = Utils.containsSubstringInfo(result, searchText);
+                if (foundTimes == 1 || (foundTimes > 1 && replaceAll)) {
+                    result = result.split(searchText).join(replaceText);
+                    await fs.promises.writeFile(absolutePath, result);
+                } else if (foundTimes == 0) {
+                    ret = "Error edititing file " + filePath + " - " + "Search string not found.";
+                } else ret = "Error edititing file " + filePath + " - " + "Found more than one matches. Provide more context or set replace_all=true.";
+            }                 
+        } catch (error) {
+            if (error instanceof Error) ret = "Error edititing file " + filePath + " - " + error.message;
+            else ret = "Error edititing file " + filePath + " - " + error;
         }
         
         return ret;

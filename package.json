@@ -1193,6 +1193,11 @@
           "default": false,
           "description": "Works only for llama.cpp servers - enables health check for tools model"
         },
+        "llama-vscode.only_one_local_model": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, only one local model (among completion, chat and tools) is allowed to run. On starting a local model, the other local models are automatically stopped (deselected)."
+        },
         "llama-vscode.n_prefix": {
           "default": 256,
           "type": "number",

@@ -5,7 +5,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { AGENT_COMMAND, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
+import { AGENT_COMMAND, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
@@ -377,7 +377,9 @@ export class LlamaAgent {
             }
             
             this.setAgentState("AI is working...", true)
-            
+            if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
+                await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
+            }
             if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
                 vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.")
                 this.setAgentState("AI is stopped", false)

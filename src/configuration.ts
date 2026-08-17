@@ -56,6 +56,7 @@ export class Configuration {
     health_check_chat_enabled = false;
     health_check_embs_enabled = false;
     health_check_tools_enabled = false;
+    only_one_local_model = false;
 
 
     // experimental - avoid using
@@ -260,6 +261,7 @@ export class Configuration {
         this.tool_update_todo_list_enabled = Boolean(config.get<boolean>("tool_update_todo_list_enabled"));
         this.tool_delegate_task_enabled = Boolean(config.get<boolean>("tool_delegate_task_enabled"));
         this.tool_llama_vscode_help_enabled = Boolean(config.get<boolean>("tool_llama_vscode_help_enabled"));
+        this.only_one_local_model = Boolean(config.get<boolean>("only_one_local_model"));
         this.tool_custom_tool_description = String(config.get<string>("tool_custom_tool_description"));
         this.tool_custom_tool_source = String(config.get<string>("tool_custom_tool_source"));
         this.tool_custom_eval_tool_enabled = Boolean(config.get<boolean>("tool_custom_eval_tool_enabled"));
