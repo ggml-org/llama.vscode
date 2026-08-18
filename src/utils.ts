@@ -507,9 +507,9 @@ export class Utils {
     }
 
     /**
- * Removes the UTF-8 / UTF-16 BE BOM from the start of a string.
- * Returns the original string if no BOM is found.
- */
+     * Removes the UTF-8 / UTF-16 BE BOM from the start of a string.
+     * Returns the original string if no BOM is found.
+     */
     static stripBOMFromString = (content: string): string => {
     // charCodeAt(0) === 0xFEFF is the BOM marker
     if (content.charCodeAt(0) === 0xFEFF) {
@@ -536,67 +536,99 @@ export class Utils {
         else return 2;
     }
 
-    static  findReplaceFile = async (filePath: string, searchText: string, replaceText: string, replaceAll: boolean): Promise<string> => {
-        // Extract edit blocks from the diff-fenced format
-        let ret = UI_TEXT_KEYS.fileUpdated as string;
-        let result = "";
-        let absolutePath = filePath;
-        if (!path.isAbsolute(filePath)) {
-            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                return "File not found: " + filePath;
-            }
-            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            absolutePath = path.join(workspaceRoot, filePath);
-        } else {
-            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                return "No project folder found. Only files inside projet folder can be edited.";
-            }
-            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            const root = path.resolve(workspaceRoot);
-            const file = path.resolve(filePath);
-            const relative = path.relative(root, file);
-            const  isInsideWorkspace = !relative.startsWith('..') && !path.isAbsolute(relative)
-            if (!isInsideWorkspace) return "The file not is not in project folder: " + filePath;
-        }
+    static findReplaceFile = async (
+        filePath: string, 
+        searchText: string, 
+        replaceText: string, 
+        replaceAll: boolean,
+        fileReadTimestamps: Map<string, number>
+    ): Promise<string> => {
         try {
-            const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
-            if (!fileExists){
-                await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
-                await fs.promises.writeFile(absolutePath, result);
-            }
-            // Ensure only \n is used for new line
-            result = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
-            result = Utils.stripBOMFromString(result);
-            
-            // Handle empty search text case
-            searchText = searchText.split(/\r?\n/).join("\n");
-            if (searchText.trim() === '') {
-                if (fs.existsSync(absolutePath)){
-                    result += '\n' + replaceText;
-                    await fs.promises.writeFile(absolutePath, result);
-                    return "The file is created: " + absolutePath
-                } else {
-                    ret = "File already exists. Use edit mode (non-empty search) to modify it."
+            // --- 1. Resolve path against workspaces ---
+            let absolutePath: string = filePath;
+            if (path.isAbsolute(filePath)) {
+                const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath));
+                if (!workspaceFolder) {
+                    return `Error: File "${filePath}" is outside all workspace folders.`;
                 }
+                absolutePath = path.resolve(filePath);
             } else {
-                if (!fs.existsSync(absolutePath)) {
-                    return "Cannot edit a non-existent file. To create a file, set search to an empty string."
+                if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                    return "Error: No workspace folder found.";
                 }
-                const foundTimes = Utils.containsSubstringInfo(result, searchText);
-                if (foundTimes == 1 || (foundTimes > 1 && replaceAll)) {
-                    result = result.split(searchText).join(replaceText);
-                    await fs.promises.writeFile(absolutePath, result);
-                } else if (foundTimes == 0) {
-                    ret = "Error edititing file " + filePath + " - " + "Search string not found.";
-                } else ret = "Error edititing file " + filePath + " - " + "Found more than one matches. Provide more context or set replace_all=true.";
-            }                 
+                let resolved = false;
+                for (const folder of vscode.workspace.workspaceFolders) {
+                    const potential = path.join(folder.uri.fsPath, filePath);
+                    const relative = path.relative(folder.uri.fsPath, potential);
+                    if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+                        absolutePath = potential;
+                        resolved = true;
+                        break;
+                    }
+                }
+                if (!resolved) {
+                    return `Error: Cannot resolve relative path "${filePath}" against any workspace folder.`;
+                }
+            }
+
+            // --- 2. Check file existence ---
+            const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
+
+            // --- 3. Read content if exists ---
+            let content = "";
+            if (fileExists) {
+                content = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
+                content = Utils.stripBOMFromString(content);
+            }
+
+            // --- 4. Normalize searchText ---
+            const normalizedSearch = searchText.split(/\r?\n/).join("\n");
+
+            // --- 5. Creation mode ---
+            if (normalizedSearch.trim() === '') {
+                if (fileExists) {
+                    return `Error: File already exists at "${absolutePath}". Use edit mode (non-empty search) to modify it.`;
+                }
+                await fs.promises.mkdir(path.dirname(absolutePath), { recursive: true });
+                await fs.promises.writeFile(absolutePath, replaceText, 'utf-8');
+                return `Success: File created at "${absolutePath}".`;
+            }
+
+            // --- 6. Edit mode ---
+            if (!fileExists) {
+                return `Error: Cannot edit non-existent file "${absolutePath}". To create it, set search to an empty string.`;
+            }
+
+            // --- 7. Staleness check (recommended addition) ---
+            const stats = await fs.promises.stat(absolutePath);
+            const lastModified = fileReadTimestamps.get(absolutePath);
+            if (lastModified && stats.mtimeMs !== lastModified) {
+                return `Error: File "${absolutePath}" was modified externally since last read. Re-read the file and retry.`;
+            }
+
+            // --- 8. Uniqueness check ---
+            const matchCount = Utils.containsSubstringInfo(content, normalizedSearch);
+            if (matchCount === 0) {
+                return `Error: Search string not found in "${filePath}".`;
+            }
+            if (matchCount > 1 && !replaceAll) {
+                return `Error: Found ${matchCount} matches in "${filePath}". Provide more context or set replace_all=true.`;
+            }
+
+            // --- 9. Perform replacement ---
+            const newContent = content.split(normalizedSearch).join(replaceText);
+            await fs.promises.writeFile(absolutePath, newContent, 'utf-8');
+
+            // Update timestamp
+            const newStats = await fs.promises.stat(absolutePath);
+            fileReadTimestamps.set(absolutePath, newStats.mtimeMs);
+
+            return `Success: File "${filePath}" updated.`;
+
         } catch (error) {
-            if (error instanceof Error) ret = "Error edititing file " + filePath + " - " + error.message;
-            else ret = "Error edititing file " + filePath + " - " + error;
+            return `Error editing file "${filePath}": ${error instanceof Error ? error.message : String(error)}`;
         }
-        
-        return ret;
-    }
+    };
 
     static extractConflictParts = (input: string): [string, string, string] => {
         const lines = input.split(/\r?\n/);

@@ -17,6 +17,7 @@ export class Tools {
     vscodeTools: any[] = [];
     vscodeToolsSelected: Map<string, boolean> = new Map();
     private lastSearchToolsResult: any[] = [];
+    private fileReadTimestamps = new Map<string, number>()
     
     constructor(application: Application) {
         this.app = application;
@@ -112,6 +113,9 @@ export class Tools {
         try {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
+            absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
+            const stats = await fs.promises.stat(absolutePath);
+            this.fileReadTimestamps.set(absolutePath, stats.mtimeMs);
             uri = vscode.Uri.file(absolutePath);
             const document = await vscode.workspace.openTextDocument(uri)
             if (params.should_read_entire_file) return document.getText()
@@ -447,7 +451,7 @@ export class Tools {
                 }
                 if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
-            let resultEdit = await Utils.findReplaceFile(filePath, search, replace, replaceAll)
+            let resultEdit = await Utils.findReplaceFile(filePath, search, replace, replaceAll, this.fileReadTimestamps)
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
                 this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
             }
