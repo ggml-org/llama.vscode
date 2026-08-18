@@ -195,16 +195,16 @@ export class ModelService {
     selectDefaultModel = async (modelType: ModelType, persistenceKey: string) => {
         const defaultModel = this.app.persistence.getGlobalValue(persistenceKey);
         if (defaultModel) {
-            await this.app.modelService.selectStartModel(defaultModel, modelType, this.app.modelService.getTypeDetails(modelType));
+            await this.selectStartModel(defaultModel, modelType, this.getTypeDetails(modelType));
         }
         this.app.llamaWebviewProvider.updateLlamaView();
     }
 
     public async selectStartModel(model: LlmModel, type: ModelType, details: ModelTypeDetails) {
         await this.addApiKey(model);
-        this.app.setSelectedModel(type, model);
-
+        
         await details.killCmd();
+        if (model.localStartCommand && this.app.configuration.only_one_local_model) await this.deselectAllLocalModels();
         if (model.localStartCommand) await details.shellCmd(this.sanitizeCommand(model.localStartCommand ?? ""));
         await this.app.persistence.setValue(this.getSelectedProp(type), model);
         if (type === ModelType.Tools) {
@@ -221,6 +221,18 @@ export class ModelService {
                 }
             }
         }
+
+        this.app.setSelectedModel(type, model);
+    }
+
+    private deselectAllLocalModels = async () => {
+        // Deselects models for completion, chat, tools if they are local
+        const complModel = this.app.getComplModel()
+        if (complModel && complModel.localStartCommand) await this.deselectAndClearModel(ModelType.Completion);
+        const chatModel = this.app.getChatModel()
+        if (chatModel && chatModel.localStartCommand) await this.deselectAndClearModel(ModelType.Chat);
+        const toolsModel = this.app.getToolsModel()
+        if (toolsModel && toolsModel.localStartCommand) await this.deselectAndClearModel(ModelType.Tools);
     }
 
     public async addModel(type: ModelType, kind: 'local' | 'external' | 'hf' | 'oaiComp'): Promise<void> {

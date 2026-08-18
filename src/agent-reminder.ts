@@ -52,7 +52,7 @@ export class AgentReminder {
     }
 
     remindEditFile = (iteration: number ) => {
-        return `If you use edit_file tool, the input parameter should has the following ${this.app.prompts.EDIT_TOOL_BASIC_STRUCTURE}} `
+        return `${this.app.prompts.EDIT_FILE_REMINDER}`
     }
 
     initReminders = () => {

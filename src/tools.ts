@@ -17,6 +17,7 @@ export class Tools {
     vscodeTools: any[] = [];
     vscodeToolsSelected: Map<string, boolean> = new Map();
     private lastSearchToolsResult: any[] = [];
+    private fileReadTimestamps = new Map<string, number>()
     
     constructor(application: Application) {
         this.app = application;
@@ -112,6 +113,9 @@ export class Tools {
         try {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
+            absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
+            const stats = await fs.promises.stat(absolutePath);
+            this.fileReadTimestamps.set(absolutePath, stats.mtimeMs);
             uri = vscode.Uri.file(absolutePath);
             const document = await vscode.workspace.openTextDocument(uri)
             if (params.should_read_entire_file) return document.getText()
@@ -427,14 +431,17 @@ export class Tools {
     
     public editFile = async (args: string) => {
         let params = JSON.parse(args);
-        let changes = params.input;
+        let filePath = params.file_path;
+        let search = params.search;
+        let replace = params.replace;
+        let replaceAll = false
+        
+        if (params?.replace_all){
+            replaceAll = params?.replace_all;
+        }
 
-        if (params.input == undefined) return "The input is not provided."
-       
-        let filePath = this.getFilePath(params.input);
         if (!filePath) return "The file is not provided.";
         
-
         try {
             if (!this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
@@ -444,11 +451,10 @@ export class Tools {
                 }
                 if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
-            let resultEdit = await Utils.applyEdits(changes)
+            let resultEdit = await Utils.findReplaceFile(filePath, search, replace, replaceAll, this.fileReadTimestamps)
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
                 this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
             }
-            const uri = vscode.Uri.file(Utils.getAbsolutFilePath(filePath));
             return resultEdit;
         } catch (error) {
             console.error('Error editing file ' + filePath + ":", error);
@@ -458,10 +464,8 @@ export class Tools {
 
     public editFileDesc = async (args: string) => {
         let params = JSON.parse(args);
-        let diffText = params.input;
-        if (!diffText) return "Parameter input not found."
-        
-        let filePath = this.getFilePath(diffText);
+        let filePath = params.file_path;
+        if (!filePath) return "Parameter file_path not found."
         
         return "Edited file " + filePath;
     }
@@ -830,18 +834,28 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "edit_file",
-                    "description": this.app.prompts.TOOL_APPLY_EDITS ,
+                    "description": this.app.prompts.EDIT_FILE_DESC ,
                     "parameters": {
                         "type": "object",
                         "properties": {
-                            "input": {
-                                "description": `Files changes in SEARCH/REPLACE block format. SEARCH should be EXACT MATCH, including spaces tabs, etc.`,
+                            "file_path": {
+                                "description": `Relative or absolute path of the file to edit/create. The file_path must be inside project root folder.`,
                                 "type": "string",
                             },
+                            "search": {
+                                "description": `The exact text to find and replace. Must be non-empty for edits. search should be EXACT MATCH, including spaces tabs, etc.`,
+                                "type": "string",
+                            },
+                            "replace": {
+                                "description": `The new content to insert. Can be an empty string to delete the search block.`,
+                                "type": "string",
+                            },
+                            "replace_all": {
+                                "description": `If true, replaces all occurrences of search. If false, search must appear exactly once.`,
+                                "type": "boolean",
+                            },
                         },
-                        "required": [
-                            "input"
-                        ],
+                        "required": ["file_path", "search", "replace"],
                     },
                     "strict": true
                 }

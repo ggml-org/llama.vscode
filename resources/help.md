@@ -272,6 +272,9 @@ Deselect env from llama-vscode ui or from llama-vscode menu, "Deselect/stop env.
 
 There is a page in llama-vscode UI with the current environment details. From there it is possible to change the current environment and also save it (i.e. create a new env)
 
+### Settings
+only_one_local_model - if true - on selecting a local model, the other selected local models are deselected/stopped. This is valid for completion, chat and tools models. Embeddings models are small and therefore excuded from the group. By default it is false.
+
 <img width="540" height="996" alt="image" src="https://github.com/user-attachments/assets/b1a78d7a-8602-451a-b304-fc967fb66696" />
 
 ## Generate a commit message  
@@ -306,6 +309,21 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.62 is released (18.08.2026)
+### What is new
+- Tool edit_file is reimplemented - now it uses simple search/replace and requires the file to be read after the latest modification
+- Property only_one_local_model added for ease of use with local models. If true - on selecting a local model, the other selected local models are deselected/stopped. This is valid for completion, chat and tools models. Embeddings models are small and therefore excuded from the group. By default it is false.
+
+
+
+## Version 0.0.61 is released (17.08.2026)
+### What is new
+- Improve edit text with AI and edit multiple files with AI - adding context from .md files is now possible
+- Fix loosing agent context files on hiding and showing agent view
+- Agent Reminders added - for example periodically reminds the agent about the correct format of the edit_file tool input parameter (setting reminder_edit_file_frequency). 
+- Default models introduced - if a model is not selected, the default one (if any) is selected automatically
+
+
 ## Version 0.0.60 is released (15.08.2026)
 ### What is new
 - Fix environment auto-start persistence
@@ -313,6 +331,7 @@ Settings:
 - Telegram bot new command "//" - shows all agent commands
 - Telegram bot - the agent commands are now requested with simeple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list if it contains only acceptable chars for telegram command)
 - Script files (suffix .lvs) from folder of the setting scripts_folder are availabe as script commands in the agent.
+
 
 ## Version 0.0.59 is released (07.08.2026)
 ### What is new
@@ -383,7 +402,7 @@ Settings:
 
 
 ### Version 0.0.50 is released (26.06.2026)
-## What is new
+### What is new
 
 * Option for using standard shell script for llama.cpp installation (brew / winget also available)
 * Use "llama server" instead of llama-server to start a local server
@@ -391,7 +410,7 @@ Settings:
 
 
 ## Version 0.0.49 is released (26.06.2026)
-## What is new
+### What is new
 
 * User dialogs are now two types - popup dialogs (for short texts) and dialogs in editor (for long texts)
 * Setting popup_max_chars (default 160) determines what is the max length of short texts (popup dialogs used for them)
@@ -400,7 +419,7 @@ Settings:
 
 
 ## Version 0.0.48 is released (01.06.2026)
-## What is new
+### What is new
 
 Thanks to @danielrobbins we have the following improvements:
 
@@ -427,7 +446,7 @@ This fixes the context size shown in the VS Code model UI so shared-context llam
 
 
 ## Version 0.0.47 is released (04.05.2026)
-## What is new
+### What is new
 
 - Multiline field for Edit with AI  
 - Qwen3.5 models added as predefined (2B, 4B, 9B) - good for tools and chat  
@@ -435,7 +454,7 @@ This fixes the context size shown in the VS Code model UI so shared-context llam
 
 
 ## Version 0.0.46 is released (29.04.2026)
-## What is new
+### What is new
 
 llama.vscode could provide models for VS Code Copilot now:
 1. Start tools model from llama-vscode (local or external)  
@@ -448,7 +467,7 @@ Not needed tools from Copilot could be unchecked to reduce contex size if local 
 
 
 ## Version 0.0.45 is released (04.03.2026)
-## What is new
+### What is new
 
 - Configurable debounce for inline completion requests - setting debounce_ms. 
 llama-vscode will wait debounce_ms after a keystroke before sending a request to the LLM for inline code completion. If in the meantime there is another keystroke, the request for the previous keystroke is cancelled. Useful on low end hardware to avoid triggering code completion on every keystroke.
@@ -457,7 +476,7 @@ llama-vscode will wait debounce_ms after a keystroke before sending a request to
 
 
 ## Version 0.0.44 is released (03.03.2026)
-## What is new
+### What is new
 
 - Subagents implemented (with tool delegate_task) - now each agent, which has "Available as Subagent" checked could be used as a subagent
 
@@ -1355,7 +1374,8 @@ Here are the commands (messages, which start with "/"), which the bot can execut
 - /chat n - gets the last n  characters of the current chat. If n is not specified, the last 1000 characters are returned
 - /newchat, /new - stops the current chat and starts a new chat
 - /setlang xx - sets the language, which is used by the bot: bg - Bulgarian (Български), cn - Chinese (中文), en - English, fr - French (Français), de - German (Deutsch), ru - Russian (Русский), es - Spanish (Español)
-- / - shows available commands
+- / - shows available telegram bot commands
+- // - shows the available agent commands
 - /help - shows help information for using the bot
 
 ### Settings:  

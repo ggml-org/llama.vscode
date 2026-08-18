@@ -149,61 +149,131 @@ Task:
 Expected result: 
 {expected_result}
 `
-EDIT_TOOL_BASIC_STRUCTURE = `Basic Format Structure:
-\`\`\`diff
-filename.py
-<<<<<<< SEARCH  
-// original text lines that should be found and replaced (with all spaces, tabs, etc.. EXACT MATCH is needed)  
-=======  
-// new text lines that will replace the original content  
->>>>>>> REPLACE  
-\`\`\``
+EDIT_FILE_REMINDER = `[REMINDER] When using edit_file:
 
-TOOL_APPLY_EDITS = `
-Edits/creates file. Use this tool only if file content or at least  section of the file is already read and there is a sufficient context. Provide here exactly one file with user instruction to make one change to it using a diff-fenced format. 
+1. "search" MUST be a VERBATIM, exact copy (character-for-character, spaces, tabs, newlines) of the text from the current file. NO approximations.
+2. The "search" block MUST appear exactly ONCE in the file (unless replace_all=true). Include 3-5 surrounding lines to guarantee uniqueness.
+3. If an edit fails, RE-READ the file immediately and retry with a more specific search block.`
 
-File is presented with its relative path followed by code fence markers and the complete file content:
+EDIT_FILE_DESC = `
+Tool: edit_file
 
-## How to make Edits (diff-fenced format):
-When making changes, you MUST use the SEARCH/REPLACE block format for the input parameter as follows:
+Purpose:
+Performs a precise, surgical edit to an existing file OR creates a new file. The tool uses exact string matching to ensure deterministic, safe modifications.
 
-1. ${this.EDIT_TOOL_BASIC_STRUCTURE}
-  
-2. Format Rules: 
-- The first line must be a code fence opening marker (\`\`\`diff)  
-- The second line must contain ONLY the file path, exactly as shown to you  
-- The SEARCH block must contain the EXACT lines with correct number of spaces or tabs before and after the text of each line, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced!
-- The REPLACE block contains the new content  
-- End with a code fence closing marker (\`\`\`)  
-- Include enough context in the SEARCH block to uniquely identify the section to change  
-- Keep SEARCH/REPLACE blocks concise - break large changes into multiple calls to the tool   
-  
-3. **Creating New Files**: Use an empty SEARCH section:  
+Parameters:
+- file_path (string, Required): Absolute path to the file. Always use absolute paths to avoid ambiguity.
+- search (string, Conditional): The exact text to find and replace. Must be non-empty for edits. For file creation, set to an empty string ("").
+- replace (string, Required): The new content to insert. Can be an empty string ("") to delete the search block.
+- replace_all (boolean, Optional, default: false): If true, replaces all occurrences of search. If false, search must appear exactly once.
 
-\`\`\`diff
-new_file.py
-<<<<<<< SEARCH  
-=======  
-# New file content goes here  
-def new_function():  
-    return "Hello World"  
->>>>>>> REPLACE
-\`\`\` 
-4. **Moving Content**: Use two calls to the tool:  1. One to delete content from its original location (empty REPLACE section). 2. One to add it to the new location (empty SEARCH section)  
+Mode 1: Editing an Existing File (Primary Use)
+Use this mode when modifying a file that already exists on disk.
 
-5. **Multiple Edits**: Use separate calls to the tool for each edit.
+Prerequisites:
+1. The file must have been read earlier in this conversation (via Read or cat).
+2. The file must not have been modified externally since you last read it (staleness check).
 
-## Important Guidelines  
-  
+Rules for search:
+- Must be an exact, verbatim copy of the text you want to replace, character for character.
+- Include 3 to 5 lines of surrounding context to guarantee uniqueness and help the tool locate the correct block.
+- Preserve indentation (spaces/tabs), newlines (\n), and case exactly as they appear in the file.
+- NEVER shorten, summarize, or "approximate" the search block. A single mismatched character will cause the edit to fail.
+
+Validity checks for editing:
+- If search appears 0 times -> FAIL. Error: "Search string not found." Re-read the file and correct the block.
+- If search appears more than once and replace_all is false (default) -> FAIL. Error: "Found X matches. Provide more context or set replace_all=true."
+- If search appears exactly once -> SUCCESS. Perform the replacement.
+- If search appears more than once and replace_all is true -> SUCCESS. Replace all occurrences. Use this option sparingly and with caution.
+
+Mode 2: Creating a New File (Fallback Only)
+Use this mode only when the file does not exist yet.
+
+Rules:
+- file_path must point to a location that does not currently exist on disk.
+- search MUST be an empty string ("").
+- replace must contain the complete content for the new file.
+
+Validity checks for creation:
+- If file already exists and search is "" -> FAIL. Error: "File already exists. Use edit mode (non-empty search) to modify it."
+- If file does not exist and search is "" -> SUCCESS. Create the new file with the content from replace.
+- If file does not exist and search is non-empty -> FAIL. Error: "Cannot edit a non-existent file. To create a file, set search to ""."
+
+Examples (plain text):
+
+Example 1: Replace a function definition (existing file)
+file_path = "/home/user/src/app.py"
+search = "def calculate():\n    return 42\n"
+replace = "def calculate():\n    return 100\n"
+replace_all = false
+
+Example 2: Delete a line (set replace to empty string)
+file_path = "/home/user/config.json"
+search = "\"debug\": true,\n"
+replace = ""
+replace_all = false
+
+Example 3: Create a new file
+file_path = "/home/user/src/new_module.py"
+search = ""
+replace = "import os\n\ndef main():\n    print('Hello')\n"
+
+Critical Guidelines for the Agent:
+1. Always use absolute paths. Never rely on relative paths or the current working directory.
+2. Read before editing. Always read the file first to obtain the exact current content and to satisfy the staleness check.
+3. If an edit fails, immediately re-read the file (using Read or cat) and retry with a more specific search block. The file may have changed externally.
+4. Make small, focused edits. Break large changes into multiple small edit_file calls. This reduces token usage, makes failures easier to debug, and minimises risk.
+5. Never ignore whitespace. The match is literal. Copy indentation and line endings exactly from the current file.
+6. Deleting content: To remove text, set replace to an empty string (""). This deletes the search block entirely.
+7. Do not rewrite entire files unless absolutely necessary (for example, the file is very small and a complete restructure is required). For existing files, prefer surgical edits.
+
+Failure Responses and Agent Recovery Actions:
+- "Search string not found." -> Re-read the file (the content may have changed). Adjust search to match exactly.
+- "Found X matches. Provide more context or set replace_all=true." -> Add more surrounding lines to search to make it unique, or use replace_all=true if appropriate.
+- "File already exists. Use edit mode." -> You tried to create a file that exists. Provide a non-empty search block and edit it instead.
+- "Cannot edit a non-existent file." -> You tried to edit a file that doesn't exist. Set search to "" to create it.
+- "File has been modified since last read." -> Re-read the file to refresh your context, then attempt the edit again (this prevents overwriting external changes).
+
+Summary:
+- Editing: search = exact block to replace, replace = new content, replace_all = false by default.
+- Creating: search = "", replace = full file content.
+- Deleting: search = text to remove, replace = "".
+- Always provide absolute file_path, always read the file first, and always make small, focused changes.
+
+
+
+
+
+
+
+
+
+
+
+
+
+Edits/creates file. Use this tool only if file content or at least section of the file is already read and there is a sufficient context. 
+
+## How to make Edits:
+Provide the file_path, search (with not empty value) and replace (optionally replace_all).
+
+- The search must contain the EXACT lines with correct number of spaces or tabs before and after the text of each line, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced! search block should be found only once in the file, otherwise the edit will fail (except when replace_all is true).
+- The replace contains the new content  
+- Include enough context in the search to uniquely identify the section to change  
+- Keep search/replace blocks concise - break large changes into multiple calls to the tool   
+
+
+## How to create new file
+Provide the file_path, empty string for search and the file content in the replace.
+
+## Important Guidelines    
 1. Always include the EXACT file path as shown in the context  
-2. Make sure the SEARCH block starts with <<<<<<< SEARCH and EXACTLY matches the existing content  
 3. Break large changes into multiple smaller, focused calls to the tool  
 4. Only edit files that are already read  
-5. Explain your changes before presenting the SEARCH/REPLACE blocks  
- 
-Following these instructions will ensure your edits can be properly applied to the document.
+
+Following these instructions will ensure your create/edits of a file can be properly applied.
 `
-// Reused from Roocode. Thanks for the authors for keeping it open source.
+// Reused from Roocode. Thanks to the authors for keeping it open source.
 TOOL_UPDATE_TODO_LIST_DESCRIPTION = `## update_todo_list
 
 **Description:**
