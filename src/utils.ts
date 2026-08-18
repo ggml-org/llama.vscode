@@ -630,37 +630,7 @@ export class Utils {
         }
     };
 
-    static extractConflictParts = (input: string): [string, string, string] => {
-        const lines = input.split(/\r?\n/);
-        const part1: string[] = [];
-        const part2: string[] = [];
-        const part3: string[] = [];
-        let i = 0;
-
-        while (i < lines.length && !lines[i].startsWith('<<<<<<< SEARCH')) {
-            part1.push(lines[i]);
-            i++;
-        }
-
-        while (i < lines.length && !lines[i].startsWith('=======')) {
-            part2.push(lines[i]);
-            i++;
-        }
-
-        while (i < lines.length && !lines[i].startsWith('>>>>>>> REPLACE')) {
-            part3.push(lines[i]);
-            i++;
-        }
-
-        return [
-            part1.slice(1).join('\n'),
-            part2.slice(1).join('\n'),
-            part3.slice(1).join('\n')
-        ];
-    }
     
-    
-
     static fetchWebPage = async (url: string): Promise<string> => {
         // Validate the URL
         let parsedUrl: URL;

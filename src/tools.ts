@@ -1238,35 +1238,6 @@ export class Tools {
         }
     }
 
-    private getFilePath(diffText: string) {
-        let filePath = "";
-        const blocks = diffText.split("```diff")
-        if (blocks.slice(1).length > 0) {
-            let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0]);
-            filePath = blockParts[0].trim();
-        } else {
-            if (diffText.length > 0){
-                if (diffText.startsWith("```\n")) diffText = diffText.slice(5)
-                filePath = Utils.extractConflictParts("```diff\n" + diffText)[0].trim()
-            }
-            else return "";
-        }
-
-         // Workaround for ClaudCode project file format - get only the relative path to the file
-        if (filePath.includes(" ## ")) filePath = filePath.split(" ## ")[1];
-        if (filePath.startsWith("## ")) filePath = filePath.slice(3);
-
-        let absolutePath = filePath;
-        if (!path.isAbsolute(filePath)) {
-            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                return "File not found: " + filePath;
-            }
-            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            absolutePath = path.join(workspaceRoot, filePath);
-        }
-
-        return absolutePath;
-    }
 
     private async indexFilesIfNeeded() {
         if (!this.app.configuration.rag_enabled) {
