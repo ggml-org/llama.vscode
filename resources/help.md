@@ -309,6 +309,14 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.63 is released (19.08.2026)
+### What is new
+- New tool added - multi_edit_file - does multiple edits in a single file
+- New predefined tools model Qwen3.7 Flash (for OpenRouter and OrcaRouter) with 1M context, $0.03/M input $0.13/M output (good price/quality ratio).
+- [Warning "Webview not ready yet. Please try again." on startup](https://github.com/ggml-org/llama.vscode/issues/227) is now removed.
+
+
+
 ## Version 0.0.62 is released (18.08.2026)
 ### What is new
 - Tool edit_file is reimplemented - now it uses simple search/replace and requires the file to be read after the latest modification

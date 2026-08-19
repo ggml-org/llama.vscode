@@ -602,6 +602,7 @@ export class Utils {
             // --- 7. Staleness check (recommended addition) ---
             const stats = await fs.promises.stat(absolutePath);
             const lastModified = fileReadTimestamps.get(absolutePath);
+            if (!lastModified)  return `Error: File "${absolutePath}" was not read. Read the file and retry.`;
             if (lastModified && stats.mtimeMs !== lastModified) {
                 return `Error: File "${absolutePath}" was modified externally since last read. Re-read the file and retry.`;
             }
@@ -630,7 +631,107 @@ export class Utils {
         }
     };
 
-    
+    /**
+     * Performs multiple find-replace operations on a file sequentially.
+     * All edits are applied in-memory first. If any edit fails, the file is NOT modified.
+     * Only if ALL edits succeed, the file is written to disk.
+     */
+    static multiFindReplaceFile = async (
+        filePath: string, 
+        edits: Array<{ old_string: string; new_string: string; replace_all?: boolean }>,
+        fileReadTimestamps: Map<string, number>
+    ): Promise<string> => {
+        try {
+            // --- 1. Resolve path against workspaces ---
+            let absolutePath: string = filePath;
+            if (path.isAbsolute(filePath)) {
+                const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath));
+                if (!workspaceFolder) {
+                    return `Error: File "${filePath}" is outside all workspace folders.`;
+                }
+                absolutePath = path.resolve(filePath);
+            } else {
+                if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
+                    return "Error: No workspace folder found.";
+                }
+                let resolved = false;
+                for (const folder of vscode.workspace.workspaceFolders) {
+                    const potential = path.join(folder.uri.fsPath, filePath);
+                    const relative = path.relative(folder.uri.fsPath, potential);
+                    if (!relative.startsWith('..') && !path.isAbsolute(relative)) {
+                        absolutePath = potential;
+                        resolved = true;
+                        break;
+                    }
+                }
+                if (!resolved) {
+                    return `Error: Cannot resolve relative path "${filePath}" against any workspace folder.`;
+                }
+            }
+
+            // --- 2. Check file existence ---
+            const fileExists = await fs.promises.access(absolutePath).then(() => true).catch(() => false);
+
+            // --- 3. Read content if exists ---
+            let content = "";
+            if (fileExists) {
+                content = (await fs.promises.readFile(absolutePath, 'utf-8')).split(/\r?\n/).join("\n");
+                content = Utils.stripBOMFromString(content);
+            }
+
+            // --- 4. Staleness check ---
+            const stats = await fs.promises.stat(absolutePath);
+            const lastModified = fileReadTimestamps.get(absolutePath);
+            if (!lastModified)  return `Error: File "${absolutePath}" was not read. Read the file and retry.`;
+            if (lastModified && stats.mtimeMs !== lastModified) {
+                return `Error: File "${absolutePath}" was modified externally since last read. Re-read the file and retry.`;
+            }
+
+            // --- 5. Apply each edit sequentially in-memory ---
+            for (let i = 0; i < edits.length; i++) {
+                const edit = edits[i];
+                const normalizedSearch = edit.old_string.split(/\r?\n/).join("\n");
+
+                // Creation mode (empty search string) - not supported in multi-edit for existing files
+                if (normalizedSearch.trim() === '') {
+                    if (fileExists) {
+                        return `Error: Edit ${i + 1} failed - File already exists at "${absolutePath}". Use edit mode (non-empty search) to modify it.`;
+                    }
+                    return `Error: Edit ${i + 1} failed - Cannot create file in multi-edit mode. File must already exist.`;
+                }
+
+                // Edit mode - file must exist
+                if (!fileExists) {
+                    return `Error: Edit ${i + 1} failed - Cannot edit non-existent file "${absolutePath}".`;
+                }
+
+                // Uniqueness check
+                const matchCount = Utils.containsSubstringInfo(content, normalizedSearch);
+                if (matchCount === 0) {
+                    return `Error: Edit ${i + 1} failed - Search string not found in "${filePath}".`;
+                }
+                if (matchCount > 1 && !edit.replace_all) {
+                    return `Error: Edit ${i + 1} failed - Found more than once matches in "${filePath}". Provide more context or set replace_all=true.`;
+                }
+
+                // Perform replacement in-memory
+                content = content.split(normalizedSearch).join(edit.new_string);
+            }
+
+            // --- 6. All edits succeeded, write to file ---
+            await fs.promises.writeFile(absolutePath, content, 'utf-8');
+
+            // Update timestamp
+            const newStats = await fs.promises.stat(absolutePath);
+            fileReadTimestamps.set(absolutePath, newStats.mtimeMs);
+
+            return `Success: File "${filePath}" updated with ${edits.length} edit(s).`;
+
+        } catch (error) {
+            return `Error editing file "${filePath}": ${error instanceof Error ? error.message : String(error)}`;
+        }
+    };
+
     static fetchWebPage = async (url: string): Promise<string> => {
         // Validate the URL
         let parsedUrl: URL;

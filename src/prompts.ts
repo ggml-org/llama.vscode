@@ -239,40 +239,88 @@ Summary:
 - Creating: search = "", replace = full file content.
 - Deleting: search = text to remove, replace = "".
 - Always provide absolute file_path, always read the file first, and always make small, focused changes.
-
-
-
-
-
-
-
-
-
-
-
-
-
-Edits/creates file. Use this tool only if file content or at least section of the file is already read and there is a sufficient context. 
-
-## How to make Edits:
-Provide the file_path, search (with not empty value) and replace (optionally replace_all).
-
-- The search must contain the EXACT lines with correct number of spaces or tabs before and after the text of each line, the lines should be in the same order. Never skip or shorten peaces of the content to be replaced! search block should be found only once in the file, otherwise the edit will fail (except when replace_all is true).
-- The replace contains the new content  
-- Include enough context in the search to uniquely identify the section to change  
-- Keep search/replace blocks concise - break large changes into multiple calls to the tool   
-
-
-## How to create new file
-Provide the file_path, empty string for search and the file content in the replace.
-
-## Important Guidelines    
-1. Always include the EXACT file path as shown in the context  
-3. Break large changes into multiple smaller, focused calls to the tool  
-4. Only edit files that are already read  
-
-Following these instructions will ensure your create/edits of a file can be properly applied.
 `
+
+MULTI_EDIT_FILE_DESC = `Tool: multi_edit_file
+
+Purpose:
+Performs multiple find-and-replace operations on a single file in one atomic call. This is the preferred tool when you need to make several changes to the same file, as it reduces the number of tool invocations and ensures that either all edits are applied or none are (atomicity).
+
+Parameters:
+- file_path (string, Required): The absolute path to the file to modify. Always use an absolute path.
+- edits (array, Required): An array of edit operations. Must contain at least one operation.
+  Each operation in the array has the following fields:
+  - old_string (string, Required): The exact text to find and replace. Must match character-for-character, including whitespace, indentation, and newlines.
+  - new_string (string, Required): The replacement text. Can be an empty string ("") to delete old_string.
+  - replace_all (boolean, Optional, default: false): If true, replaces every occurrence of old_string in the file. If false (default), old_string must appear exactly once in the file for this operation to succeed.
+
+Behavior:
+1. Atomic execution: The tool performs all edits as a single transaction. If any individual edit fails (e.g., old_string not found, multiple matches found without replace_all), the entire operation is aborted and no changes are written to disk.
+2. Sequential application: Edits are applied in the order they appear in the edits array. This allows later edits to target text that was introduced or modified by an earlier edit in the same call.
+3. Uniqueness enforcement: For each operation, unless replace_all is true, the corresponding old_string must occur exactly once in the current state of the file (after applying previous edits in the array). If it occurs zero times or multiple times, the operation fails and the whole multi_edit is rolled back.
+4. File staleness: The file must have been read earlier in the current conversation. If the file has been modified externally since the last read, the tool will reject the operation. Re-read the file and retry.
+
+Prerequisites:
+- The file must have been read (via the Read tool or a cat command) in the current session.
+- The file must not have been modified on disk since the last read (staleness check).
+
+Success and Failure:
+- Success: Returns a confirmation message indicating that all edits were applied successfully.
+- Failure: Returns an error message describing the specific failure. Common failures include:
+  - "Search string not found" – old_string does not exist.
+  - "Found X matches, provide more context or set replace_all=true" – ambiguous match.
+  - "File has been modified since last read" – staleness detected.
+  - "File does not exist" – cannot edit a missing file (use the single edit_file tool to create it).
+
+Guidelines for the Agent:
+1. Provide exact, verbatim old_string blocks. Copy directly from the file, including all whitespace and indentation.
+2. Include 3–5 lines of surrounding context in each old_string to guarantee uniqueness, unless you intend to replace all occurrences.
+3. Break large changes into logical groups within the edits array, but keep the total number of operations reasonable (typically under 10 per call). For very large rewrites, consider using multiple multi_edit_file calls.
+4. If an edit fails, re-read the file immediately (the file may have changed) and retry with a more specific old_string or by adjusting the replace_all flag.
+5. Use replace_all only when you are certain that every occurrence of old_string must be replaced. This is commonly used for renaming variables or updating boilerplate text.
+
+Examples (illustrative, not code):
+
+Example 1: Replace two function names in the same file.
+file_path: "/home/user/src/app.py"
+edits:
+  - old_string: "def calculate_old():\n    return 42\n"
+    new_string: "def calculate_new():\n    return 42\n"
+    replace_all: false
+  - old_string: "result = calculate_old()"
+    new_string: "result = calculate_new()"
+    replace_all: false
+
+Example 2: Replace all occurrences of a deprecated constant.
+file_path: "/home/user/src/config.js"
+edits:
+  - old_string: "OLD_API_URL"
+    new_string: "NEW_API_URL"
+    replace_all: true
+
+Example 3: Delete an entire import line and update a function call (sequential dependency).
+file_path: "/home/user/src/main.py"
+edits:
+  - old_string: "from old_lib import helper\n"
+    new_string: ""   # Deletes the import line
+    replace_all: false
+  - old_string: "helper.process()"
+    new_string: "new_helper.process()"  # This edit sees the file after the import is removed
+    replace_all: false
+
+Important Notes:
+- This tool is designed for existing files. To create a new file, use the single edit_file tool with an empty search string.
+- To delete a block of text, set new_string to an empty string ("").
+- The tool operates on a best-effort basis to preserve line endings and encoding. Always normalize newlines to LF (\n) before performing comparisons to avoid platform-specific mismatches.
+- If you need to replace a large, complex block, ensure old_string matches exactly, including any trailing newline or spaces at the end of the block.
+
+Summary:
+- Use multi_edit_file when you have two or more targeted changes in the same file.
+- Each old_string must be unique unless replace_all is true.
+- Edits run sequentially and atomically – all succeed or none are applied.
+- Always read the file before editing, and re-read if an error occurs.`
+
+
 // Reused from Roocode. Thanks to the authors for keeping it open source.
 TOOL_UPDATE_TODO_LIST_DESCRIPTION = `## update_todo_list
 
