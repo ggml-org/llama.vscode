@@ -38,6 +38,7 @@ export class Tools {
         this.toolsFunc.set("create_agent", this.createAgent)
         this.toolsFunc.set("get_errors", this.getErrors) 
         this.toolsFunc.set("rename_symbol", this.renameSymbol)
+        this.toolsFunc.set("multi_edit_file", this.multiEditFile)
         this.toolsFunc.set("search_tools", this.searchTools),
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
@@ -57,6 +58,7 @@ export class Tools {
         this.toolsFuncDesc.set("create_agent ", this.createAgentDesc);
         this.toolsFuncDesc.set("get_errors ", this.getErrorsDesc);
         this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
+        this.toolsFuncDesc.set("multi_edit_file", this.multiEditFileDesc);
         this.toolsFuncDesc.set("search_tools", this.searchToolsDesc);
     }
 
@@ -468,6 +470,42 @@ export class Tools {
         if (!filePath) return "Parameter file_path not found."
         
         return "Edited file " + filePath;
+    }
+
+    public multiEditFile = async (args: string) => {
+        let params = JSON.parse(args);
+        let filePath = params.file_path;
+        let edits = params.edits;
+
+        if (!filePath) return "The file is not provided.";
+        if (!edits || !Array.isArray(edits) || edits.length < 1) return "At least one edit operation is required.";
+
+        try {
+            if (!this.app.configuration.tool_permit_file_changes){  
+                let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
+                if (yesDontAsk) {
+                    this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
+                    vscode.window.showInformationMessage("Setting tool_permit_file_changes is set to true.")
+                }
+                if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
+            }
+            let resultMultiEdit = await Utils.multiFindReplaceFile(filePath, edits, this.fileReadTimestamps)
+            if (resultMultiEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
+                this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
+            }
+            return resultMultiEdit;
+        } catch (error) {
+            console.error('Error editing file ' + filePath + ":", error);
+            throw error;
+        }        
+    }
+
+    public multiEditFileDesc = async (args: string) => {
+        let params = JSON.parse(args);
+        let filePath = params.file_path;
+        if (!filePath) return "Parameter file_path not found."
+        
+        return "Multi-edited file " + filePath;
     }
 
     public askUser = async (args: string) => {
@@ -883,6 +921,48 @@ export class Tools {
                 }
             }
             ] : []),
+            ...(this.app.configuration.tool_multi_edit_file_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "multi_edit_file",
+                    "description": this.app.prompts.MULTI_EDIT_FILE_DESC,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "file_path": {
+                                "description": "Relative or absolute path of the file to edit. The file_path must be inside project root folder.",
+                                "type": "string",
+                            },
+                            "edits": {
+                                "description": "An array of edit operations (minimum 1 required) to perform sequentially",
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "old_string": {
+                                            "description": "The exact text to find and replace",
+                                            "type": "string",
+                                        },
+                                        "new_string": {
+                                            "description": "The new content to insert. Can be an empty string to delete the search block.",
+                                            "type": "string",
+                                        },
+                                        "replace_all": {
+                                            "description": "If true, replaces all occurrences of old_string. If false, old_string must appear exactly once.",
+                                            "type": "boolean",
+                                        },
+                                    },
+                                    "required": ["old_string", "new_string"],
+                                },
+                            },
+                        },
+                        "required": ["file_path", "edits"],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
             ...(this.app.configuration.tool_custom_tool_enabled ? [
             {
                 "type": "function",
@@ -1238,35 +1318,6 @@ export class Tools {
         }
     }
 
-    private getFilePath(diffText: string) {
-        let filePath = "";
-        const blocks = diffText.split("```diff")
-        if (blocks.slice(1).length > 0) {
-            let blockParts = Utils.extractConflictParts("```diff" + blocks.slice(1)[0]);
-            filePath = blockParts[0].trim();
-        } else {
-            if (diffText.length > 0){
-                if (diffText.startsWith("```\n")) diffText = diffText.slice(5)
-                filePath = Utils.extractConflictParts("```diff\n" + diffText)[0].trim()
-            }
-            else return "";
-        }
-
-         // Workaround for ClaudCode project file format - get only the relative path to the file
-        if (filePath.includes(" ## ")) filePath = filePath.split(" ## ")[1];
-        if (filePath.startsWith("## ")) filePath = filePath.slice(3);
-
-        let absolutePath = filePath;
-        if (!path.isAbsolute(filePath)) {
-            if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
-                return "File not found: " + filePath;
-            }
-            const workspaceRoot = vscode.workspace.workspaceFolders[0].uri.fsPath;
-            absolutePath = path.join(workspaceRoot, filePath);
-        }
-
-        return absolutePath;
-    }
 
     private async indexFilesIfNeeded() {
         if (!this.app.configuration.rag_enabled) {

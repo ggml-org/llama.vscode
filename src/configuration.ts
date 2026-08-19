@@ -89,6 +89,7 @@ export class Configuration {
     tool_permit_file_delete = false
     tool_get_diff_enabled = false;
     tool_edit_file_enabled = true;
+    tool_multi_edit_file_enabled = true;
     tool_ask_user_enabled = true;
     tool_custom_tool_enabled = false;
     tool_custom_tool_description = "";
@@ -256,6 +257,7 @@ export class Configuration {
         this. tool_permit_file_delete = Boolean(config.get<boolean>("tool_permit_file_delete"));
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));
         this.tool_edit_file_enabled = Boolean(config.get<boolean>("tool_edit_file_enabled"));
+        this.tool_multi_edit_file_enabled = Boolean(config.get<boolean>("tool_multi_edit_file_enabled"));
         this.tool_ask_user_enabled = Boolean(config.get<boolean>("tool_ask_user_enabled"));
         this.tool_custom_tool_enabled = Boolean(config.get<boolean>("tool_custom_tool_enabled"));
         this.tool_update_todo_list_enabled = Boolean(config.get<boolean>("tool_update_todo_list_enabled"));
@@ -427,6 +429,7 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_ask_user_enabled")
         || event.affectsConfiguration("llama-vscode.tool_delete_file_enabled")
         || event.affectsConfiguration("llama-vscode.tool_edit_file_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_multi_edit_file_enabled")
         || event.affectsConfiguration("llama-vscode.tool_get_diff_enabled")
         || event.affectsConfiguration("llama-vscode.tool_llama_vscode_help_enabled")
         || event.affectsConfiguration("llama-vscode.tool_update_todo_list_enabled")

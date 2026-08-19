@@ -79,8 +79,9 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "endpoint": "http://127.0.0.1:8010"
             }
           ]],
-[PREDEFINED_LISTS_KEYS.TOOLS,
-    [       {
+[PREDEFINED_LISTS_KEYS.TOOLS,[       
+                  
+            {
               "name": "Qwen3.5-2B-GGUF:Q8_0 (LOCAL) (CPU or VRAM>3GB)",
               "localStartCommand": "llama serve -hf unsloth/Qwen3.5-2B-GGUF:Q8_0 --port 8009 --host 127.0.0.1",
               "endpoint": "http://localhost:8009",
@@ -116,10 +117,18 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
-              "name": "Z.AI: GLM 4.5 Air (free): GLM 4.5 Air - 128.000 context (OpenRouter)",
+              "name": "(OrcaRouter) Qwen3.7 Flash 1M context $0.03/M input $0.13/M output )",
+              "localStartCommand": "",
+              "endpoint": "https://api.orcarouter.ai",
+              "aiModel": "qwen/qwen3.7-flash",
+              "isKeyRequired": true
+            },
+            {
+              "name": "(OpenRouter) Qwen3.7 Flash 1M context $0.03/M input $0.13/M output",
+              "localStartCommand": "",
               "endpoint": "https://openrouter.ai/api",
-              "isKeyRequired": true,
-              "aiModel": "z-ai/glm-4.5-air:free"
+              "aiModel": "qwen/qwen3.7-flash",
+              "isKeyRequired": true
             },
             {
               "name": "Z.AI: GLM 4.5 - 128000 context $0.60/M input tokens $2.20/M output tokens (OpenRouter)",
@@ -134,13 +143,13 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "aiModel": "z-ai/glm-4.5-air"
             },
             {
-              "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262 144 context $0.118/M input tokens $0.118/M output tokens (OpenRouter)",
+              "name": "Qwen: Qwen3 235B A22B Thinking 2507 - 262 144 context $0.23/M input tokens $2.30/M output tokens (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
               "aiModel": "qwen/qwen3-235b-a22b-thinking-2507"
             },
             {
-              "name": "Qwen: Qwen3 VL 30B A3B Instruct - 262 144 context $0.15/M input tokens $0.60/M output tokens (OpenRouter)",
+              "name": "Qwen: Qwen3 VL 30B A3B Instruct - 262 144 context $0.13/M input tokens $0.52/M output tokens (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
               "aiModel": "qwen/qwen3-vl-30b-a3b-instruct"
@@ -152,7 +161,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "aiModel": "qwen/qwen3-coder"
             },
             {
-              "name": "Qwen: Qwen3 235B A22B Instruct 2507 - 262K context $0.12/M input tokens $0.59/M output tokens (OpenRouter)",
+              "name": "Qwen: Qwen3 235B A22B Instruct 2507 - 262K context $0.12/M input tokens $0.80/M output tokens (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
               "aiModel": "qwen/qwen3-235b-a22b-2507"
@@ -745,6 +754,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "delete_file",
                 "get_diff",
                 "edit_file",
+                "multi_edit_file",
                 "ask_user",
                 "update_todo_list",
                 "delegate_task", 
@@ -1077,6 +1087,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "delete_file",
                 "get_diff",
                 "edit_file",
+                "multi_edit_file",
                 "ask_user",
                 "update_todo_list",
                 "delegate_task", 

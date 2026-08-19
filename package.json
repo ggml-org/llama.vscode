@@ -1497,6 +1497,11 @@
           "default": true,
           "description": "Enable/disable tool edit_file"
         },
+        "llama-vscode.tool_multi_edit_file_enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable/disable tool multi_edit_file"
+        },
         "llama-vscode.tool_ask_user_enabled": {
           "type": "boolean",
           "default": true,

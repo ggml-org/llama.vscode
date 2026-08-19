@@ -623,7 +623,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.app.llamaAgent.resetMessages();
         this.app.llamaAgent.resetContext();
         await this.app.chatService.selectUpdateChat({ name: "", id: "" });
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateText',
             text: ''
         });
@@ -638,7 +638,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         agent.tools?.map(tool => this.app.agentService.addEditedAgentTools(tool, ""));
         const edAgtools = this.app.agentService.getEditedAgentTools();
         this.app.setAgentModel(agent.toolsModel);
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'loadAgent',
             name: agent?.name,
             description: agent?.description,
@@ -650,7 +650,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     private updateSettingInEnvView(key: string, settingValue: any) {
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'vscodeSettingValue',
             key: key,
             value: settingValue
@@ -673,7 +673,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         const defaultEmbsModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL) as LlmModel | undefined;
         const defaultToolsModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL) as LlmModel | undefined;
 
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateDefaultModels',
             completionModel: defaultComplModel?.name || '',
             chatModel: defaultChatModel?.name || '',
@@ -687,7 +687,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         let modelName = currentEmbeddingsModel.name
         if (this.app.configuration.health_check_embs_enabled  && status && status.toLowerCase() != "ok")
             modelName += ": " + status;
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateEmbeddingsModel',
             model: modelName || 'No model selected'
         });
@@ -698,18 +698,18 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         let modelName = currentChatModel.name
         if (this.app.configuration.health_check_chat_enabled  && status && status.toLowerCase() != "ok")
             modelName += ": " + status;
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateChatModel',
             model: modelName || 'No model selected'
         });
     }
 
     private updateToolsModel(status: string = "") {
-        const currentToolsModel: LlmModel = this.app.getModel(ModelType.Tools);
+        const currentToolsModel: LlmModel = this.app.getToolsModel();
         let modelName = currentToolsModel.name
         if (this.app.configuration.health_check_tools_enabled  && status && status.toLowerCase() != "ok")
             modelName += ": " + status;
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateToolsModel',
             model: modelName || 'No model selected'
         });
@@ -717,7 +717,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
 
     private updateTmpAgentModel() {
         const currentTmpAgentModel: LlmModel = this.app.getTmpAgentModel();
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateTmpAgentModel',
             model: currentTmpAgentModel.name || ''
         });
@@ -728,7 +728,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         let modelName = currentComplModel.name
         if (this.app.configuration.health_check_compl_enabled  && status && status.toLowerCase() != "ok")
             modelName += ": " + status;
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateCompletionModel',
             model: modelName || 'No model selected'
         });
@@ -736,7 +736,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
 
     private updateAgent() {
         const currentAgent: Agent = this.app.getAgent();
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateAgent',
             agent: currentAgent.name || 'No agent selected'
         });
@@ -744,35 +744,35 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
 
     private updateEnv() {
         const currentEnv: Env = this.app.getEnv();
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateEnv',
             model: currentEnv.name || 'No env selected'
         });
     }
 
     public logInUi(logText: string) {
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateText',
             text: logText
         });
     }
 
     public setState(stateText: string) {
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateCurrentState',
             text: stateText
         });
     }
 
     public setView(view: string) {
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateView',
             text: view
         });
     }
 
     public set(view: string) {
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateView',
             text: view
         });
@@ -828,7 +828,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
 
     public updateContextFilesInfo() {
         const fileKeys = this.app.chatContext.getProjectFiles();
-        vscode.commands.executeCommand('llama-vscode.webview.postMessage', {
+        this._webview?.webview?.postMessage({
             command: 'updateContextFiles',
             files: []
         });
