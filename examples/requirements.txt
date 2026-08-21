@@ -1,0 +1,13 @@
+fastapi==0.111.0
+uvicorn[standard]==0.29.0
+
+pydantic==2.7.1
+python-dotenv==1.0.1
+
+langchain==0.1.20
+langchain-groq==0.1.5
+
+transformers==4.41.2
+torch==2.3.0
+
+email-validator==2.1.1
