@@ -26,7 +26,8 @@ interface Step {
 export class LlamaAgent {
     private app: Application
     private lastStopRequestTime = Date.now();
-    private messages: ChatMessage[] = []
+    private messages: ChatMessage[] = [];
+    private lastReqTokens = 0;
     private confirmationState: string = ""; // Use consts CONFIRMATION_STATE.*
     private logText = ""
     public contexProjectFiles: Map<string,string> = new Map();
@@ -45,6 +46,10 @@ export class LlamaAgent {
     }
 
     getAgentLogText = () => this.logText;
+
+    getLastReqTokens = () => this.lastReqTokens;
+
+    setLastReqTokens = (lastReqTokens:number) => this.lastReqTokens = lastReqTokens;
 
     getOriginalQuery = () => this.originalQuery;
 
@@ -139,6 +144,7 @@ export class LlamaAgent {
             }
         ];
         this.logText = "";
+        this.lastReqTokens = 0;
     }
 
     selectChat = async (chat: Chat) => {
@@ -149,6 +155,7 @@ export class LlamaAgent {
             const currentChat = this.app.getChat();
             this.messages = chat.messages??[];
             this.logText = chat.log??"";
+            this.lastReqTokens = chat.tokenDetails?.lastReqTokens??0;
         }
         //  this.app.llamaWebviewProvider.logInUi(this.logText);
          this.resetContext();
@@ -249,7 +256,7 @@ export class LlamaAgent {
         return mdFliesContext;
     }
 
-    private async summarize(): Promise<boolean> {
+    summarize = async (): Promise<boolean> => {
         if (this.messages.length <= this.app.configuration.chats_msgs_keep) {
             return false; // Not enough messages to summarize
         }
@@ -273,8 +280,8 @@ export class LlamaAgent {
             this.messages = [
                 ...systemMessages,
                 {
-                role: 'system' as const,
-                content: `Earlier conversation summary: ${summary}`
+                role: 'assistant' as const,
+                content: `Earlier conversation summary:\n <conversation_summary>\n${summary}\n</conversation_summary>`
                 },
                 ...recentMessages
             ];
@@ -282,13 +289,14 @@ export class LlamaAgent {
 
         } catch (error) {
             console.error('Failed to generate summary:', error);
-            // Fallback: just keep recent messages and remove older ones
-            this.messages = [...systemMessages, ...recentMessages];
-            return true;
+            return false;
         }
     }
 
-    public async summarizeToFitCurrentBudget(imagePath = ""): Promise<boolean> {
+    public async summarizeToFitCurrentBudget(newMessage: ChatMessage = {role:"user", content:""}, imagePath = ""): Promise<boolean> {
+        if (!this.app.configuration.chats_summarize_old_msgs) {
+            return false;
+        }
         const tokenLimits = await this.app.llamaServer.getToolsModelTokenLimits();
         const reservedOutputTokens = Math.max(1024, resolveBoundedMaxOutputTokens({
             maxInputTokens: tokenLimits.maxInputTokens,
@@ -302,17 +310,20 @@ export class LlamaAgent {
 
         let summarizedAny = false;
         while (true) {
-            const promptTokens = await this.app.llamaServer.countToolsPromptTokens(this.messages, imagePath);
-            this.app.logger.addEventLog(
-                'AGENT',
-                'BUDGET_CHECK',
-                `prompt_tokens=${promptTokens ?? 'unknown'} | max_prompt_tokens=${maxPromptTokens} | messages=${this.messages.length}`
-            );
-            if (promptTokens === undefined || promptTokens <= maxPromptTokens) {
-                return summarizedAny;
+            let newTokens: number | undefined = undefined;
+            let promptTokens: number = 0;
+            if (!summarizedAny) {
+                newTokens = await this.app.llamaServer.countToolsPromptTokens([newMessage], imagePath);
+                if (newTokens === undefined) newTokens = this.app.llamaServer.estimateToolsRequestTokens(newMessage)
+                promptTokens = this.lastReqTokens + newTokens; 
+            } else {
+                let tokensAfterSummarize = await this.app.llamaServer.countToolsPromptTokens(this.messages, imagePath);
+                if (tokensAfterSummarize === undefined) tokensAfterSummarize = this.app.llamaServer.estimateToolsRequestTokens(this.messages);
+                promptTokens = tokensAfterSummarize;
+                this.lastReqTokens = tokensAfterSummarize;
             }
-
-            if (!this.app.configuration.chats_summarize_old_msgs) {
+            
+            if (promptTokens <= maxPromptTokens) {
                 return summarizedAny;
             }
 
@@ -327,8 +338,9 @@ export class LlamaAgent {
 
     private async generateSummary(messages: ChatMessage[]): Promise<string> {
         let data = await this.app.llamaServer.getAgentCompletion(messages, true, undefined, this.abortController?.signal)
-
-        return data?.choices[0]?.message?.content?.trim() || 'No summary generated';
+        if (!data || data.error || !data?.choices[0]?.message?.content) throw Error("Error generating summary")
+        
+        return data?.choices[0]?.message?.content?.trim();
     }
 
     askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
@@ -418,14 +430,12 @@ export class LlamaAgent {
                 query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
             }
 
-            if (agentCommandPrompt) query += agentCommandPrompt            
-
-            this.messages.push(
-                            {
+            if (agentCommandPrompt) query += agentCommandPrompt    
+            let newMessage: ChatMessage = {
                                 "role": "user",
                                 "content": query
-                            }
-            )
+                            }         
+            this.messages.push(newMessage)
 
             let iterationsCount = 0;    
             this.app.llamaWebviewProvider.logInUi(this.logText);
@@ -451,7 +461,7 @@ export class LlamaAgent {
                     const remindersText = this.app.agentReminder.getReminders(iterationsCount)
                     if (remindersText.trim() != "") this.messages.push({"role": "user", "content": remindersText})                   
                         
-                    await this.summarizeToFitCurrentBudget(this.contextImage);
+                    await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
                     let streamed = "";
                     let deltaBuffer = ""
                     const maxChunkSize = this.app.configuration.telegram_chunk_size
@@ -495,7 +505,7 @@ export class LlamaAgent {
                         }
                         this.app.llamaWebviewProvider.logInUi(this.logText);
 
-                        const summarized = await this.summarizeToFitCurrentBudget(this.contextImage);
+                        const summarized = await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
                         if (summarized) {
                             this.app.logger.addEventLog('AGENT', 'CONTEXT_RETRY', `iteration=${iterationsCount}`);
                             continue;

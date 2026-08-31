@@ -1097,7 +1097,17 @@ export const PREDEFINED_LISTS = new Map<string, any>([
             }
           ]],
 [PREDEFINED_LISTS_KEYS.AGENT_COMMANDS, [
-           {
+            {
+              "name": "compact",
+              "prompt": [
+                "set isCompacted compact",
+                "return $isCompacted"
+              ],
+              "description": "Compacts the current conversation. Keeps the system message and last chats_msgs_keep (setting) messages unchanged.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
               "name": "about",
               "description": "Reviews the project and provides information about it.",
               "prompt": [

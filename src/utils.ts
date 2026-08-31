@@ -547,10 +547,6 @@ export class Utils {
             // --- 1. Resolve path against workspaces ---
             let absolutePath: string = filePath;
             if (path.isAbsolute(filePath)) {
-                const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath));
-                if (!workspaceFolder) {
-                    return `Error: File "${filePath}" is outside all workspace folders.`;
-                }
                 absolutePath = path.resolve(filePath);
             } else {
                 if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
@@ -645,10 +641,6 @@ export class Utils {
             // --- 1. Resolve path against workspaces ---
             let absolutePath: string = filePath;
             if (path.isAbsolute(filePath)) {
-                const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(filePath));
-                if (!workspaceFolder) {
-                    return `Error: File "${filePath}" is outside all workspace folders.`;
-                }
                 absolutePath = path.resolve(filePath);
             } else {
                 if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {

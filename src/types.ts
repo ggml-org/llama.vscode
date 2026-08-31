@@ -17,6 +17,7 @@ export interface LlamaResponse {
     tokens_cached?: number;
     truncated?: boolean;
     timings?: {
+        cache_n?: number;
         prompt_n?: number;
         prompt_ms?: number;
         prompt_per_second?: number;
@@ -83,13 +84,27 @@ export interface chatMessage {
     "content": string
 }
 
+export interface TokenDetails {
+    lastReqTokens?: number
+    inputTokens?: number,
+    outputTokens?: number,
+    cachedTokens?: number,
+    price?: number,
+    chatTokens?: number,
+    chatInputTokens?: number,
+    chatOutputTokens?: number,
+    chatCachedTokens?: number,
+    chatPrice?: number
+}
+
 export interface Chat {
     name: string,
     description?: string,
     id: string,
     messages?: ChatMessage[],
     log?: string,
-    defaultAgent?: Agent
+    defaultAgent?: Agent,
+    tokenDetails?: TokenDetails
 }
 
 export interface HuggingfaceFile {

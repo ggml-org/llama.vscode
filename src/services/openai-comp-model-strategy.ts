@@ -41,7 +41,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
             if (selProvider.label == OpenAiProvidersKeys.Custom){
                 endpoint = await vscode.window.showInputBox({
                     placeHolder: 'endpoint (URL to the API) of an OpenAI compatible provider',
-                    prompt: 'example: http://localhost:8080 or https://openrauter.ai/api'
+                    prompt: 'example: http://localhost:8080 or https://openrouter.ai/api'
                 })??""
                 isKeyRequired = await this.app.dialogs.confirmAction(`Is API key required for this endpoint (${endpoint})?`, "");
             }

@@ -682,6 +682,23 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
+    updateRequestsInfoInView = () => {
+        const chat = this.app.getChat()
+        this._webview?.webview?.postMessage({
+            command: 'updateRquestsStats',
+            totalTokens: chat?.tokenDetails?.lastReqTokens??0,
+            inputTokens: chat?.tokenDetails?.inputTokens??0,
+            outputTokens: chat?.tokenDetails?.outputTokens??0,
+            cachedTokens: chat?.tokenDetails?.cachedTokens??0,
+            price: chat?.tokenDetails?.price??0,
+            chatTotalTokens: chat?.tokenDetails?.chatTokens??0,
+            chatInputTokens: chat?.tokenDetails?.chatInputTokens??0,
+            chatOutputTokens: chat?.tokenDetails?.chatOutputTokens??0,
+            chatCachedTokens: chat?.tokenDetails?.chatCachedTokens??0,
+            chatPrice: chat?.tokenDetails?.chatPrice??0,
+        });
+    }
+
     private updateEmbsModel(status: string = "") {
         const currentEmbeddingsModel: LlmModel = this.app.getEmbeddingsModel();
         let modelName = currentEmbeddingsModel.name
@@ -816,6 +833,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateEnv();
         this.updateSettingsInView();
         this.updateDefaultModelsInView();
+        this.updateRequestsInfoInView()
         this.logInUi(this.app.llamaAgent.getAgentLogText())
     }
 

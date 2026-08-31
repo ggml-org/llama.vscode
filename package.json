@@ -332,8 +332,8 @@
         },
         "llama-vscode.ai_model": {
           "type": "string",
-          "default": "google/gemini-2.5-flash",
-          "description": "The model name. This is used in the request to the API. It is important when OpenRouter is used (for example google/gemini-2.5-flash)."
+          "default": "",
+          "description": "The model name (applicable only if the model from the settings is used, or the model definition does not includes the model name). This is used in the request to the API (for example google/gemini-2.5-flash)."
         },
         "llama-vscode.agents_list": {
           "type": "array",
@@ -1614,13 +1614,13 @@
         },
         "llama-vscode.chats_summarize_old_msgs": {
           "type": "boolean",
-          "default": false,
-          "description": "If true - summarizes the old messages (keeps total chats_msgs_keep), when the chats_max_chars limit is reached, to reduce the context size. After the summarization, the first request could be very slow as the whole chat should be processed again (no chache reuse)."
+          "default": true,
+          "description": "If true - summarizes the old messages (keeps total chats_msgs_keep), when the limit is reached, to reduce the context size. After the summarization, the first request could slow as the whole chat should be processed again (no chache reuse)."
         },
         "llama-vscode.chats_msgs_keep": {
           "type": "number",
-          "default": 50,
-          "description": "The number of messages to keep summarizing a chat."
+          "default": 5,
+          "description": "The number of messages to keep summarizing/compacting a chat."
         },
         "llama-vscode.tools_log_calls": {
           "type": "boolean",

@@ -11,15 +11,11 @@ import * as path from 'path';
 import { ModelType, PERSISTENCE_KEYS, SUPPORTED_IMG_FILE_EXTS } from "./constants";
 import {
     buildRuntimePropsUrl,
-    DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
-    DEFAULT_MAX_OUTPUT_TOKENS,
     estimateTokenCount,
     extractRuntimeContextSize,
     isLikelyLlamaCppProvider,
     OpenAICompatibleModel,
     resolveModelTokenLimits,
-    resolveBoundedMaxOutputTokens,
-    resolveRequestMaxOutputTokens,
     ResolvedModelTokenLimits,
 } from './language-model-token-limits';
 
@@ -40,6 +36,9 @@ export interface LlamaToolsResponse {
         prompt_tokens?: number;
         completion_tokens?: number;
         total_tokens?: number;
+        prompt_tokens_details?:any
+        cost?:number
+        cost_usd?:number
     };
 }
 
@@ -69,6 +68,10 @@ export interface LlamaEmbeddingsResponse {
 
 interface ApplyTemplateResponse {
     prompt: string;
+}
+
+interface CounTokensResponse {
+    input_tokens: number;
 }
 
 interface TokenizeResponse {
@@ -332,9 +335,10 @@ export class LlamaServer {
                     headers: {
                         Authorization: `Bearer ${apiKey}`,
                         "Content-Type": "application/json",
+                        ...(selectedModel.endpoint?.includes("orcarouter.ai") ? { "X-OrcaRouter-Include-Cost": true } : {}),
                     },
                 };
-            }
+            } 
         }
 
         return {
@@ -720,39 +724,34 @@ export class LlamaServer {
         imagePath = "",
         requestDetails?: RequestDetailsOverride
     ): Promise<number | undefined> {
-        const prompt = await this.applyToolsTemplate(messages, imagePath, requestDetails);
-        if (!prompt) {
-            return undefined;
-        }
-
-        return this.countTextTokens(prompt, requestDetails);
+        return this.countTextTokens(messages, requestDetails);
     }
 
-    async countTextTokens(text: string, requestDetails?: RequestDetailsOverride): Promise<number | undefined> {
+    async countTextTokens(messages: ChatMessage[], requestDetails?: RequestDetailsOverride): Promise<number | undefined> {
         const { endpoint, requestConfig, trace } = this.resolveRequestDetails(requestDetails);
         if (!endpoint) {
             return undefined;
         }
 
-        const tokenizeUrl = `${Utils.trimTrailingSlash(endpoint)}/tokenize`;
+        const countTokensUrl = `${Utils.trimTrailingSlash(endpoint)}/${this.app.configuration.ai_api_version}/messages/count_tokens`;
 
         try {
-            this.logApiRequest('TOKENIZE', 'POST', tokenizeUrl, `content_length=${text.length}`, trace);
-            const response = await axios.post<TokenizeResponse>(
-                tokenizeUrl,
+            this.logApiRequest('TOKENIZE', 'POST', countTokensUrl, `messages_length=${messages.length}`, trace);
+            const response = await axios.post<CounTokensResponse>(
+                countTokensUrl,
                 {
-                    content: text,
-                    add_special: false,
-                    parse_special: true,
+                    model: requestDetails?.model ?? this.app.configuration.ai_model,
+                    system: "",
+                    messages: messages,
+
                 },
                 requestConfig
             );
+            this.logApiResponse('TOKENIZE', 'POST', countTokensUrl, `tokens=${response.data.input_tokens}`, trace);
 
-            this.logApiResponse('TOKENIZE', 'POST', tokenizeUrl, `tokens=${response.data.tokens.length}`, trace);
-
-            return response.status === STATUS_OK ? response.data.tokens.length : undefined;
+            return response.status === STATUS_OK ? response.data.input_tokens : undefined;
         } catch (error) {
-            this.logApiError('TOKENIZE', 'POST', tokenizeUrl, error, `content_length=${text.length}`, trace);
+            this.logApiError('TOKENIZE', 'POST', countTokensUrl, error, `messages_length=${messages.length}`, trace);
             return undefined;
         }
     }
@@ -798,7 +797,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         const summaryPromptMsgs: ChatMessage[] = [
             {
                 role: 'system',
-                content: `Summarize the conversation concisely, preserving technical details and code solutions.`
+                content: this.app.prompts.SUMMARIZE_PROMPT,
             },
             ...filteredMsgs
         ];
@@ -931,58 +930,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
 
         // Streaming branch for tools/agent calls
         request = this.createToolsRequestPayload(messages, model, true, imagePath, iterationsCount, endpoint);
-        const tokenLimits = await this.getToolsModelTokenLimits();
-        const exactPromptTokens = await this.countToolsPromptTokens(messages, imagePath, {
-            endpoint,
-            model,
-            requestConfig,
-            trace,
-        });
-        const promptTokenEstimate = exactPromptTokens ?? this.estimateToolsRequestTokens(request);
-        if (exactPromptTokens === undefined) {
-            this.logBudgetFallback(trace, {
-                endpoint,
-                model,
-                fallbackPromptTokens: promptTokenEstimate,
-                fallbackReason: 'exact_count_unavailable',
-            });
-        }
-        const boundedMaxOutputTokens = resolveBoundedMaxOutputTokens({
-            maxInputTokens: tokenLimits.maxInputTokens,
-            maxOutputTokens: tokenLimits.maxOutputTokens,
-            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
-        });
-        request.max_tokens = resolveRequestMaxOutputTokens({
-            maxInputTokens: tokenLimits.maxInputTokens,
-            maxOutputTokens: boundedMaxOutputTokens,
-            promptTokenEstimate,
-            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
-            contextSafetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
-        });
-        this.logBudgetDecision(trace, {
-            endpoint,
-            model,
-            promptTokens: promptTokenEstimate,
-            promptCountSource: exactPromptTokens === undefined ? 'fallback' : 'exact',
-            maxInputTokens: tokenLimits.maxInputTokens,
-            maxOutputTokens: boundedMaxOutputTokens,
-            chosenMaxTokens: request.max_tokens as number,
-            safetyMarginTokens: DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS,
-        });
-
         try {
-            this.logApiRequest(
-                'TOOLS_STREAM',
-                'POST',
-                uri,
-                [
-                    `model=${model || 'none'}`,
-                    this.summarizeTemplateMessages(request.messages as unknown[]),
-                    `prompt_tokens=${promptTokenEstimate}`,
-                    `max_tokens=${request.max_tokens}`,
-                ].join(' | '),
-                trace
-            );
             const streamResponse = await axios.post<any>(
                 uri,
                 request,
@@ -1004,19 +952,38 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 const finalize = () => {
                     message.content = fullContent || null;
                     if (toolCalls.length > 0) message.tool_calls = toolCalls;
-                    this.logApiResponse(
-                        'TOOLS_STREAM',
-                        'POST',
-                        uri,
-                        [
-                            `finish_reason=${finishReason ?? 'unknown'}`,
-                            `truncated=${responseData.truncated === true}`,
-                            `content_length=${fullContent.length}`,
-                            `tool_calls=${toolCalls.length}`,
-                            ...this.formatUsageLogDetails(responseData.usage as Record<string, unknown> | undefined, responseData.tokens_cached),
-                        ].join(' | '),
-                        trace
-                    );
+
+                    // Extract total_tokens from usage and set in llamaAgent
+                    let requestTokens = responseData.usage?.total_tokens;
+                    if (typeof requestTokens === 'number') {
+                        this.app.llamaAgent.setLastReqTokens(requestTokens);
+                        this.app.chatService.updateChatTokens(
+                            this.app.getChat(), 
+                            requestTokens, 
+                            responseData.usage?.prompt_tokens,
+                            responseData.usage?.completion_tokens,
+                            responseData.usage?.prompt_tokens_details?.cached_tokens, 
+                            responseData.usage?.cost??responseData.usage?.cost_usd
+                        );
+                        this.app.llamaWebviewProvider.updateRequestsInfoInView()
+                    } else if (responseData.timings 
+                        && typeof responseData.timings.predicted_n === 'number'
+                        && typeof responseData.timings.prompt_n === 'number'
+                        && typeof responseData.timings.cache_n === 'number'
+                    ) {
+                        requestTokens = responseData.timings.predicted_n + responseData.timings.prompt_n + responseData.timings.cache_n;
+                        this.app.llamaAgent.setLastReqTokens(requestTokens);
+                        this.app.chatService.updateChatTokens(
+                            this.app.getChat(), 
+                            requestTokens,
+                            responseData.timings.prompt_n + responseData.timings.cache_n,
+                            responseData.timings.predicted_n,
+                            responseData.timings.cache_n,
+                            0
+                        );
+                        this.app.llamaWebviewProvider.updateRequestsInfoInView()
+                    }
+
                     resolve({
                         choices: [{
                             message,
@@ -1050,6 +1017,8 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                         }
                         try {
                             const json = JSON.parse(payload);
+                            if (json.usage) responseData.usage = json.usage;
+                            if (json.timings) responseData.timings = json.timings;
                             const choice = json.choices && json.choices[0] ? json.choices[0] : undefined;
                             if (!choice) continue;
 
@@ -1057,7 +1026,9 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                             if (typeof json.tokens_cached === 'number') responseData.tokens_cached = json.tokens_cached;
                             if (json.timings) responseData.timings = json.timings;
                             if (json.generation_settings) responseData.generation_settings = json.generation_settings;
-                            if (json.usage) responseData.usage = json.usage;
+                            if (json.usage) {
+                                responseData.usage = json.usage;
+                            }
 
                             // Finish reason may appear on a later chunk
                             if (choice.finish_reason) finishReason = choice.finish_reason;
@@ -1417,7 +1388,6 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         }
     }
 
-
     private useNewLaunchCommand(launchCmd: string) {
         const oldCommand = "llama-server ";
         const newCommand = "llama serve ";
@@ -1498,7 +1468,7 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
                 break;
         }
         try {
-            // TODO:Make sure to work with OpenRauter too
+            // TODO:Make sure to work with OpenRouter too
             const healthUrl = model.endpoint + "/health";
             this.logApiRequest('HEALTH', 'GET', healthUrl, `modelType=${modelType}`);
             let response = await axios.get(healthUrl, requestConfig);

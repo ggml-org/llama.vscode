@@ -459,6 +459,49 @@ SUBAGENTS_DESCRIPTION = `Subagents
 You have access to specialized subagents via the delegate_task tool. Use it when you encounter a well‑defined subtask that can be handled independently — for example, providing help for llama.vscode, performing complex calculations, or retrieving data from a specific source.
 If the delegation fails (error or timeout), decide whether to retry with a different subagent, handle the task yourself, or report the issue to the user.`
 
+SUMMARIZE_PROMPT = `
+You are an expert conversation summarizer. Your task is to condense the provided conversation history into a structured Continuity Brief. This brief will entirely replace the raw chat history in the next turn, so the AI must be able to continue the conversation seamlessly without asking for repeated information.
+
+Your strict objectives:
+
+    Preserve Actionable Data: Keep all facts, figures, code snippets, URLs, user preferences, constraints (budget/time), and specific requirements.
+
+    Preserve Progress: Clearly state what has been decided and what is still pending.
+
+    Preserve the "Ball": Explicitly detail the last question asked or the last task initiated so the next response answers the right thing.
+
+    Remove Fluff: Discard greetings, pleasantries, filler clarifications, repeated statements, and off-topic tangents.
+
+Output Format (Use exactly this structure):
+
+CONTINUITY BRIEF
+
+1. User's Core Objective:
+[State the user's primary goal, project name, or end-game in 1-2 sentences.]
+
+2. Established Context & Constraints:
+[List all immutable facts, preferences, budgets, technical stacks, or personal details the user has confirmed. E.g., "Using Python 3.11", "Budget is $500", "Prefers dark mode".]
+
+3. Decisions Made So Far:
+[List the concrete conclusions we have reached. E.g., "Decided to use PostgreSQL over MySQL", "Agreed on the minimalist design".]
+
+4. Current Status & Unresolved Items:
+[Describe exactly where we are in the workflow. List any open questions, bugs to fix, or choices waiting for user input.]
+
+5. The Immediate Next Step (Crucial):
+[Paraphrase the very last request or question the user asked. Frame it as a directive so the AI knows exactly what to respond to first.]
+
+Important Constraints for You:
+
+    Write the summary in the third person (e.g., "The user is building...", "The assistant provided...").
+
+    Do not add new information, assumptions, or solutions that were not explicitly discussed.
+
+    If the conversation involved code, include the final working version of that code in Section 4 (Status) if it was accepted by the user.
+
+Now, summarize the conversation below:
+`
+
 constructor(application: Application) {
         this.app = application;
     }

@@ -170,7 +170,7 @@ export class Tools {
         let params = JSON.parse(args);
         let filePath = params.file_path;
         
-        return "Reading file: " + filePath;
+        return "Reading file: " + filePath + " " + (params.first_line??"") + (params.last_line_inclusive?`-${params.last_line_inclusive}`:"");
     }
 
     public readDirectory = async (args: string ) => {
@@ -453,6 +453,7 @@ export class Tools {
                 }
                 if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
+            if (!this.isEditAllowed(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
             let resultEdit = await Utils.findReplaceFile(filePath, search, replace, replaceAll, this.fileReadTimestamps)
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
                 this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
@@ -462,6 +463,22 @@ export class Tools {
             console.error('Error editing file ' + filePath + ":", error);
             throw error;
         }        
+    }
+    private isEditAllowed = (filePath: string): boolean => {
+        let isAllowed = true;
+        if (path.isAbsolute(filePath)) {
+            const resolvedFilePath = path.resolve(filePath)
+            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(resolvedFilePath));
+            if (!workspaceFolder) {
+                if (this.app.extensionContext.storageUri?.fsPath){
+                    let auto_memory_folder = path.join(this.app.extensionContext.storageUri?.fsPath, "auto_memory");
+                    auto_memory_folder = path.resolve(auto_memory_folder)
+                    if (!resolvedFilePath.startsWith(auto_memory_folder)) isAllowed = false;
+                } else isAllowed = false; 
+            }
+        }
+
+        return isAllowed
     }
 
     public editFileDesc = async (args: string) => {
@@ -479,6 +496,7 @@ export class Tools {
 
         if (!filePath) return "The file is not provided.";
         if (!edits || !Array.isArray(edits) || edits.length < 1) return "At least one edit operation is required.";
+        if (!this.isEditAllowed(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
 
         try {
             if (!this.app.configuration.tool_permit_file_changes){  

@@ -37,6 +37,18 @@ const AgentView: React.FC<AgentViewProps> = ({
   const [fileFilter, setFileFilter] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
 
+  // Request stats state
+  const [lastRequestTokens, setLastRequestTokens] = useState<number>(0);
+  const [lastRequestInputTokens, setLastRequestInputTokens] = useState<number>(0);
+  const [lastRequestOutputTokens, setLastRequestOutputTokens] = useState<number>(0);
+  const [lastRequestCachedTokens, setLastRequestCachedTokens] = useState<number>(0);
+  const [lastRequestPrice, setLastRequestPrice] = useState<number>(0);
+  const [chatTotalTokens, setChatTotalTokens] = useState<number>(0);
+  const [chatInputTokens, setChatInputTokens] = useState<number>(0);
+  const [chatOutputTokens, setChatOutputTokens] = useState<number>(0);
+  const [chatCachedTokens, setChatCachedTokens] = useState<number>(0);
+  const [chatPrice, setChatPrice] = useState<number>(0);
+
   // Create refs
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileListRef = useRef<HTMLDivElement>(null);
@@ -118,6 +130,18 @@ const AgentView: React.FC<AgentViewProps> = ({
           break;
         case 'updateContextImage':
           setContextImage(message.image || "");
+          break;
+        case 'updateRquestsStats':
+          setLastRequestTokens(message.totalTokens || 0);
+          setLastRequestInputTokens(message.inputTokens || 0);
+          setLastRequestOutputTokens(message.outputTokens || 0);
+          setLastRequestCachedTokens(message.cachedTokens || 0);
+          setLastRequestPrice(message.price || 0);
+          setChatTotalTokens(message.chatTotalTokens || 0);
+          setChatInputTokens(message.chatInputTokens || 0);
+          setChatOutputTokens(message.chatOutputTokens || 0);
+          setChatCachedTokens(message.chatCachedTokens || 0);
+          setChatPrice(message.chatPrice || 0);
           break;
         default:
           break;
@@ -496,6 +520,30 @@ const AgentView: React.FC<AgentViewProps> = ({
                   <div className={`status-indicator ${currentState.includes('working') ? 'working' : ''}`}></div>
                   <span>{currentState || 'Ready'}</span>
                 </div>
+                {(lastRequestTokens > 0 || chatTotalTokens > 0) && (
+                  <div className="status-item" style={{ fontSize: '12px', opacity: 0.8, flexDirection: 'column', alignItems: 'flex-start', gap: '2px' }}>
+                    {lastRequestTokens > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                        <span title={`last request: input ${Math.round(lastRequestInputTokens).toLocaleString()} (of them cached ${Math.round(lastRequestCachedTokens).toLocaleString()}) output ${Math.round(lastRequestOutputTokens).toLocaleString()}`}>
+                          last request: tokens {Math.round(lastRequestTokens).toLocaleString()}
+                        </span>
+                        <span title="price works only for openrouter and orcarouter">
+                          ${lastRequestPrice.toFixed(8)}
+                        </span>
+                      </div>
+                    )}
+                    {chatTotalTokens > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px' }}>
+                        <span title={`chat: input ${Math.round(chatInputTokens).toLocaleString()} (of them cached ${Math.round(chatCachedTokens).toLocaleString()}) output ${Math.round(chatOutputTokens).toLocaleString()}`}>
+                          chat: tokens {Math.round(chatTotalTokens).toLocaleString()}
+                        </span>
+                        <span title="price works only for openrouter and orcarouter">
+                          ${chatPrice.toFixed(8)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Input Actions */}

@@ -419,7 +419,7 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
-            {currentCompletionModel === noModelSelected  && (
+            {currentCompletionModel === noModelSelected && defaultCompletionModelState && (
             <button
               onClick={handleRemoveDefaultCompletion}
               title={`Remove the default model. (Current Default: ${defaultCompletionModelState})`}
@@ -489,7 +489,7 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
-            {currentChatModel === noModelSelected  && (
+            {currentChatModel === noModelSelected && defaultChatModelState && (
             <button
               onClick={handleRemoveDefaultChat}
               title={`Remove the default model. (Current Default: ${defaultChatModelState})`}
@@ -559,7 +559,7 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
-            {currentEmbeddingsModel === noModelSelected  && (
+            {currentEmbeddingsModel === noModelSelected && defaultEmbeddingsModelState && (
             <button
               onClick={handleRemoveDefaultEmbs}
               title={`Remove the default model. (Current Default: ${defaultEmbeddingsModelState})`}
@@ -630,7 +630,7 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
               More
             </button>
             )}
-            {currentToolsModel === noModelSelected  && (
+            {currentToolsModel === noModelSelected && defaultToolsModelState && (
             <button
               onClick={handleRemoveDefaultTools}
               title={`Remove the default model. (Current Default: ${defaultToolsModelState})`}

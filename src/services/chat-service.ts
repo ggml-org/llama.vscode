@@ -50,8 +50,8 @@ export class ChatService {
             this.app.setChat(chatToSelect);
             await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_CHAT, chatToSelect);
             await this.app.llamaAgent.selectChat(chatToSelect);
-            this.app.llamaWebviewProvider.updateLlamaView();
-        }      
+        }   
+        this.app.llamaWebviewProvider.updateLlamaView();   
     }
 
     deleteChatFromList = async (chatList: Chat[]) => {
@@ -243,5 +243,29 @@ export class ChatService {
         if (chats.length > this.app.configuration.chats_max_history) chats.shift();
         await this.app.persistence.setChats(chats);
         vscode.window.showInformationMessage("The chat '" + chatToAdd.name + "' is added/updated.");
+    }
+
+    updateChatTokens = (currentChat: Chat, requestTokens: number, inputTokens: number|undefined, outputTokens: number|undefined, cachedTokens: number|undefined, price: number|undefined) => {
+        if (!currentChat?.tokenDetails) currentChat.tokenDetails = {};
+        
+        currentChat.tokenDetails.lastReqTokens = requestTokens;
+        if (currentChat?.tokenDetails?.chatTokens) currentChat.tokenDetails.chatTokens += requestTokens;
+        else currentChat.tokenDetails.chatTokens = requestTokens;
+
+        currentChat.tokenDetails.inputTokens = inputTokens??0;
+        if (currentChat?.tokenDetails?.chatInputTokens) currentChat.tokenDetails.chatInputTokens += inputTokens??0;
+        else currentChat.tokenDetails.chatInputTokens = inputTokens??0;
+
+        currentChat.tokenDetails.outputTokens = outputTokens??0;
+        if (currentChat?.tokenDetails?.chatOutputTokens) currentChat.tokenDetails.chatOutputTokens += outputTokens??0;
+        else currentChat.tokenDetails.chatOutputTokens = outputTokens??0;
+
+        currentChat.tokenDetails.cachedTokens = cachedTokens??0;
+        if (currentChat?.tokenDetails?.chatCachedTokens) currentChat.tokenDetails.chatCachedTokens += cachedTokens??0;
+        else currentChat.tokenDetails.chatCachedTokens = cachedTokens??0;
+
+        currentChat.tokenDetails.price = price??0;
+        if (currentChat?.tokenDetails?.chatPrice) currentChat.tokenDetails.chatPrice += price??0;
+        else currentChat.tokenDetails.chatPrice = price??0;
     }
 }

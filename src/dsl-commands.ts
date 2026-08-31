@@ -79,8 +79,7 @@ export class DslCommands {
     }
 
     public compact = async() => {
-        // TODO Fix summarizeToFitCurrentBudget, doesn't work for now
-        const isSummarized = await this.app.llamaAgent.summarizeToFitCurrentBudget()
+        const isSummarized = await this.app.llamaAgent.summarize()
         let result = "Chat is not compacted."
         if (isSummarized) result = "Chat is compacted"
         return result
