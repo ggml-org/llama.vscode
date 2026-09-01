@@ -527,7 +527,7 @@ const AgentView: React.FC<AgentViewProps> = ({
                         <span title={`last request: input ${Math.round(lastRequestInputTokens).toLocaleString()} (of them cached ${Math.round(lastRequestCachedTokens).toLocaleString()}) output ${Math.round(lastRequestOutputTokens).toLocaleString()}`}>
                           last request: tokens {Math.round(lastRequestTokens).toLocaleString()}
                         </span>
-                        <span title="price works only for openrouter and orcarouter">
+                        <span title="price works only for openrouter and orcarouter | not finished/stopped requests are not included but are taxed">
                           ${lastRequestPrice.toFixed(8)}
                         </span>
                       </div>
@@ -537,7 +537,7 @@ const AgentView: React.FC<AgentViewProps> = ({
                         <span title={`chat: input ${Math.round(chatInputTokens).toLocaleString()} (of them cached ${Math.round(chatCachedTokens).toLocaleString()}) output ${Math.round(chatOutputTokens).toLocaleString()}`}>
                           chat: tokens {Math.round(chatTotalTokens).toLocaleString()}
                         </span>
-                        <span title="price works only for openrouter and orcarouter">
+                        <span title="price works only for openrouter and orcarouter | not finished/stopped requests are not included but are taxed">
                           ${chatPrice.toFixed(8)}
                         </span>
                       </div>

@@ -6,10 +6,12 @@ import * as vscode from 'vscode';
 import {Application} from "./application";
 import {LlamaWebviewProvider} from './llama-webview-provider'
 import { Utils } from './utils';
-import { Env, LlmModel } from './types';
+import { Agent, Env, LlmModel } from './types';
 import { env } from 'process';
-import { PERSISTENCE_KEYS, SETTING_NAME_FOR_LIST, UiView } from './constants';
+import { PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, UiView } from './constants';
 import {LlamaChatModelProvider} from "./llama-chat-model-provider";
+import { LlamaAgent } from './llama-agent';
+import { PREDEFINED_LISTS } from './lists';
 
 export class Architect {
     private app: Application
@@ -44,7 +46,13 @@ export class Architect {
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
-        if (lastAgent) this.app.agentService.selectAgent(lastAgent)
+        if (lastAgent && (lastAgent as Agent).name) this.app.agentService.selectAgent(lastAgent)
+        else if (!this.app.getAgent()?.name) {
+            // set default agent if no last agent is set
+            const predefinedAgents = (PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
+            const defaultAgent = predefinedAgents.find((agent) => agent.name === "default");
+            if (defaultAgent) this.app.agentService.selectAgent(defaultAgent)
+        }
         this.app.tools.init()
     }
 

@@ -463,7 +463,8 @@ export class LlamaServer {
         return {
             "messages": filteredMsgs,
             "stream": stream,
-            ...(model.trim() != "" && { model: model}),
+            ...(stream && { stream_options: { include_usage: true } }),
+            ...(model.trim() != "" && { model: model }),
             "tools": allTools,
             "tool_choice": toolChoice
         };

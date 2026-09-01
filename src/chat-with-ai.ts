@@ -130,6 +130,8 @@ export class ChatWithAi {
             aiPanel.webview.onDidReceiveMessage((message) => {
                 if (message.command === 'escapePressed') {
                     this.focusEditor();
+                } else if (message.command === 'openInBrowser') {
+                    vscode.env.openExternal(vscode.Uri.parse(targetUrl));
                 } else if (message.command === 'jsAction') {
                     // console.log("onDidReceiveMessage: " + message.text);
                 }
@@ -167,16 +169,58 @@ export class ChatWithAi {
                     height: 100%;
                     overflow: hidden;
                 }
+                #openInBrowserLink {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 6px;
+                    padding: 8px 16px;
+                    background-color: var(--vscode-input-background);
+                    color: var(--vscode-editor-foreground);
+                    border: 1px solid var(--vscode-input-border);
+                    border-radius: 6px;
+                    font-size: 14px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+                #openInBrowserLink:hover {
+                    background-color: var(--vscode-panel-border);
+                    transform: translateY(-1px);
+                }
                 iframe {
                     width: 100%;
-                    height: 100%;
+                    height: calc(100% - 40px);
                     border: none;
                 }
             </style>
         </head>
         <body>
+            <button id="openInBrowserLink" title="Shows the AI chat in browser (where the copy buttons work)">Show in Browser</button>
+            
             <iframe src="${url}" sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" id="askAiIframe"></iframe>
-        </body>
+            <script>
+                (function() {
+                    const vscode = acquireVsCodeApi();
+                    console.log('[chat-with-ai] Script loaded, vscode acquired:', typeof vscode);
+                    
+                    window.addEventListener('DOMContentLoaded', function() {
+                        var button = document.getElementById('openInBrowserLink');
+                        
+                        if (button) {
+                            button.addEventListener('click', function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                try {
+                                    vscode.postMessage({command: 'openInBrowser'});
+                                } catch (err) {
+                                    console.error('[chat-with-ai] Exception sending message:', err);
+                                }
+                            });
+                        }
+                    });
+                })();
+            </script>
+            </body>
         </html>
         `;
     }
