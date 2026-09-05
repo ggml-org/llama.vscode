@@ -36,6 +36,7 @@ const AgentView: React.FC<AgentViewProps> = ({
   const [fileList, setFileList] = useState<string[]>([]);
   const [fileFilter, setFileFilter] = useState<string>('');
   const [selectedIndex, setSelectedIndex] = useState<number>(0);
+  const [isDragOver, setIsDragOver] = useState<boolean>(false);
 
   // Request stats state
   const [lastRequestTokens, setLastRequestTokens] = useState<number>(0);
@@ -187,6 +188,201 @@ const AgentView: React.FC<AgentViewProps> = ({
   const handleAddFileSource = () => {
     handleAddSource('getFileList');
   }
+
+  const handleSingleFileDrop = (filePath: string, fileName: string) => {
+    console.log('handleSingleFileDrop called with:', { filePath, fileName });
+    const ext = '.' + fileName.split('.').pop()?.toLowerCase();
+    
+    // Only process text-based files that VS Code can open
+    const allowedExtensions = [
+      '.ts', '.tsx', '.js', '.jsx', '.py', '.java', '.cpp', '.c', '.h', '.hpp', 
+      '.rs', '.go', '.rb', '.css', '.html', '.json', '.xml', '.md', '.txt', 
+      '.sh', '.bat', '.ps1', '.yaml', '.yml', '.toml', '.ini', '.cfg', '.conf',
+      '.sql', '.graphql', '.vue', '.svelte', '.astro', '.php', '.swift', '.kt',
+      '.scala', '.dart', '.lua', '.r', '.m', '.mm', '.zig', '.nim', '.v',
+    ];
+    
+    if (ext && allowedExtensions.includes(ext)) {
+      console.log('Adding file to context:', fileName);
+      vscode.postMessage({
+        command: 'addContextDroppedFile',
+        filePath: filePath,
+        fileName: fileName
+      });
+    } else {
+      console.warn(`File type "${ext}" is not supported for drag & drop`);
+    }
+  };
+
+  // Extract a clean file system path + name from a URI string or plain path.
+  // Returns null when the value cannot be turned into a usable file path.
+  const extractFileInfo = (rawValue: string): { filePath: string; fileName: string } | null => {
+    const value = rawValue.trim();
+    if (!value) return null;
+
+    let filePath = '';
+
+    if (value.startsWith('file://')) {
+      try {
+        const url = new URL(value);
+        filePath = decodeURIComponent(url.pathname);
+        // On Windows a file URI looks like file:///C:/path -> /C:/path, strip the leading slash
+        if (/^\/[a-zA-Z]:\//.test(filePath)) {
+          filePath = filePath.substring(1);
+        }
+      } catch (err) {
+        console.error('Failed to parse file URI:', value, err);
+        return null;
+      }
+    } else if (/^[a-zA-Z][a-zA-Z0-9+.-]*:\/\//.test(value)) {
+      // Some other scheme (vscode-remote://, untitled:, etc.) - not a local file we can open.
+      console.warn('Skipping non-file URI:', value);
+      return null;
+    } else {
+      // Assume it is already a plain file system path
+      filePath = value;
+    }
+
+    const fileName = filePath.split('/').pop() || filePath.split('\\').pop() || '';
+    if (!fileName) return null;
+
+    return { filePath, fileName };
+  };
+
+  const handleFilesDrop = (dataTransfer: DataTransfer) => {
+    console.log('handleFilesDrop called');
+    console.log('dataTransfer.types:', Array.from(dataTransfer.types));
+    if (dataTransfer.items) {
+      for (let i = 0; i < dataTransfer.items.length; i++) {
+        const it = dataTransfer.items[i];
+        console.log(`  item[${i}] kind=${it.kind} type=${it.type}`);
+      }
+    }
+
+    // Use a Map keyed by file path to avoid adding the same file multiple times
+    const droppedFiles = new Map<string, string>();
+
+    const addFromString = (raw: string, source: string) => {
+      if (!raw) return;
+      const trimmedRaw = raw.trim();
+
+      // VS Code tree drag format: a JSON array of items such as
+      // [{"id":"file:///path/to/file","type":"file", ...}]
+      if (trimmedRaw.startsWith('[') || trimmedRaw.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(trimmedRaw);
+          const entries = Array.isArray(parsed) ? parsed : [parsed];
+          let handled = false;
+          for (const entry of entries) {
+            const candidate = entry?.id ?? entry?.uri ?? entry?.fsPath ?? entry?.path;
+            if (typeof candidate === 'string') {
+              const info = extractFileInfo(candidate);
+              if (info) {
+                console.log(`Dropped file from ${source}:`, info);
+                droppedFiles.set(info.filePath, info.fileName);
+                handled = true;
+              }
+            }
+          }
+          if (handled) return;
+          // Not a recognized tree payload - fall through to line splitting
+        } catch {
+          // Not JSON - fall through to line splitting
+        }
+      }
+
+      // A single payload may contain several URIs separated by newlines
+      const parts = raw.split(/\r?\n/);
+      for (const part of parts) {
+        const trimmed = part.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue; // skip comments / blanks
+        const info = extractFileInfo(trimmed);
+        if (info) {
+          console.log(`Dropped file from ${source}:`, info);
+          droppedFiles.set(info.filePath, info.fileName);
+        }
+      }
+    };
+
+    // Capture OS file drops synchronously. The DataTransfer object becomes
+    // invalid after the drop handler returns, so files must be read now.
+    if (dataTransfer.files && dataTransfer.files.length > 0) {
+      console.log('Processing files from dataTransfer.files');
+      for (let i = 0; i < dataTransfer.files.length; i++) {
+        const file = dataTransfer.files[i];
+        const filePath = (file as any).fullPath || (file as any).path || '';
+        if (filePath) droppedFiles.set(filePath, file.name);
+      }
+    }
+
+    // Synchronous getData fallbacks (text/uri-list, VS Code tree types, text/plain)
+    const collectViaGetData = () => {
+      const candidateTypes = new Set<string>([
+        'text/uri-list',
+        'text/plain',
+      ]);
+      // VS Code tree views expose data under a dynamic
+      // application/vnd.code.tree.<viewId> MIME type - include all present.
+      for (const type of Array.from(dataTransfer.types)) {
+        if (type.startsWith('application/vnd.code.tree.')) {
+          candidateTypes.add(type);
+        }
+      }
+      for (const type of candidateTypes) {
+        try {
+          const data = dataTransfer.getData(type);
+          if (data) addFromString(data, `getData(${type})`);
+        } catch (err) {
+          console.error('getData failed for type', type, err);
+        }
+      }
+    };
+
+    const flush = () => {
+      console.log('Total dropped files collected:', droppedFiles.size);
+      for (const [filePath, fileName] of droppedFiles.entries()) {
+        handleSingleFileDrop(filePath, fileName);
+      }
+    };
+
+    // VS Code exposes dragged explorer files as string items (text/uri-list
+    // and/or a custom application/vnd.code.tree.* type), NOT as file items.
+    // getAsString is asynchronous, so gather them and flush once complete.
+    const stringItems: DataTransferItem[] = [];
+    if (dataTransfer.items) {
+      for (let i = 0; i < dataTransfer.items.length; i++) {
+        const item = dataTransfer.items[i];
+        if (item.kind === 'string') stringItems.push(item);
+      }
+    }
+
+    if (stringItems.length === 0) {
+      collectViaGetData();
+      flush();
+      return;
+    }
+
+    let pending = stringItems.length;
+    const onStringRead = () => {
+      pending--;
+      if (pending === 0) flush();
+    };
+
+    // getData works synchronously during the drop event - do it first.
+    collectViaGetData();
+
+    for (const item of stringItems) {
+      try {
+        item.getAsString((str) => {
+          addFromString(str, `item(${item.type})`);
+          onStringRead();
+        });
+      } catch (err) {
+        console.error('getAsString failed for item', item.type, err);
+        onStringRead();
+      }
+    }
+  };
 
   const handleAddImage = () => {
     vscode.postMessage({
@@ -382,7 +578,34 @@ const AgentView: React.FC<AgentViewProps> = ({
   };
 
     return (
-    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}>
+    <div
+      style={{ height: '100vh', display: 'flex', flexDirection: 'column' }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        // Only clear if we're actually leaving the whole view
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+          setIsDragOver(false);
+        }
+      }}
+      onDrop={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsDragOver(false);
+
+        console.log('=== DROP EVENT TRIGGERED ===');
+        const dataTransfer = e.dataTransfer;
+        console.log('dataTransfer.files:', dataTransfer.files?.length || 0);
+        console.log('dataTransfer.types:', Array.from(dataTransfer.types));
+
+        handleFilesDrop(dataTransfer);
+      }}
+    >
       {/* Modern Header */}
       <div className="header">
         <div className="header-content">
@@ -451,7 +674,9 @@ const AgentView: React.FC<AgentViewProps> = ({
 
            {/* Input Section - Moved to bottom */}
            <div className="input-section" style={{ flexShrink: 0 }}>
-            <div className="input-container">
+            <div 
+              className={`input-container ${isDragOver ? 'drag-over' : ''}`}
+            >
               {/* Context Files */}
               {contextFiles.size > 0 && (
                 <div className="context-chips">
@@ -494,7 +719,7 @@ const AgentView: React.FC<AgentViewProps> = ({
                 ref={textareaRef}
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
-                placeholder="Ask me anything about your code... Press @ to select a file, / for a command."
+                placeholder="Ask me anything about your code... Press @ to select a file, / for a command. Drag & drop files (hold Shift while dropping)."
                 className="modern-textarea"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {

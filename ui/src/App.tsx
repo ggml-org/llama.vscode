@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { AgentView, AIRunnerView, AddEnvView, AgentEditor } from './components';
 import { vscode } from './types/vscode';
 
@@ -152,6 +152,32 @@ const App: React.FC<AppProps> = () => {
     });
   };
 
+  const [showLocationMenu, setShowLocationMenu] = useState<boolean>(false);
+  const moreActionsRef = useRef<HTMLDivElement>(null);
+
+  const handleShowMoreActions = () => {
+    setShowLocationMenu(prev => !prev);
+  };
+
+  const handleMoveAgentView = (location: string) => {
+    setShowLocationMenu(false);
+    vscode.postMessage({
+      command: 'showAgentViewLocation',
+      location: location
+    });
+  };
+
+  // Close the dropdown when clicking outside of it
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (moreActionsRef.current && !moreActionsRef.current.contains(event.target as Node)) {
+        setShowLocationMenu(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleSelectedModels = () => {
     vscode.postMessage({
       command: 'showSelectedModels'
@@ -200,6 +226,33 @@ const App: React.FC<AppProps> = () => {
                   >
                     {"✎"}
                   </button>
+                  <div className="more-actions-container" ref={moreActionsRef}>
+                    <button
+                      onClick={handleShowMoreActions}
+                      className={`header-btn secondary ${showLocationMenu ? 'active' : ''}`}
+                      title="More Actions..."
+                    >
+                      ...
+                    </button>
+                    {showLocationMenu && (
+                      <div className="more-actions-menu" role="menu">
+                        <button
+                          role="menuitem"
+                          className="more-actions-item"
+                          onClick={() => handleMoveAgentView('left')}
+                        >
+                          Show on the Left Side
+                        </button>
+                        <button
+                          role="menuitem"
+                          className="more-actions-item"
+                          onClick={() => handleMoveAgentView('right')}
+                        >
+                          Show on the Right Side
+                        </button>
+                      </div>
+                    )}
+                  </div>
               </div>
             </div>
           </div>

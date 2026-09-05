@@ -110,24 +110,38 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
-              "name": "OpenAI gpt-oss 20B (LOCAL) (> 19GB VRAM)",
-              "localStartCommand": "llama serve -hf ggml-org/gpt-oss-20b-GGUF -c 0 --reasoning-format none -np 2 --port 8009",
-              "endpoint": "http://localhost:8009",
-              "aiModel": "",
-              "isKeyRequired": false
+              "name": "(OrcaRouter) DeepSeek V4 Flash 0731 1M context $0.15/M input $0.29/M output cache $0.02 (twice the price during peek hours 01:00–04:00, 06:00–10:00 (UTC))",
+              "localStartCommand": "",
+              "endpoint": "https://api.orcarouter.ai",
+              "aiModel": "deepseek/deepseek-v4-flash-0731",
+              "isKeyRequired": true
             },
             {
-              "name": "(OrcaRouter) Qwen3.7 Flash 1M context $0.03/M input $0.13/M output )",
+              "name": "(OrcaRouter) Qwen3.7 Flash 1M context $0.03/M input $0.13/M output (if input tokens > 32K the price is higher)",
               "localStartCommand": "",
               "endpoint": "https://api.orcarouter.ai",
               "aiModel": "qwen/qwen3.7-flash",
               "isKeyRequired": true
             },
             {
-              "name": "(OpenRouter) Qwen3.7 Flash 1M context $0.03/M input $0.13/M output",
+              "name": "(OpenRouter) Qwen3.7 Flash 1M context $0.03/M input $0.13/M output (if input tokens > 32K the price is higher)",
               "localStartCommand": "",
               "endpoint": "https://openrouter.ai/api",
               "aiModel": "qwen/qwen3.7-flash",
+              "isKeyRequired": true
+            },
+            {
+              "name": "(OrcaRouter) GPT-6 Astra 1M context $10/M input $50/M output ($20/$75 if input tokens >275K)",
+              "localStartCommand": "",
+              "endpoint": "https://api.orcarouter.ai",
+              "aiModel": "openai/gpt-6-astra",
+              "isKeyRequired": true
+            },
+            {
+              "name": "(OrcaRouter) Claude Fable 5.1 1M context $10/M input $50/M output",
+              "localStartCommand": "",
+              "endpoint": "https://api.orcarouter.ai",
+              "aiModel": "anthropic/claude-fable-5.1",
               "isKeyRequired": true
             },
             {

@@ -309,6 +309,21 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.65 is released (05.09.2026)
+### What is new
+- Move agent view on the left or on the right side of VS Code - click button "..." and select the appropriate action 
+- Drag&drop files to the agent. On drop the Shift key should be pressed. 
+- Use the editor as an alternative of the agent chat input box. The tendency is to write more prompts than source code. Now you can use a decent editor to prepare the long and structured prompts. Write the prompt in the editor (for example in a .md file) and press Ctrl+Alt+Enter (or use the context menu) to send it directly to the agent. Controlled by settings send_prompt_from_editor_enabled and remove_sent_prompt_from_editor.
+- New predefined models (OrcaRouter): DeepSeek V4 Flash 0731, GPT-6 Astra, Claude Fable 5.1
+
+
+## Version 0.0.64 is released (02.09.2026)
+### What is new
+- Compact command added (configure the number of last messages to keep with setting Chats_msgs_keep)
+- Agents view - information about the last request tokens/price and chat tokens/price
+- Chat with AI - new button "Show in browser" - shows the webui in a browser, where the copy buttons work
+
+
 ## Version 0.0.63 is released (19.08.2026)
 ### What is new
 - New tool added - multi_edit_file - does multiple edits in a single file
@@ -320,14 +335,14 @@ Settings:
 ## Version 0.0.62 is released (18.08.2026)
 ### What is new
 - Tool edit_file is reimplemented - now it uses simple search/replace and requires the file to be read after the latest modification
-- Property only_one_local_model added for ease of use with local models. If true - on selecting a local model, the other selected local models are deselected/stopped. This is valid for completion, chat and tools models. Embeddings models are small and therefore excuded from the group. By default it is false.
+- Property only_one_local_model added for ease of use with local models. If true - on selecting a local model, the other selected local models are deselected/stopped. This is valid for completion, chat and tools models. Embeddings models are small and therefore excluded from the group. By default it is false.
 
 
 
 ## Version 0.0.61 is released (17.08.2026)
 ### What is new
 - Improve edit text with AI and edit multiple files with AI - adding context from .md files is now possible
-- Fix loosing agent context files on hiding and showing agent view
+- Fix losing agent context files on hiding and showing agent view
 - Agent Reminders added - for example periodically reminds the agent about the correct format of the edit_file tool input parameter (setting reminder_edit_file_frequency). 
 - Default models introduced - if a model is not selected, the default one (if any) is selected automatically
 
@@ -335,19 +350,19 @@ Settings:
 ## Version 0.0.60 is released (15.08.2026)
 ### What is new
 - Fix environment auto-start persistence
-- Add OrcaRouter as an OpenAI-compatible provider (enables adding models in the same way as from OpenRounter - from the menu)
+- Add OrcaRouter as an OpenAI-compatible provider (enables adding models in the same way as from OpenRouter - from the menu)
 - Telegram bot new command "//" - shows all agent commands
-- Telegram bot - the agent commands are now requested with simeple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list if it contains only acceptable chars for telegram command)
-- Script files (suffix .lvs) from folder of the setting scripts_folder are availabe as script commands in the agent.
+- Telegram bot - the agent commands are now requested with simple /<command>, not with //<command> anymore, to facilitate the execution of the command inside telegram (just tap on it from the list if it contains only acceptable chars for telegram command)
+- Script files (suffix .lvs) from folder of the setting scripts_folder are available as script commands in the agent.
 
 
 ## Version 0.0.59 is released (07.08.2026)
 ### What is new
-- [Scripts](https://github.com/ggml-org/llama.vscode/wiki/Scripts) are introduced - something like macroses for llama-vscode. Scripts are written in a simple DSL language, which supports execution of llama-vscode commands for selecting/deselecting models, agent, env, changing settings, executing terminal commands etc. The scripts also support variables, if/else statements and comments. The scripts could be used as a content of the agent commands (agent commands are shown by pressing / in the agent prompt field). The plan is in future the scripts to be used in the hooks (not yet introduced)
-- The agent commands, which send prompt to the agent are now visualized with [p] preffix, while those, which execute scripts and do not send prompt are visualized with [s] preffix.
+- [Scripts](https://github.com/ggml-org/llama.vscode/wiki/Scripts) are introduced - something like macros for llama-vscode. Scripts are written in a simple DSL language, which supports execution of llama-vscode commands for selecting/deselecting models, agent, env, changing settings, executing terminal commands etc. The scripts also support variables, if/else statements and comments. The scripts could be used as a content of the agent commands (agent commands are shown by pressing / in the agent prompt field). The plan is in future the scripts to be used in the hooks (not yet introduced)
+- The agent commands, which send prompt to the agent are now visualized with [p] prefix, while those, which execute scripts and do not send prompt are visualized with [s] prefix.
 - New setting scripts_folder - the files in this folder with extension .lvs are considered as agent script commands and are shown on entering "/" in the agent prompt field. Those commands do not send prompt to the agent.
 - More informative errors in case of problems with code completion.
-- Telegram bot - the /chat command for showing the current chat (last xx chars) is availabe even while the agent is running.
+- Telegram bot - the /chat command for showing the current chat (last xx chars) is available even while the agent is running.
 
 
 ## Version 0.0.58 is released (03.08.2026)
@@ -362,12 +377,12 @@ Settings:
 - Deep links support added. Now VS Code and and a llama-vscode view could be opened from a link. Example [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello) opens VS Code and llama-vscode agent and writes in the prompt box "Hello". [More details](https://github.com/ggml-org/llama.vscode/wiki/Deep-link)
 - Logo changed
 - New setting tool_permit_file_delete - allow or deny deletion of files. Now the setting tool_permit_file_changes is only for file changes.
-- New setting tools_permission_timeout - The timeout (in seconds) for providing tool execution permission. If not answered withing this timeout, the agent will assume a silent answer with No. Default 600 seconds. 
+- New setting tools_permission_timeout - The timeout (in seconds) for providing tool execution permission. If not answered within this timeout, the agent will assume a silent answer with No. Default 600 seconds. 
 
 
 ## Version 0.0.56 is released (27.07.2026)
 ### What is new
-- Telegram bot commands exteded and simplified. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
+- Telegram bot commands extended and simplified. [More details](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)
 - Agent commands prompt could now include terminal commands in format !'<terminal_command>'. The prompt is preprocessed - the commands are executed and replaced with the result of the execution in the prompt.
 - Kimi K3 - dynamically loaded tools (tools on demand) fix - prevent sending the same tool definition several times.
 
@@ -380,7 +395,7 @@ Settings:
 ## Version 0.0.54 is released (19.07.2026)
 ### What is new
 - Added predefined kimi k3 tools models for OpenRouter and moonshot.ai
-- Implemented dynamically loaded tools (tools on demand) feature for Kimi K3 (works only for moonshot.ai). This optimizes the token usage and reduces the price of using kimi k3. [More details]( https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading)
+- Implemented dynamically loaded tools (tools on demand) feature for Kimi K3 (works only for moonshot.ai). This optimizes the token usage and reduces the price of using kimi k3. [More details](https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading)
 - Added predefined copilot agent (uses system prompt based on VS Code copilot system prompt)
 
 
@@ -409,21 +424,21 @@ Settings:
 
 
 
-### Version 0.0.50 is released (26.06.2026)
+## Version 0.0.50 is released (26.06.2026)
 ### What is new
 
-* Option for using standard shell script for llama.cpp installation (brew / winget also available)
-* Use "llama server" instead of llama-server to start a local server
-* Added one predefined local model with Multi Token Prediction: Qwen3.6-27B-GGUF:Q8_0 MTP (LOCAL) (VRAM>20)
+- Option for using standard shell script for llama.cpp installation (brew / winget also available)
+- Use "llama server" instead of llama-server to start a local server
+- Added one predefined local model with Multi Token Prediction: Qwen3.6-27B-GGUF:Q8_0 MTP (LOCAL) (VRAM>20)
 
 
 ## Version 0.0.49 is released (26.06.2026)
 ### What is new
 
-* User dialogs are now two types - popup dialogs (for short texts) and dialogs in editor (for long texts)
-* Setting popup_max_chars (default 160) determines what is the max length of short texts (popup dialogs used for them)
-* Automatic installation of llama.cpp on Linux, provided brew package manager is available
-* Delete Chat button added in the llama-vscode panel
+- User dialogs are now two types - popup dialogs (for short texts) and dialogs in editor (for long texts)
+- Setting popup_max_chars (default 160) determines what is the max length of short texts (popup dialogs used for them)
+- Automatic installation of llama.cpp on Linux, provided brew package manager is available
+- Delete Chat button added in the llama-vscode panel
 
 
 ## Version 0.0.48 is released (01.06.2026)
@@ -470,7 +485,7 @@ llama.vscode could provide models for VS Code Copilot now:
 3. Make the models (all models available by the application serving the tools model are shown) you want to use visible (click on the left of the model name)  
 4. Select the desired model from Copilot and start using it
 
-Not needed tools from Copilot could be unchecked to reduce contex size if local model is used.
+Not needed tools from Copilot could be unchecked to reduce context size if local model is used.
 
 
 
@@ -527,7 +542,7 @@ llama-vscode will wait debounce_ms after a keystroke before sending a request to
 
 ### [Statusbar](https://github.com/ggml-org/llama.vscode/wiki/Statusbar)
 
-### [Menu](https://github.com/ggml-org/llama.vscode/wiki/Statusbar)
+### [Menu](https://github.com/ggml-org/llama.vscode/wiki/Menu)
 
 ### [Env](https://github.com/ggml-org/llama.vscode/wiki/Env)
 

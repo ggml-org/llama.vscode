@@ -407,14 +407,15 @@ export class Architect {
         context.subscriptions.push(triggerAskAiDisposable);
     }
 
-    registerCommandAskAiWithTools = (context: vscode.ExtensionContext) => {
-        const triggerAskAiDisposable = vscode.commands.registerCommand('extension.askAiWithTools', async () => {
-            if (!vscode.window.activeTextEditor) {
+    registerCommandSendPromptToAgent = (context: vscode.ExtensionContext) => {
+        const triggerAskAiDisposable = vscode.commands.registerCommand('extension.sendPromptToAgent', async () => {
+            const editor = vscode.window.activeTextEditor;
+            if (!editor) {
                 vscode.window.showErrorMessage('No active editor!');
                 return;
             }
 
-            this.app.askAi.showChatWithTools(context);
+            await this.app.askAi.sendPromptToAgent(editor);
         });
         context.subscriptions.push(triggerAskAiDisposable);
     }

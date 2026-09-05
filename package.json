@@ -32,6 +32,13 @@
           "title": "llama-vscode",
           "icon": "resources/llama-sidebar.svg"
         }
+      ],
+      "secondarySidebar": [
+        {
+          "id": "llama-vscode-right",
+          "title": "llama-vscode",
+          "icon": "resources/llama-sidebar.svg"
+        }
       ]
     },
     "languages": [
@@ -81,6 +88,10 @@
       {
         "command": "extension.askAi",
         "title": "llama-vscode: Ask AI"
+      },
+      {
+        "command": "extension.sendPromptToAgent",
+        "title": "llama-vscode: Send selection/all text to the agent."
       },
       {
         "command": "extension.editSelectedText",
@@ -191,9 +202,9 @@
         "when": "editorTextFocus"
       },
       {
-        "command": "extension.askAiWithTools",
-        "key": "ctrl+Shift+t",
-        "when": "editorTextFocus"
+        "command": "extension.sendPromptToAgent",
+        "key": "ctrl+alt+enter",
+        "when": "editorFocus"
       },
       {
         "command": "extension.editSelectedText",
@@ -1696,6 +1707,16 @@
           "type": "number",
           "default": 600,
           "description": "How long (in seconds) should the agent wait for user permission of a tool execution. If the answer is not received in this time, the agent assumes that the user rejects the tool execution."
+        },
+        "llama-vscode.send_prompt_from_editor_enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable it for writing long, structured promt in the editor and sending it directly to the agent. If true, on Ctrl+Alt+Enter in the editor (or on selecting 'llama-vscode: Send selection ...' from context menu), the selected text (or all text if no selection) will be sent directly as a prompt to the agent."
+        },
+        "llama-vscode.remove_sent_prompt_from_editor": {
+          "type": "boolean",
+          "default": false,
+          "description": "If true, the prompt sent directly to the agent from the text editor is removed. Only applicable if setting send_prompt_from_editor_enabled is true."
         }
       }
     },
@@ -1716,6 +1737,11 @@
         {
           "command": "extension.showLlamaWebview",
           "when": "editorHasSelection",
+          "group": "llama@1"
+        },
+        {
+          "command": "extension.sendPromptToAgent",
+          "when": "editorFocus",
           "group": "llama@1"
         }
       ]

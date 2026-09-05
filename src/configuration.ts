@@ -147,6 +147,8 @@ export class Configuration {
     telegram_bot_users = ""
     telegram_chunk_size = 250;
     tools_permission_timeout = 600;
+    send_prompt_from_editor_enabled = false;
+    remove_sent_prompt_from_editor = false;
 
     // TODO: change to snake_case for consistency
     RING_UPDATE_MIN_TIME_LAST_COMPL = 3000;
@@ -317,6 +319,8 @@ export class Configuration {
         this.telegram_bot_users = String(config.get<string>("telegram_bot_users"));
         this.telegram_chunk_size = Number(config.get<number>("telegram_chunk_size"));
         this.tools_permission_timeout = Number(config.get<number>("tools_permission_timeout"));
+        this.send_prompt_from_editor_enabled = Boolean(config.get<boolean>("send_prompt_from_editor_enabled"));
+        this.remove_sent_prompt_from_editor = Boolean(config.get<boolean>("remove_sent_prompt_from_editor"));
     };
 
     private normalizeAgents(rawAgents: unknown): Agent[] {

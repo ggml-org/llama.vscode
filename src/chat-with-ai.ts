@@ -16,18 +16,58 @@ export class ChatWithAi {
         
     }
 
-    showChatWithTools = async (context: vscode.ExtensionContext) => {
-        let query: string|undefined = undefined
-        query = await vscode.window.showInputBox({
-            placeHolder: this.app.configuration.getUiText('Enter your question...'),
-            prompt: this.app.configuration.getUiText('What would you like to ask an Agent (AI with tools)?'),
-            ignoreFocusOut: true
-        });
+    getSelectedPrompt = (editor: vscode.TextEditor): string | undefined => {
+        const selection = editor.selection
+        if (!selection.isEmpty) return editor.document.getText(selection)
+        const firstNonWhitespaceCharIndex = editor.document.lineAt(0).firstNonWhitespaceCharacterIndex
+        const firstLine = editor.document.lineAt(0)
+        const lastLine = editor.document.lineAt(editor.document.lineCount - 1)
+        const query = editor.document.getText(new vscode.Range(
+            new vscode.Position(0, firstNonWhitespaceCharIndex),
+            lastLine.range.end
+        ))
+        return query || undefined
+    }
 
-        if (!query) {
-            return
-        } else {        
-            this.app.llamaAgent.run(query)
+    sendPromptToAgent = async (editor: vscode.TextEditor) => {
+        if (!this.app.configuration.send_prompt_from_editor_enabled){
+            const enableSendPrompt = await this.app.dialogs.showYesNoDialog(this.app.configuration.getUiText("Send prompt from editor is disabled. Do you want to enable it?")??"")
+            if (enableSendPrompt) {
+                await this.app.configuration.updateConfigValue("send_prompt_from_editor_enabled", true)
+                vscode.window.showInformationMessage(this.app.configuration.getUiText("Sending prompt from editor is enabled. Use Ctrl+Alt+Enter or context menu to send the selected text (or all text if no selection) to the agent. Use setting send_prompt_from_editor_enabled to disable it.")??"")
+                const enableRemoveSentPrompt = await this.app.dialogs.showYesNoDialog(this.app.configuration.getUiText("Do you want the sent prompt to be removed from the editor?")??"")
+                if (enableRemoveSentPrompt) {
+                    await this.app.configuration.updateConfigValue("remove_sent_prompt_from_editor", true)
+                    vscode.window.showInformationMessage(this.app.configuration.getUiText("Removing sent prompt from editor is enabled. Use setting remove_sent_prompt_from_editor to disable it.")??"")
+                }
+            }
+            return;
+        }
+
+        const query = this.getSelectedPrompt(editor)
+        if (query) {   
+            const promptLimit = 3000
+            if (query.length > promptLimit){
+                const answer = await this.app.dialogs.showYesNoDialog(`The prompt looks too big - ${query.length} chars. Are you sure you want to send it directly to the agent? `)
+                if (!answer) return;
+            }
+            // await this.app.llamaWebviewProvider.showAgentViewInUi(query);
+            this.app.llamaAgent.run(query);
+            if (!this.app.configuration.remove_sent_prompt_from_editor) return
+            if (editor.selection.isEmpty) {
+                const firstLine = editor.document.lineAt(0);
+                const lastLine = editor.document.lineAt(editor.document.lineCount - 1);
+                const range = new vscode.Range(
+                    firstLine.range.start,
+                    lastLine.range.end
+                );
+                await editor.edit(editBuilder => editBuilder.delete(range));
+                editor.selection = new vscode.Selection(new vscode.Position(0, 0), new vscode.Position(0, 0));
+            } else {
+                const selection = editor.selection
+                await editor.edit(editBuilder => editBuilder.delete(selection));
+                editor.selection = new vscode.Selection(selection.active, selection.active);
+            }            
         }
     }
 

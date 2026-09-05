@@ -285,6 +285,7 @@ export class LlamaAgent {
                 },
                 ...recentMessages
             ];
+            vscode.window.showInformationMessage(`${oldMessages.length} messages summarized. Last ${recentMessages.length} messages left.`)
             return true;
 
         } catch (error) {
@@ -565,7 +566,7 @@ export class LlamaAgent {
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                         if (toolFunc) {
                                             commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                            if (oneToolCall.function.name == "edit_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
+                                            if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
                                                 changedFiles.add(commandDescription);
                                                 if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
                                                     this.updateLogText(commandOutput + "\n\n")
