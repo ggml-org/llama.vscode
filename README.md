@@ -28,8 +28,8 @@ Local LLM-assisted text completion, chat with AI and agentic coding extension fo
 - Model selection - for completion, chat, embeddings and tools
 - Env (group of models) concept introduced. Selecting/Deselecting env selects/deselects all the models in it
 - Add/remove/export/import for env
-- Predefined models - both local and external
-- Predefined envs for different use cases - only completion, chat + completion, chat + agent, loccal full package (with gpt-oss 20B), etc.
+- Predefined models - both local and external, including DeepSeek V4 Flash 0731, Qwen3.7 Flash, GPT-6 Astra, Claude Fable 5.1, etc.
+- Predefined envs for different use cases - only completion, chat + completion, chat + agent, etc.
 - MCP tools selection for the agent (from VS Code installed MCP Servers)
 - Search and download models from Huggingface directly from llama-vscode
 
