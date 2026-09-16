@@ -1112,6 +1112,42 @@ export const PREDEFINED_LISTS = new Map<string, any>([
           ]],
 [PREDEFINED_LISTS_KEYS.AGENT_COMMANDS, [
             {
+              "name": "manage_completion_models",
+              "prompt": [
+                "manageComplModels"
+              ],
+              "description": "Manage the completion models - add, delete, view etc.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "manage_chat_models",
+              "prompt": [
+                "manageChatModels"
+              ],
+              "description": "Manage the chat models - add, delete, view etc.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "manage_embeddings_models",
+              "prompt": [
+                "manageEmbsModels"
+              ],
+              "description": "Manage the embeddings models - add, delete, view etc.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "manage_tools_models",
+              "prompt": [
+                "manageToolsModels"
+              ],
+              "description": "Manage the tools models - add, delete, view etc.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
               "name": "compact",
               "prompt": [
                 "set isCompacted compact",

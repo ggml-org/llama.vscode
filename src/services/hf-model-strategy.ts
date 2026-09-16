@@ -5,6 +5,7 @@ import { IAddStrategy, LlmModel, ModelTypeDetails } from "../types";
 import { Utils } from "../utils";
 import * as axios from "axios";
 import { HF_MODEL_TEMPLATES, SETTING_TO_MODEL_TYPE } from "../constants";
+import { ServiceUtils } from "./service-utils";
 
 interface HuggingfaceModel {
     modelId: string;
@@ -42,7 +43,7 @@ export class HfModelStrategy implements IAddStrategy {
             prompt: 'Enter keywords to search for models in huggingface',
             value: ""
         });
-        searchWords = this.sanitizeInput(searchWords || '');
+        searchWords = ServiceUtils.sanitizeInput(searchWords || '');
 
         if (!searchWords) {
             vscode.window.showInformationMessage("No huggingface model selected.")
@@ -54,11 +55,11 @@ export class HfModelStrategy implements IAddStrategy {
         localStartCommand = this.app.modelService.sanitizeCommand(localStartCommand);
 
         let endpoint = hostEndpoint + ":" + details.newModelPort;
-        endpoint = this.sanitizeInput(endpoint);
+        endpoint = ServiceUtils.sanitizeInput(endpoint);
         const aiModel = ""
         const isKeyRequired = false;
         let name = "hf: " + hfModelName;
-        name = this.sanitizeInput(name);
+        name = ServiceUtils.sanitizeInput(name);
         let newHfModel: LlmModel = {
             name: name,
             localStartCommand: localStartCommand,
@@ -68,35 +69,17 @@ export class HfModelStrategy implements IAddStrategy {
         };
 
         const shouldAddModel = await this.app.dialogs.confirmAction("You have entered:",
-            this.getModelDetailsAsString(newHfModel) +
+            ServiceUtils.getModelDetailsAsString(newHfModel) +
             "\nDo you want to add a model with these properties?"
         );
 
         if (shouldAddModel) {
-            let shouldOverwrite = false;
-            [newHfModel.name, shouldOverwrite] = await this.getUniqueModelName(details.modelsList, newHfModel);
-            if (!newHfModel.name) {
-                vscode.window.showInformationMessage("The model was not added as the name was not provided.")
-                return;
-            }
-            if (shouldOverwrite) {
-                const index = details.modelsList.findIndex(model => model.name === newHfModel.name);
-                if (index !== -1) {
-                    details.modelsList.splice(index, 1);
-                }
-            }
-            details.modelsList.push(newHfModel);
-            this.app.configuration.updateConfigValue(details.modelsListSettingName, details.modelsList);
-            vscode.window.showInformationMessage("The model is added: " + newHfModel.name)
-            const shouldSelect = await this.app.dialogs.confirmAction("Do you want to select/start the newly added model?", "");
-            if (shouldSelect) {
-                await this.app.modelService.selectStartModel(newHfModel, modelType, details);
-            }
+            await ServiceUtils.addPersistModel(newHfModel, details, this.app);
         }
     }
 
     private async getDownloadModelName(searchWords: string): Promise<string> {
-        searchWords = this.sanitizeInput(searchWords);
+        searchWords = ServiceUtils.sanitizeInput(searchWords);
         const foundModels = await this.getHfModels(searchWords ?? "");
         let hfModelName = "";
         if (foundModels && foundModels.length > 0) {
@@ -139,7 +122,7 @@ export class HfModelStrategy implements IAddStrategy {
             vscode.window.showInformationMessage("No model selected.");
             return "";
         }
-        hfModelName = this.sanitizeInput(hfModelName);
+        hfModelName = ServiceUtils.sanitizeInput(hfModelName);
         return hfModelName;
     }
 
@@ -222,43 +205,5 @@ export class HfModelStrategy implements IAddStrategy {
         );
         if (result && result.data) return result.data as HuggingfaceFile[]
         else return [];
-    }
-    
-    private sanitizeInput(input: string): string {
-        return input ? input.trim() : '';
-    }
-
-    private async getUniqueModelName(modelsList: LlmModel[], newModel: LlmModel): Promise<[string, boolean]> {
-        let uniqueName = newModel.name;
-        let shouldOverwrite = false;
-        let modelSameName = modelsList.find(model => model.name === uniqueName);
-        while (uniqueName && !shouldOverwrite && modelSameName !== undefined) {
-            shouldOverwrite = await this.app.dialogs.confirmAction("A model with the same name already exists. Do you want to overwrite the existing model?",
-                "Existing model:\n" +
-                this.getModelDetailsAsString(modelSameName) +
-                "\n\nNew model:\n" +
-                this.getModelDetailsAsString(newModel)
-            );
-            if (!shouldOverwrite) {
-                uniqueName = (await vscode.window.showInputBox({
-                    placeHolder: 'a unique name for your new model',
-                    prompt: 'Enter a unique name for your new model. Leave empty to cancel entering.',
-                    value: newModel.name
-                })) ?? "";
-                uniqueName = this.sanitizeInput(uniqueName);
-                if (uniqueName) modelSameName = modelsList.find(model => model.name === uniqueName);
-            }
-        }
-
-        return [uniqueName, shouldOverwrite]
-    }
-
-    private getModelDetailsAsString(model: LlmModel): string {
-        return "model: " +
-            "\nname: " + model.name +
-            "\nlocal start command: " + model.localStartCommand +
-            "\nendpoint: " + model.endpoint +
-            "\nmodel name for provider: " + model.aiModel +
-            "\napi key required: " + model.isKeyRequired
-    }
+    } 
 }

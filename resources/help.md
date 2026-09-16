@@ -309,6 +309,13 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.66 is released (16.09.2026)
+### What is new
+- User text in the agent chat is now in a bubble
+- Information message on starting VS Code about setting agent is removed
+- New commands in the agent chat - manage_completion_models, manage_chat_models, manage_embeddings_models, manage_tools_models. They open the menu with the commands to manage the models - add, delete, view etc.
+
+
 ## Version 0.0.65 is released (05.09.2026)
 ### What is new
 - Move agent view on the left or on the right side of VS Code - click button "..." and select the appropriate action 

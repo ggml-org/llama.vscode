@@ -1,7 +1,3 @@
-// TODO
-// Идеи
-// - Използване на групи от агенти
-// - използване lSP и linters
 import * as vscode from 'vscode';
 import {Application} from "./application";
 import {LlamaWebviewProvider} from './llama-webview-provider'
@@ -46,12 +42,12 @@ export class Architect {
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
-        if (lastAgent && (lastAgent as Agent).name) this.app.agentService.selectAgent(lastAgent)
+        if (lastAgent && (lastAgent as Agent).name) this.app.agentService.selectAgent(lastAgent, false)
         else if (!this.app.getAgent()?.name) {
             // set default agent if no last agent is set
             const predefinedAgents = (PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
             const defaultAgent = predefinedAgents.find((agent) => agent.name === "default");
-            if (defaultAgent) this.app.agentService.selectAgent(defaultAgent)
+            if (defaultAgent) this.app.agentService.selectAgent(defaultAgent, false)
         }
         this.app.tools.init()
     }

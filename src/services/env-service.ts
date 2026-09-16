@@ -276,14 +276,14 @@ export class EnvService {
         await this.persistEnv(newEnv, envsList, settingName);
     }
 
-    private async persistEnv(newEnv: Env, envsList: Env[], settingName: string): Promise<void> {
+    persistEnv = async (newEnv: Env, envsList: Env[], settingName: string): Promise<void> => {
         let envDetails = this.getEnvDetailsAsString(newEnv);
         const shouldAddEnv = await this.app.dialogs.confirmAction("A new env will be added. Do you want to add the env?", envDetails);
 
         if (shouldAddEnv) {
             envsList.push(newEnv);
             this.app.configuration.updateConfigValue(settingName, envsList);
-            vscode.window.showInformationMessage("The env is added.");
+            vscode.window.showInformationMessage("The env is added: " + newEnv.name);
         }
     }
 

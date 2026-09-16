@@ -784,6 +784,55 @@ body {
   margin-bottom: 16px;
 }
 
+/* User message bubble - right aligned rounded rectangle */
+.markdown-content .user-message-bubble {
+  display: flex;
+  justify-content: flex-end;
+  margin: 12px 0 16px 0;
+}
+
+.markdown-content .user-message-bubble > .markdown-content-inner {
+  max-width: 80%;
+  background-color: #3c3c3c;
+  color: #ffffff;
+  border-radius: 12px;
+  border-bottom-right-radius: 4px;
+  padding: 10px 14px;
+  line-height: 1.5;
+  word-break: break-word;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.markdown-content .user-message-bubble p {
+  margin: 0 0 8px 0;
+}
+
+.markdown-content .user-message-bubble p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-content .user-message-bubble code {
+  background-color: rgba(0, 0, 0, 0.2);
+  border: none;
+  color: inherit;
+}
+
+.markdown-content .user-message-bubble pre {
+  background-color: rgba(0, 0, 0, 0.25);
+  border: none;
+  margin: 8px 0;
+  color: inherit;
+}
+
+.markdown-content .user-message-bubble a {
+  color: var(--vscode-button-foreground);
+  text-decoration: underline;
+}
+
+.markdown-content .user-message-bubble a:hover {
+  color: #ffffff;
+}
+
 .markdown-content ul,
 .markdown-content ol {
   margin-top: 0;

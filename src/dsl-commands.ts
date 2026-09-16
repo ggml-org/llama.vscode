@@ -1,5 +1,5 @@
 import {Application} from "./application";
-import { ModelType, PREDEFINED_LISTS_KEYS } from "./constants";
+import { ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST } from "./constants";
 import { PREDEFINED_LISTS } from "./lists";
 import { Agent, Env, LlmModel } from "./types";
 import { Utils } from "./utils";
@@ -76,6 +76,10 @@ export class DslCommands {
         this.commandsFunc.set("runterminalcommand", this.runTerminalCommand);
         this.commandsFunc.set("showinfo", this.showInfo);
         this.commandsFunc.set("compact", this.compact);
+        this.commandsFunc.set("managecomplmodels", this.manageComplModels);
+        this.commandsFunc.set("managechatmodels", this.manageChatModels);
+        this.commandsFunc.set("manageembsmodels", this.manageEmbsModels);
+        this.commandsFunc.set("managetoolsmodels", this.manageToolsModels);
     }
 
     public compact = async() => {
@@ -149,9 +153,7 @@ export class DslCommands {
 
     public deselectChatModel = async (args: string) => {
         return await this.deselectModel(ModelType.Chat);
-    }
-
-    
+    }   
 
     public deselectEnv = async (args: string) => {
         await this.app.envService.stopEnv();
@@ -160,39 +162,83 @@ export class DslCommands {
     }
 
     public addToolsModel = async (args: string) => {
-        return "Not implemented"
+        return this.addModel(args, ModelType.Tools);
     }
 
     public addCompletionModel = async (args: string) => {
-        return "Not implemented"
+        return this.addModel(args, ModelType.Completion);
     }
 
     public addEmbeddigsModel = async (args: string) => {
-        return "Not implemented"
+        return this.addModel(args, ModelType.Embeddings);
     }
 
     public addChatModel = async (args: string) => {
-        return "Not implemented"
+        return this.addModel(args, ModelType.Chat);
     }
 
     public addEnv = async (args: string) => {
-        return "Not implemented"
+        try{
+            const envParams = args.split(",");
+            const complModel: LlmModel | undefined = this.getModelFromName(this.stripArgumentValue(envParams[0].trim()), ModelType.Completion);
+            const chatModel: LlmModel | undefined = this.getModelFromName(this.stripArgumentValue(envParams[1].trim()), ModelType.Chat);
+            const embsModel: LlmModel | undefined = this.getModelFromName(this.stripArgumentValue(envParams[2].trim()), ModelType.Embeddings);
+            const toolsModel: LlmModel | undefined = this.getModelFromName(this.stripArgumentValue(envParams[3].trim()), ModelType.Tools);
+            const agent: Agent | undefined = this.app.agentService.getAllAgentsList().find(a => a.name === this.stripArgumentValue(envParams[4].trim()))
+            let newEnv: Env = {
+                name: this.stripArgumentValue(envParams[0].trim()),
+                description: this.stripArgumentValue(envParams[1].trim()),
+                completion: complModel,
+                chat: chatModel,
+                embeddings: embsModel,
+                tools: toolsModel,
+                agent: agent,
+                ragEnabled: this.stripArgumentValue(envParams[5].trim()).toLowerCase() === "true" ? true : false,
+                envStartLastUsed: this.stripArgumentValue(envParams[6].trim()).toLowerCase() === "true" ? true : false,
+                complEnabled: this.stripArgumentValue(envParams[7].trim()).toLowerCase() === "true" ? true : false,
+            };
+            await this.app.envService.persistEnv(newEnv, this.app.configuration.envs_list, SETTING_NAME_FOR_LIST.ENVS)
+            return "Environment is added: " + newEnv.name;
+        }
+        catch (error) {
+            return "Environment is NOT added: " + error;
+        }
     }
 
-    public deleteToolsModel = async (args: string) => {
-        return "Not implemented"
+    public deleteToolsModel = async (modelName: string) => {
+        try {
+            this.deleteModel(modelName, ModelType.Tools);
+            return "Model is deleted " + modelName
+        } catch (error){
+            return "Model is not deleted " + error
+        }
     }
 
-    public deleteCompletionModel = async (args: string) => {
-        return "Not implemented"
+    public deleteCompletionModel = async (modelName: string) => {
+        try {
+            this.deleteModel(modelName, ModelType.Completion);
+            return "Model is deleted " + modelName
+        } catch (error){
+            return "Model is not deleted " + error
+        }
     }
 
-    public deleteEmbeddigsModel = async (args: string) => {
-        return "Not implemented"
+    public deleteEmbeddigsModel = async (modelName: string) => {
+        try {
+            this.deleteModel(modelName, ModelType.Embeddings);
+            return "Model is deleted " + modelName
+        } catch (error){
+            return "Model is not deleted " + error
+        }
     }
 
-    public deleteChatModel = async (args: string) => {
-        return "Not implemented"
+    public deleteChatModel = async (modelName: string) => {
+        try {
+            this.deleteModel(modelName, ModelType.Chat);
+            return "Model is deleted " + modelName
+        } catch (error){
+            return "Model is not deleted " + error
+        }
     }
 
     public deleteEnv = async (args: string) => {
@@ -331,6 +377,26 @@ export class DslCommands {
         return setting
     }
 
+    public manageComplModels = async () => {
+        await this.app.modelService.processModelActions(ModelType.Completion);
+        return "Manage completion models menu is shown."
+    }
+    
+    public manageChatModels = async () => {
+        await this.app.modelService.processModelActions(ModelType.Chat);
+        return "Manage chat models menu is shown."
+    }
+
+    public manageEmbsModels = async () => {
+        await this.app.modelService.processModelActions(ModelType.Embeddings);
+        return "Manage embeddings models menu is shown."
+    }
+
+    public manageToolsModels = async () => {
+        await this.app.modelService.processModelActions(ModelType.Tools);
+        return "Manage tools models menu is shown."
+    }
+
     public setChat = async (args: string) => {
         return "Not implemented"
     }
@@ -361,7 +427,7 @@ export class DslCommands {
 
     public setAgent = async (agentName: string) => {
         agentName = this.stripArgumentValue(agentName)
-        const agent = this.getAllAgentsList().find((agnt) => agnt.name === agentName);;
+        const agent = this.getAllAgentsList().find((agnt) => agnt.name === agentName);
         let response = ""
         if (agent) {
             await this.app.agentService.selectAgent(agent)
@@ -391,6 +457,55 @@ export class DslCommands {
 
     public importAgent = async (args: string) => {
         return "Not implemented"
+    }
+
+    private deleteModel(modelName: string, modelType: ModelType) {
+        const details = this.app.modelService.getTypeDetails(modelType);
+        const modelIndex = details.modelsList.findIndex(mdl => mdl.name === modelName);
+        this.app.modelService.deleteModelByIndex(details.modelsList, modelIndex, details.modelsListSettingName);
+    }
+
+    private getModelFromName(modelName: string, modelType: ModelType) {   
+        let complModel: LlmModel | undefined = undefined;
+        if (modelName) {
+            switch (modelType) {
+                case ModelType.Tools:
+                    complModel = this.app.modelService.getAllToolsModelsList().find(mdl => mdl.name == modelName);
+                    break;
+                case ModelType.Completion:
+                    complModel = this.app.modelService.getAllComplModelsList().find(mdl => mdl.name == modelName);
+                    break;
+                case ModelType.Chat:
+                    complModel = this.app.modelService.getAllChatModelsList().find(mdl => mdl.name == modelName);
+                    break;
+                case ModelType.Embeddings:
+                    complModel = this.app.modelService.getAllEmbsModelsList().find(mdl => mdl.name == modelName);
+                    break;
+            }
+            
+        }
+        return complModel;
+    }
+
+    private addModel(args: string, modelType: ModelType) {
+        let response = ""
+        const modelParams = args.split(",");
+        try {
+            let toolsModel: LlmModel = {
+                name: this.stripArgumentValue(modelParams[0].trim()),
+                localStartCommand: this.stripArgumentValue(modelParams[1].trim()),
+                endpoint: this.stripArgumentValue(modelParams[2].trim()),
+                aiModel: this.stripArgumentValue(modelParams[3].trim()),
+                isKeyRequired: this.stripArgumentValue(modelParams[4].trim()).toLowerCase() === "true" ? true : false
+            };
+            const details = this.app.modelService.getTypeDetails(modelType);
+            this.app.modelService.addPersistModel(toolsModel, details);
+            response = modelType + " model is added.";
+        } catch (error) {
+            response = modelType + " model is not added. " + error;
+        }
+
+        return response;
     }
 
     private async deselectModel(modelType: ModelType) {
@@ -437,6 +552,8 @@ export class DslCommands {
                 return [];
         }
     }
+
+
 
     private getAllAgentsList(): Agent[] {
             return this.app.configuration.agents_list
