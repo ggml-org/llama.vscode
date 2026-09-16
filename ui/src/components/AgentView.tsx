@@ -18,6 +18,40 @@ interface AgentViewProps {
   setContextImage: (imgPath: string) => void;
 }
 
+// Chat display segments. User messages are wrapped in ***...*** markers by the
+// extension (see llama-agent.ts askAgent/inSessionText), everything else is
+// assistant / status content.
+interface ChatSegment {
+  type: 'user' | 'assistant';
+  content: string;
+}
+
+const parseChatSegments = (text: string): ChatSegment[] => {
+  const segments: ChatSegment[] = [];
+  // User messages are wrapped in ***...*** by the extension (llama-agent.ts).
+  // The opening marker always starts at a line boundary and the closing marker
+  // is always followed by a newline, so anchor the match to line boundaries to
+  // avoid treating `***bold italic***` inside AI responses as user messages.
+  const userMessageRegex = /(^|\n)\*\*\*([\s\S]*?)\*\*\*(?=\n|$)/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = userMessageRegex.exec(text)) !== null) {
+    // Keep the leading newline (match[1]) attached to the preceding text.
+    if (match.index > lastIndex) {
+      segments.push({ type: 'assistant', content: text.slice(lastIndex, match.index) + (match[1] || '') });
+    } else {
+      segments.push({ type: 'assistant', content: match[1] || '' });
+    }
+    segments.push({ type: 'user', content: match[2] });
+    lastIndex = match.index + match[0].length;
+  }
+  if (lastIndex < text.length) {
+    segments.push({ type: 'assistant', content: text.slice(lastIndex) });
+  }
+  return segments;
+};
+
 const AgentView: React.FC<AgentViewProps> = ({
   displayText,
   setDisplayText,
@@ -667,7 +701,15 @@ const AgentView: React.FC<AgentViewProps> = ({
            {displayText && (
              <div className="markdown-container" ref={markdownContainerRef} style={{ flex: 1, minHeight: 0, maxHeight: '50vh' }}>
                <div className="markdown-content" style={{ height: '100%', overflowY: 'auto' }}>
-                 <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+                 {parseChatSegments(displayText).map((segment, index) =>
+                   segment.type === 'user' ? (
+                     <div key={index} className="user-message-bubble">
+                       <ReactMarkdown className="markdown-content-inner" remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
+                     </div>
+                   ) : (
+                     <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
+                   )
+                 )}
                </div>
              </div>
            )}

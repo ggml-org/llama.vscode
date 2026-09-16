@@ -8,6 +8,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { Configuration } from "../configuration";
 import { PREDEFINED_LISTS } from "../lists";
+import { ServiceUtils } from "./service-utils";
 
 export class ModelService {
     
@@ -186,10 +187,25 @@ export class ModelService {
         return undefined
     }
 
-    getAllModelsList = (): LlmModel[] => {
-            return this.app.configuration.tools_models_list
-                    .concat((PREDEFINED_LISTS.get(ModelType.Tools) as LlmModel[]))
-        }
+    getAllToolsModelsList = (): LlmModel[] => {
+        return this.app.configuration.tools_models_list
+                .concat((PREDEFINED_LISTS.get(ModelType.Tools) as LlmModel[]))
+    }
+
+    getAllChatModelsList = (): LlmModel[] => {
+        return this.app.configuration.chat_models_list
+                .concat((PREDEFINED_LISTS.get(ModelType.Chat) as LlmModel[]))
+    }
+
+    getAllComplModelsList = (): LlmModel[] => {
+        return this.app.configuration.completion_models_list
+                .concat((PREDEFINED_LISTS.get(ModelType.Completion) as LlmModel[]))
+    }
+
+    getAllEmbsModelsList = (): LlmModel[] => {
+        return this.app.configuration.embeddings_models_list
+                .concat((PREDEFINED_LISTS.get(ModelType.Embeddings) as LlmModel[]))
+    }
 
 
     selectDefaultModel = async (modelType: ModelType, persistenceKey: string) => {
@@ -252,11 +268,15 @@ export class ModelService {
                 this.getDetails(modelsList[modelIndex])
             );
             if (shouldDeleteModel) {
-                modelsList.splice(modelIndex, 1);
-                this.app.configuration.updateConfigValue(settingName, modelsList);
-                vscode.window.showInformationMessage("The model is deleted.")
+                this.deleteModelByIndex(modelsList, modelIndex, settingName);
             }
         }
+    }
+
+    deleteModelByIndex = (modelsList: LlmModel[], modelIndex: number, settingName: string) => {
+        modelsList.splice(modelIndex, 1);
+        this.app.configuration.updateConfigValue(settingName, modelsList);
+        vscode.window.showInformationMessage("The model is deleted.");
     }
 
     public async viewModel(type: ModelType , modelsList: LlmModel[]): Promise<void> {
@@ -273,6 +293,10 @@ export class ModelService {
 
     public async showModelDetails(model: LlmModel): Promise<void> {
         await this.app.dialogs.showOkDialog("Model details: \n\n" + this.getDetails(model));
+    }
+
+    public async addPersistModel(newModel: LlmModel, details: ModelTypeDetails){
+        ServiceUtils.addPersistModel(newModel, details, this.app);
     }
 
     async exportModel(type: ModelType, modelsList: LlmModel[]): Promise<void> {
@@ -378,6 +402,7 @@ export class ModelService {
     public getTypeDetails(type: ModelType): ModelTypeDetails {
         const config = MODEL_TYPE_CONFIG[type];
         return {
+            modelType: type,
             modelsList: (this.app.configuration as any)[config.settingName],
             modelsListSettingName: config.settingName,
             newModelPort: (this.app.configuration as any)[config.portSetting],

@@ -93,14 +93,14 @@ export class TelegramBot {
             case TELEGRAM_BOT_COMMANDS.SHOW_MODELS:
                 const propModelsCount = this.app.configuration.tools_models_list.length
                 const msgModels = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableModels) + " \n" +
-                                    this.app.modelService.getAllModelsList()
+                                    this.app.modelService.getAllToolsModelsList()
                                     .map((mdl, index) => `${index + 1}. ${index >= propModelsCount ? "(predefined) " + mdl.name : mdl.name}`)
                                     .join("\n ");
                 this.sendResponse(msgModels); 
                 return;
             case TELEGRAM_BOT_COMMANDS.SHOW_AGENTS:
                 const propAgentsCount = this.app.configuration.agents_list.length
-                const allAgents = this.getAllAgentsList();
+                const allAgents = this.app.agentService.getAllAgentsList();
                 const msgAgents = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableAgents) + " \n" +
                         allAgents.map((agent, index) => `${index+1}. ${index >= propAgentsCount ? "(predefined) " + agent.name : agent.name}`)
                         .join("\n ");
@@ -162,7 +162,7 @@ export class TelegramBot {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectAgent)??"");
                     return;
                 }
-                const agent = this.getAllAgentsList()[agentIndex];
+                const agent = this.app.agentService.getAllAgentsList()[agentIndex];
                 if (agent) {
                     await this.app.agentService.selectAgent(agent)
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAgentSetTo) + " " + agent.name);
@@ -187,7 +187,7 @@ export class TelegramBot {
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectModel)??"");
                     return;
                 }
-                const model = this.app.modelService.getAllModelsList()[modelIndex];
+                const model = this.app.modelService.getAllToolsModelsList()[modelIndex];
                 if (model) {
                     await this.app.modelService.selectStartModel(model, ModelType.Tools, this.app.modelService.getTypeDetails(ModelType.Tools))
                     this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramModelSetTo) + " " + model.name);
@@ -366,8 +366,5 @@ export class TelegramBot {
         }
     }
 
-    private getAllAgentsList(): Agent[] {
-        return this.app.configuration.agents_list
-                .concat((PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[]))
-    }
+    
 }

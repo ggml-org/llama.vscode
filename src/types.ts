@@ -1,4 +1,4 @@
-import { CONFIRMATION_STATE } from "./constants";
+import { CONFIRMATION_STATE, ModelType } from "./constants";
 
 export interface IAddStrategy {
     add(details: ModelTypeDetails): Promise<void>;
@@ -127,6 +127,7 @@ export interface HuggingfaceModel {
 }
 
 export interface ModelTypeDetails {
+    modelType?: ModelType
     modelsList: LlmModel[]
     modelsListSettingName: string
     newModelPort: number

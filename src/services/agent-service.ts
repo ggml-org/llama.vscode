@@ -109,7 +109,7 @@ export class AgentService {
         return undefined;
     }
 
-    async selectAgent(agent: Agent): Promise<void> {
+    async selectAgent(agent: Agent, showInfo: boolean = true): Promise<void> {
         this.app.setAgent(agent);
         const allTools = Array.from(this.app.tools.toolsFunc.keys());
         for (let toolName of allTools) {
@@ -124,7 +124,7 @@ export class AgentService {
         }
         await this.app.persistence.setValue(PERSISTENCE_KEYS.SELECTED_AGENT, agent);
         this.app.llamaWebviewProvider.updateLlamaView();
-        if (agent.name.trim() !== "") {
+        if (agent.name.trim() !== "" && showInfo) {
             vscode.window.showInformationMessage(`Agent ${agent.name} is selected.`);
         }
     } 
@@ -155,7 +155,7 @@ export class AgentService {
             canPickMany: true,
             placeHolder: 'Select tools for the agent'
         });
-        const tools = selectedToolsItems ? selectedToolsItems.map(item => item.label) : Array.from(this.app.tools.toolsFunc.keys());
+        const tools = selectedToolsItems ? selectedToolsItems.map(item => item.label) : currentTools;
 
         return tools;
     }
@@ -376,5 +376,10 @@ export class AgentService {
 
     getEditedAgentTools = () => {
         return this.editedAgentTools;
+    }
+
+    getAllAgentsList = (): Agent[] => {
+        return this.app.configuration.agents_list
+                .concat((PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[]))
     }
 }
