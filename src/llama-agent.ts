@@ -1,11 +1,11 @@
 import {Application} from "./application";
-import { AgentCommand, ChatMessage, ContextCustom } from "./types";
+import { AgentCommand, ChatMessage, ContextCustom, EventResult } from "./types";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { AGENT_COMMAND, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
+import { AGENT_COMMAND, HooksEvents, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
@@ -405,6 +405,8 @@ export class LlamaAgent {
             let skillsDesc = this.getSkillsDesc(skillsFolder)
             if (skillsDesc) query += "\n\n" + skillsDesc
 
+            let hooks = this.app.hooks.getHooks(this.app.configuration.hooks_folder)
+
             if (this.contexProjectFiles.size > 0){
                 query += "\n\nBelow is a context, attached by the user.\n"
                 for (const [key, value] of this.contexProjectFiles) {
@@ -565,7 +567,21 @@ export class LlamaAgent {
                                         }   
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                         if (toolFunc) {
-                                            commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                            let preToolResult: EventResult = {stopSession: false, stopTool: false, resultInfo: ""};
+                                            if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
+                                                preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)
+                                                if (preToolResult.stopSession) {
+                                                    return "agent stopped"
+                                                }                                        
+                                            }
+                                            
+                                            if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                            else commandOutput = preToolResult.resultInfo;
+
+                                            let postToolResult: EventResult = {stopSession: false, stopTool: false, resultInfo: ""};
+                                            if (hooks && hooks.has(HooksEvents.postToolUse) && hooks.get(HooksEvents.postToolUse)){
+                                                postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
+                                            }
                                             if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
                                                 changedFiles.add(commandDescription);
                                                 if (commandOutput != UI_TEXT_KEYS.fileUpdated){    

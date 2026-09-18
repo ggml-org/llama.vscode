@@ -36,6 +36,7 @@ import { TelegramBot } from "./telegram-bot";
 import { DslInterpreter } from "./dsl-interpreter";
 import { DslCommands } from "./dsl-commands"
 import { AgentReminder } from "./agent-reminder";
+import { Hooks } from "./hooks";
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -76,6 +77,7 @@ export class Application {
     public dslInterpreter: DslInterpreter
     public dslCommands: DslCommands
     public agentReminder: AgentReminder
+    public hooks: Hooks
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -125,6 +127,7 @@ export class Application {
         this.dslInterpreter = new DslInterpreter(this);
         this.dslCommands = new DslCommands(this);
         this.agentReminder = new AgentReminder(this);
+        this.hooks = new Hooks(this);
     }
 
     public static getInstance(context: vscode.ExtensionContext): Application {
