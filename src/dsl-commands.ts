@@ -9,6 +9,7 @@ type CommandsMap = Map<string, (...args: any[]) => any>;
 export class DslCommands {
     private app: Application
     commandsFunc: CommandsMap = new Map();
+    private eventInput: Map<string, any> = new Map<string, any>();
 
     constructor(application: Application) {
         this.app = application;
@@ -80,6 +81,15 @@ export class DslCommands {
         this.commandsFunc.set("managechatmodels", this.manageChatModels);
         this.commandsFunc.set("manageembsmodels", this.manageEmbsModels);
         this.commandsFunc.set("managetoolsmodels", this.manageToolsModels);
+        this.commandsFunc.set("geteventinput", this.getEventInput);
+    }
+
+    setEventInput = (eventInput: Map<string, any>): void => {
+        this.eventInput = eventInput;
+    }
+
+    public getEventInput = async (key: string): Promise<any> => {
+        return this.eventInput.get(key);
     }
 
     public compact = async() => {
@@ -346,8 +356,9 @@ export class DslCommands {
         return "Not implemented"
     }
 
-    public log = async (args: string) => {
-        return "Not implemented"
+    public log = async (details: string) => {
+        this.app.logger.addEventLog("LVS", this.eventInput.get("toolName") , details)
+        return "Logging is done."
     }
 
     public showInfo = async (msg: string) => {

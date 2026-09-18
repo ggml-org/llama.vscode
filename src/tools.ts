@@ -1292,7 +1292,7 @@ export class Tools {
         this.confirmToolDialogRequest(confirmText);
         if (this.app.configuration.telegram_bot_enabled) {
             this.app.telegramBot.sendResponse(confirmText + "\n\n" + 
-                this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAnswerExactly))
+            this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAnswerExactly))
             this.app.telegramBot.sendResponse(CONFIRMATION_STATE.YES);
             this.app.telegramBot.sendResponse(CONFIRMATION_STATE.NO);
             this.app.telegramBot.sendResponse(CONFIRMATION_STATE.YES_DONT_ASK);

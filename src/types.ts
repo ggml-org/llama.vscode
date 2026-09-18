@@ -138,6 +138,18 @@ export interface ModelTypeDetails {
     shellCmd: (message: string) => void
 }
 
+export interface EventHook{
+    matcher: string
+    script: string
+    timeoutSec?: number
+}
+
+export interface EventResult{
+    stopSession: boolean
+    stopTool: boolean
+    resultInfo: string
+}
+
 export interface ContextCustom {
     get_list: string
     get_item_context: string

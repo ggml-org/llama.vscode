@@ -25,6 +25,11 @@ export enum Action {
   Import = 'import'
 }
 
+export enum HooksEvents {
+  preToolUse = 'preToolUse',
+  postToolUse = 'postToolUse'
+}
+
 export const MODEL_TYPE_CONFIG = {
   [ModelType.Completion]: {
     settingName: 'completion_models_list',
@@ -139,15 +144,14 @@ export const UI_TEXT_KEYS = {
   enabled: "enabled",
   disabled: "disabled",
   rag: "RAG",
-  turnOffRAG: "Turn off RAG related features like Chat with AI with project context",
-  turnOnRAG: "Turn on RAG related features like Chat with AI with project context",
+  turnOffRAG: "Turn off RAG related features like tool search_source",
+  turnOnRAG: "Turn on RAG related features like tool search_source",
 
   // UI actions
   showLlamaAgent: "Show Llama Agent",
   showLlamaAgentDescription: "Shows Llama Agent panel",
   chatWithAI: "Chat with AI",
   chatWithAIDescription: "Opens a chat with AI window inside VS Code using the selected chat model (or setting endpoint_chat)",
-  chatWithAIWithProjectContext: "Chat with AI with project context",
   showSelectedModels: "Show selected models",
   showSelectedModelsDescription: "Displays a list of currently selected models",
   useAsLocalAIRunner: "Use as local AI runner",

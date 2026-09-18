@@ -5,3 +5,4 @@ node_modules
 *.vsix
 .idea/
 specs
+src/temp.md

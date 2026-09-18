@@ -455,8 +455,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               }
             },
             {
-              "name": "Local, only chat, chat with project context & edit (<= 16GB VRAM | HD: 4 GB)",
-              "description": "Could be used for edit with AI, chat with AI, chat with AI with project context Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF + embeddings model (<= 16GB VRAM)",
+              "name": "Local, only chat & edit (<= 16GB VRAM | HD: 4 GB)",
+              "description": "Could be used for edit with AI, chat with AI, Qwen2.5-Coder-3B-Instruct-Q8_0-GGUF + embeddings model (<= 16GB VRAM)",
               "completion": {
                 "name": "",
                 "localStartCommand": ""
@@ -498,8 +498,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               }
             },
             {
-              "name": "Local, only chat, chat with project context & edit (> 16GB VRAM | HD: 8.6 GB)",
-              "description": "Good for chat with AI, chat with AI with project context, edit Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF + embeddings model  (> 16GB VRAM)",
+              "name": "Local, only chat & edit (> 16GB VRAM | HD: 8.6 GB)",
+              "description": "Good for chat with AI, edit Qwen2.5-Coder-7B-Instruct-Q8_0-GGUF + embeddings model  (> 16GB VRAM)",
               "completion": {
                 "name": "",
                 "localStartCommand": ""

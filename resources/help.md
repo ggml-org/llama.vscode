@@ -309,11 +309,16 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.67 is released (18.09.2026)
+### What is new
+- Hooks are introduced (experimental). For now only for events preToolUse and postToolUse. [More details in the wiki](https://github.com/ggml-org/llama.vscode/wiki/Hooks).
+
+
 ## Version 0.0.66 is released (16.09.2026)
 ### What is new
-- User text in the agent chat is now in a bubble
+- User text in the agent chat is now in a bubblehooks
 - Information message on starting VS Code about setting agent is removed
-- New commands in the agent chat - manage_completion_models, manage_chat_models, manage_embeddings_models, manage_tools_models. They open the menu with the commands to manage the models - add, delete, view etc.
+- New commands in the agent chat - manage_completion_models, manage_chat_models, manage_embeddings_models, manage_tools_models. They open a menu with the commands to manage the models - add, delete, view etc.
 
 
 ## Version 0.0.65 is released (05.09.2026)
@@ -564,6 +569,68 @@ llama-vscode will wait debounce_ms after a keystroke before sending a request to
 ### [Manage envs](https://github.com/ggml-org/llama.vscode/wiki/Manage-envs)
 
 ### [Model selection](https://github.com/ggml-org/llama.vscode/wiki/Model-selection)
+
+## Hooks
+
+### Overview
+Hooks are actions that execute in response to specific events during the agent's workflow. For example, you can run hooks before or after a tool execution (`preToolUse` and `postToolUse`).
+
+### How It Works
+Define a folder for hooks using the `hooks_folder` setting, then place one or more `.json` files inside that folder. Each hook file contains hooks grouped by event type. Every hook consists of two fields:
+
+- **matcher**: A regular expression pattern that determines which tool calls the hook applies to.
+- **script**: The command(s) to execute, written in the llama-vscode scripting language. This can either be an inline script or an absolute path to an external script file (e.g., `.lvs`).
+
+### Example
+
+Here is an example `hooks.json` file:
+
+```json
+{
+    "version": 1,
+    "hooks": {
+        "preToolUse": [
+            {
+                "matcher": "edit_file",
+                "script": "/path/to/logToolCall.lvs"
+            }
+        ],
+        "postToolUse": [
+            {
+                "matcher": "edit_file",
+                "script": "runTerminalCommand test -s '$file_path' && sha256sum '$file_path' >> /path/to/audit.log "
+            }
+        ]
+    }
+}
+```
+
+### Available Events
+
+| Event | Description |
+|-------|-------------|
+| `preToolUse` | Executed **before** a tool is called. |
+| `postToolUse` | Executed **after** a tool has completed. |
+
+### Available Variables
+
+| Variable | Description |
+|-------|-------------|
+| `$eventName` | The name of the event. |
+| `$toolName` | The name of the tool (if applicable). |
+| `$file_path` | The path to the file - for tools edit_file, read_file, multi_edit_file | 
+
+### Settings
+
+| Setting | Description |
+|---------|-------------|
+| `hooks_folder` | The directory where hook files (`.json`) are stored. You can place multiple hook files in this folder; each file may define any number of hooks. |
+
+### Notes
+
+- The `matcher` field uses regular expressions, so you can match multiple tools (e.g., `edit_file|write_file` matches both).
+- Inline scripts support variables and functions from the llama-vscode scripting language. Use `$variableName` syntax to reference variables.
+- External script files (e.g., `.lvs`) must be located relative to the `hooks_folder`.
 
 ## How to use llama-vscode  
 
@@ -1128,7 +1195,6 @@ If the file is not available (first time) it will be downloaded (this could take
 ### Chat server  
 *Used for*  
     - Chat with AI  
-    - Chat with AI with project context  
     - Edit with AI  
     - Generage commit message  
 
@@ -1160,7 +1226,7 @@ With Nvidia GPUs and installed cuda drivers
 
 ### Embeddings server  
 *Used for*  
-    - Chat with AI with project context  
+    - tool search_source  
 
 *LLM type*  
     - Embedding    
@@ -1209,7 +1275,6 @@ If the file is not available (first time) it will be downloaded (this could take
 ### Chat server  
 *Used for*  
     - Chat with AI  
-    - Chat with AI with project context  
     - Edit with AI  
     - Generage commit message  
 
@@ -1240,7 +1305,7 @@ With Nvidia GPUs and installed cuda drivers
 
 ### Embeddings server  
 *Used for*  
-    - Chat with AI with project context  
+    - tool search_source  
 
 *LLM type*  
     - Embedding    
@@ -1250,6 +1315,10 @@ Same like code completion server, but use embeddings model and a little bit diff
 ```bash
 `llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
+
+
+
+
 
 ### Setup llama.cpp servers for Windows  
 
@@ -1291,7 +1360,6 @@ Now you could start using llama-vscode extension for code completion.
 ### Chat server  
 *Used for*  
     - Chat with AI  
-    - Chat with AI with project context  
     - Edit with AI  
     - Generate commit message  
 
@@ -1324,7 +1392,7 @@ With Nvidia GPUs and installed cuda drivers
 
 ### Embeddings server  
 *Used for*  
-    - Chat with AI with project context  
+    - tool search_source    
 
 *LLM type*  
     - Embedding    
