@@ -44,7 +44,7 @@ export class Hooks {
     executeHook = async (script: string, data: any): Promise<string> => {
         let result = "Success"
         
-        result = await this.app.dslInterpreter.execute(script).toString()
+        result = (await this.app.dslInterpreter.execute(script)).toString()
 
         return result
     }
@@ -55,7 +55,7 @@ export class Hooks {
         let setVarsScript = "set eventName " + eventName
         setVarsScript += "\nset toolName " + toolName
         for (const [key, value] of dataMap) {
-            setVarsScript += "\nset " + key + " " + value
+            setVarsScript += "\nset " + key + " getEventInput " + key
         }
         setVarsScript += "\n"
         this.app.dslCommands.setEventInput(dataMap);
