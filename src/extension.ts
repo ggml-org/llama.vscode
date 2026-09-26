@@ -29,6 +29,7 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.setOnChangeWorkspaceFolders(context)
     app.architect.registerGenarateCommitMsg(context)
     app.architect.registerCommandKillAgent(context)
+    app.architect.registerCommandOpenChangedFile(context)
     app.architect.registerWebviewProvider(context)
     app.architect.registerUriHandler(context)
     app.architect.registerCommandSelectNextSuggestion(context)

@@ -101,6 +101,11 @@ export const AGENT_COMMAND = {
   type_preffix_prompt: 'p' //should be one character
 }
 
+export const TOOLS_DESC = {
+  prefixEditFile: "Edited file ",
+  prefixMultiEditFile: "Multi-edited file ",
+}
+
 export const UI_TEXT_KEYS = {
   // Agent command texts
   enterName: "Enter agent command name",

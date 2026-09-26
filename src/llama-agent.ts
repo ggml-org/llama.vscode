@@ -5,7 +5,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { AGENT_COMMAND, HooksEvents, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, UI_TEXT_KEYS } from "./constants";
+import { AGENT_COMMAND, HooksEvents, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
@@ -583,7 +583,10 @@ export class LlamaAgent {
                                                 postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
                                             }
                                             if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
-                                                changedFiles.add(commandDescription);
+                                                let changedFile = commandDescription
+                                                if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
+                                                if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length)
+                                                changedFiles.add(changedFile);
                                                 if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
                                                     this.updateLogText(commandOutput + "\n\n")
                                                     this.app.llamaWebviewProvider.logInUi(this.logText);
@@ -635,7 +638,7 @@ export class LlamaAgent {
                 }
             }
             if (changedFiles.size + deletedFiles.size > 0) this.updateLogText("\n\nFiles changes:  \n")
-            if (changedFiles.size > 0) this.updateLogText(Array.from(changedFiles).join("  \n") + "  \n")
+            if (changedFiles.size > 0) this.updateLogText(Array.from(changedFiles).map(file => this.getFileChangeLink(file)).join("  \n") + "  \n")
             if (deletedFiles.size > 0) this.updateLogText(Array.from(deletedFiles).join("  \n") + "  \n")
             this.updateLogText("  \nAgent session finished. \n\n")
             if (iterationsCount >= this.app.configuration.tools_max_iterations) {
@@ -689,6 +692,16 @@ export class LlamaAgent {
     private updateLogText(logDelta: string) {
         if (this.isTlgrBotRequest) this.app.telegramBot.sendResponse(logDelta); 
         this.logText += logDelta;
+    }
+
+    // Renders a changed file as a clickable markdown link in the UI.
+    // Clicking it triggers the 'llama-vscode.openChangedFile' command with the
+    // file path. For telegram bot requests the plain path is returned
+    // (telegram renders command: links as dead links).
+    private getFileChangeLink = (filePath: string): string => {
+        if (this.isTlgrBotRequest) return filePath;
+        const args = encodeURIComponent(JSON.stringify({ filePath: filePath }));
+        return `[${filePath}](command:llama-vscode.openChangedFile?${args})`;
     }
 
     public async updateChat() {

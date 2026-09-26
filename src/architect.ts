@@ -4,6 +4,7 @@ import {LlamaWebviewProvider} from './llama-webview-provider'
 import { Utils } from './utils';
 import { Agent, Env, LlmModel } from './types';
 import { env } from 'process';
+import * as fs from 'fs';
 import { PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, UiView } from './constants';
 import {LlamaChatModelProvider} from "./llama-chat-model-provider";
 import { LlamaAgent } from './llama-agent';
@@ -455,6 +456,30 @@ export class Architect {
         context.subscriptions.push(
             vscode.commands.registerCommand('extension.killAgent', () => {
                 this.app.llamaAgent.stopAgent();
+            })
+        );
+    }
+
+    // Opens a changed file from the agent session summary in the editor.
+    // Triggered by clicking a "Files changes" link in the AgentView markdown.
+    // The path may be absolute or relative to the workspace root.
+    registerCommandOpenChangedFile = (context: vscode.ExtensionContext) => {
+        context.subscriptions.push(
+            vscode.commands.registerCommand('llama-vscode.openChangedFile', async (args: any) => {
+                if (!args || !args.filePath) return;
+                const fileLongName = args.filePath;
+                const absolutePath = Utils.getAbsolutFilePath(fileLongName.trim());
+                if (!absolutePath) {
+                    vscode.window.showErrorMessage(`Cannot open file: no workspace folder is open (${fileLongName})`);
+                    return;
+                }
+                if (!fs.existsSync(absolutePath)) {
+                    vscode.window.showErrorMessage(`Changed file does not exist: ${absolutePath}`);
+                    return;
+                }
+                const uri = vscode.Uri.file(absolutePath);
+                const document = await vscode.workspace.openTextDocument(uri);
+                await vscode.window.showTextDocument(document);
             })
         );
     }

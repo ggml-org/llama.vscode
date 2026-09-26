@@ -942,6 +942,24 @@ body {
   text-decoration: underline;
 }
 
+/* Links to changed/deleted files in the agent session summary
+   (rendered by llama-agent.ts getFileChangeLink as command: URIs) */
+.markdown-content a[href^="command:llama-vscode.openChangedFile"] {
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--accent-color);
+  text-underline-offset: 3px;
+}
+
+.markdown-content a[href^="command:llama-vscode.openChangedFile"]:hover {
+  color: var(--vscode-button-foreground);
+  background-color: var(--accent-color);
+  text-decoration: none;
+  border-radius: 3px;
+}
+
 .markdown-content img {
   max-width: 100%;
   height: auto;
