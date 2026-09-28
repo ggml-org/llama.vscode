@@ -27,7 +27,9 @@ export enum Action {
 
 export enum HooksEvents {
   preToolUse = 'preToolUse',
-  postToolUse = 'postToolUse'
+  postToolUse = 'postToolUse',
+  userPromptSubmit = 'userPromptSubmit',
+  stop = 'stop'
 }
 
 export const MODEL_TYPE_CONFIG = {
@@ -99,6 +101,11 @@ export const AGENT_COMMAND = {
   scrip_file_suffix: '.lvs',
   type_preffix_script: 's', //should be one character
   type_preffix_prompt: 'p' //should be one character
+}
+
+export const TOOLS_DESC = {
+  prefixEditFile: "Edited file ",
+  prefixMultiEditFile: "Multi-edited file ",
 }
 
 export const UI_TEXT_KEYS = {

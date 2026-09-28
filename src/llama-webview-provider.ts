@@ -606,6 +606,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         webviewView.webview.options = {
             // Allow scripts in the webview
             enableScripts: true,
+            // Allow command: links (e.g. "Files changes" in the agent log) to
+            // invoke the corresponding VS Code command when clicked.
+            enableCommandUris: ['llama-vscode.openChangedFile'],
             localResourceRoots: [
                 this._extensionUri,
                 vscode.Uri.file(path.join(this._extensionUri.fsPath, 'ui', 'dist'))

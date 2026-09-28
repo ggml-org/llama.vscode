@@ -4,7 +4,7 @@ import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
 import { Plugin } from './plugin';
-import { CONFIRMATION_STATE, UI_TEXT_KEYS } from "./constants";
+import { CONFIRMATION_STATE, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
 import { Chat, Agent } from "./types";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
@@ -486,7 +486,7 @@ export class Tools {
         let filePath = params.file_path;
         if (!filePath) return "Parameter file_path not found."
         
-        return "Edited file " + filePath;
+        return TOOLS_DESC.prefixEditFile + filePath;
     }
 
     public multiEditFile = async (args: string) => {
@@ -523,7 +523,7 @@ export class Tools {
         let filePath = params.file_path;
         if (!filePath) return "Parameter file_path not found."
         
-        return "Multi-edited file " + filePath;
+        return TOOLS_DESC.prefixMultiEditFile + filePath;
     }
 
     public askUser = async (args: string) => {

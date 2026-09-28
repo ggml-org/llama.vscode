@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
+import ReactMarkdown, { defaultUrlTransform } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { vscode } from '../types/vscode';
 
@@ -50,6 +50,18 @@ const parseChatSegments = (text: string): ChatSegment[] => {
     segments.push({ type: 'assistant', content: text.slice(lastIndex) });
   }
   return segments;
+};
+
+// ReactMarkdown's default URL transform strips non-http(s)/mailto protocols.
+// The extension renders "Files changes" entries as markdown links using the
+// `command:` URI scheme (see llama-agent.ts getFileChangeLink), so we must
+// keep those links intact to make them clickable. Everything else keeps the
+// default safe behavior.
+const markdownUrlTransform = (url: string, key: string, node: any): string => {
+  if (url.startsWith('command:')) {
+    return url;
+  }
+  return defaultUrlTransform(url);
 };
 
 const AgentView: React.FC<AgentViewProps> = ({
@@ -704,10 +716,10 @@ const AgentView: React.FC<AgentViewProps> = ({
                  {parseChatSegments(displayText).map((segment, index) =>
                    segment.type === 'user' ? (
                      <div key={index} className="user-message-bubble">
-                       <ReactMarkdown className="markdown-content-inner" remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
+                       <ReactMarkdown className="markdown-content-inner" remarkPlugins={[remarkGfm]} urlTransform={markdownUrlTransform}>{segment.content}</ReactMarkdown>
                      </div>
                    ) : (
-                     <ReactMarkdown key={index} remarkPlugins={[remarkGfm]}>{segment.content}</ReactMarkdown>
+                     <ReactMarkdown key={index} remarkPlugins={[remarkGfm]} urlTransform={markdownUrlTransform}>{segment.content}</ReactMarkdown>
                    )
                  )}
                </div>

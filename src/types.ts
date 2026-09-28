@@ -145,7 +145,8 @@ export interface EventHook{
 }
 
 export interface EventResult{
-    stopSession: boolean
+    stopLoop: boolean
+    continueLoop?: boolean
     stopTool: boolean
     resultInfo: string
 }

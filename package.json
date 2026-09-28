@@ -114,6 +114,10 @@
         "title": "llama-vscode: Kill Agent Session"
       },
       {
+        "command": "llama-vscode.openChangedFile",
+        "title": "llama-vscode: Open Changed File"
+      },
+      {
         "command": "extension.generateGitCommitMessage",
         "title": "llama-vscode: Generate Commit Message",
         "icon": "$(sparkle)"
