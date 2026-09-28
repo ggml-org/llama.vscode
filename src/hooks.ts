@@ -43,14 +43,14 @@ export class Hooks {
 
     executeHook = async (script: string, data: any): Promise<string> => {
         let result = "Success"
-        
+
         result = (await this.app.dslInterpreter.execute(script)).toString()
 
         return result
     }
 
     processHooks = async (hooks: EventHook[], data: any, eventName: string, toolName: string): Promise<EventResult> => {
-        let eventResult: EventResult = {stopSession: false, stopTool: false, resultInfo: ""}
+        let eventResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""}
         const dataMap = new Map<string, any>(Object.entries(data));
         let setVarsScript = "set eventName " + eventName
         setVarsScript += "\nset toolName " + toolName
@@ -68,13 +68,17 @@ export class Hooks {
             }
             const result = await this.executeHook(setVarsScript + executionScript, data)
             eventResult.resultInfo += '\n' + result
-            if (result.toLowerCase().startsWith("stop session")) {
-                eventResult.stopSession = true
+            if (result.toLowerCase().startsWith("stop loop")) {
+                eventResult.stopLoop = true
                 eventResult.stopTool = true
                 break
             }
             if (result.toLowerCase().startsWith("stop") && eventName == HooksEvents.preToolUse) {
                 eventResult.stopTool = true
+                break
+            }
+            if (result.toLowerCase().startsWith("continue") && eventName == HooksEvents.stop) {
+                eventResult.continueLoop = true
                 break
             }
         }

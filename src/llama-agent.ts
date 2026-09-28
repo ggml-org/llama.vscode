@@ -346,7 +346,18 @@ export class LlamaAgent {
 
     askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
             let response = ""
-            
+            let hooks = this.app.hooks.getHooks(this.app.configuration.hooks_folder)
+            let promptSubmitResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
+            if (hooks && hooks.has(HooksEvents.userPromptSubmit) && hooks.get(HooksEvents.userPromptSubmit)){
+                promptSubmitResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.userPromptSubmit)??[], {prompt: query}, HooksEvents.userPromptSubmit, "")
+                if (promptSubmitResult.stopLoop) {
+                    this.prepareSessionStop("Session stopped by userPromptSubmit hook.");
+                    return "agent stopped by userPromptSubmit hook"
+                } else {
+                    query += promptSubmitResult.resultInfo
+                }                                        
+            }
+
             this.originalQuery = query;
             let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
@@ -403,9 +414,7 @@ export class LlamaAgent {
             // Get the skills
             const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
             let skillsDesc = this.getSkillsDesc(skillsFolder)
-            if (skillsDesc) query += "\n\n" + skillsDesc
-
-            let hooks = this.app.hooks.getHooks(this.app.configuration.hooks_folder)
+            if (skillsDesc) query += "\n\n" + skillsDesc           
 
             if (this.contexProjectFiles.size > 0){
                 query += "\n\nBelow is a context, attached by the user.\n"
@@ -452,11 +461,7 @@ export class LlamaAgent {
             
             while (iterationsCount < this.app.configuration.tools_max_iterations){
                 if (currentCycleStartTime < this.lastStopRequestTime) {
-                    this.app.statusbar.showTextInfo("agent stopped");
-                    this.updateLogText("\n\n" + "Session stopped." + "  \n")
-                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                    this.setAgentState("AI is stopped", false)
-                    this.resetMessages();
+                    this.prepareSessionStop("Session stopped.")
                     return "agent stopped"
                 }
                 iterationsCount++;                    
@@ -531,11 +536,7 @@ export class LlamaAgent {
                     this.updateLogText("  \nTotal iterations: " + iterationsCount + "  \n")
                     this.app.llamaWebviewProvider.logInUi(this.logText);
                     if (currentCycleStartTime < this.lastStopRequestTime) {
-                        this.app.statusbar.showTextInfo("agent stopped");
-                        this.updateLogText("\n\n" + "Session stopped." + "\n")
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
-                        this.setAgentState("AI is stopped", false);
-                        this.resetMessages();
+                        this.prepareSessionStop("Session stopped.");
                         return "agent stopped"
                     }
                     this.messages.push(data.choices[0].message);
@@ -545,7 +546,12 @@ export class LlamaAgent {
                         this.updateLogText("  \n" + "Finish reason: " + finishReason)
                         if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.updateLogText("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
                         this.app.llamaWebviewProvider.logInUi(this.logText);
-                        break;
+                        let stopResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: "", continueLoop: false};
+                        if (hooks && hooks.has(HooksEvents.stop) && hooks.get(HooksEvents.stop)){
+                            stopResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.stop)??[], {prompt: query}, HooksEvents.stop, "")                                        
+                        }
+                        if (stopResult.continueLoop) this.messages.push({"role": "user", "content": stopResult.resultInfo});
+                        else break;
                     }
                     
                     let toolCalls:any = data.choices[0].message.tool_calls;
@@ -567,18 +573,19 @@ export class LlamaAgent {
                                         }   
                                         const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
                                         if (toolFunc) {
-                                            let preToolResult: EventResult = {stopSession: false, stopTool: false, resultInfo: ""};
+                                            let preToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
                                             if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
                                                 preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)
-                                                if (preToolResult.stopSession) {
-                                                    return "agent stopped"
+                                                if (preToolResult.stopLoop) {
+                                                    this.prepareSessionStop("Session stopped by preToolUse hook.");
+                                                    return "agent stopped by preToolUse hook"
                                                 }                                        
                                             }
                                             
                                             if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
                                             else commandOutput = preToolResult.resultInfo;
 
-                                            let postToolResult: EventResult = {stopSession: false, stopTool: false, resultInfo: ""};
+                                            let postToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
                                             if (hooks && hooks.has(HooksEvents.postToolUse) && hooks.get(HooksEvents.postToolUse)){
                                                 postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
                                             }
@@ -682,6 +689,13 @@ export class LlamaAgent {
             progress = "Step " + step.id + " :: " + step.description + " :: " + " :: " + step.state + "  \n";
         }
         return progress;
+    }
+
+    private prepareSessionStop(message: string) {
+        this.app.statusbar.showTextInfo(message);
+        this.updateLogText("\n\n" + message + "\n");
+        this.app.llamaWebviewProvider.logInUi(this.logText);
+        this.setAgentState("AI is stopped", false);
     }
 
     private setAgentState(uiState: string, isInProgress: boolean) {

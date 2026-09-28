@@ -27,7 +27,9 @@ export enum Action {
 
 export enum HooksEvents {
   preToolUse = 'preToolUse',
-  postToolUse = 'postToolUse'
+  postToolUse = 'postToolUse',
+  userPromptSubmit = 'userPromptSubmit',
+  stop = 'stop'
 }
 
 export const MODEL_TYPE_CONFIG = {

@@ -309,6 +309,13 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.68 is released (28.09.2026)
+### What is new
+- Two more hooks events are introduced (experimental) - userPromptSubmit (before agent loop is started) and stop (after agent loop is stopped). [More details in the wiki](https://github.com/ggml-org/llama.vscode/wiki/Hooks).
+- The list of the modified files in the agent view is now with hyperlinks, which open the corresponding files in the editor.
+- Syntax error fixed in Readme.md
+
+
 ## Version 0.0.67 is released (18.09.2026)
 ### What is new
 - Hooks are introduced (experimental). For now only for events preToolUse and postToolUse. [More details in the wiki](https://github.com/ggml-org/llama.vscode/wiki/Hooks).
@@ -611,6 +618,8 @@ Here is an example `hooks.json` file:
 |-------|-------------|
 | `preToolUse` | Executed **before** a tool is called. |
 | `postToolUse` | Executed **after** a tool has completed. |
+| `userPromptSubmit` | Executed **before** the prompt is submitted to the agent. Could prevent submitting the prompt if  the return value starts with "stop loop" |
+| `stop` | Executed **after** the agent loop has completed. Could prevent stopping the agent if the return value starts with "continue" (the complete return value is sent to the agent so that it knows how to continue).|
 
 ### Available Variables
 
@@ -619,6 +628,7 @@ Here is an example `hooks.json` file:
 | `$eventName` | The name of the event. |
 | `$toolName` | The name of the tool (if applicable). |
 | `$file_path` | The path to the file - for tools edit_file, read_file, multi_edit_file | 
+| `$prompt` | The submitted prompt - for userPromptSubmit event |
 
 ### Settings
 
@@ -631,6 +641,7 @@ Here is an example `hooks.json` file:
 - The `matcher` field uses regular expressions, so you can match multiple tools (e.g., `edit_file|write_file` matches both).
 - Inline scripts support variables and functions from the llama-vscode scripting language. Use `$variableName` syntax to reference variables.
 - External script files (e.g., `.lvs`) must be located relative to the `hooks_folder`.
+- If a preToolUse hook script returns a string, which starts with "stop", the tool will not be called.
 
 ## How to use llama-vscode  
 
