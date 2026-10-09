@@ -1,5 +1,6 @@
 import {Application} from "./application";
 import { AgentCommand, ChatMessage, ContextCustom, EventHook, EventResult } from "./types";
+import type { LlamaToolsResponse } from "./llama-server";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"
@@ -21,6 +22,16 @@ interface Step {
     expectedResult: string;
     state: string;
     result?: string; // Optional since it might not be set initially
+}
+
+interface AgentSession {
+    newMessage: ChatMessage;
+    todoFile: string;
+    response: string;
+    iterations: number;
+    startedAt: number;
+    changedFiles: Set<string>;
+    deletedFiles: Set<string>;
 }
 
 export class LlamaAgent {
@@ -345,7 +356,6 @@ export class LlamaAgent {
     }
 
     askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
-            let response = ""
             let hooks = this.app.hooks.getHooks(this.app.configuration.hooks_folder)
             let promptSubmitResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
             if (hooks && hooks.has(HooksEvents.userPromptSubmit) && hooks.get(HooksEvents.userPromptSubmit)){
@@ -377,154 +387,153 @@ export class LlamaAgent {
                 return "Tools model is not selected"
             }
             query = await this.assembleQuery(query, agentCommandResult.prompt);
-            const todoFile = Utils.getTodosFilePath()
-            this.removeFile(todoFile);
 
-            let newMessage: ChatMessage = {
-                                "role": "user",
-                                "content": query
-                            }         
-            this.messages.push(newMessage)
+            const session: AgentSession = {
+                newMessage: { role: "user", content: query },
+                todoFile: Utils.getTodosFilePath(),
+                response: "",
+                iterations: 0,
+                startedAt: Date.now(),
+                changedFiles: new Set<string>(),
+                deletedFiles: new Set<string>()
+            };
+            this.removeFile(session.todoFile);
+            this.messages.push(session.newMessage)
 
-            let iterationsCount = 0;    
             this.app.llamaWebviewProvider.logInUi(this.logText);
             
-            let currentCycleStartTime = Date.now();
-            const changedFiles = new Set<string>
-            const deletedFiles = new Set<string>
-            
-            // Create new AbortController for this session
-            this.abortController = new AbortController();
-            
-            while (iterationsCount < this.app.configuration.tools_max_iterations){
-                if (currentCycleStartTime < this.lastStopRequestTime) {
-                    this.prepareSessionStop("Session stopped.")
-                    return "agent stopped"
-                }
-                iterationsCount++;                    
-                try {
-                    const remindersText = this.app.agentReminder.getReminders(iterationsCount)
-                    if (remindersText.trim() != "") this.messages.push({"role": "user", "content": remindersText})                   
-                        
-                    await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
-                    let streamed = "";
-                    let deltaBuffer = ""
-                    const maxChunkSize = this.app.configuration.telegram_chunk_size
-                    let data:any = await this.app.llamaServer.getAgentCompletion(
-                                                                this.messages, 
-                                                                false, 
-                                                                (delta: string) => {
-                                                                    streamed += delta;
-                                                                    deltaBuffer += delta;
-                                                                    if (this.isTlgrBotRequest && deltaBuffer.length > maxChunkSize) {
-                                                                        this.app.telegramBot.sendResponse(deltaBuffer); 
-                                                                        deltaBuffer = ""
-                                                                    }
-                                                                    this.logText += delta;
-                                                                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                                                                }, 
-                                                                this.abortController?.signal, 
-                                                                !this.sentContextImages.includes(this.contextImage)? this.contextImage : "",
-                                                                iterationsCount
-                                                            );
-                    if (this.isTlgrBotRequest && deltaBuffer.length > 0) {
-                        this.app.telegramBot.sendResponse(deltaBuffer); 
-                    }
-                    if (this.contextImage) this.sentContextImages.push(this.contextImage)
-                    if (!data) {
-                        this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${iterationsCount}`);
-                        this.logInUi("No response from AI" + "  \n")
-                        this.setAgentState("AI not responding", false)
-                        return "No response from AI";
-                    }
-                    if (data.error?.type === "exceed_context_size_error") {
-                        this.app.logger.addEventLog(
-                            'AGENT',
-                            'CONTEXT_ERROR',
-                            `iteration=${iterationsCount} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
-                        );
-                        this.logInUi("Error: " + data.error.message + "  \n");
-                        if (typeof data.error.n_prompt_tokens === 'number' && typeof data.error.n_ctx === 'number') {
-                            this.logInUi(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
-                        }
-
-                        const summarized = await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
-                        if (summarized) {
-                            this.app.logger.addEventLog('AGENT', 'CONTEXT_RETRY', `iteration=${iterationsCount}`);
-                            continue;
-                        }
-
-                        this.setAgentState("Context limit exceeded", false)
-                        return data.error.message;
-                    }
-
-                    finishReason = data.choices[0].finish_reason;
-                    response = data.choices[0].message.content;
-                    if (!streamed && response) {
-                        this.logInUi(response + "  \n");
-                    }
-                    if (data.truncated) {
-                        this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${iterationsCount} | finish_reason=${finishReason ?? 'unknown'}`);
-                        this.logInUi("  \nWarning: response was truncated by the context window.  \n");
-                    }
-                     
-                    this.logInUi("  \nTotal iterations: " + iterationsCount + "  \n")
-                    if (currentCycleStartTime < this.lastStopRequestTime) {
-                        this.prepareSessionStop("Session stopped.");
+            try {
+                // Create new AbortController for this session
+                this.abortController = new AbortController();
+                
+                while (session.iterations < this.app.configuration.tools_max_iterations){
+                    if (session.startedAt < this.lastStopRequestTime) {
+                        this.prepareSessionStop("Session stopped.")
                         return "agent stopped"
                     }
-                    this.messages.push(data.choices[0].message);
-                    if (!this.inSessionText 
-                        && finishReason != "tool_calls" 
-                        && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
-                        this.logInUi("  \n" + "Finish reason: " + finishReason)
-                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logInUi("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
-                        let stopResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: "", continueLoop: false};
-                        if (hooks && hooks.has(HooksEvents.stop) && hooks.get(HooksEvents.stop)){
-                            stopResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.stop)??[], {prompt: query}, HooksEvents.stop, "")                                        
+                    session.iterations++;                    
+                    try {
+                        const remindersText = this.app.agentReminder.getReminders(session.iterations)
+                        if (remindersText.trim() != "") this.messages.push({"role": "user", "content": remindersText})                   
+                        
+                        await this.summarizeToFitCurrentBudget(session.newMessage, this.contextImage);
+                        let streamed = "";
+                        let deltaBuffer = ""
+                        const maxChunkSize = this.app.configuration.telegram_chunk_size
+                        let data: LlamaToolsResponse | undefined = await this.app.llamaServer.getAgentCompletion(
+                                                                    this.messages, 
+                                                                    false, 
+                                                                    (delta: string) => {
+                                                                        streamed += delta;
+                                                                        deltaBuffer += delta;
+                                                                        if (this.isTlgrBotRequest && deltaBuffer.length > maxChunkSize) {
+                                                                            this.app.telegramBot.sendResponse(deltaBuffer); 
+                                                                            deltaBuffer = ""
+                                                                        }
+                                                                        this.logText += delta;
+                                                                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                                                                    }, 
+                                                                    this.abortController?.signal, 
+                                                                    !this.sentContextImages.includes(this.contextImage)? this.contextImage : "",
+                                                                    session.iterations
+                                                                );
+                        if (this.isTlgrBotRequest && deltaBuffer.length > 0) {
+                            this.app.telegramBot.sendResponse(deltaBuffer); 
                         }
-                        if (stopResult.continueLoop) this.messages.push({"role": "user", "content": stopResult.resultInfo});
-                        else break;
-                    }
-                    
-                    // Execute any tool calls returned by the model
-                    const toolCallsOk = await this.processToolCalls(data, hooks, changedFiles, deletedFiles);
-                    if (!toolCallsOk) {
-                        return "agent stopped by preToolUse hook"
-                    }
-                    
-                    if (this.inSessionText){
-                        this.updateLogText("\n\n***" + this.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n")
-                        this.messages.push({"role": "user", "content": this.inSessionText})
-                        this.inSessionText = ""
-                    }
-                } catch (error) {
-                    // Handle the error
-                    console.error("An error occurred:", error);
-                    this.logInUi("An error occurred: " + error + "\n\n");
-                    if (isAxiosError(error)){
-                        this.logInUi(`Error details: ${error.response?.data?.error?.message})\n\n`);
-                    }
-                    this.setAgentState("Error", false)
-                    return "An error occurred: " + error;
-                }
-            }
-            if (changedFiles.size + deletedFiles.size > 0) this.logInUi("\n\nFiles changes:  \n")
-            if (changedFiles.size > 0) this.logInUi(Array.from(changedFiles).map(file => this.getFileChangeLink(file)).join("  \n") + "  \n")
-            if (deletedFiles.size > 0) this.logInUi(Array.from(deletedFiles).join("  \n") + "  \n")
-            this.logInUi("  \nAgent session finished. \n\n")
-            if (iterationsCount >= this.app.configuration.tools_max_iterations) {
-                this.logInUi(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`)
-            }
-            this.setAgentState("AI finished", false)
-            await this.updateChat();
-            
-            // Clean up AbortController
-            this.abortController = null;
+                        if (this.contextImage) this.sentContextImages.push(this.contextImage)
+                        if (!data) {
+                            this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${session.iterations}`);
+                            this.logInUi("No response from AI" + "  \n")
+                            this.setAgentState("AI not responding", false)
+                            return "No response from AI";
+                        }
+                        if (data.error?.type === "exceed_context_size_error") {
+                            this.app.logger.addEventLog(
+                                'AGENT',
+                                'CONTEXT_ERROR',
+                                `iteration=${session.iterations} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
+                            );
+                            this.logInUi("Error: " + data.error.message + "  \n");
+                            if (typeof data.error.n_prompt_tokens === 'number' && typeof data.error.n_ctx === 'number') {
+                                this.logInUi(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
+                            }
 
-            this.removeFile(todoFile);
-            
-            return response;
+                            const summarized = await this.summarizeToFitCurrentBudget(session.newMessage, this.contextImage);
+                            if (summarized) {
+                                this.app.logger.addEventLog('AGENT', 'CONTEXT_RETRY', `iteration=${session.iterations}`);
+                                continue;
+                            }
+
+                            this.setAgentState("Context limit exceeded", false)
+                            return data.error.message;
+                        }
+
+                        finishReason = data.choices[0].finish_reason;
+                        session.response = data.choices[0].message.content ?? "";
+                        if (!streamed && session.response) {
+                            this.logInUi(session.response + "  \n");
+                        }
+                        if (data.truncated) {
+                            this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${session.iterations} | finish_reason=${finishReason ?? 'unknown'}`);
+                            this.logInUi("  \nWarning: response was truncated by the context window.  \n");
+                        }
+                     
+                        this.logInUi("  \nTotal iterations: " + session.iterations + "  \n")
+                        if (session.startedAt < this.lastStopRequestTime) {
+                            this.prepareSessionStop("Session stopped.");
+                            return "agent stopped"
+                        }
+                        this.messages.push(data.choices[0].message as ChatMessage);
+                        if (!this.inSessionText 
+                            && finishReason != "tool_calls" 
+                            && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
+                            this.logInUi("  \n" + "Finish reason: " + finishReason)
+                            if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logInUi("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
+                            let stopResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: "", continueLoop: false};
+                            if (hooks && hooks.has(HooksEvents.stop) && hooks.get(HooksEvents.stop)){
+                                stopResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.stop)??[], {prompt: query}, HooksEvents.stop, "")                                        
+                            }
+                            if (stopResult.continueLoop) this.messages.push({"role": "user", "content": stopResult.resultInfo});
+                            else break;
+                        }
+                    
+                        // Execute any tool calls returned by the model
+                        const toolCallsOk = await this.processToolCalls(data, hooks, session.changedFiles, session.deletedFiles);
+                        if (!toolCallsOk) {
+                            return "agent stopped by preToolUse hook"
+                        }
+                    
+                        if (this.inSessionText){
+                            this.updateLogText("\n\n***" + this.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n")
+                            this.messages.push({"role": "user", "content": this.inSessionText})
+                            this.inSessionText = ""
+                        }
+                    } catch (error) {
+                        // Handle the error
+                        console.error("An error occurred:", error);
+                        this.logInUi("An error occurred: " + error + "\n\n");
+                        if (isAxiosError(error)){
+                            this.logInUi(`Error details: ${error.response?.data?.error?.message})\n\n`);
+                        }
+                        this.setAgentState("Error", false)
+                        return "An error occurred: " + error;
+                    }
+                }
+                if (session.changedFiles.size + session.deletedFiles.size > 0) this.logInUi("\n\nFiles changes:  \n")
+                if (session.changedFiles.size > 0) this.logInUi(Array.from(session.changedFiles).map(file => this.getFileChangeLink(file)).join("  \n") + "  \n")
+                if (session.deletedFiles.size > 0) this.logInUi(Array.from(session.deletedFiles).join("  \n") + "  \n")
+                this.logInUi("  \nAgent session finished. \n\n")
+                if (session.iterations >= this.app.configuration.tools_max_iterations) {
+                    this.logInUi(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`)
+                }
+                this.setAgentState("AI finished", false)
+                await this.updateChat();
+                return session.response;
+            } finally {
+                // Clean up AbortController
+                this.abortController = null;
+                this.removeFile(session.todoFile);
+            }
         }  
         
     // Resolves an agent command (predefined, custom, or script file) and returns
@@ -604,8 +613,8 @@ export class LlamaAgent {
         return query;
     }
 
-    private async processToolCalls(data: any, hooks: Map<string, EventHook[]> | undefined, changedFiles: Set<string>, deletedFiles: Set<string>): Promise<boolean> {
-        let toolCalls:any = data.choices[0].message.tool_calls;
+    private async processToolCalls(data: LlamaToolsResponse | undefined, hooks: Map<string, EventHook[]> | undefined, changedFiles: Set<string>, deletedFiles: Set<string>): Promise<boolean> {
+        let toolCalls = data?.choices[0]?.message.tool_calls;
         if (toolCalls != undefined && toolCalls.length > 0){
             for (const oneToolCall of toolCalls){
                 if (oneToolCall && oneToolCall.function){
@@ -634,10 +643,6 @@ export class LlamaAgent {
                                 if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
                                 else commandOutput = preToolResult.resultInfo;
     
-                                let postToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
-                                if (hooks && hooks.has(HooksEvents.postToolUse) && hooks.get(HooksEvents.postToolUse)){
-                                    postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
-                                }
                                 if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
                                     let changedFile = commandDescription
                                     if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
@@ -652,7 +657,7 @@ export class LlamaAgent {
                         }
                         if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
                             let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
-                            commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
+                            commandOutput = result.content[0] ? (result.content[0] as vscode.LanguageModelTextPart).value : "";
                         }
                     } catch (error) {
                         // Handle the error
