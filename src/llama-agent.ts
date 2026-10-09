@@ -1,5 +1,5 @@
 import {Application} from "./application";
-import { AgentCommand, ChatMessage, ContextCustom, EventResult } from "./types";
+import { AgentCommand, ChatMessage, ContextCustom, EventHook, EventResult } from "./types";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"
@@ -359,46 +359,12 @@ export class LlamaAgent {
             }
 
             this.originalQuery = query;
-            let toolCallsResult: ChatMessage;
             let finishReason:string|undefined = "tool_calls"
             this.updateLogText("***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n");
             this.isTlgrBotRequest = isTelegramBotReq
-            let agentCommandPrompt  = ""
-            if (agentCommand) {
-                let commands = this.app.configuration.agent_commands as AgentCommand[];
-                commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
-                let commandDetails = commands.find( cmd => cmd.name === agentCommand)
-                if (!commandDetails 
-                    && agentCommand.toLowerCase().endsWith(AGENT_COMMAND.scrip_file_suffix)){
-                    const scriptFilePath = path.join(this.app.configuration.scripts_folder, agentCommand)
-                    if (fs.existsSync(scriptFilePath)) {
-                        const script = fs.readFileSync(scriptFilePath, 'utf-8')              
-                        commandDetails = {
-                            name: "script",
-                            description: "Run a script file",
-                            prompt: [script],
-                            isScript: true,
-                            noPrompt: true,
-                        }
-                    }
-                }     
-                if (commandDetails) {     
-                    let prompt =  commandDetails.prompt.join("\n")
-                    if (Utils.isFilePath(prompt))
-                        prompt = await fs.promises.readFile(path.join(prompt), 'utf-8')              
-                    if (commandDetails.isScript) {
-                        const scriptResult = await this.app.dslInterpreter.execute(prompt)    
-                        if (commandDetails.noPrompt) { 
-                            this.setAgentState("AI is stopped", false)
-                            this.updateLogText(`${scriptResult} \n\n`)
-                            this.app.llamaWebviewProvider.logInUi(this.logText);
-                            return scriptResult;
-                        } else {
-                            agentCommandPrompt += "\n\n " + scriptResult
-                        }
-                    } else agentCommandPrompt += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
-                }
-            }
+            
+            const agentCommandResult = await this.resolveAgentCommand(agentCommand);
+            if (agentCommandResult.earlyReturn) return agentCommandResult.earlyReturn;
             
             this.setAgentState("AI is working...", true)
             if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
@@ -407,42 +373,13 @@ export class LlamaAgent {
             if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
                 vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.")
                 this.setAgentState("AI is stopped", false)
-                this.updateLogText("Tools model is not selected")
-                this.app.llamaWebviewProvider.logInUi(this.logText);
+                this.logInUi("Tools model is not selected")
                 return "Tools model is not selected"
             }
-            // Get the skills
-            const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
-            let skillsDesc = this.getSkillsDesc(skillsFolder)
-            if (skillsDesc) query += "\n\n" + skillsDesc           
-
-            if (this.contexProjectFiles.size > 0){
-                query += "\n\nBelow is a context, attached by the user.\n"
-                for (const [key, value] of this.contexProjectFiles) {
-                    if (this.sentContextFiles.has(key)) continue // send only not sent files (parts)
-                    let itemContext: string;
-                    let contextCustom = this.app.configuration.context_custom as ContextCustom
-                    if (contextCustom && contextCustom.get_item_context) {
-                        if (fs.existsSync(contextCustom.get_item_context)) {
-                            let toolFunction = Utils.getFunctionFromFile(contextCustom.get_item_context);
-                            itemContext = toolFunction(key, value)
-                        } else itemContext = (await Plugin.execute(contextCustom.get_item_context as keyof typeof Plugin.methods, key, value)) as string;
-                    } else {
-                        itemContext = await this.getItemContext(key, value);
-                    }
-                    query += itemContext
-                    this.sentContextFiles.set(key, value);
-                }                  
-            }
-            
+            query = await this.assembleQuery(query, agentCommandResult.prompt);
             const todoFile = Utils.getTodosFilePath()
             this.removeFile(todoFile);
 
-            if (this.app.configuration.tool_update_todo_list_enabled){
-                query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
-            }
-
-            if (agentCommandPrompt) query += agentCommandPrompt    
             let newMessage: ChatMessage = {
                                 "role": "user",
                                 "content": query
@@ -496,8 +433,7 @@ export class LlamaAgent {
                     if (this.contextImage) this.sentContextImages.push(this.contextImage)
                     if (!data) {
                         this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${iterationsCount}`);
-                        this.updateLogText("No response from AI" + "  \n")
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                        this.logInUi("No response from AI" + "  \n")
                         this.setAgentState("AI not responding", false)
                         return "No response from AI";
                     }
@@ -507,11 +443,10 @@ export class LlamaAgent {
                             'CONTEXT_ERROR',
                             `iteration=${iterationsCount} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
                         );
-                        this.updateLogText("Error: " + data.error.message + "  \n");
+                        this.logInUi("Error: " + data.error.message + "  \n");
                         if (typeof data.error.n_prompt_tokens === 'number' && typeof data.error.n_ctx === 'number') {
-                            this.updateLogText(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
+                            this.logInUi(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
                         }
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
 
                         const summarized = await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
                         if (summarized) {
@@ -526,15 +461,14 @@ export class LlamaAgent {
                     finishReason = data.choices[0].finish_reason;
                     response = data.choices[0].message.content;
                     if (!streamed && response) {
-                        this.updateLogText(response + "  \n");
+                        this.logInUi(response + "  \n");
                     }
                     if (data.truncated) {
                         this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${iterationsCount} | finish_reason=${finishReason ?? 'unknown'}`);
-                        this.updateLogText("  \nWarning: response was truncated by the context window.  \n");
+                        this.logInUi("  \nWarning: response was truncated by the context window.  \n");
                     }
                      
-                    this.updateLogText("  \nTotal iterations: " + iterationsCount + "  \n")
-                    this.app.llamaWebviewProvider.logInUi(this.logText);
+                    this.logInUi("  \nTotal iterations: " + iterationsCount + "  \n")
                     if (currentCycleStartTime < this.lastStopRequestTime) {
                         this.prepareSessionStop("Session stopped.");
                         return "agent stopped"
@@ -543,9 +477,8 @@ export class LlamaAgent {
                     if (!this.inSessionText 
                         && finishReason != "tool_calls" 
                         && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
-                        this.updateLogText("  \n" + "Finish reason: " + finishReason)
-                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.updateLogText("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                        this.logInUi("  \n" + "Finish reason: " + finishReason)
+                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.logInUi("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
                         let stopResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: "", continueLoop: false};
                         if (hooks && hooks.has(HooksEvents.stop) && hooks.get(HooksEvents.stop)){
                             stopResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.stop)??[], {prompt: query}, HooksEvents.stop, "")                                        
@@ -554,77 +487,10 @@ export class LlamaAgent {
                         else break;
                     }
                     
-                    let toolCalls:any = data.choices[0].message.tool_calls;
-                    if (toolCalls != undefined && toolCalls.length > 0){
-                        for (const oneToolCall of toolCalls){
-                            if (oneToolCall && oneToolCall.function){
-                                this.updateLogText("  \ntool: " + oneToolCall.function.name + "  \n");
-                                if (this.app.configuration.tools_log_calls) this.updateLogText("  \narguments: " + oneToolCall.function.arguments)
-                                this.app.llamaWebviewProvider.logInUi(this.logText);
-                                let commandOutput = "Tool not found";
-                                try {
-                                    if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
-                                        const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
-                                        let commandDescription = ""
-                                        if (toolFuncDesc){
-                                            commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
-                                            this.updateLogText(commandDescription + "\n\n")
-                                            this.app.llamaWebviewProvider.logInUi(this.logText);
-                                        }   
-                                        const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
-                                        if (toolFunc) {
-                                            let preToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
-                                            if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
-                                                preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)
-                                                if (preToolResult.stopLoop) {
-                                                    this.prepareSessionStop("Session stopped by preToolUse hook.");
-                                                    return "agent stopped by preToolUse hook"
-                                                }                                        
-                                            }
-                                            
-                                            if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                            else commandOutput = preToolResult.resultInfo;
-
-                                            let postToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
-                                            if (hooks && hooks.has(HooksEvents.postToolUse) && hooks.get(HooksEvents.postToolUse)){
-                                                postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
-                                            }
-                                            if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
-                                                let changedFile = commandDescription
-                                                if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
-                                                if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length)
-                                                changedFiles.add(changedFile);
-                                                if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
-                                                    this.updateLogText(commandOutput + "\n\n")
-                                                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                                                }
-                                            }
-                                            if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) deletedFiles.add(commandDescription);
-                                        }
-                                    }
-                                    if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
-                                        let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
-                                        commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
-                                    }
-                                } catch (error) {
-                                    // Handle the error
-                                    console.error("An error occurred:", error);
-                                    commandOutput = "Error during the execution of tool " + oneToolCall.function.name + ": " + error
-                                    commandOutput = commandOutput.slice(0, 400);
-                                    this.updateLogText("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
-                                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                                }
-
-                                if (this.app.configuration.tools_log_calls) this.updateLogText("result:  \n" + commandOutput + "  \n")
-                                this.app.llamaWebviewProvider.logInUi(this.logText);
-                                toolCallsResult = {           
-                                            "role": "tool",
-                                            "tool_call_id": oneToolCall.id,
-                                            "content": commandOutput
-                                        }
-                                this.messages.push(toolCallsResult)
-                            }
-                        }
+                    // Execute any tool calls returned by the model
+                    const toolCallsOk = await this.processToolCalls(data, hooks, changedFiles, deletedFiles);
+                    if (!toolCallsOk) {
+                        return "agent stopped by preToolUse hook"
                     }
                     
                     if (this.inSessionText){
@@ -635,23 +501,21 @@ export class LlamaAgent {
                 } catch (error) {
                     // Handle the error
                     console.error("An error occurred:", error);
-                    this.updateLogText("An error occurred: " + error + "\n\n");
+                    this.logInUi("An error occurred: " + error + "\n\n");
                     if (isAxiosError(error)){
-                        this.updateLogText(`Error details: ${error.response?.data?.error?.message})\n\n`);
+                        this.logInUi(`Error details: ${error.response?.data?.error?.message})\n\n`);
                     }
-                    this.app.llamaWebviewProvider.logInUi(this.logText);
                     this.setAgentState("Error", false)
                     return "An error occurred: " + error;
                 }
             }
-            if (changedFiles.size + deletedFiles.size > 0) this.updateLogText("\n\nFiles changes:  \n")
-            if (changedFiles.size > 0) this.updateLogText(Array.from(changedFiles).map(file => this.getFileChangeLink(file)).join("  \n") + "  \n")
-            if (deletedFiles.size > 0) this.updateLogText(Array.from(deletedFiles).join("  \n") + "  \n")
-            this.updateLogText("  \nAgent session finished. \n\n")
+            if (changedFiles.size + deletedFiles.size > 0) this.logInUi("\n\nFiles changes:  \n")
+            if (changedFiles.size > 0) this.logInUi(Array.from(changedFiles).map(file => this.getFileChangeLink(file)).join("  \n") + "  \n")
+            if (deletedFiles.size > 0) this.logInUi(Array.from(deletedFiles).join("  \n") + "  \n")
+            this.logInUi("  \nAgent session finished. \n\n")
             if (iterationsCount >= this.app.configuration.tools_max_iterations) {
-                this.updateLogText(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`)
+                this.logInUi(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`)
             }
-            this.app.llamaWebviewProvider.logInUi(this.logText);
             this.setAgentState("AI finished", false)
             await this.updateChat();
             
@@ -663,6 +527,153 @@ export class LlamaAgent {
             return response;
         }  
         
+    // Resolves an agent command (predefined, custom, or script file) and returns
+    // the prompt text to append to the user query. If the command is a no-prompt
+    // script that terminates immediately, earlyReturn holds the result.
+    private async resolveAgentCommand(agentCommand?: string): Promise<{prompt: string, earlyReturn: string | undefined}> {
+        let agentCommandPrompt  = ""
+        if (agentCommand) {
+            let commands = this.app.configuration.agent_commands as AgentCommand[];
+            commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
+            let commandDetails = commands.find( cmd => cmd.name === agentCommand)
+            if (!commandDetails 
+                && agentCommand.toLowerCase().endsWith(AGENT_COMMAND.scrip_file_suffix)){
+                const scriptFilePath = path.join(this.app.configuration.scripts_folder, agentCommand)
+                if (fs.existsSync(scriptFilePath)) {
+                    const script = fs.readFileSync(scriptFilePath, 'utf-8')              
+                    commandDetails = {
+                        name: "script",
+                        description: "Run a script file",
+                        prompt: [script],
+                        isScript: true,
+                        noPrompt: true,
+                    }
+                }
+            }     
+            if (commandDetails) {     
+                let prompt =  commandDetails.prompt.join("\n")
+                if (Utils.isFilePath(prompt))
+                    prompt = await fs.promises.readFile(path.join(prompt), 'utf-8')              
+                if (commandDetails.isScript) {
+                    const scriptResult = await this.app.dslInterpreter.execute(prompt)    
+                    if (commandDetails.noPrompt) { 
+                        this.setAgentState("AI is stopped", false)
+                        this.logInUi(`${scriptResult} \n\n`)
+                        return { prompt: "", earlyReturn: scriptResult };
+                    } else {
+                        agentCommandPrompt += "\n\n " + scriptResult
+                    }
+                } else agentCommandPrompt += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
+            }
+        }
+        return { prompt: agentCommandPrompt, earlyReturn: undefined };
+    }
+
+    // Assembles the final user query by appending skills descriptions, attached
+    // project-file contexts, and the todo-list reminder.
+    private async assembleQuery(query: string, agentCommandPrompt: string): Promise<string> {
+        // Get the skills
+        const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
+        let skillsDesc = this.getSkillsDesc(skillsFolder)
+        if (skillsDesc) query += "\n\n" + skillsDesc           
+
+        if (this.contexProjectFiles.size > 0){
+            query += "\n\nBelow is a context, attached by the user.\n"
+            for (const [key, value] of this.contexProjectFiles) {
+                if (this.sentContextFiles.has(key)) continue // send only not sent files (parts)
+                let itemContext: string;
+                let contextCustom = this.app.configuration.context_custom as ContextCustom
+                if (contextCustom && contextCustom.get_item_context) {
+                    if (fs.existsSync(contextCustom.get_item_context)) {
+                        let toolFunction = Utils.getFunctionFromFile(contextCustom.get_item_context);
+                        itemContext = toolFunction(key, value)
+                    } else itemContext = (await Plugin.execute(contextCustom.get_item_context as keyof typeof Plugin.methods, key, value)) as string;
+                } else {
+                    itemContext = await this.getItemContext(key, value);
+                }
+                query += itemContext
+                this.sentContextFiles.set(key, value);
+            }                  
+        }
+        
+        if (this.app.configuration.tool_update_todo_list_enabled){
+            query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
+        }
+
+        if (agentCommandPrompt) query += agentCommandPrompt    
+        return query;
+    }
+
+    private async processToolCalls(data: any, hooks: Map<string, EventHook[]> | undefined, changedFiles: Set<string>, deletedFiles: Set<string>): Promise<boolean> {
+        let toolCalls:any = data.choices[0].message.tool_calls;
+        if (toolCalls != undefined && toolCalls.length > 0){
+            for (const oneToolCall of toolCalls){
+                if (oneToolCall && oneToolCall.function){
+                    this.logInUi("  \ntool: " + oneToolCall.function.name + "  \n");
+                    if (this.app.configuration.tools_log_calls) this.logInUi("  \narguments: " + oneToolCall.function.arguments)
+                    let commandOutput = "Tool not found";
+                    try {
+                        if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
+                            const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
+                            let commandDescription = ""
+                            if (toolFuncDesc){
+                                commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
+                                this.logInUi(commandDescription + "\n\n")
+                            }   
+                            const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
+                            if (toolFunc) {
+                                let preToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
+                                if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
+                                    preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)
+                                    if (preToolResult.stopLoop) {
+                                        this.prepareSessionStop("Session stopped by preToolUse hook.");
+                                        return false
+                                    }                                        
+                                }
+                                
+                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                else commandOutput = preToolResult.resultInfo;
+    
+                                let postToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
+                                if (hooks && hooks.has(HooksEvents.postToolUse) && hooks.get(HooksEvents.postToolUse)){
+                                    postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
+                                }
+                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
+                                    let changedFile = commandDescription
+                                    if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
+                                    if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length)
+                                    changedFiles.add(changedFile);
+                                    if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
+                                        this.logInUi(commandOutput + "\n\n")
+                                    }
+                                }
+                                if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) deletedFiles.add(commandDescription);
+                            }
+                        }
+                        if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
+                            let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
+                            commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
+                        }
+                    } catch (error) {
+                        // Handle the error
+                        console.error("An error occurred:", error);
+                        commandOutput = "Error during the execution of tool " + oneToolCall.function.name + ": " + error
+                        commandOutput = commandOutput.slice(0, 400);
+                        this.logInUi("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
+                    }
+    
+                    if (this.app.configuration.tools_log_calls) this.logInUi("result:  \n" + commandOutput + "  \n")
+                    this.messages.push({           
+                                "role": "tool",
+                                "tool_call_id": oneToolCall.id,
+                                "content": commandOutput
+                            })
+                }
+            }
+        }
+        return true;
+    }
+
     stopAgent = () => {
         this.lastStopRequestTime = Date.now();
         if (this.abortController) {
@@ -693,8 +704,7 @@ export class LlamaAgent {
 
     private prepareSessionStop(message: string) {
         this.app.statusbar.showTextInfo(message);
-        this.updateLogText("\n\n" + message + "\n");
-        this.app.llamaWebviewProvider.logInUi(this.logText);
+        this.logInUi("\n\n" + message + "\n");
         this.setAgentState("AI is stopped", false);
     }
 
@@ -706,6 +716,13 @@ export class LlamaAgent {
     private updateLogText(logDelta: string) {
         if (this.isTlgrBotRequest) this.app.telegramBot.sendResponse(logDelta); 
         this.logText += logDelta;
+    }
+
+    // Appends text to the agent log and flushes it to the webview UI.
+    // For telegram bot requests the log text is also sent as a response chunk.
+    private logInUi(logDelta: string) {
+        this.updateLogText(logDelta);
+        this.app.llamaWebviewProvider.logInUi(this.logText);
     }
 
     // Renders a changed file as a clickable markdown link in the UI.
