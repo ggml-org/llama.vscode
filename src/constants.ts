@@ -380,6 +380,7 @@ export const TELEGRAM_BOT_COMMANDS = {
 export enum OpenAiProvidersKeys {
   OpenRouter = 'OpenRouter...',
   OrcaRouter = 'OrcaRouter...',
+  ApiRoute = 'API Route...',
   AtlasCloud = 'Atlas Cloud...',
   Custom = 'Custom...'
 }
@@ -387,6 +388,7 @@ export const OPENAI_COMP_PROVIDERS = {
   [OpenAiProvidersKeys.OpenRouter]: "https://openrouter.ai/api",
   [OpenAiProvidersKeys.OrcaRouter]: "https://api.orcarouter.ai",
   [OpenAiProvidersKeys.AtlasCloud]: "https://api.atlascloud.ai",
+  [OpenAiProvidersKeys.ApiRoute]: "https://global.api-route.com",
   [OpenAiProvidersKeys.Custom]: ""
 } as const
 
