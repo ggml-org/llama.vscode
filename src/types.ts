@@ -76,7 +76,11 @@ export interface AgentCommand {
     prompt: string[],
     context?: string[],
     noPrompt?: boolean,
-    isScript?: boolean
+    isScript?: boolean,
+    executePeriodically?: boolean,
+    startTime?: string,
+    period?: number,
+    totalExecutionTimes?: number
 }
 
 export interface chatMessage {

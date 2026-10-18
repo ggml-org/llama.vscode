@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AgentView, AIRunnerView, AddEnvView, AgentEditor } from './components';
+import { AgentView, AIRunnerView, AddEnvView, AgentEditor, AgentCommandEditor } from './components';
 import { vscode } from './types/vscode';
 
 interface AppProps { }
@@ -10,6 +10,7 @@ const App: React.FC<AppProps> = () => {
   const noAgentSelected = 'No agent selected';
   const noViewSet = 'agent';
   const viewAgentEditor = 'agenteditor'
+  const viewAgentCommandEditor = 'agentcommandeditor'
   const viewAiRunner = "airunner"
   const viewAddEnv = "addenv"
   
@@ -152,6 +153,12 @@ const App: React.FC<AppProps> = () => {
     });
   };
 
+  const handleShowAgentCommandEditor = () => {
+    vscode.postMessage({
+      command: 'showAgentCommandEditor'
+    });
+  };
+
   const [showLocationMenu, setShowLocationMenu] = useState<boolean>(false);
   const moreActionsRef = useRef<HTMLDivElement>(null);
 
@@ -226,6 +233,13 @@ const App: React.FC<AppProps> = () => {
                   >
                     {"✎"}
                   </button>
+                  <button
+                    onClick={handleShowAgentCommandEditor}
+                    className="header-btn secondary"
+                    title="Show Edit Agent Command View"
+                  >
+                    {">_"}
+                  </button>
                   <div className="more-actions-container" ref={moreActionsRef}>
                     <button
                       onClick={handleShowMoreActions}
@@ -291,6 +305,12 @@ const App: React.FC<AppProps> = () => {
             agentEditDetails={agentEditDetails}
             setAgentEditDetails = {setAgentEditDetails}
           />
+        </div>
+      )}
+
+      {view === viewAgentCommandEditor && (
+        <div>
+          <AgentCommandEditor />
         </div>
       )}
 

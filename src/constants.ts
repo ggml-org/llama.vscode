@@ -204,6 +204,7 @@ export const UI_TEXT_KEYS = {
   // Agent command actions
   addAgentCommand: "Add agent command...",
   viewAgentCommandDetails: "View agent command details...",
+  editAgentCommandDetails: "Edit agent command...",
   deleteAgentCommand: "Delete agent command...",
   exportAgentCommand: "Export agent command...",
   importAgentCommand: "Import agent command...",

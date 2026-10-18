@@ -765,6 +765,26 @@
                 },
                 "description": "Key words, which will be transformed to additional context for the agent",
                 "default": []
+              },
+              "executePeriodically": {
+                "type": "boolean",
+                "description": "If true, the command will be executed periodically by the scheduler.",
+                "default": false
+              },
+              "startTime": {
+                "type": "string",
+                "description": "ISO datetime string when the periodic execution should start. If missing or in the past, the command runs immediately and then every period seconds.",
+                "default": ""
+              },
+              "period": {
+                "type": "number",
+                "description": "Period in seconds between periodic executions. Required when executePeriodically is true.",
+                "default": 3600
+              },
+              "totalExecutionTimes": {
+                "type": "number",
+                "description": "Total number of executions for the periodic command. Empty (omitted) means infinite.",
+                "default": 0
               }
             },
             "required": [

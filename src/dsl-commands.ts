@@ -82,6 +82,55 @@ export class DslCommands {
         this.commandsFunc.set("manageembsmodels", this.manageEmbsModels);
         this.commandsFunc.set("managetoolsmodels", this.manageToolsModels);
         this.commandsFunc.set("geteventinput", this.getEventInput);
+        this.commandsFunc.set("startbackgroundagentsession", this.startBackgroundAgentSession);
+        this.commandsFunc.set("addagentcommand", this.addAgentCommand);
+    }
+
+    addAgentCommand = async () => {
+        let result = "UI for adding agent command is shown."
+        try {
+            this.app.agentCommandService.addAgentCommand();
+        } catch (err){
+            result = "Error showing UI for adding agent command: " + err
+        }
+
+        return result
+    }
+
+    startBackgroundAgentSession = async () => {
+        let result  = "Background agent session is started."
+        let prompt = await Utils.getValidatedInput(
+            'prompt for your agent (required)',
+            (input) => input.trim() !== '',
+            5,
+            {
+                placeHolder: 'Enter a prompt for the agent.',
+                value: ''
+            }
+        );
+        if(!prompt) return "Background agent session is NOT started. Prompt was not provided."
+
+        // Start a background agent session that can work in parallel to the
+        // currently running agent session. The call is not awaited on purpose -
+        // it executes in its own session (background: true) with an in-memory
+        // log and todo, so the current agent continues to work without blocking.
+        try {
+            this.app.llamaAgent.askAgent(
+                this.stripArgumentValue(prompt??""),
+                undefined,
+                false,
+                {
+                    background: true,
+                    logDestination: 'memory',
+                    useInMemoryTodo: true
+                }
+            ).catch((error) => {
+                console.error("Background agent session error:", error);
+            });
+        } catch (error) {
+            result = "Background agent session is NOT started. " + error;
+        }
+        return result
     }
 
     setEventInput = (eventInput: Map<string, any>): void => {

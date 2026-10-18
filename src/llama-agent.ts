@@ -1,5 +1,6 @@
 import {Application} from "./application";
-import { AgentCommand, ChatMessage, ContextCustom, EventResult } from "./types";
+import { AgentCommand, Agent, ChatMessage, ContextCustom, EventHook, EventResult } from "./types";
+import type { LlamaToolsResponse } from "./llama-server";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
 import { Chat } from "./types"
@@ -23,13 +24,139 @@ interface Step {
     result?: string; // Optional since it might not be set initially
 }
 
+/**
+ * Log destination type for session logging
+ */
+export type LogDestinationType = 'ui' | 'file' | 'memory';
+
+/**
+ * Interface for log destinations - allows different logging strategies per session
+ */
+export interface LogDestination {
+    append(delta: string): void;
+    getContents(): string;
+    flushToUi?(): void;
+    flushToFile?(filePath: string): Promise<void>;
+}
+
+/**
+ * UI log destination - writes to instance logText and updates webview (current behavior)
+ */
+export class UiLogDestination implements LogDestination {
+    private parent: LlamaAgent;
+    
+    constructor(parent: LlamaAgent) {
+        this.parent = parent;
+    }
+    
+    append(delta: string): void {
+        if (this.parent.isTelegramBotRequest()) {
+            this.parent.app.telegramBot.sendResponse(delta);
+        }
+        this.parent.logText += delta;
+        // Automatically flush to UI after every append for real-time updates
+        this.flushToUi();
+    }
+    
+    getContents(): string {
+        return this.parent.logText;
+    }
+    
+    flushToUi(): void {
+        this.parent.app.llamaWebviewProvider.logInUi(this.parent.logText);
+    }
+}
+
+/**
+ * Memory log destination - stores logs only in memory, no UI update
+ */
+export class MemoryLogDestination implements LogDestination {
+    private content: string = "";
+    
+    append(delta: string): void {
+        this.content += delta;
+    }
+    
+    getContents(): string {
+        return this.content;
+    }
+}
+
+/**
+ * File log destination - writes logs to a file
+ */
+export class FileLogDestination implements LogDestination {
+    private filePath: string;
+    private content: string = "";
+    
+    constructor(filePath: string) {
+        this.filePath = filePath;
+    }
+    
+    append(delta: string): void {
+        this.content += delta;
+        // Also write to file immediately
+        try {
+            fs.appendFileSync(this.filePath, delta, 'utf8');
+        } catch (error) {
+            console.error('Failed to write to log file:', error);
+        }
+    }
+    
+    getContents(): string {
+        return this.content;
+    }
+}
+
+/**
+ * Options for configuring agent session behavior
+ */
+export interface AgentSessionOptions {
+    sessionId?: string;                    // Auto-generated if not provided
+    background?: boolean;                  // If true, run without UI blocking
+    useInMemoryTodo?: boolean;             // Skip todo file I/O
+    logDestination?: LogDestinationType;   // Where to store logs: 'ui', 'file', or 'memory'
+    logFilePath?: string;                  // Optional file path for 'file' destination
+    onComplete?: (result: string, sessionId: string) => void; // Callback when done
+}
+
+/**
+ * Expanded AgentSession interface with per-session state fields
+ */
+export interface AgentSession {
+    sessionId: string;                     // Unique identifier
+    newMessage: ChatMessage;
+    todoFile: string;                      // Per-session todo file path
+    todoContent: string | null;            // In-memory todo (alternative to file)
+    response: string;
+    iterations: number;
+    startedAt: number;
+    changedFiles: Set<string>;
+    deletedFiles: Set<string>;
+    messages: ChatMessage[];               // Per-session message history
+    logText: string;                       // Per-session log
+    lastReqTokens: number;                 // Per-session token tracking
+    abortController: AbortController;      // Per-session controller
+    isTlgrBotRequest: boolean;             // Per-session flag
+    inSessionText: string;                 // Per-session text
+    originalQuery: string;                 // Per-session query
+    contexProjectFiles: Map<string,string>; // Per-session context files
+    sentContextFiles: Map<string,string>;   // Per-session sent context
+    contextImage: string;                 // Per-session image
+    sentContextImages: string[];          // Per-session sent images
+    confirmationState: string;            // Per-session state
+    logDestination: LogDestination;       // Session-specific log destination
+    options: AgentSessionOptions;         // Session options
+    defaultAgent?: Agent;                 // Agent used when the session started
+}
+
 export class LlamaAgent {
-    private app: Application
+    public app: Application
     private lastStopRequestTime = Date.now();
     private messages: ChatMessage[] = [];
     private lastReqTokens = 0;
     private confirmationState: string = ""; // Use consts CONFIRMATION_STATE.*
-    private logText = ""
+    public logText = ""
     public contexProjectFiles: Map<string,string> = new Map();
     public sentContextFiles: Map<string,string> = new Map();
     public contextImage: string = "";
@@ -39,6 +166,9 @@ export class LlamaAgent {
     private isTlgrBotRequest: boolean = false;
     private agentInProgress: boolean = false;
     private originalQuery: string = "";
+    
+    // Session registry for parallel/background sessions
+    private activeSessions: Map<string, AgentSession> = new Map();
 
     constructor(application: Application) {
         this.app = application;
@@ -62,6 +192,31 @@ export class LlamaAgent {
     setTelegramBotRequest = (isTlgReq: boolean) => this.isTlgrBotRequest = isTlgReq
     
     isTelegramBotRequest = (): boolean => this.isTlgrBotRequest;
+    
+    // Session registry methods
+    registerSession(session: AgentSession): void {
+        this.activeSessions.set(session.sessionId, session);
+    }
+    
+    unregisterSession(sessionId: string): void {
+        this.activeSessions.delete(sessionId);
+    }
+    
+    getSession(sessionId: string): AgentSession | undefined {
+        return this.activeSessions.get(sessionId);
+    }
+    
+    getAllActiveSessionIds(): string[] {
+        return Array.from(this.activeSessions.keys());
+    }
+    
+    isAnySessionRunning(): boolean {
+        return this.activeSessions.size > 0;
+    }
+    
+    getActiveSessionCount(): number {
+        return this.activeSessions.size;
+    }
 
     preprocessCommandPrompt = async (prompt: string): Promise<string> => {
         const regex = /!`(.+?)`/g;
@@ -97,6 +252,22 @@ export class LlamaAgent {
     };
 
     resetMessages = () => {
+        this.messages = [
+            {
+                "role": "system",
+                "content": this.buildSystemPrompt()
+            }
+        ];
+        this.logText = "";
+        this.lastReqTokens = 0;
+    }
+
+    /**
+     * Build the system prompt for agent sessions. It contains the agent
+     * instructions, subagents description, workspace folder, md-files context
+     * and the auto memory context.
+     */
+    public buildSystemPrompt(): string {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
         if (this.app.isAgentSelected()) systemPromt = this.app.getAgent().systemInstruction.join("\n")
         if (this.app.configuration.tool_delegate_task_enabled) {
@@ -137,14 +308,7 @@ export class LlamaAgent {
             projectContext += "  \n\n" + auto_memory;
         }
 
-        this.messages = [
-            {
-                "role": "system",
-                "content": systemPromt + projectContext
-            }
-        ];
-        this.logText = "";
-        this.lastReqTokens = 0;
+        return systemPromt + projectContext;
     }
 
     selectChat = async (chat: Chat) => {
@@ -219,6 +383,19 @@ export class LlamaAgent {
     run = async (query:string, agentCommand?:string, isTelegramBotReq:boolean=false) => {
         
         await this.askAgent(query, agentCommand, isTelegramBotReq);
+    }
+
+    /**
+     * Runs an agent command as a background agent session. Used by the agent
+     * command scheduler for periodic execution. The session uses an in-memory
+     * log and in-memory todo, so it does not interfere with the foreground UI.
+     */
+    runAgentCommandInBackground = async (commandName: string): Promise<string> => {
+        return this.askAgent(commandName, commandName, false, {
+            background: true,
+            logDestination: 'memory',
+            useInMemoryTodo: true
+        });
     }
 
     setInSessionText = async (inSessionText:string) => {
@@ -344,325 +521,492 @@ export class LlamaAgent {
         return data?.choices[0]?.message?.content?.trim();
     }
 
-    askAgent = async (query:string, agentCommand?:string, isTelegramBotReq: boolean = false): Promise<string> => {
-            let response = ""
-            let hooks = this.app.hooks.getHooks(this.app.configuration.hooks_folder)
-            let promptSubmitResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
-            if (hooks && hooks.has(HooksEvents.userPromptSubmit) && hooks.get(HooksEvents.userPromptSubmit)){
-                promptSubmitResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.userPromptSubmit)??[], {prompt: query}, HooksEvents.userPromptSubmit, "")
-                if (promptSubmitResult.stopLoop) {
-                    this.prepareSessionStop("Session stopped by userPromptSubmit hook.");
-                    return "agent stopped by userPromptSubmit hook"
-                } else {
-                    query += promptSubmitResult.resultInfo
-                }                                        
-            }
-
-            this.originalQuery = query;
-            let toolCallsResult: ChatMessage;
-            let finishReason:string|undefined = "tool_calls"
-            this.updateLogText("***" + query.split(/\r?\n/).join("  \n") + "***" + "\n\n");
-            this.isTlgrBotRequest = isTelegramBotReq
-            let agentCommandPrompt  = ""
-            if (agentCommand) {
-                let commands = this.app.configuration.agent_commands as AgentCommand[];
-                commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
-                let commandDetails = commands.find( cmd => cmd.name === agentCommand)
-                if (!commandDetails 
-                    && agentCommand.toLowerCase().endsWith(AGENT_COMMAND.scrip_file_suffix)){
-                    const scriptFilePath = path.join(this.app.configuration.scripts_folder, agentCommand)
-                    if (fs.existsSync(scriptFilePath)) {
-                        const script = fs.readFileSync(scriptFilePath, 'utf-8')              
-                        commandDetails = {
-                            name: "script",
-                            description: "Run a script file",
-                            prompt: [script],
-                            isScript: true,
-                            noPrompt: true,
-                        }
-                    }
-                }     
-                if (commandDetails) {     
-                    let prompt =  commandDetails.prompt.join("\n")
-                    if (Utils.isFilePath(prompt))
-                        prompt = await fs.promises.readFile(path.join(prompt), 'utf-8')              
-                    if (commandDetails.isScript) {
-                        const scriptResult = await this.app.dslInterpreter.execute(prompt)    
-                        if (commandDetails.noPrompt) { 
-                            this.setAgentState("AI is stopped", false)
-                            this.updateLogText(`${scriptResult} \n\n`)
-                            this.app.llamaWebviewProvider.logInUi(this.logText);
-                            return scriptResult;
-                        } else {
-                            agentCommandPrompt += "\n\n " + scriptResult
-                        }
-                    } else agentCommandPrompt += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
-                }
-            }
-            
-            this.setAgentState("AI is working...", true)
-            if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
-                await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
-            }
-            if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
-                vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.")
-                this.setAgentState("AI is stopped", false)
-                this.updateLogText("Tools model is not selected")
-                this.app.llamaWebviewProvider.logInUi(this.logText);
-                return "Tools model is not selected"
-            }
-            // Get the skills
-            const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
-            let skillsDesc = this.getSkillsDesc(skillsFolder)
-            if (skillsDesc) query += "\n\n" + skillsDesc           
-
-            if (this.contexProjectFiles.size > 0){
-                query += "\n\nBelow is a context, attached by the user.\n"
-                for (const [key, value] of this.contexProjectFiles) {
-                    if (this.sentContextFiles.has(key)) continue // send only not sent files (parts)
-                    let itemContext: string;
-                    let contextCustom = this.app.configuration.context_custom as ContextCustom
-                    if (contextCustom && contextCustom.get_item_context) {
-                        if (fs.existsSync(contextCustom.get_item_context)) {
-                            let toolFunction = Utils.getFunctionFromFile(contextCustom.get_item_context);
-                            itemContext = toolFunction(key, value)
-                        } else itemContext = (await Plugin.execute(contextCustom.get_item_context as keyof typeof Plugin.methods, key, value)) as string;
-                    } else {
-                        itemContext = await this.getItemContext(key, value);
-                    }
-                    query += itemContext
-                    this.sentContextFiles.set(key, value);
-                }                  
-            }
-            
-            const todoFile = Utils.getTodosFilePath()
-            this.removeFile(todoFile);
-
-            if (this.app.configuration.tool_update_todo_list_enabled){
-                query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
-            }
-
-            if (agentCommandPrompt) query += agentCommandPrompt    
-            let newMessage: ChatMessage = {
-                                "role": "user",
-                                "content": query
-                            }         
-            this.messages.push(newMessage)
-
-            let iterationsCount = 0;    
-            this.app.llamaWebviewProvider.logInUi(this.logText);
-            
-            let currentCycleStartTime = Date.now();
-            const changedFiles = new Set<string>
-            const deletedFiles = new Set<string>
-            
-            // Create new AbortController for this session
-            this.abortController = new AbortController();
-            
-            while (iterationsCount < this.app.configuration.tools_max_iterations){
-                if (currentCycleStartTime < this.lastStopRequestTime) {
-                    this.prepareSessionStop("Session stopped.")
-                    return "agent stopped"
-                }
-                iterationsCount++;                    
+    /**
+     * Main entry point for agent execution with support for parallel/background sessions
+     */
+    askAgent = async (query: string, agentCommand?: string, isTelegramBotReq: boolean = false, options?: AgentSessionOptions): Promise<string> => {
+        // Generate session ID if not provided
+        const sessionId = options?.sessionId || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Determine log destination based on options
+        let logDestination: LogDestination;
+        const logDestType = options?.logDestination ?? (options?.background ? 'memory' : 'ui');
+        
+        switch (logDestType) {
+            case 'file':
+                const logFilePath = options?.logFilePath || `${Utils.getTodosFilePath().replace('.llama-vscode-todos.md', `-logs-${sessionId}.md`)}`;
+                logDestination = new FileLogDestination(logFilePath);
+                break;
+            case 'memory':
+                logDestination = new MemoryLogDestination();
+                break;
+            default: // 'ui'
+                logDestination = new UiLogDestination(this);
+        }
+        
+        // Ensure default options are set
+        const resolvedOptions: AgentSessionOptions = {
+            background: options?.background ?? false,
+            useInMemoryTodo: options?.useInMemoryTodo ?? false,
+            logDestination: options?.logDestination ?? 'ui',
+            onComplete: options?.onComplete,
+            sessionId: options?.sessionId,
+            logFilePath: options?.logFilePath
+        };
+        
+        // Foreground sessions continue the currently loaded conversation:
+        // reuse its messages (history), log and token state so that a new
+        // prompt sent to a loaded chat keeps the conversation context.
+        // Background sessions always start fresh and stay isolated from the
+        // foreground chat so they can run in parallel without side effects.
+        const isBackgroundSession = resolvedOptions.background;
+        let sessionMessages: ChatMessage[] = [{ role: "system", content: this.buildSystemPrompt() }];
+        let sessionLogText = "";
+        let sessionLastReqTokens = 0;
+        if (!isBackgroundSession && this.messages.length > 0) {
+            sessionMessages = [...this.messages];
+            sessionLogText = this.logText;
+            sessionLastReqTokens = this.lastReqTokens;
+        }
+        
+        // Create per-session state
+        const session: AgentSession = {
+            sessionId,
+            newMessage: { role: "user", content: "" },
+            todoFile: resolvedOptions.useInMemoryTodo ? '' : Utils.getTodosFilePath(),
+            todoContent: null,
+            response: "",
+            iterations: 0,
+            startedAt: Date.now(),
+            changedFiles: new Set<string>(),
+            deletedFiles: new Set<string>(),
+            messages: sessionMessages,
+            logText: sessionLogText,
+            lastReqTokens: sessionLastReqTokens,
+            abortController: new AbortController(),
+            isTlgrBotRequest: isTelegramBotReq,
+            inSessionText: "",
+            originalQuery: query,
+            contexProjectFiles: new Map(this.contexProjectFiles),
+            sentContextFiles: new Map(),
+            contextImage: this.contextImage,
+            sentContextImages: [],
+            confirmationState: "",
+            logDestination,
+            options: resolvedOptions,
+            defaultAgent: this.app.isAgentSelected() ? this.app.getAgent() : undefined
+        };
+        
+        // Register session
+        this.registerSession(session);
+        
+        try {
+            return await this.executeSession(session, agentCommand, isTelegramBotReq);
+        } finally {
+            // Persist background sessions in the chat history on every exit path
+            // (success, stopped, error) so they are always available from the
+            // chat history. Non-background sessions are persisted inside
+            // executeSession (updateChatForSession).
+            if (session.options.background) {
                 try {
-                    const remindersText = this.app.agentReminder.getReminders(iterationsCount)
-                    if (remindersText.trim() != "") this.messages.push({"role": "user", "content": remindersText})                   
-                        
-                    await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
+                    await this.saveSessionChat(session);
+                } catch (error) {
+                    console.error("Failed to save background session chat:", error);
+                }
+            }
+            
+            // Cleanup
+            this.unregisterSession(sessionId);
+            session.abortController.abort();
+            session.abortController = null as any;
+            if (!options?.useInMemoryTodo) {
+                this.removeFile(session.todoFile);
+            }
+            
+            // Call completion callback if provided
+            if (options?.onComplete) {
+                options.onComplete(session.response, sessionId);
+            }
+        }
+    };
+    
+    /**
+     * Execute a single agent session with per-session state
+     */
+    private async executeSession(session: AgentSession, agentCommand?: string, isTelegramBotReq: boolean = false): Promise<string> {
+        let hooks = this.app.hooks.getHooks(this.app.configuration.hooks_folder);
+        let promptSubmitResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
+        
+        if (hooks && hooks.has(HooksEvents.userPromptSubmit) && hooks.get(HooksEvents.userPromptSubmit)){
+            promptSubmitResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.userPromptSubmit)??[], {prompt: session.originalQuery}, HooksEvents.userPromptSubmit, session.sessionId);
+            if (promptSubmitResult.stopLoop) {
+                this.prepareSessionStopForSession(session, "Session stopped by userPromptSubmit hook.");
+                return "agent stopped by userPromptSubmit hook";
+            } else {
+                session.originalQuery += promptSubmitResult.resultInfo;
+            }                                        
+        }
+
+        let finishReason: string | undefined = "tool_calls";
+        session.logDestination.append("***" + session.originalQuery.split(/\r?\n/).join("  \n") + "***" + "\n\n");
+        
+        const agentCommandResult = await this.resolveAgentCommand(agentCommand, session.options.background);
+        if (agentCommandResult.earlyReturn) return agentCommandResult.earlyReturn;
+        
+        // Update UI state only for non-background sessions
+        if (!session.options.background) {
+            this.setAgentState("AI is working...", true);
+        }
+        
+        if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
+            await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
+        }
+        if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
+            vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.");
+            if (!session.options.background) {
+                this.setAgentState("AI is stopped", false);
+            }
+            session.logDestination.append("Tools model is not selected");
+            return "Tools model is not selected";
+        }
+        
+        session.newMessage.content = await this.assembleQuery(session.originalQuery, agentCommandResult.prompt, session);
+        session.messages.push(session.newMessage);
+        
+        // Flush initial log (UiLogDestination does this automatically on append)
+        session.logDestination.append("");
+        
+        try {
+            while (session.iterations < this.app.configuration.tools_max_iterations){
+                if (session.startedAt < this.lastStopRequestTime) {
+                    this.prepareSessionStopForSession(session, "Session stopped.");
+                    return "agent stopped";
+                }
+                session.iterations++;                    
+                try {
+                    // Get reminders with session-aware todo handling
+                    const remindersText = this.app.agentReminder.getRemindersWithSession(session.iterations, session);
+                    if (remindersText.trim() != "") {
+                        session.messages.push({"role": "user", "content": remindersText});
+                    }
+                    
+                    await this.summarizeToFitCurrentBudgetForSession(session);
+                    
                     let streamed = "";
-                    let deltaBuffer = ""
-                    const maxChunkSize = this.app.configuration.telegram_chunk_size
-                    let data:any = await this.app.llamaServer.getAgentCompletion(
-                                                                this.messages, 
-                                                                false, 
-                                                                (delta: string) => {
-                                                                    streamed += delta;
-                                                                    deltaBuffer += delta;
-                                                                    if (this.isTlgrBotRequest && deltaBuffer.length > maxChunkSize) {
-                                                                        this.app.telegramBot.sendResponse(deltaBuffer); 
-                                                                        deltaBuffer = ""
-                                                                    }
-                                                                    this.logText += delta;
-                                                                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                                                                }, 
-                                                                this.abortController?.signal, 
-                                                                !this.sentContextImages.includes(this.contextImage)? this.contextImage : "",
-                                                                iterationsCount
-                                                            );
-                    if (this.isTlgrBotRequest && deltaBuffer.length > 0) {
+                    let deltaBuffer = "";
+                    const maxChunkSize = this.app.configuration.telegram_chunk_size;
+                    
+                    let data: LlamaToolsResponse | undefined = await this.app.llamaServer.getAgentCompletion(
+                        session.messages, 
+                        false, 
+                        (delta: string) => {
+                            streamed += delta;
+                            deltaBuffer += delta;
+                            
+                            // Append to session log destination (automatically flushes for UI destination)
+                            session.logDestination.append(delta);
+                            
+                            // Telegram handling
+                            if (session.isTlgrBotRequest && deltaBuffer.length > maxChunkSize) {
+                                this.app.telegramBot.sendResponse(deltaBuffer); 
+                                deltaBuffer = "";
+                            }
+                        }, 
+                        session.abortController?.signal, 
+                        !session.sentContextImages.includes(session.contextImage) ? session.contextImage : "",
+                        session.iterations
+                    );
+                    
+                    if (session.isTlgrBotRequest && deltaBuffer.length > 0) {
                         this.app.telegramBot.sendResponse(deltaBuffer); 
                     }
-                    if (this.contextImage) this.sentContextImages.push(this.contextImage)
+                    if (session.contextImage) session.sentContextImages.push(session.contextImage);
+                    
                     if (!data) {
-                        this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${iterationsCount}`);
-                        this.updateLogText("No response from AI" + "  \n")
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
-                        this.setAgentState("AI not responding", false)
+                        this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${session.iterations}`);
+                        session.logDestination.append("No response from AI" + "  \n");
+                        if (!session.options.background) {
+                            this.setAgentState("AI not responding", false);
+                        }
                         return "No response from AI";
                     }
+                    
                     if (data.error?.type === "exceed_context_size_error") {
                         this.app.logger.addEventLog(
                             'AGENT',
                             'CONTEXT_ERROR',
-                            `iteration=${iterationsCount} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
+                            `iteration=${session.iterations} | prompt_tokens=${data.error.n_prompt_tokens ?? 'unknown'} | n_ctx=${data.error.n_ctx ?? 'unknown'}`
                         );
-                        this.updateLogText("Error: " + data.error.message + "  \n");
+                        session.logDestination.append("Error: " + data.error.message + "  \n");
                         if (typeof data.error.n_prompt_tokens === 'number' && typeof data.error.n_ctx === 'number') {
-                            this.updateLogText(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
+                            session.logDestination.append(`Prompt tokens: ${data.error.n_prompt_tokens}, context window: ${data.error.n_ctx}  \n`);
                         }
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
 
-                        const summarized = await this.summarizeToFitCurrentBudget(newMessage, this.contextImage);
+                        const summarized = await this.summarizeToFitCurrentBudgetForSession(session);
                         if (summarized) {
-                            this.app.logger.addEventLog('AGENT', 'CONTEXT_RETRY', `iteration=${iterationsCount}`);
+                            this.app.logger.addEventLog('AGENT', 'CONTEXT_RETRY', `iteration=${session.iterations}`);
                             continue;
                         }
 
-                        this.setAgentState("Context limit exceeded", false)
+                        if (!session.options.background) {
+                            this.setAgentState("Context limit exceeded", false);
+                        }
                         return data.error.message;
                     }
 
                     finishReason = data.choices[0].finish_reason;
-                    response = data.choices[0].message.content;
-                    if (!streamed && response) {
-                        this.updateLogText(response + "  \n");
+                    session.response = data.choices[0].message.content ?? "";
+                    if (!streamed && session.response) {
+                        session.logDestination.append(session.response + "  \n");
                     }
                     if (data.truncated) {
-                        this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${iterationsCount} | finish_reason=${finishReason ?? 'unknown'}`);
-                        this.updateLogText("  \nWarning: response was truncated by the context window.  \n");
+                        this.app.logger.addEventLog('AGENT', 'TRUNCATED_RESPONSE', `iteration=${session.iterations} | finish_reason=${finishReason ?? 'unknown'}`);
+                        session.logDestination.append("  \nWarning: response was truncated by the context window.  \n");
                     }
-                     
-                    this.updateLogText("  \nTotal iterations: " + iterationsCount + "  \n")
-                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                    if (currentCycleStartTime < this.lastStopRequestTime) {
-                        this.prepareSessionStop("Session stopped.");
-                        return "agent stopped"
+                 
+                    session.logDestination.append("  \nTotal iterations: " + session.iterations + "  \n");
+                    
+                    if (session.startedAt < this.lastStopRequestTime) {
+                        this.prepareSessionStopForSession(session, "Session stopped.");
+                        return "agent stopped";
                     }
-                    this.messages.push(data.choices[0].message);
-                    if (!this.inSessionText 
+                    
+                    session.messages.push(data.choices[0].message as ChatMessage);
+                    
+                    if (!session.inSessionText 
                         && finishReason != "tool_calls" 
                         && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
-                        this.updateLogText("  \n" + "Finish reason: " + finishReason)
-                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) this.updateLogText("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n")
-                        this.app.llamaWebviewProvider.logInUi(this.logText);
+                        session.logDestination.append("  \n" + "Finish reason: " + finishReason);
+                        if (finishReason?.toLowerCase().trim() == "error" && data.choices[0].error) {
+                            session.logDestination.append("Error: " + data.choices[0].error.message + "  \n" + data?.error?.message + "  \n");
+                        }
+                        
                         let stopResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: "", continueLoop: false};
                         if (hooks && hooks.has(HooksEvents.stop) && hooks.get(HooksEvents.stop)){
-                            stopResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.stop)??[], {prompt: query}, HooksEvents.stop, "")                                        
+                            stopResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.stop)??[], {prompt: session.originalQuery}, HooksEvents.stop, session.sessionId);                                        
                         }
-                        if (stopResult.continueLoop) this.messages.push({"role": "user", "content": stopResult.resultInfo});
+                        if (stopResult.continueLoop) session.messages.push({"role": "user", "content": stopResult.resultInfo});
                         else break;
                     }
-                    
-                    let toolCalls:any = data.choices[0].message.tool_calls;
-                    if (toolCalls != undefined && toolCalls.length > 0){
-                        for (const oneToolCall of toolCalls){
-                            if (oneToolCall && oneToolCall.function){
-                                this.updateLogText("  \ntool: " + oneToolCall.function.name + "  \n");
-                                if (this.app.configuration.tools_log_calls) this.updateLogText("  \narguments: " + oneToolCall.function.arguments)
-                                this.app.llamaWebviewProvider.logInUi(this.logText);
-                                let commandOutput = "Tool not found";
-                                try {
-                                    if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
-                                        const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
-                                        let commandDescription = ""
-                                        if (toolFuncDesc){
-                                            commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
-                                            this.updateLogText(commandDescription + "\n\n")
-                                            this.app.llamaWebviewProvider.logInUi(this.logText);
-                                        }   
-                                        const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
-                                        if (toolFunc) {
-                                            let preToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
-                                            if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
-                                                preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)
-                                                if (preToolResult.stopLoop) {
-                                                    this.prepareSessionStop("Session stopped by preToolUse hook.");
-                                                    return "agent stopped by preToolUse hook"
-                                                }                                        
-                                            }
-                                            
-                                            if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                            else commandOutput = preToolResult.resultInfo;
-
-                                            let postToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
-                                            if (hooks && hooks.has(HooksEvents.postToolUse) && hooks.get(HooksEvents.postToolUse)){
-                                                postToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.postToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)                                      
-                                            }
-                                            if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
-                                                let changedFile = commandDescription
-                                                if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
-                                                if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length)
-                                                changedFiles.add(changedFile);
-                                                if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
-                                                    this.updateLogText(commandOutput + "\n\n")
-                                                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                                                }
-                                            }
-                                            if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) deletedFiles.add(commandDescription);
-                                        }
-                                    }
-                                    if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
-                                        let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
-                                        commandOutput = result.content[0] ? (result.content[0] as { [key: string]: any; }).value : "";;
-                                    }
-                                } catch (error) {
-                                    // Handle the error
-                                    console.error("An error occurred:", error);
-                                    commandOutput = "Error during the execution of tool " + oneToolCall.function.name + ": " + error
-                                    commandOutput = commandOutput.slice(0, 400);
-                                    this.updateLogText("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
-                                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                                }
-
-                                if (this.app.configuration.tools_log_calls) this.updateLogText("result:  \n" + commandOutput + "  \n")
-                                this.app.llamaWebviewProvider.logInUi(this.logText);
-                                toolCallsResult = {           
-                                            "role": "tool",
-                                            "tool_call_id": oneToolCall.id,
-                                            "content": commandOutput
-                                        }
-                                this.messages.push(toolCallsResult)
-                            }
-                        }
+                
+                    // Execute any tool calls returned by the model
+                    const toolCallsOk = await this.processToolCallsForSession(data, hooks, session);
+                    if (!toolCallsOk) {
+                        return "agent stopped by preToolUse hook";
                     }
-                    
-                    if (this.inSessionText){
-                        this.updateLogText("\n\n***" + this.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n")
-                        this.messages.push({"role": "user", "content": this.inSessionText})
-                        this.inSessionText = ""
+                
+                    if (session.inSessionText){
+                        session.logDestination.append("\n\n***" + session.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n");
+                        session.messages.push({"role": "user", "content": session.inSessionText});
+                        session.inSessionText = "";
+                        if (session.logDestination.flushToUi && session.options.logDestination === 'ui') {
+                            session.logDestination.flushToUi();
+                        }
                     }
                 } catch (error) {
                     // Handle the error
                     console.error("An error occurred:", error);
-                    this.updateLogText("An error occurred: " + error + "\n\n");
+                    session.logDestination.append("An error occurred: " + error + "\n\n");
                     if (isAxiosError(error)){
-                        this.updateLogText(`Error details: ${error.response?.data?.error?.message})\n\n`);
+                        session.logDestination.append(`Error details: ${error.response?.data?.error?.message})\n\n`);
                     }
-                    this.app.llamaWebviewProvider.logInUi(this.logText);
-                    this.setAgentState("Error", false)
+                    if (session.logDestination.flushToUi && session.options.logDestination === 'ui') {
+                        session.logDestination.flushToUi();
+                    }
+                    if (!session.options.background) {
+                        this.setAgentState("Error", false);
+                    }
                     return "An error occurred: " + error;
                 }
             }
-            if (changedFiles.size + deletedFiles.size > 0) this.updateLogText("\n\nFiles changes:  \n")
-            if (changedFiles.size > 0) this.updateLogText(Array.from(changedFiles).map(file => this.getFileChangeLink(file)).join("  \n") + "  \n")
-            if (deletedFiles.size > 0) this.updateLogText(Array.from(deletedFiles).join("  \n") + "  \n")
-            this.updateLogText("  \nAgent session finished. \n\n")
-            if (iterationsCount >= this.app.configuration.tools_max_iterations) {
-                this.updateLogText(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`)
+            
+            // Session completed successfully
+            if (session.changedFiles.size + session.deletedFiles.size > 0) {
+                session.logDestination.append("\n\nFiles changes:  \n");
             }
-            this.app.llamaWebviewProvider.logInUi(this.logText);
-            this.setAgentState("AI finished", false)
-            await this.updateChat();
+            if (session.changedFiles.size > 0) {
+                session.logDestination.append(Array.from(session.changedFiles).map(file => this.getFileChangeLinkForSession(session, file)).join("  \n") + "  \n");
+            }
+            if (session.deletedFiles.size > 0) {
+                session.logDestination.append(Array.from(session.deletedFiles).join("  \n") + "  \n");
+            }
+            session.logDestination.append("  \nAgent session finished. \n\n");
+            if (session.iterations >= this.app.configuration.tools_max_iterations) {
+                session.logDestination.append(`  \nFinish reason: Max iterations reached ${this.app.configuration.tools_max_iterations}. You could change the max iterations limit in settings tools_max_iterations.  \n\n`);
+            }
+            if (session.logDestination.flushToUi && session.options.logDestination === 'ui') {
+                session.logDestination.flushToUi();
+            }
             
+            if (!session.options.background) {
+                this.setAgentState("AI finished", false);
+            }
+            
+            // Update the selected chat for non-background sessions. Background
+            // sessions are saved to the chat history in the finally block of
+            // askAgent (on every exit path).
+            if (!session.options.background) {
+                await this.updateChatForSession(session);
+            }
+            
+            return session.response;
+        } finally {
             // Clean up AbortController
-            this.abortController = null;
-
-            this.removeFile(todoFile);
-            
-            return response;
-        }  
+            session.abortController = null as any;
+        }
+    }  
         
+    // Resolves an agent command (predefined, custom, or script file) and returns
+    // the prompt text to append to the user query. If the command is a no-prompt
+    // script that terminates immediately, earlyReturn holds the result.
+    // When background is true, no-prompt script results are not pushed to the
+    // foreground UI (setAgentState/logInUi) to avoid clobbering the active view.
+    private async resolveAgentCommand(agentCommand?: string, background: boolean = false): Promise<{prompt: string, earlyReturn: string | undefined}> {
+        let agentCommandPrompt  = ""
+        if (agentCommand) {
+            let commands = this.app.configuration.agent_commands as AgentCommand[];
+            commands = commands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
+            let commandDetails = commands.find( cmd => cmd.name === agentCommand)
+            if (!commandDetails 
+                && agentCommand.toLowerCase().endsWith(AGENT_COMMAND.scrip_file_suffix)){
+                const scriptFilePath = path.join(this.app.configuration.scripts_folder, agentCommand)
+                if (fs.existsSync(scriptFilePath)) {
+                    const script = fs.readFileSync(scriptFilePath, 'utf-8')              
+                    commandDetails = {
+                        name: "script",
+                        description: "Run a script file",
+                        prompt: [script],
+                        isScript: true,
+                        noPrompt: true,
+                    }
+                }
+            }     
+            if (commandDetails) {     
+                let prompt =  commandDetails.prompt.join("\n")
+                if (Utils.isFilePath(prompt))
+                    prompt = await fs.promises.readFile(path.join(prompt), 'utf-8')              
+                if (commandDetails.isScript) {
+                    const scriptResult = await this.app.dslInterpreter.execute(prompt)    
+                    if (commandDetails.noPrompt) { 
+                        if (!background) {
+                            this.setAgentState("AI is stopped", false)
+                            this.logInUi(`${scriptResult} \n\n`)
+                        }
+                        return { prompt: "", earlyReturn: scriptResult };
+                    } else {
+                        agentCommandPrompt += "\n\n " + scriptResult
+                    }
+                } else agentCommandPrompt += "\n\n " + await this.preprocessCommandPrompt(commandDetails.prompt.join("\n"))
+            }
+        }
+        return { prompt: agentCommandPrompt, earlyReturn: undefined };
+    }
+
+    // Assembles the final user query by appending skills descriptions, attached
+    // project-file contexts, and the todo-list reminder.
+    private async assembleQuery(query: string, agentCommandPrompt: string, session?: AgentSession): Promise<string> {
+        // Use session-specific context if provided, otherwise use instance context
+        const contexProjectFiles = session?.contexProjectFiles ?? this.contexProjectFiles;
+        const sentContextFiles = session?.sentContextFiles ?? this.sentContextFiles;
+        
+        // Get the skills
+        const skillsFolder = this.app.configuration.skills_folder || Utils.getWorkspaceFolder() + "/" + "skills"
+        let skillsDesc = this.getSkillsDesc(skillsFolder)
+        if (skillsDesc) query += "\n\n" + skillsDesc           
+
+        if (contexProjectFiles.size > 0){
+            query += "\n\nBelow is a context, attached by the user.\n"
+            for (const [key, value] of contexProjectFiles) {
+                if (sentContextFiles.has(key)) continue // send only not sent files (parts)
+                let itemContext: string;
+                let contextCustom = this.app.configuration.context_custom as ContextCustom
+                if (contextCustom && contextCustom.get_item_context) {
+                    if (fs.existsSync(contextCustom.get_item_context)) {
+                        let toolFunction = Utils.getFunctionFromFile(contextCustom.get_item_context);
+                        itemContext = toolFunction(key, value)
+                    } else itemContext = (await Plugin.execute(contextCustom.get_item_context as keyof typeof Plugin.methods, key, value)) as string;
+                } else {
+                    itemContext = await this.getItemContext(key, value);
+                }
+                query += itemContext
+                sentContextFiles.set(key, value);
+            }                  
+        }
+        
+        if (this.app.configuration.tool_update_todo_list_enabled){
+            query += "\n\n " + "If the request is complicated or involves multiple steps - use tool update_todo_list."
+        }
+
+        if (agentCommandPrompt) query += agentCommandPrompt    
+        return query;
+    }
+
+    private async processToolCalls(data: LlamaToolsResponse | undefined, hooks: Map<string, EventHook[]> | undefined, changedFiles: Set<string>, deletedFiles: Set<string>): Promise<boolean> {
+        let toolCalls = data?.choices[0]?.message.tool_calls;
+        if (toolCalls != undefined && toolCalls.length > 0){
+            for (const oneToolCall of toolCalls){
+                if (oneToolCall && oneToolCall.function){
+                    this.logInUi("  \ntool: " + oneToolCall.function.name + "  \n");
+                    if (this.app.configuration.tools_log_calls) this.logInUi("  \narguments: " + oneToolCall.function.arguments)
+                    let commandOutput = "Tool not found";
+                    try {
+                        if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
+                            const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
+                            let commandDescription = ""
+                            if (toolFuncDesc){
+                                commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
+                                this.logInUi(commandDescription + "\n\n")
+                            }   
+                            const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
+                            if (toolFunc) {
+                                let preToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
+                                if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
+                                    preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, oneToolCall.function.name)
+                                    if (preToolResult.stopLoop) {
+                                        this.prepareSessionStopForSession(this.createTempSessionFromContext(), "Session stopped by preToolUse hook.");
+                                        return false;
+                                    }                                        
+                                }
+                                
+                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                else commandOutput = preToolResult.resultInfo;
+    
+                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
+                                    let changedFile = commandDescription
+                                    if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
+                                    if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length)
+                                    changedFiles.add(changedFile);
+                                    if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
+                                        this.logInUi(commandOutput + "\n\n")
+                                    }
+                                }
+                                if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) deletedFiles.add(commandDescription);
+                            }
+                        }
+                        if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
+                            let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined})
+                            commandOutput = result.content[0] ? (result.content[0] as vscode.LanguageModelTextPart).value : "";
+                        }
+                    } catch (error) {
+                        // Handle the error
+                        console.error("An error occurred:", error);
+                        commandOutput = "Error during the execution of tool " + oneToolCall.function.name + ": " + error
+                        commandOutput = commandOutput.slice(0, 400);
+                        this.logInUi("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
+                    }
+    
+                    if (this.app.configuration.tools_log_calls) this.logInUi("result:  \n" + commandOutput + "  \n")
+                    this.messages.push({           
+                                "role": "tool",
+                                "tool_call_id": oneToolCall.id,
+                                "content": commandOutput
+                            })
+                }
+            }
+        }
+        return true;
+    }
+
     stopAgent = () => {
         this.lastStopRequestTime = Date.now();
         if (this.abortController) {
@@ -691,11 +1035,18 @@ export class LlamaAgent {
         return progress;
     }
 
-    private prepareSessionStop(message: string) {
+    /**
+     * Stop a specific session with message
+     */
+    private prepareSessionStopForSession(session: AgentSession, message: string) {
         this.app.statusbar.showTextInfo(message);
-        this.updateLogText("\n\n" + message + "\n");
-        this.app.llamaWebviewProvider.logInUi(this.logText);
-        this.setAgentState("AI is stopped", false);
+        session.logDestination.append("\n\n" + message + "\n");
+        if (session.logDestination.flushToUi && session.options.logDestination === 'ui') {
+            session.logDestination.flushToUi();
+        }
+        if (!session.options.background) {
+            this.setAgentState("AI is stopped", false);
+        }
     }
 
     private setAgentState(uiState: string, isInProgress: boolean) {
@@ -708,12 +1059,28 @@ export class LlamaAgent {
         this.logText += logDelta;
     }
 
+    // Appends text to the agent log and flushes it to the webview UI.
+    // For telegram bot requests the log text is also sent as a response chunk.
+    private logInUi(logDelta: string) {
+        this.updateLogText(logDelta);
+        this.app.llamaWebviewProvider.logInUi(this.logText);
+    }
+
     // Renders a changed file as a clickable markdown link in the UI.
     // Clicking it triggers the 'llama-vscode.openChangedFile' command with the
     // file path. For telegram bot requests the plain path is returned
     // (telegram renders command: links as dead links).
     private getFileChangeLink = (filePath: string): string => {
         if (this.isTlgrBotRequest) return filePath;
+        const args = encodeURIComponent(JSON.stringify({ filePath: filePath }));
+        return `[${filePath}](command:llama-vscode.openChangedFile?${args})`;
+    };
+    
+    /**
+     * Render file change link for a specific session
+     */
+    private getFileChangeLinkForSession(session: AgentSession, filePath: string): string {
+        if (session.isTlgrBotRequest) return filePath;
         const args = encodeURIComponent(JSON.stringify({ filePath: filePath }));
         return `[${filePath}](command:llama-vscode.openChangedFile?${args})`;
     }
@@ -728,6 +1095,249 @@ export class LlamaAgent {
         chat.messages = this.messages;
         chat.log = this.logText;
         await this.app.chatService.selectUpdateChat(chat);
+    }
+    
+    /**
+     * Update chat for a specific session
+     */
+    public async updateChatForSession(session: AgentSession) {
+        let chat = this.app.getChat();
+        if (!this.app.isChatSelected()) {
+            chat.name = session.logDestination.getContents().slice(0, 25);
+            chat.id = session.sessionId;
+            chat.description = new Date().toLocaleString() + " " + session.logDestination.getContents().slice(0, 150);
+        }
+        chat.messages = session.messages;
+        chat.log = session.logDestination.getContents();
+        // Keep the instance conversation state in sync with the completed
+        // session so that the next prompt sent from the UI continues the
+        // conversation instead of starting from the originally loaded history.
+        this.messages = session.messages;
+        this.logText = session.logDestination.getContents();
+        this.lastReqTokens = session.lastReqTokens;
+        await this.app.chatService.selectUpdateChat(chat);
+    }
+
+    /**
+     * Persist a background agent session as a standalone chat in the chat
+     * history so it can be selected/loaded later from the chat history without
+     * disturbing the currently selected chat.
+     */
+    public async saveSessionChat(session: AgentSession) {
+        const contents = session.logDestination.getContents();
+        // Do not persist sessions that never produced any conversation output
+        // (e.g. a script command that returned early before any real work).
+        if (!session.messages.some(m => m.role !== 'system')) {
+            return;
+        }
+        const sessionChat: Chat = {
+            name: contents.slice(0, 25) || "background session",
+            id: session.sessionId,
+            description: new Date().toLocaleString() + " " + contents.slice(0, 150),
+            messages: session.messages,
+            log: contents,
+            defaultAgent: session.defaultAgent,
+        };
+        await this.app.chatService.addChatToHistory(sessionChat);
+    }
+
+    /**
+     * Summarize messages for a specific session to fit current token budget
+     */
+    public async summarizeToFitCurrentBudgetForSession(session: AgentSession): Promise<boolean> {
+        if (!this.app.configuration.chats_summarize_old_msgs) {
+            return false;
+        }
+        const tokenLimits = await this.app.llamaServer.getToolsModelTokenLimits();
+        const reservedOutputTokens = Math.max(1024, resolveBoundedMaxOutputTokens({
+            maxInputTokens: tokenLimits.maxInputTokens,
+            maxOutputTokens: tokenLimits.maxOutputTokens,
+            defaultMaxOutputTokens: DEFAULT_MAX_OUTPUT_TOKENS,
+        }));
+        const maxPromptTokens = Math.max(
+            1,
+            tokenLimits.maxInputTokens - reservedOutputTokens - DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS
+        );
+
+        let summarizedAny = false;
+        while (true) {
+            let newTokens: number | undefined = undefined;
+            let promptTokens: number = 0;
+            if (!summarizedAny) {
+                newTokens = await this.app.llamaServer.countToolsPromptTokens([session.newMessage], session.contextImage);
+                if (newTokens === undefined) newTokens = this.app.llamaServer.estimateToolsRequestTokens(session.newMessage);
+                promptTokens = session.lastReqTokens + newTokens; 
+            } else {
+                let tokensAfterSummarize = await this.app.llamaServer.countToolsPromptTokens(session.messages, session.contextImage);
+                if (tokensAfterSummarize === undefined) tokensAfterSummarize = this.app.llamaServer.estimateToolsRequestTokens(session.messages);
+                promptTokens = tokensAfterSummarize;
+                session.lastReqTokens = tokensAfterSummarize;
+            }
+            
+            if (promptTokens <= maxPromptTokens) {
+                return summarizedAny;
+            }
+
+            const summarized = await this.summarizeForSession(session);
+            if (!summarized) {
+                return summarizedAny;
+            }
+            this.app.logger.addEventLog('AGENT', 'BUDGET_SUMMARIZE', `messages=${session.messages.length}`);
+            summarizedAny = true;
+        }
+    }
+    
+    /**
+     * Generate summary for a specific session's messages
+     */
+    private async summarizeForSession(session: AgentSession): Promise<boolean> {
+        if (session.messages.length <= this.app.configuration.chats_msgs_keep) {
+            return false;
+        }
+
+        // Preserve system messages and recent messages
+        const systemMessages = session.messages.filter(m => m.role === 'system');
+        const recentMessages = session.messages.slice(-this.app.configuration.chats_msgs_keep);
+        const oldMessages = session.messages.slice(
+            systemMessages.length, 
+            -this.app.configuration.chats_msgs_keep
+        );
+
+        if (oldMessages.length === 0) {
+            return false;
+        }
+
+        try {
+            const summary = await this.generateSummaryForSession(session, oldMessages);
+            
+            // Replace old messages with the summary
+            session.messages = [
+                ...systemMessages,
+                {
+                role: 'assistant' as const,
+                content: `Earlier conversation summary:\n <conversation_summary>\n${summary}\n</conversation_summary>`
+                },
+                ...recentMessages
+            ];
+            vscode.window.showInformationMessage(`${oldMessages.length} messages summarized. Last ${recentMessages.length} messages left.`);
+            return true;
+
+        } catch (error) {
+            console.error('Failed to generate summary:', error);
+            return false;
+        }
+    }
+    
+    /**
+     * Generate summary using session-specific abort controller
+     */
+    private async generateSummaryForSession(session: AgentSession, messages: ChatMessage[]): Promise<string> {
+        let data = await this.app.llamaServer.getAgentCompletion(messages, true, undefined, session.abortController?.signal);
+        if (!data || data.error || !data?.choices[0]?.message?.content) throw Error("Error generating summary");
+        
+        return data?.choices[0]?.message?.content?.trim();
+    }
+
+    /**
+     * Process tool calls for a specific session
+     */
+    private async processToolCallsForSession(data: LlamaToolsResponse | undefined, hooks: Map<string, EventHook[]> | undefined, session: AgentSession): Promise<boolean> {
+        let toolCalls = data?.choices[0]?.message.tool_calls;
+        if (toolCalls != undefined && toolCalls.length > 0){
+            for (const oneToolCall of toolCalls){
+                if (oneToolCall && oneToolCall.function){
+                    session.logDestination.append("  \ntool: " + oneToolCall.function.name + "  \n");
+                    if (this.app.configuration.tools_log_calls) session.logDestination.append("  \narguments: " + oneToolCall.function.arguments);
+                    let commandOutput = "Tool not found";
+                    try {
+                        if (this.app.tools.toolsFunc.has(oneToolCall.function.name)){
+                            const toolFuncDesc = this.app.tools.toolsFuncDesc.get(oneToolCall.function.name);
+                            let commandDescription = "";
+                            if (toolFuncDesc){
+                                commandDescription = await toolFuncDesc(oneToolCall.function.arguments);
+                                session.logDestination.append(commandDescription + "\n\n");
+                            }   
+                            const toolFunc = this.app.tools.toolsFunc.get(oneToolCall.function.name);
+                            if (toolFunc) {
+                                let preToolResult: EventResult = {stopLoop: false, stopTool: false, resultInfo: ""};
+                                if (hooks && hooks.has(HooksEvents.preToolUse) && hooks.get(HooksEvents.preToolUse)){
+                                    preToolResult = await this.app.hooks.processHooks(hooks.get(HooksEvents.preToolUse)??[], JSON.parse(oneToolCall.function.arguments), HooksEvents.preToolUse, session.sessionId);
+                                    if (preToolResult.stopLoop) {
+                                        this.prepareSessionStopForSession(session, "Session stopped by preToolUse hook.");
+                                        return false;
+                                    }                                        
+                                }
+                                
+                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                else commandOutput = preToolResult.resultInfo;
+
+                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
+                                    let changedFile = commandDescription;
+                                    if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length);
+                                    if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length);
+                                    session.changedFiles.add(changedFile);
+                                    if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
+                                        session.logDestination.append(commandOutput + "\n\n");
+                                    }
+                                }
+                                if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) session.deletedFiles.add(commandDescription);
+                            }
+                        }
+                        if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
+                            let result = await vscode.lm.invokeTool(oneToolCall.function.name,{input: JSON.parse(oneToolCall.function.arguments), toolInvocationToken: undefined});
+                            commandOutput = result.content[0] ? (result.content[0] as vscode.LanguageModelTextPart).value : "";
+                        }
+                    } catch (error) {
+                        // Handle the error
+                        console.error("An error occurred:", error);
+                        commandOutput = "Error during the execution of tool " + oneToolCall.function.name + ": " + error;
+                        commandOutput = commandOutput.slice(0, 400);
+                        session.logDestination.append("Error during the execution of tool " + oneToolCall.function.name + ": " + error + "\n\n");
+                    }
+
+                    if (this.app.configuration.tools_log_calls) session.logDestination.append("result:  \n" + commandOutput + "  \n");
+                    session.messages.push({           
+                                "role": "tool",
+                                "tool_call_id": oneToolCall.id,
+                                "content": commandOutput
+                            });
+                }
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Create a temporary session from current context for backward compatibility
+     */
+    private createTempSessionFromContext(): AgentSession {
+        const logDest = new UiLogDestination(this);
+        return {
+            sessionId: 'temp',
+            newMessage: { role: 'user', content: '' },
+            todoFile: Utils.getTodosFilePath(),
+            todoContent: null,
+            response: '',
+            iterations: 0,
+            startedAt: Date.now(),
+            changedFiles: new Set<string>(),
+            deletedFiles: new Set<string>(),
+            messages: this.messages,
+            logText: this.logText,
+            lastReqTokens: this.lastReqTokens,
+            abortController: new AbortController(),
+            isTlgrBotRequest: this.isTelegramBotRequest(),
+            inSessionText: this.inSessionText,
+            originalQuery: this.originalQuery,
+            contexProjectFiles: this.contexProjectFiles,
+            sentContextFiles: this.sentContextFiles,
+            contextImage: this.contextImage,
+            sentContextImages: this.sentContextImages,
+            confirmationState: this.confirmationState,
+            logDestination: logDest,
+            options: { background: false },
+            defaultAgent: this.app.isAgentSelected() ? this.app.getAgent() : undefined
+        };
     }
 
     private removeFile(todoFile: string) {

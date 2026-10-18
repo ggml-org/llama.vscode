@@ -1,6 +1,7 @@
 import { Application } from "./application";
 import { Utils } from "./utils";
 import * as fs from 'fs';
+import type { AgentSession } from './llama-agent';
 
 type ReminderFunction = (iteration: number) => string;
 export interface ReminderItem {
@@ -35,9 +36,40 @@ export class AgentReminder {
         }
 
         return remindersText;
+    };
+    
+    /**
+     * Get reminders with session-aware todo handling
+     * Supports both in-memory and file-based todos per session
+     */
+    getRemindersWithSession = (iteration: number, session: AgentSession) => {
+        let remindersText = "";
+        for (const [_, reminder] of this.reminders){
+            if (iteration % reminder.frequency == 0 ){
+                // Use session-specific reminder function if available
+                const currentRemText = reminder.reminderFunction(iteration);
+                if (currentRemText.trim() != "") {
+                    remindersText += currentRemText + "\n\n";
+                }
+            }
+        }
+        
+        // Add session-specific todo reminder if using in-memory mode
+        if (session.options.useInMemoryTodo && session.todoContent) {
+            const goal = "Task: \n" + session.originalQuery;
+            const currentPlan = "Below is the todo list:\n" + session.todoContent;
+            remindersText += `${goal}\n\n${currentPlan}\n\n`;
+        } else if (!session.options.useInMemoryTodo && session.todoFile && fs.existsSync(session.todoFile)) {
+            // File-based todo (traditional behavior)
+            const goal = "Task: \n" + session.originalQuery;
+            const currentPlan = "Below is the todo list:\n" + fs.readFileSync(session.todoFile, "utf-8");
+            remindersText += `${goal}\n\n${currentPlan}\n\n`;
+        }
+        
+        return remindersText;
     }
 
-    remindTodos = (iteration: number ) => {
+    remindTodos = (_iteration: number ) => {
         const todoFile = Utils.getTodosFilePath()
         // iteration % this.app.configuration.plan_review_frequency == 0
         if (fs.existsSync(todoFile) ){
@@ -51,7 +83,7 @@ export class AgentReminder {
         
     }
 
-    remindEditFile = (iteration: number ) => {
+    remindEditFile = (_iteration: number ) => {
         return `${this.app.prompts.EDIT_FILE_REMINDER}`
     }
 

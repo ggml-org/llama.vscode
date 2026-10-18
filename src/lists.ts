@@ -1112,6 +1112,24 @@ export const PREDEFINED_LISTS = new Map<string, any>([
           ]],
 [PREDEFINED_LISTS_KEYS.AGENT_COMMANDS, [
             {
+              "name": "start_background_agent_session",
+              "prompt": [
+                "startBackgroundAgentSession"
+              ],
+              "description": "Starts background agent session. You will be asked for a prompt.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
+              "name": "add_agent_command",
+              "prompt": [
+                "addAgentCommand"
+              ],
+              "description": "Add agent command - opens an UI for adding agent command.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
               "name": "manage_completion_models",
               "prompt": [
                 "manageComplModels"

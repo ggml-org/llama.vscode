@@ -619,6 +619,31 @@ export class Tools {
 
         if (params.todos == undefined) return "The todos are not provided."
         
+        // Check if a sessionId is provided for session-scoped storage
+        const sessionId = params.sessionId as string | undefined;
+        
+        if (sessionId && this.app.llamaAgent) {
+            const session = this.app.llamaAgent.getSession(sessionId);
+            if (session) {
+                // Update in-memory todo for this session
+                session.todoContent = params.todos;
+                
+                // Also update file if not using pure in-memory mode
+                if (!session.options.useInMemoryTodo && session.todoFile) {
+                    try {
+                        fs.writeFileSync(session.todoFile, params.todos, 'utf8');
+                    } catch (error) {
+                        console.error('Failed to write todo file:', error);
+                    }
+                }
+                
+                return "The todos are created/updated for session " + sessionId + ".";
+            } else {
+                return "Session not found: " + sessionId;
+            }
+        }
+        
+        // Fallback to global file (backward compatibility)
         let filePath = Utils.getTodosFilePath();
         
         try {
@@ -634,6 +659,7 @@ export class Tools {
         let ret = "update_todo_list tool is executed. \n\n"
         let params = JSON.parse(args);
         if (params.todos) ret += params.todos.split(/\r?\n/).join("  \n")
+        if (params.sessionId) ret += "\n\nSession ID: " + params.sessionId
         return ret
     }
 
