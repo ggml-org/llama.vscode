@@ -1,29 +1,39 @@
-## Agent commands
+## Agent Commands
 
-### What are agent commands
-There are two types of agent commands:  
+### What Are Agent Commands?
+Agent commands fall into two categories:  
 
-#### Prompt commands
-Prompt commands send prompt to the agent (no prompt to the agent: false). They are a way to reuse often used prompts. They could be used to describe complex workflows or for simple instructions. If scripts are used, they should return the prompt, which will be sent to the agent. Skills are logically prompt commands and in the future versions they will be considered as agent prompt commands (but not yet).
+#### Prompt Commands
+Prompt commands send a message directly to the AI agent (`no_prompt_to_agent: false`). They allow you to save and reuse frequently used prompts, whether for simple instructions or complex workflows. When defined via a script, the script must output the prompt string, which is then sent to the agent. *(Note: While skills function similarly under the hood, they will be formally integrated as prompt commands in a future release.)*
 
-#### Script commands
-Script commands do not send prompt to the agent (no prompt to the agent: true, is script: true). They are actions within llama-vscode and could automate some tasks. For example select models, agents, change settings, etc.. The content of the command is intepreted as a [script](https://github.com/ggml-org/llama.vscode/wiki/Scripts) and is executed. All script files with suffix .lvs in the scripts_folder are considered as agent script commands and are shown on entering "/" in the agent prompt field.
+#### Script Commands
+Script commands execute local actions within `llama-vscode` without sending a prompt to the agent (`no_prompt_to_agent: true`, `is_script: true`). They automate IDE-specific tasks such as selecting models or agents, adjusting settings, and more. The command content is interpreted as a [Script](https://github.com/ggml-org/llama.vscode/wiki/Scripts) and runs locally. Any `.lvs` file located in the `scripts_folder` directory is automatically registered as a script command and becomes accessible when typing `/` in the prompt field.
 
-Agent commands are stored in setting agent_commands and llama-vscode menu item "Agent commands..." could be used to manage them.  
-The command prompt could contain terminal commands in format !'<terminal_command>' (as in claude code.). The command prompt is preprocessed and the terminal commands are executed and replaced with the the result of the execution. Example: !'pwd' will be replaced with the the current directory.
+#### Scheduling
+You can schedule agent commands to run at regular intervals. Configure an optional start time, execution interval, and total number of executions. Scheduled commands only run while VS Code is open. Restarting VS Code resets execution counters (e.g., total runs remaining) and re-evaluates pending schedules. The prompt commands are executed in parallel to the running agent (if any) in the background. They use the  selected agent, model and tools at the time of execution. The execution details are available from button Chat History.
 
-The prompt field of the command could be a path to a file. Before executing the command, the file is read and the content is used as the prompt field value. The file cold contain a prompt or a script.
+#### Additional Details
+- **Editor Access:** Open the Agent Command Editor by clicking the `` `>_` `` button in the chat interface.
+- **Storage & Management:** Commands are saved in the `agent_commands` setting. You can manage them via the `llama-vscode` menu option **"Agent commands..."**.
+- **Terminal Interpolation:** Prompts can include shell commands using the syntax `` !'<command>' `` (similar to Claude Code). During preprocessing, these commands are executed, and their output replaces the original placeholder. Example: `` !'pwd' `` inserts the current working directory.
+- **File Paths as Prompts:** You can also store a file path in the prompt field. Before execution, the editor reads the file and uses its contents as the prompt. Files may contain either plain text prompts or script logic.
 
-### How to use them
-Prerequisite for prompt commands: tools model is selected  
-You could create agent commands from llama-vscode menu item "Agent commands..."\"Add agent command...". For creating a command with longer prompts you could export an existing command with "Agent commands..."\"Export agent command..." in a .json file, change the name and the prompt in the file and then import the new command with "Agent commands..."\"Import agent command...". 
+### How to Use Agent Commands
+**Prerequisite:** A model with tool-calling capabilities must be selected for prompt commands to work.  
 
-In agent prompt text area press "/" - the available agent commands will be shown and could be selected. When selected, the command name is replaced with the longer prompt for this command and is sent to the AI model.  
-Example:  
-1. Select several lines of source code
-2. Press Ctrl+Shift+A (or right click and select "llama-vscode: Show Llama Agent") - this will attach the selected lines to the prompt
-3. Inside the agent prompt press "/" and select "explain"
-The agent will explain the selected code.## Skills
+**Creating & Managing Commands:**
+- Create a new command via `llama-vscode` → **"Agent commands..."** → **"Add agent command..."**.
+- For complex or lengthy prompts, export an existing command (`"Agent commands..."` → `"Export agent command..."`), save it as a `.json` file, edit the name and prompt directly, and re-import it (`"Import agent command..."`).
+
+**Using Commands in Chat:**
+Type `/` in the prompt input to see a list of available commands. Select one to insert its full prompt into the chat, which is then sent to the AI model.  
+
+**Example Workflow:**
+1. Highlight several lines of code.
+2. Press `Ctrl+Shift+A` (or right-click and select **`llama-vscode: Show Llama Agent`**) to attach the selection to your prompt.
+3. Type `/` in the prompt field and select **`explain`**.
+
+The agent will generate an explanation for the highlighted code.## Skills
 
 ### Overview
 Llama-vscode support a simple auto memory for storing persistent data across conversations. The logic is as follows:
