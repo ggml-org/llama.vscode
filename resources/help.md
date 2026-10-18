@@ -319,6 +319,17 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.70 is released (28.09.2026)
+### What is new
+- Agent Commands Editor added
+- Agent commands extended with scheduling. Now the agent commands can be configured to be executed periodically (for example executing tests every night)
+- Predefined agent command added - add_agent_command. This command opens the Agent Commands Editor
+- Delete current chat button fixed
+
+## Version 0.0.69 is released (28.09.2026)
+### What is new
+- Atlas Cloud (https://www.atlascloud.ai/) support added - select "Add xxx model from OpenAI compatible provider..." and select Atlas Cloud to view the available models
+
 ## Version 0.0.68 is released (28.09.2026)
 ### What is new
 - Two more hooks events are introduced (experimental) - userPromptSubmit (before agent loop is started) and stop (after agent loop is stopped). [More details in the wiki](https://github.com/ggml-org/llama.vscode/wiki/Hooks).
