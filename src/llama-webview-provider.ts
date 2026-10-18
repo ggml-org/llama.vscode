@@ -25,6 +25,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["sendAgentCommand", this.sendAgentCommand],
                     ["clearText", this.clearText],
                     ["showChatsHistory", this.showChatsHistory],
+                    ["deleteCurrentChat", this.deleteCurrentChat],
                     ["configureTools", this.configureTools],
                     ["configureEditTools", this.configureEditTools],
                     ["stopSession", this.stopSession],
@@ -60,6 +61,12 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["showEnvView", this.showEnvView],
                     ["showAgentView", this.showAgentView],
                     ["showAgentEditor", this.showAgentEditor],
+                    ["showAgentCommandEditor", this.showAgentCommandEditor],
+                    ["selectEditAgentCommand", this.selectEditAgentCommand],
+                    ["addEditAgentCommand", this.addEditAgentCommand],
+                    ["copyAsNewAgentCommand", this.copyAsNewAgentCommand],
+                    ["saveEditAgentCommand", this.saveEditAgentCommand],
+                    ["deleteEditAgentCommand", this.deleteEditAgentCommand],
                     ["showAgentViewLocation", this.showAgentViewLocation],
                     ["showSelectedModels", this.showSelectedModels],
                     ["getFileList", this.getFileList],
@@ -204,7 +211,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     selectEditAgent = async (message: any, webviewView: vscode.WebviewView) => {
-        await this.app.agentService.editAgent(this.app.configuration.agents_list)
+        let agentsList = this.app.configuration.agents_list
+        await this.app.agentService.editAgent(agentsList)
     }
     
     showCompletionModel = async (message: any, webviewView: vscode.WebviewView) => {
@@ -229,6 +237,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     
     selectAgent = async (message: any, webviewView: vscode.WebviewView) => {
         let agentsList = this.app.configuration.agents_list
+        agentsList = agentsList.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[]);
         let shouldContinue = await this.app.dialogs.showYesNoDialog("This will remove the current conversation. Do you want to continue?")
         if (shouldContinue) {
             await this.app.agentService.pickAndSelectAgent(agentsList)
@@ -270,7 +279,69 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     showAgentEditor = async (message: any, webviewView: vscode.WebviewView) => {
         this.showAgentEditorInUi();
     }
-    
+
+    showAgentCommandEditor = async (message: any, webviewView: vscode.WebviewView) => {
+        this.showAgentCommandEditorInUi();
+    }
+
+    selectEditAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
+        const agentCommands = this.app.configuration.agent_commands as AgentCommand[];
+        await this.app.agentCommandService.editAgentCommandFromList(agentCommands)
+    }
+
+    addEditAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
+        const newAgentCommand: AgentCommand = {
+            name: message.name ?? "",
+            description: message.description ?? "",
+            prompt: message.prompt ? message.prompt.split(/\r?\n/) : [],
+            context: message.context ? message.context.split(/\r?\n/) : [],
+            noPrompt: Boolean(message.noPrompt),
+            isScript: Boolean(message.isScript),
+            executePeriodically: Boolean(message.executePeriodically),
+            startTime: message.startTime ?? "",
+            period: message.period !== undefined && message.period !== "" ? Number(message.period) : undefined,
+            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== "" ? Number(message.totalExecutionTimes) : undefined
+        };
+        this.addEditAgentCommandToUi(newAgentCommand);
+    }
+
+    copyAsNewAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
+        // const selectedCommand = this.app.agentCommandService.getAgentCommand(message.commandName);
+        // if (selectedCommand) {
+        //     const copy: AgentCommand = {
+        //         ...selectedCommand,
+        //         name: "Copy of " + selectedCommand.name
+        //     };
+        //     this.addEditAgentCommandToUi(copy);
+        // }
+        this.app.agentCommandService.copyAgentCommand()
+    }
+
+    saveEditAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
+        if (!message.name || message.name.trim() === "") {
+            vscode.window.showErrorMessage("Agent command should have a name!");
+            return;
+        }
+        const agentCommandToSave: AgentCommand = {
+            name: message.name,
+            description: message.description ?? "",
+            prompt: message.prompt ? message.prompt.split(/\r?\n/) : [],
+            context: message.context ? message.context.split(/\r?\n/) : [],
+            noPrompt: Boolean(message.noPrompt),
+            isScript: Boolean(message.isScript),
+            executePeriodically: Boolean(message.executePeriodically),
+            startTime: message.startTime ?? "",
+            period: message.period !== undefined && message.period !== "" ? Number(message.period) : undefined,
+            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== "" ? Number(message.totalExecutionTimes) : undefined
+        };
+        await this.app.agentCommandService.addUpdateAgentCommand(agentCommandToSave);
+    }
+
+    deleteEditAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
+        await this.app.agentCommandService.deleteAgentCommandByName(message.commandName);
+        this.addEditAgentCommandToUi (null as any)
+    }
+
     showAgentViewLocation = async (message: any, webviewView: vscode.WebviewView) => {
         const location: 'left' | 'right' = message?.location === 'right' ? 'right' : 'left';
         // View container ids generated by VS Code for the containers contributed in package.json.
@@ -870,7 +941,35 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public showAgentEditorInUi() {
         vscode.commands.executeCommand('extension.showLlamaWebview');
         setTimeout(() => this.setView("agenteditor"), 400);
-    } 
+    }
+
+    public showAgentCommandEditorInUi() {
+        vscode.commands.executeCommand('extension.showLlamaWebview');
+        setTimeout(() => this.setView("agentcommandeditor"), 400);
+    }
+
+    public addEditAgentCommandToUi(agentCommand: AgentCommand) {
+        this.showAgentCommandEditorInUi();
+        // Delay sending the command data so the AgentCommandEditor component is mounted
+        // in the webview first. showAgentCommandEditorInUi switches the view after ~400ms;
+        // posting immediately would lose the message because the editor is not mounted yet
+        // (App.tsx renders AgentCommandEditor only when view === "agentcommandeditor").
+        setTimeout(() => {
+            this._webview?.webview?.postMessage({
+                command: 'loadAgentCommand',
+                name: agentCommand?.name ?? "",
+                description: agentCommand?.description ?? "",
+                prompt: agentCommand?.prompt ? agentCommand.prompt.join("\n") : "",
+                context: agentCommand?.context ? agentCommand.context.join("\n") : "",
+                noPrompt: Boolean(agentCommand?.noPrompt),
+                isScript: Boolean(agentCommand?.isScript),
+                executePeriodically: Boolean(agentCommand?.executePeriodically),
+                startTime: agentCommand?.startTime ?? "",
+                period: agentCommand?.period ?? "",
+                totalExecutionTimes: agentCommand?.totalExecutionTimes ?? ""
+            });
+        }, 500);
+    }
 
     public updateLlamaView() {
         this.updateModels();

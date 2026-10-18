@@ -42,6 +42,7 @@ export function activate(context: vscode.ExtensionContext) {
 
 export async function deactivate() {
     // VS Code will dispose all registerd disposables
+    app.agentCommandScheduler.stop();
     app.llamaServer.killFimCmd();
     app.llamaServer.killChatCmd();
     app.llamaServer.killEmbeddingsCmd();

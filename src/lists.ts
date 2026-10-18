@@ -1121,6 +1121,15 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
+              "name": "add_agent_command",
+              "prompt": [
+                "addAgentCommand"
+              ],
+              "description": "Add agent command - opens an UI for adding agent command.",
+              "noPrompt": true,
+              "isScript": true
+            },
+            {
               "name": "manage_completion_models",
               "prompt": [
                 "manageComplModels"

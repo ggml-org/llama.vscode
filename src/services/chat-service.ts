@@ -232,7 +232,7 @@ export class ChatService {
         }
     }    
 
-    private async addChatToHistory(chatToAdd: Chat) {
+    public async addChatToHistory(chatToAdd: Chat) {
         let chats = this.app.persistence.getChats();
         if (!chats) chats = [];
         const index = chats.findIndex((ch: Chat) => ch.id === chatToAdd.id);

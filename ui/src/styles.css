@@ -302,6 +302,32 @@ body {
   opacity: 0.6;
 }
 
+/* Modern Input (compact single-line inputs) */
+.modern-input {
+  width: 100%;
+  background-color: var(--vscode-input-background);
+  border: 1px solid var(--vscode-input-border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--vscode-input-foreground);
+  transition: all 0.2s ease;
+  color-scheme: dark;
+}
+
+.modern-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+}
+
+.modern-input::placeholder {
+  color: var(--vscode-input-foreground);
+  opacity: 0.6;
+}
+
 /* Input Actions */
 .input-actions {
   display: flex;

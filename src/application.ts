@@ -25,6 +25,7 @@ import { ExternalModelStrategy } from "./services/external-model-strategy";
 import { EnvService } from "./services/env-service";
 import { AgentService } from "./services/agent-service";
 import { AgentCommandService } from "./services/agent-command-service";
+import { AgentCommandScheduler } from "./services/agent-command-scheduler";
 import { ChatService } from "./services/chat-service";
 import { Agent, Chat, Env, LlmModel } from "./types";
 import { ModelType, PERSISTENCE_KEYS } from "./constants";
@@ -68,6 +69,7 @@ export class Application {
     public envService: EnvService
     public agentService: AgentService
     public agentCommandService: AgentCommandService
+    public agentCommandScheduler: AgentCommandScheduler
     public chatService: ChatService
     public apiKeyService: ApiKeyService
     public llamaChatModelProvider: LlamaChatModelProvider
@@ -119,6 +121,7 @@ export class Application {
         this.envService = new EnvService(this)
         this.agentService = new AgentService(this)
         this.agentCommandService = new AgentCommandService(this)
+        this.agentCommandScheduler = new AgentCommandScheduler(this)
         this.chatService = new ChatService(this) 
         this.apiKeyService = new ApiKeyService(this)
         this.llamaChatModelProvider = new LlamaChatModelProvider(this);

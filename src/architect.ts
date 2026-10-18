@@ -51,6 +51,9 @@ export class Architect {
             if (defaultAgent) this.app.agentService.selectAgent(defaultAgent, false)
         }
         this.app.tools.init()
+        // Start the periodic agent command scheduler. It picks up all user
+        // commands with executePeriodically = true.
+        this.app.agentCommandScheduler.start();
     }
 
     private restoreLastUsedEnv = async (): Promise<void> => {
@@ -100,6 +103,7 @@ export class Architect {
             }
             if (this.app.configuration.isCompletionsEnabledConfigChanged(event)) this.app.statusbar.updateStatusBarText();
             if (this.app.configuration.isAgentReminderSettingChanged(event)) this.app.agentReminder.initReminders();
+            if (event.affectsConfiguration("llama-vscode.agent_commands")) this.app.agentCommandScheduler.reschedule();
         });
         context.subscriptions.push(configurationChangeDisp);
     }

@@ -1,5 +1,5 @@
 import {Application} from "./application";
-import { AgentCommand, ChatMessage, ContextCustom, EventHook, EventResult } from "./types";
+import { AgentCommand, Agent, ChatMessage, ContextCustom, EventHook, EventResult } from "./types";
 import type { LlamaToolsResponse } from "./llama-server";
 import * as vscode from 'vscode';
 import { Utils } from "./utils"
@@ -147,6 +147,7 @@ export interface AgentSession {
     confirmationState: string;            // Per-session state
     logDestination: LogDestination;       // Session-specific log destination
     options: AgentSessionOptions;         // Session options
+    defaultAgent?: Agent;                 // Agent used when the session started
 }
 
 export class LlamaAgent {
@@ -251,6 +252,22 @@ export class LlamaAgent {
     };
 
     resetMessages = () => {
+        this.messages = [
+            {
+                "role": "system",
+                "content": this.buildSystemPrompt()
+            }
+        ];
+        this.logText = "";
+        this.lastReqTokens = 0;
+    }
+
+    /**
+     * Build the system prompt for agent sessions. It contains the agent
+     * instructions, subagents description, workspace folder, md-files context
+     * and the auto memory context.
+     */
+    public buildSystemPrompt(): string {
         let systemPromt = this.app.prompts.TOOLS_SYSTEM_PROMPT_ACTION;
         if (this.app.isAgentSelected()) systemPromt = this.app.getAgent().systemInstruction.join("\n")
         if (this.app.configuration.tool_delegate_task_enabled) {
@@ -291,14 +308,7 @@ export class LlamaAgent {
             projectContext += "  \n\n" + auto_memory;
         }
 
-        this.messages = [
-            {
-                "role": "system",
-                "content": systemPromt + projectContext
-            }
-        ];
-        this.logText = "";
-        this.lastReqTokens = 0;
+        return systemPromt + projectContext;
     }
 
     selectChat = async (chat: Chat) => {
@@ -373,6 +383,19 @@ export class LlamaAgent {
     run = async (query:string, agentCommand?:string, isTelegramBotReq:boolean=false) => {
         
         await this.askAgent(query, agentCommand, isTelegramBotReq);
+    }
+
+    /**
+     * Runs an agent command as a background agent session. Used by the agent
+     * command scheduler for periodic execution. The session uses an in-memory
+     * log and in-memory todo, so it does not interfere with the foreground UI.
+     */
+    runAgentCommandInBackground = async (commandName: string): Promise<string> => {
+        return this.askAgent(commandName, commandName, false, {
+            background: true,
+            logDestination: 'memory',
+            useInMemoryTodo: true
+        });
     }
 
     setInSessionText = async (inSessionText:string) => {
@@ -531,6 +554,21 @@ export class LlamaAgent {
             logFilePath: options?.logFilePath
         };
         
+        // Foreground sessions continue the currently loaded conversation:
+        // reuse its messages (history), log and token state so that a new
+        // prompt sent to a loaded chat keeps the conversation context.
+        // Background sessions always start fresh and stay isolated from the
+        // foreground chat so they can run in parallel without side effects.
+        const isBackgroundSession = resolvedOptions.background;
+        let sessionMessages: ChatMessage[] = [{ role: "system", content: this.buildSystemPrompt() }];
+        let sessionLogText = "";
+        let sessionLastReqTokens = 0;
+        if (!isBackgroundSession && this.messages.length > 0) {
+            sessionMessages = [...this.messages];
+            sessionLogText = this.logText;
+            sessionLastReqTokens = this.lastReqTokens;
+        }
+        
         // Create per-session state
         const session: AgentSession = {
             sessionId,
@@ -542,9 +580,9 @@ export class LlamaAgent {
             startedAt: Date.now(),
             changedFiles: new Set<string>(),
             deletedFiles: new Set<string>(),
-            messages: [],
-            logText: "",
-            lastReqTokens: 0,
+            messages: sessionMessages,
+            logText: sessionLogText,
+            lastReqTokens: sessionLastReqTokens,
             abortController: new AbortController(),
             isTlgrBotRequest: isTelegramBotReq,
             inSessionText: "",
@@ -555,7 +593,8 @@ export class LlamaAgent {
             sentContextImages: [],
             confirmationState: "",
             logDestination,
-            options: resolvedOptions
+            options: resolvedOptions,
+            defaultAgent: this.app.isAgentSelected() ? this.app.getAgent() : undefined
         };
         
         // Register session
@@ -564,6 +603,18 @@ export class LlamaAgent {
         try {
             return await this.executeSession(session, agentCommand, isTelegramBotReq);
         } finally {
+            // Persist background sessions in the chat history on every exit path
+            // (success, stopped, error) so they are always available from the
+            // chat history. Non-background sessions are persisted inside
+            // executeSession (updateChatForSession).
+            if (session.options.background) {
+                try {
+                    await this.saveSessionChat(session);
+                } catch (error) {
+                    console.error("Failed to save background session chat:", error);
+                }
+            }
+            
             // Cleanup
             this.unregisterSession(sessionId);
             session.abortController.abort();
@@ -599,7 +650,7 @@ export class LlamaAgent {
         let finishReason: string | undefined = "tool_calls";
         session.logDestination.append("***" + session.originalQuery.split(/\r?\n/).join("  \n") + "***" + "\n\n");
         
-        const agentCommandResult = await this.resolveAgentCommand(agentCommand);
+        const agentCommandResult = await this.resolveAgentCommand(agentCommand, session.options.background);
         if (agentCommandResult.earlyReturn) return agentCommandResult.earlyReturn;
         
         // Update UI state only for non-background sessions
@@ -791,7 +842,9 @@ export class LlamaAgent {
                 this.setAgentState("AI finished", false);
             }
             
-            // Update chat only for non-background sessions
+            // Update the selected chat for non-background sessions. Background
+            // sessions are saved to the chat history in the finally block of
+            // askAgent (on every exit path).
             if (!session.options.background) {
                 await this.updateChatForSession(session);
             }
@@ -806,7 +859,9 @@ export class LlamaAgent {
     // Resolves an agent command (predefined, custom, or script file) and returns
     // the prompt text to append to the user query. If the command is a no-prompt
     // script that terminates immediately, earlyReturn holds the result.
-    private async resolveAgentCommand(agentCommand?: string): Promise<{prompt: string, earlyReturn: string | undefined}> {
+    // When background is true, no-prompt script results are not pushed to the
+    // foreground UI (setAgentState/logInUi) to avoid clobbering the active view.
+    private async resolveAgentCommand(agentCommand?: string, background: boolean = false): Promise<{prompt: string, earlyReturn: string | undefined}> {
         let agentCommandPrompt  = ""
         if (agentCommand) {
             let commands = this.app.configuration.agent_commands as AgentCommand[];
@@ -833,8 +888,10 @@ export class LlamaAgent {
                 if (commandDetails.isScript) {
                     const scriptResult = await this.app.dslInterpreter.execute(prompt)    
                     if (commandDetails.noPrompt) { 
-                        this.setAgentState("AI is stopped", false)
-                        this.logInUi(`${scriptResult} \n\n`)
+                        if (!background) {
+                            this.setAgentState("AI is stopped", false)
+                            this.logInUi(`${scriptResult} \n\n`)
+                        }
                         return { prompt: "", earlyReturn: scriptResult };
                     } else {
                         agentCommandPrompt += "\n\n " + scriptResult
@@ -1052,7 +1109,36 @@ export class LlamaAgent {
         }
         chat.messages = session.messages;
         chat.log = session.logDestination.getContents();
+        // Keep the instance conversation state in sync with the completed
+        // session so that the next prompt sent from the UI continues the
+        // conversation instead of starting from the originally loaded history.
+        this.messages = session.messages;
+        this.logText = session.logDestination.getContents();
+        this.lastReqTokens = session.lastReqTokens;
         await this.app.chatService.selectUpdateChat(chat);
+    }
+
+    /**
+     * Persist a background agent session as a standalone chat in the chat
+     * history so it can be selected/loaded later from the chat history without
+     * disturbing the currently selected chat.
+     */
+    public async saveSessionChat(session: AgentSession) {
+        const contents = session.logDestination.getContents();
+        // Do not persist sessions that never produced any conversation output
+        // (e.g. a script command that returned early before any real work).
+        if (!session.messages.some(m => m.role !== 'system')) {
+            return;
+        }
+        const sessionChat: Chat = {
+            name: contents.slice(0, 25) || "background session",
+            id: session.sessionId,
+            description: new Date().toLocaleString() + " " + contents.slice(0, 150),
+            messages: session.messages,
+            log: contents,
+            defaultAgent: session.defaultAgent,
+        };
+        await this.app.chatService.addChatToHistory(sessionChat);
     }
 
     /**
@@ -1249,7 +1335,8 @@ export class LlamaAgent {
             sentContextImages: this.sentContextImages,
             confirmationState: this.confirmationState,
             logDestination: logDest,
-            options: { background: false }
+            options: { background: false },
+            defaultAgent: this.app.isAgentSelected() ? this.app.getAgent() : undefined
         };
     }
 

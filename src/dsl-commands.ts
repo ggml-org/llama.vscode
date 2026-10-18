@@ -83,6 +83,18 @@ export class DslCommands {
         this.commandsFunc.set("managetoolsmodels", this.manageToolsModels);
         this.commandsFunc.set("geteventinput", this.getEventInput);
         this.commandsFunc.set("startbackgroundagentsession", this.startBackgroundAgentSession);
+        this.commandsFunc.set("addagentcommand", this.addAgentCommand);
+    }
+
+    addAgentCommand = async () => {
+        let result = "UI for adding agent command is shown."
+        try {
+            this.app.agentCommandService.addAgentCommand();
+        } catch (err){
+            result = "Error showing UI for adding agent command: " + err
+        }
+
+        return result
     }
 
     startBackgroundAgentSession = async () => {
