@@ -303,15 +303,15 @@ suite('Parallel web tools through the agent dispatcher', () => {
         assert.strictEqual(calls().length, 0);
     });
 
-    test('cancellation aborts an in-flight tool call and does not change conversation identity', async () => {
+    test('Stop cancels foreground and background web calls and preserves conversation identity', async () => {
         mode = 'hang_call';
-        const pending = ask();
-        while (!calls().length) await new Promise(resolve => setTimeout(resolve, 1));
-        for (const session of (agent as any).activeSessions.values()) session.abortController.abort();
-        assert.match(await pending, /cancelled/);
-        const id = completed[0].searchSessionId;
+        const pending = Promise.all([ask(), ask('fetch', true)]);
+        while (calls().length < 2) await new Promise(resolve => setTimeout(resolve, 1));
+        const id = calls().find(call => call.body.params.name === 'web_search')!.body.params.arguments.session_id;
+        agent.stopAgent();
+        for (const result of await pending) assert.match(result, /cancelled/);
         mode = 'ok'; await ask();
-        assert.strictEqual(calls()[1].body.params.arguments.session_id, id);
+        assert.strictEqual(calls()[2].body.params.arguments.session_id, id);
     });
 
     test('timeout aborts the SDK request and reaches the tool result', async () => {

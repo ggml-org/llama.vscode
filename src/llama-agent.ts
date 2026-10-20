@@ -1017,6 +1017,9 @@ export class LlamaAgent {
 
     stopAgent = () => {
         this.lastStopRequestTime = Date.now();
+        for (const session of this.activeSessions.values()) {
+            session.abortController?.abort();
+        }
         if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;
