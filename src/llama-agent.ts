@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import {Application} from "./application";
 import { AgentCommand, Agent, ChatMessage, ContextCustom, EventHook, EventResult } from "./types";
 import type { LlamaToolsResponse } from "./llama-server";
@@ -124,6 +125,7 @@ export interface AgentSessionOptions {
  * Expanded AgentSession interface with per-session state fields
  */
 export interface AgentSession {
+    searchSessionId: string;               // Opaque identity of the conversation, across turns
     sessionId: string;                     // Unique identifier
     newMessage: ChatMessage;
     todoFile: string;                      // Per-session todo file path
@@ -153,6 +155,7 @@ export interface AgentSession {
 export class LlamaAgent {
     public app: Application
     private lastStopRequestTime = Date.now();
+    private searchSessionId: string = randomUUID();
     private messages: ChatMessage[] = [];
     private lastReqTokens = 0;
     private confirmationState: string = ""; // Use consts CONFIRMATION_STATE.*
@@ -252,6 +255,7 @@ export class LlamaAgent {
     };
 
     resetMessages = () => {
+        this.searchSessionId = randomUUID();
         this.messages = [
             {
                 "role": "system",
@@ -317,6 +321,9 @@ export class LlamaAgent {
 
         if (chat){
             const currentChat = this.app.getChat();
+            this.searchSessionId = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(chat.searchSessionId ?? '')
+                ? chat.searchSessionId! : randomUUID();
+            chat.searchSessionId = this.searchSessionId;
             this.messages = chat.messages??[];
             this.logText = chat.log??"";
             this.lastReqTokens = chat.tokenDetails?.lastReqTokens??0;
@@ -571,6 +578,7 @@ export class LlamaAgent {
         
         // Create per-session state
         const session: AgentSession = {
+            searchSessionId: isBackgroundSession ? randomUUID() : this.searchSessionId,
             sessionId,
             newMessage: { role: "user", content: "" },
             todoFile: resolvedOptions.useInMemoryTodo ? '' : Utils.getTodosFilePath(),
@@ -851,8 +859,8 @@ export class LlamaAgent {
             
             return session.response;
         } finally {
-            // Clean up AbortController
-            session.abortController = null as any;
+            // askAgent still needs the controller for its outer cleanup.
+            session.abortController.abort();
         }
     }  
         
@@ -968,7 +976,7 @@ export class LlamaAgent {
                                     }                                        
                                 }
                                 
-                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments, { sessionId: this.searchSessionId, signal: this.abortController?.signal });
                                 else commandOutput = preToolResult.resultInfo;
     
                                 if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
@@ -1107,6 +1115,7 @@ export class LlamaAgent {
             chat.id = session.sessionId;
             chat.description = new Date().toLocaleString() + " " + session.logDestination.getContents().slice(0, 150);
         }
+        chat.searchSessionId = session.searchSessionId;
         chat.messages = session.messages;
         chat.log = session.logDestination.getContents();
         // Keep the instance conversation state in sync with the completed
@@ -1133,6 +1142,7 @@ export class LlamaAgent {
         const sessionChat: Chat = {
             name: contents.slice(0, 25) || "background session",
             id: session.sessionId,
+            searchSessionId: session.searchSessionId,
             description: new Date().toLocaleString() + " " + contents.slice(0, 150),
             messages: session.messages,
             log: contents,
@@ -1268,7 +1278,7 @@ export class LlamaAgent {
                                     }                                        
                                 }
                                 
-                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments, { sessionId: session.searchSessionId, signal: session.abortController.signal });
                                 else commandOutput = preToolResult.resultInfo;
 
                                 if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
@@ -1313,6 +1323,7 @@ export class LlamaAgent {
     private createTempSessionFromContext(): AgentSession {
         const logDest = new UiLogDestination(this);
         return {
+            searchSessionId: this.searchSessionId,
             sessionId: 'temp',
             newMessage: { role: 'user', content: '' },
             todoFile: Utils.getTodosFilePath(),

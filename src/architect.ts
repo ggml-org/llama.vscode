@@ -43,12 +43,18 @@ export class Architect {
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
-        if (lastAgent && (lastAgent as Agent).name) this.app.agentService.selectAgent(lastAgent, false)
+        if (lastAgent && (lastAgent as Agent).name) await this.app.agentService.selectAgent(lastAgent, false)
         else if (!this.app.getAgent()?.name) {
             // set default agent if no last agent is set
             const predefinedAgents = (PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
             const defaultAgent = predefinedAgents.find((agent) => agent.name === "default");
-            if (defaultAgent) this.app.agentService.selectAgent(defaultAgent, false)
+            if (defaultAgent) {
+                // Automatic first selection must respect explicitly disabled web tools.
+                const tools = defaultAgent.tools?.filter(name =>
+                    name !== "parallel_web_search" && name !== "parallel_web_fetch" ||
+                    (this.app.configuration as any)[`tool_${name}_enabled`] !== false);
+                await this.app.agentService.selectAgent({ ...defaultAgent, tools }, false);
+            }
         }
         this.app.tools.init()
         // Start the periodic agent command scheduler. It picks up all user

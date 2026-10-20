@@ -102,6 +102,7 @@ export interface TokenDetails {
 }
 
 export interface Chat {
+    searchSessionId?: string,
     name: string,
     description?: string,
     id: string,

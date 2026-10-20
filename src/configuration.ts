@@ -80,6 +80,8 @@ export class Configuration {
 
     tool_run_terminal_command_enabled = true;
     tool_create_agent_enabled = true;
+    tool_parallel_web_search_enabled = true;
+    tool_parallel_web_fetch_enabled = true;
     tool_search_source_enabled = true;
     tool_read_file_enabled = true;
     tool_list_directory_enabled = true;
@@ -250,6 +252,8 @@ export class Configuration {
         this.rag_max_context_file_chars = Number(config.get<number>("rag_max_context_file_chars"));
         this.tool_run_terminal_command_enabled = Boolean(config.get<boolean>("tool_run_terminal_command_enabled"));
         this.tool_create_agent_enabled = Boolean(config.get<boolean>("tool_create_agent_enabled"));
+        this.tool_parallel_web_search_enabled = Boolean(config.get<boolean>("tool_parallel_web_search_enabled"));
+        this.tool_parallel_web_fetch_enabled = Boolean(config.get<boolean>("tool_parallel_web_fetch_enabled"));
         this.tool_search_source_enabled = Boolean(config.get<boolean>("tool_search_source_enabled"));
         this.tool_read_file_enabled = Boolean(config.get<boolean>("tool_read_file_enabled"));
         this.tool_list_directory_enabled = Boolean(config.get<boolean>("tool_list_directory_enabled"));
@@ -425,6 +429,8 @@ export class Configuration {
     isToolChanged = (event: vscode.ConfigurationChangeEvent) => {
         return event.affectsConfiguration("llama-vscode.tool_run_terminal_command_enabled")
         || event.affectsConfiguration("llama-vscode.tool_create_agent_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_parallel_web_search_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_parallel_web_fetch_enabled")
         || event.affectsConfiguration("llama-vscode.tool_search_source_enabled")
         || event.affectsConfiguration("llama-vscode.tool_list_directory_enabled")
         || event.affectsConfiguration("llama-vscode.tool_read_file_enabled")

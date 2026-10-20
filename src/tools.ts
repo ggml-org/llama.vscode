@@ -7,6 +7,8 @@ import { Plugin } from './plugin';
 import { CONFIRMATION_STATE, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
 import { Chat, Agent } from "./types";
 
+import { callParallelTool, WebToolContext, webToolDefinition } from "./parallel-search";
+
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
 export class Tools {
@@ -22,6 +24,10 @@ export class Tools {
     constructor(application: Application) {
         this.app = application;
         this.toolsFunc.set("run_terminal_command", this.runTerminalCommand);
+        this.toolsFunc.set("parallel_web_search", this.parallelWebSearch);
+        this.toolsFunc.set("parallel_web_fetch", this.parallelWebFetch);
+        this.toolsFuncDesc.set("parallel_web_search", async () => "Searching the web with Parallel");
+        this.toolsFuncDesc.set("parallel_web_fetch", async () => "Fetching web pages with Parallel");
         this.toolsFunc.set("search_source", this.searchSource)
         this.toolsFunc.set("read_file", this.readFile)
         this.toolsFunc.set("list_directory", this.readDirectory)
@@ -60,6 +66,43 @@ export class Tools {
         this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
         this.toolsFuncDesc.set("multi_edit_file", this.multiEditFileDesc);
         this.toolsFuncDesc.set("search_tools", this.searchToolsDesc);
+    }
+
+    public parallelWebSearch = async (args: string, context?: WebToolContext) => {
+        const params = JSON.parse(args);
+        if (typeof params.objective !== 'string' || !params.objective.trim() ||
+            !Array.isArray(params.search_queries) || !params.search_queries.length ||
+            !params.search_queries.every((q: unknown) => typeof q === 'string' && q.trim())) {
+            throw new Error('Provide an objective and at least one nonempty search query.');
+        }
+        return this.runWebTool('web_search', { objective: params.objective, search_queries: params.search_queries }, context);
+    };
+
+    public parallelWebFetch = async (args: string, context?: WebToolContext) => {
+        const params = JSON.parse(args);
+        if (!Array.isArray(params.urls) || !params.urls.length || params.urls.length > 20 ||
+            !params.urls.every((url: unknown) => {
+                if (typeof url !== 'string') return false;
+                try {
+                    const parsed = new URL(url);
+                    return ['http:', 'https:'].includes(parsed.protocol) && !parsed.username && !parsed.password;
+                } catch { return false; }
+            })) throw new Error('Provide between 1 and 20 HTTP or HTTPS URLs without credentials.');
+        return this.runWebTool('web_fetch', { urls: params.urls }, context);
+    };
+
+    private async runWebTool(name: 'web_search' | 'web_fetch', params: Record<string, unknown>, context?: WebToolContext) {
+        const enabled = name === 'web_search' ? this.app.configuration.tool_parallel_web_search_enabled : this.app.configuration.tool_parallel_web_fetch_enabled;
+        if (!enabled) return 'This web tool is disabled.';
+        if (!vscode.workspace.isTrusted) return 'Web tools require a trusted workspace.';
+        if (!context) throw new Error('Web tools require an agent conversation.');
+        if (context.signal?.aborted) throw new Error('Web request cancelled.');
+        const allowed = await this.app.dialogs.confirmAction(
+            'Send this web request to Parallel? No workspace files are attached.', JSON.stringify(params, null, 2));
+        if (!allowed) return Utils.MSG_NO_USER_PERMISSION;
+        if (context.signal?.aborted) throw new Error('Web request cancelled.');
+        const result = await callParallelTool(name, params, context);
+        return result.slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
     }
 
     public runTerminalCommand = async (args: string ) => {
@@ -747,6 +790,8 @@ export class Tools {
     
     public init = () => {
         this.tools = [
+            ...(this.app.configuration.tool_parallel_web_search_enabled ? [webToolDefinition("parallel_web_search")] : []),
+            ...(this.app.configuration.tool_parallel_web_fetch_enabled ? [webToolDefinition("parallel_web_fetch")] : []),
             ...(this.app.configuration.tool_run_terminal_command_enabled ? [
             {
                 "type": "function",
@@ -1184,6 +1229,9 @@ export class Tools {
         
         for (let tool of this.app.configuration.tools_custom){
             if (tool.enabled) {
+                if (["parallel_web_search", "parallel_web_fetch"].includes(tool.tool.function.name)) {
+                    this.tools = this.tools.filter(existing => existing.function.name !== tool.tool.function.name);
+                }
                 this.tools.push(tool.tool)
                 if (tool.tool_function && fs.existsSync(tool.tool_function)) {
                     let toolFunction = Utils.getFunctionFromFile(tool.tool_function);
