@@ -10,7 +10,7 @@ import { Configuration } from '../../configuration';
 import { Architect } from '../../architect';
 import { PARALLEL_MCP_URL, PARALLEL_USER_AGENT } from '../../parallel-search';
 import { Utils } from '../../utils';
-import { HooksEvents } from '../../constants';
+import { HooksEvents, PERSISTENCE_KEYS } from '../../constants';
 import { Chat } from '../../types';
 import { version, contributes } from '../../../package.json';
 
@@ -119,7 +119,8 @@ suite('Parallel web tools through the agent dispatcher', () => {
         app.getAgent = () => ({ name: '' });
         app.persistence.getGlobalValue = () => false;
         let savedAgent: any;
-        app.persistence.getValue = () => savedAgent;
+        let savedChat: any;
+        app.persistence.getValue = (key: string) => key === PERSISTENCE_KEYS.SELECTED_AGENT ? savedAgent : savedChat;
         app.persistence.setValue = async (_key: string, value: unknown) => { savedAgent = value; };
         app.persistence.setGlobalValue = async () => {};
         app.agentCommandScheduler = { start: () => {} };
@@ -136,6 +137,12 @@ suite('Parallel web tools through the agent dispatcher', () => {
         app.tools.init();
         assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
         assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_fetch'));
+        savedChat = { name: 'restored chat' };
+        app.chatService.selectUpdateChat = async () => { app.configuration.tool_parallel_web_search_enabled = true; };
+        (architect as any).restoreLastUsedEnv = async () => { app.configuration.tool_parallel_web_search_enabled = true; };
+        await architect.init();
+        app.tools.init();
+        assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
         savedAgent = undefined;
         await architect.init();
         app.tools.init();

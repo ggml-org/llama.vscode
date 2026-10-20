@@ -19,6 +19,8 @@ export class Architect {
     
 
     init = async () => {
+        const disabledWebTools = ["parallel_web_search", "parallel_web_fetch"].filter(name =>
+            (this.app.configuration as any)[`tool_${name}_enabled`] === false);
         // Start indexing workspace files
         this.indexWorspaceFiles();
         let isFirstStart = this.app.persistence.getGlobalValue("isFirstStart")
@@ -41,12 +43,10 @@ export class Architect {
             console.error("Failed to restore the last used env:", error);
         }
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
-        if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
+        if (lastChat) await this.app.chatService.selectUpdateChat(lastChat)
         const restoreAgent = (agent: Agent) => {
             // Automatic restoration must respect explicitly disabled web tools.
-            const tools = agent.tools?.filter(name =>
-                name !== "parallel_web_search" && name !== "parallel_web_fetch" ||
-                (this.app.configuration as any)[`tool_${name}_enabled`] !== false);
+            const tools = agent.tools?.filter(name => !disabledWebTools.includes(name));
             return this.app.agentService.selectAgent({ ...agent, tools }, false);
         };
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
@@ -56,6 +56,10 @@ export class Architect {
             const predefinedAgents = (PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
             const defaultAgent = predefinedAgents.find((agent) => agent.name === "default");
             if (defaultAgent) await restoreAgent(defaultAgent);
+        }
+        // Restoring an environment or chat can also restore its agent tool list.
+        for (const name of disabledWebTools) {
+            await this.app.configuration.updateConfigValue(`tool_${name}_enabled`, false);
         }
         this.app.tools.init()
         // Start the periodic agent command scheduler. It picks up all user
