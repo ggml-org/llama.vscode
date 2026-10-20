@@ -789,6 +789,11 @@ export class Tools {
     }
     
     public init = () => {
+        // An override may have been disabled or removed since the last init.
+        this.toolsFunc.set("parallel_web_search", this.parallelWebSearch);
+        this.toolsFunc.set("parallel_web_fetch", this.parallelWebFetch);
+        this.toolsFuncDesc.set("parallel_web_search", async () => "Searching the web with Parallel");
+        this.toolsFuncDesc.set("parallel_web_fetch", async () => "Fetching web pages with Parallel");
         this.tools = [
             ...(this.app.configuration.tool_parallel_web_search_enabled ? [webToolDefinition("parallel_web_search")] : []),
             ...(this.app.configuration.tool_parallel_web_fetch_enabled ? [webToolDefinition("parallel_web_fetch")] : []),

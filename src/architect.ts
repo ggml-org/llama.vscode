@@ -42,19 +42,20 @@ export class Architect {
         }
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) this.app.chatService.selectUpdateChat(lastChat)
+        const restoreAgent = (agent: Agent) => {
+            // Automatic restoration must respect explicitly disabled web tools.
+            const tools = agent.tools?.filter(name =>
+                name !== "parallel_web_search" && name !== "parallel_web_fetch" ||
+                (this.app.configuration as any)[`tool_${name}_enabled`] !== false);
+            return this.app.agentService.selectAgent({ ...agent, tools }, false);
+        };
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
-        if (lastAgent && (lastAgent as Agent).name) await this.app.agentService.selectAgent(lastAgent, false)
+        if (lastAgent && (lastAgent as Agent).name) await restoreAgent(lastAgent as Agent);
         else if (!this.app.getAgent()?.name) {
             // set default agent if no last agent is set
             const predefinedAgents = (PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
             const defaultAgent = predefinedAgents.find((agent) => agent.name === "default");
-            if (defaultAgent) {
-                // Automatic first selection must respect explicitly disabled web tools.
-                const tools = defaultAgent.tools?.filter(name =>
-                    name !== "parallel_web_search" && name !== "parallel_web_fetch" ||
-                    (this.app.configuration as any)[`tool_${name}_enabled`] !== false);
-                await this.app.agentService.selectAgent({ ...defaultAgent, tools }, false);
-            }
+            if (defaultAgent) await restoreAgent(defaultAgent);
         }
         this.app.tools.init()
         // Start the periodic agent command scheduler. It picks up all user

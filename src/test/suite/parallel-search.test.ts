@@ -115,27 +115,31 @@ suite('Parallel web tools through the agent dispatcher', () => {
         assert.match(calls()[0].body.params.arguments.session_id, /^[a-f0-9-]{36}$/);
     });
 
-    test('automatic default-agent selection enables search and preserves explicit disables', async () => {
+    test('automatic default and saved-agent restoration preserve explicit disables', async () => {
         app.getAgent = () => ({ name: '' });
         app.persistence.getGlobalValue = () => false;
-        app.persistence.getValue = () => undefined;
+        let savedAgent: any;
+        app.persistence.getValue = () => savedAgent;
+        app.persistence.setValue = async (_key: string, value: unknown) => { savedAgent = value; };
         app.persistence.setGlobalValue = async () => {};
         app.agentCommandScheduler = { start: () => {} };
         app.agentService = new AgentService(app);
         const architect = new Architect(app);
         (architect as any).installUpgradeLlamaCpp = async () => {};
         await architect.init();
-        // selectAgent updates settings asynchronously; wait for all writes.
-        await new Promise(resolve => setTimeout(resolve, 0));
         app.tools.init();
         assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
         assert.ok((await ask()).includes(docUrl));
         app.configuration.tool_parallel_web_search_enabled = false;
+        assert.ok(savedAgent.tools.includes('parallel_web_search'));
         await architect.init();
-        await new Promise(resolve => setTimeout(resolve, 0));
         app.tools.init();
         assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
         assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_fetch'));
+        savedAgent = undefined;
+        await architect.init();
+        app.tools.init();
+        assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
     });
 
     test('normal agent loop offers web tools and consumes results in the next scripted model turn', async () => {
@@ -214,6 +218,17 @@ suite('Parallel web tools through the agent dispatcher', () => {
             assert.strictEqual(await ask(), 'Custom provider');
             assert.ok(app.tools.vscodeToolsSelected.has('existing_mcp_search'));
             assert.strictEqual(requests.length, 0);
+            app.configuration.tools_custom[0].enabled = false;
+            app.tools.init();
+            assert.ok((await ask()).includes(docUrl));
+            assert.strictEqual(calls().length, 1);
+            app.configuration.tools_custom[0].enabled = true;
+            app.tools.init();
+            assert.strictEqual(await ask(), 'Custom provider');
+            app.configuration.tools_custom = [];
+            app.tools.init();
+            assert.ok((await ask()).includes(docUrl));
+            assert.strictEqual(calls().length, 2);
         } finally { (require('../../plugin').Plugin as any).getFunction = original; }
     });
 
