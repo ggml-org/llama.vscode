@@ -22,12 +22,16 @@ suite('Parallel web tools through the agent dispatcher', () => {
     let mode: 'ok' | 'quota' | 'http' | 'malformed' | 'hang' | 'hang_call';
     let allow: boolean;
     let completed: AgentSession[];
+    let storedWebSettings: Map<string, boolean>;
+    let workspaceWebSettings: Map<string, boolean>;
     const query = { objective: 'Find TypeScript documentation', search_queries: ['TypeScript handbook'] };
     const docUrl = 'https://www.typescriptlang.org/docs/';
 
     setup(() => {
         requests = [];
         completed = [];
+        storedWebSettings = new Map();
+        workspaceWebSettings = new Map();
         allow = true;
         mode = 'ok';
         originalFetch = globalThis.fetch;
@@ -59,7 +63,14 @@ suite('Parallel web tools through the agent dispatcher', () => {
             configuration: {
                 tool_parallel_web_search_enabled: true, tool_parallel_web_fetch_enabled: true,
                 tools_custom: [], agents_list: [], MAX_CHARS_TOOL_RETURN: 10000,
-                updateConfigValue: async (key: string, value: unknown) => { app.configuration[key] = value; },
+                config: { inspect: (key: string) => ({ globalValue: storedWebSettings.get(key), workspaceValue: workspaceWebSettings.get(key) }) },
+                updateConfigValue: async (key: string, value: any) => {
+                    if (key.startsWith('tool_parallel_web_')) {
+                        if (value === undefined) storedWebSettings.delete(key);
+                        else storedWebSettings.set(key, value);
+                        app.configuration[key] = workspaceWebSettings.get(key) ?? storedWebSettings.get(key) ?? true;
+                    } else app.configuration[key] = value;
+                },
             },
             prompts: { TOOLS_SYSTEM_PROMPT_ACTION: '' },
             isAgentSelected: () => false,
@@ -131,22 +142,46 @@ suite('Parallel web tools through the agent dispatcher', () => {
         app.tools.init();
         assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
         assert.ok((await ask()).includes(docUrl));
-        app.configuration.tool_parallel_web_search_enabled = false;
+        await app.configuration.updateConfigValue('tool_parallel_web_search_enabled', false);
         assert.ok(savedAgent.tools.includes('parallel_web_search'));
         await architect.init();
         app.tools.init();
         assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
         assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_fetch'));
         savedChat = { name: 'restored chat' };
-        app.chatService.selectUpdateChat = async () => { app.configuration.tool_parallel_web_search_enabled = true; };
-        (architect as any).restoreLastUsedEnv = async () => { app.configuration.tool_parallel_web_search_enabled = true; };
+        app.chatService.selectUpdateChat = async () => app.configuration.updateConfigValue('tool_parallel_web_search_enabled', true);
+        (architect as any).restoreLastUsedEnv = async () => app.configuration.updateConfigValue('tool_parallel_web_search_enabled', true);
         await architect.init();
         app.tools.init();
         assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
-        savedAgent = undefined;
+        assert.ok(savedAgent.tools.includes('parallel_web_search'));
+        await app.configuration.updateConfigValue('tool_parallel_web_search_enabled', true);
         await architect.init();
         app.tools.init();
+        assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
+        savedAgent = { name: 'old saved agent', tools: ['read_file'], systemInstruction: [] };
+        storedWebSettings.clear();
+        workspaceWebSettings.clear();
+        savedChat = undefined;
+        (architect as any).restoreLastUsedEnv = async () => {};
+        await architect.init();
+        app.tools.init();
+        assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name.startsWith('parallel_')));
+        assert.deepStrictEqual(savedAgent.tools, ['read_file']);
+        await app.configuration.updateConfigValue('tool_parallel_web_search_enabled', true);
+        await architect.init();
+        app.tools.init();
+        assert.ok(app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
+        assert.deepStrictEqual(savedAgent.tools, ['read_file']);
+        workspaceWebSettings.set('tool_parallel_web_search_enabled', false);
+        app.configuration.tool_parallel_web_search_enabled = false;
+        await architect.init();
+        app.tools.init();
+        assert.strictEqual(storedWebSettings.get('tool_parallel_web_search_enabled'), true);
         assert.ok(!app.tools.getTools().some((tool: any) => tool.function.name === 'parallel_web_search'));
+        storedWebSettings.delete('tool_parallel_web_search_enabled');
+        await architect.init();
+        assert.strictEqual(storedWebSettings.has('tool_parallel_web_search_enabled'), false);
     });
 
     test('normal agent loop offers web tools and consumes results in the next scripted model turn', async () => {

@@ -19,8 +19,13 @@ export class Architect {
     
 
     init = async () => {
-        const disabledWebTools = ["parallel_web_search", "parallel_web_fetch"].filter(name =>
-            (this.app.configuration as any)[`tool_${name}_enabled`] === false);
+        const webToolSettings = ["tool_parallel_web_search_enabled", "tool_parallel_web_fetch_enabled"].flatMap(name => {
+            const setting = this.app.configuration.config.inspect<boolean>(name);
+            const explicit = setting && [setting.globalValue, setting.workspaceValue, setting.workspaceFolderValue,
+                setting.globalLanguageValue, setting.workspaceLanguageValue, setting.workspaceFolderLanguageValue]
+                .some(value => value !== undefined);
+            return explicit ? [{ name, globalValue: setting.globalValue }] : [];
+        });
         // Start indexing workspace files
         this.indexWorspaceFiles();
         let isFirstStart = this.app.persistence.getGlobalValue("isFirstStart")
@@ -44,22 +49,18 @@ export class Architect {
         }
         let lastChat = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_CHAT)
         if (lastChat) await this.app.chatService.selectUpdateChat(lastChat)
-        const restoreAgent = (agent: Agent) => {
-            // Automatic restoration must respect explicitly disabled web tools.
-            const tools = agent.tools?.filter(name => !disabledWebTools.includes(name));
-            return this.app.agentService.selectAgent({ ...agent, tools }, false);
-        };
         let lastAgent = this.app.persistence.getValue(PERSISTENCE_KEYS.SELECTED_AGENT)
-        if (lastAgent && (lastAgent as Agent).name) await restoreAgent(lastAgent as Agent);
+        if (lastAgent && (lastAgent as Agent).name) await this.app.agentService.selectAgent(lastAgent as Agent, false);
         else if (!this.app.getAgent()?.name) {
             // set default agent if no last agent is set
             const predefinedAgents = (PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENTS) as Agent[])
             const defaultAgent = predefinedAgents.find((agent) => agent.name === "default");
-            if (defaultAgent) await restoreAgent(defaultAgent);
+            if (defaultAgent) await this.app.agentService.selectAgent(defaultAgent, false);
         }
-        // Restoring an environment or chat can also restore its agent tool list.
-        for (const name of disabledWebTools) {
-            await this.app.configuration.updateConfigValue(`tool_${name}_enabled`, false);
+        // Agent restoration writes Global settings. Restore explicit web choices
+        // without changing saved agent lists or copying Workspace values to Global.
+        for (const setting of webToolSettings) {
+            await this.app.configuration.updateConfigValue(setting.name, setting.globalValue);
         }
         this.app.tools.init()
         // Start the periodic agent command scheduler. It picks up all user

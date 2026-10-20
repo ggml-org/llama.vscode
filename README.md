@@ -150,8 +150,9 @@ Llama Agent includes `parallel_web_search` and `parallel_web_fetch` through
 Search uses Fast mode, with no account, API key or separate MCP installation.
 The agent can find current documentation and read public HTTP/HTTPS pages.
 
-Both tools are available by default. Saved agent tool lists still control which
-tools that agent can use. Enable or disable them in **Select Tools**, or with
+Both tools are available by default. Saved agents keep their tool lists, and
+explicit web-tool settings survive automatic restoration. Enable or disable
+the tools in **Select Tools**, or with
 `llama-vscode.tool_parallel_web_search_enabled` and
 `llama-vscode.tool_parallel_web_fetch_enabled`.
 Existing custom tools and installed MCP servers remain available.
