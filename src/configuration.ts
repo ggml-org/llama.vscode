@@ -105,6 +105,11 @@ export class Configuration {
     tool_get_errors_enabled = true;
     tool_rename_symbol_enabled = true
     tool_search_tools_enabled = false;
+    tool_web_browser_enabled = false;
+    web_browser_max_chars = 6000;
+    web_browser_max_results = 5;
+    web_browser_timeout_s = 20;
+    web_browser_allow_local_urls = false;
     tools_max_iterations = 50;
     auto_memory_enabled = true;
     max_auto_memory_files = 10;
@@ -277,6 +282,11 @@ export class Configuration {
         this.tool_get_errors_enabled = Boolean(config.get<boolean>("tool_get_errors_enabled"));
         this.tool_rename_symbol_enabled = Boolean(config.get<boolean>("tool_rename_symbol_enabled"));
         this.tool_search_tools_enabled = Boolean(config.get<boolean>("tool_search_tools_enabled"));
+        this.tool_web_browser_enabled = Boolean(config.get<boolean>("tool_web_browser_enabled"));
+        this.web_browser_max_chars = Number(config.get<number>("web_browser_max_chars"));
+        this.web_browser_max_results = Number(config.get<number>("web_browser_max_results"));
+        this.web_browser_timeout_s = Number(config.get<number>("web_browser_timeout_s"));
+        this.web_browser_allow_local_urls = Boolean(config.get<boolean>("web_browser_allow_local_urls"));
         this.auto_memory_enabled = Boolean(config.get<boolean>("auto_memory_enabled"));
         this.max_auto_memory_files = Number(config.get<number>("max_auto_memory_files"));
         this.plan_review_frequency = Number(config.get<number>("plan_review_frequency"));
@@ -449,6 +459,7 @@ export class Configuration {
         || event.affectsConfiguration("llama-vscode.tool_get_errors_enabled")
         || event.affectsConfiguration("llama-vscode.tool_rename_symbol_enabled")
         || event.affectsConfiguration("llama-vscode.tool_search_tools_enabled")
+        || event.affectsConfiguration("llama-vscode.tool_web_browser_enabled")
     }
 
     setLlamaRequestConfig = () => {

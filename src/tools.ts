@@ -39,6 +39,7 @@ export class Tools {
         this.toolsFunc.set("get_errors", this.getErrors) 
         this.toolsFunc.set("rename_symbol", this.renameSymbol)
         this.toolsFunc.set("multi_edit_file", this.multiEditFile)
+        this.toolsFunc.set("web_browser", this.webBrowser)
         this.toolsFunc.set("search_tools", this.searchTools),
         this.toolsFuncDesc.set("run_terminal_command", this.runTerminalCommandDesc);
         this.toolsFuncDesc.set("search_source", this.searchSourceDesc)
@@ -59,6 +60,7 @@ export class Tools {
         this.toolsFuncDesc.set("get_errors ", this.getErrorsDesc);
         this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
         this.toolsFuncDesc.set("multi_edit_file", this.multiEditFileDesc);
+        this.toolsFuncDesc.set("web_browser", this.webBrowserDesc);
         this.toolsFuncDesc.set("search_tools", this.searchToolsDesc);
     }
 
@@ -524,6 +526,14 @@ export class Tools {
         if (!filePath) return "Parameter file_path not found."
         
         return TOOLS_DESC.prefixMultiEditFile + filePath;
+    }
+
+    public webBrowser = async (args: string) => {
+        return await this.app.webBrowser.browse(args)
+    }
+
+    public webBrowserDesc = async (args: string) => {
+        return await this.app.webBrowser.browseDesc(args)
     }
 
     public askUser = async (args: string) => {
@@ -1169,6 +1179,38 @@ export class Tools {
                             "url": {
                                 "description": "A full URI of a file where the symbol appears (e.g. \"file:///path/to/file.ts\"). Provide either \"uri\" or \"filePath\".",
                                 "type": "string",
+                            },
+                        },
+                        "required": [],
+                    },
+                    "strict": true
+                }
+            }
+            ] : []),
+            ...(this.app.configuration.tool_web_browser_enabled ? [
+            {
+                "type": "function",
+                "function": {
+                    "name": "web_browser",
+                    "description": this.app.prompts.TOOL_WEB_BROWSER_DESCRIPTION,
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "query": {
+                                "description": "Search keywords to look up on the internet, e.g. \"llama.cpp server ctx-size option\". Use this OR url, not both.",
+                                "type": "string",
+                            },
+                            "url": {
+                                "description": "Absolute http(s) URL of a web page to read, e.g. \"https://nodejs.org/api/fs.html\". Use this OR query, not both.",
+                                "type": "string",
+                            },
+                            "max_results": {
+                                "description": "Number of search results to return, 1-10. Only used with query.",
+                                "type": "integer",
+                            },
+                            "start_char": {
+                                "description": "Char offset in the page text to start reading from. Only used with url - the previous result shows the value for continuing a long page.",
+                                "type": "integer",
                             },
                         },
                         "required": [],

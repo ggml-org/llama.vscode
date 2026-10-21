@@ -9,6 +9,7 @@ import * as http from 'http';
 import { URL } from 'url';
 import { Application } from "./application";
 import { UI_TEXT_KEYS } from "./constants";
+import { HtmlText } from "./web-browser";
 
 
 interface BM25Stats {
@@ -775,24 +776,10 @@ export class Utils {
     }
 
     static extractTextFromHtml = (html: string): string => {
-        // Basic HTML tag removal
-        let text = html
-            .replace(/<script[^>]*>([\s\S]*?)<\/script>/gi, '')
-            .replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, '')
-            .replace(/<[^>]+>/g, ' ')
-            .replace(/\s+/g, ' ')
-            .trim();
-
-        // Decode HTML entities
-        text = text
-            .replace(/&nbsp;/g, ' ')
-            .replace(/&amp;/g, '&')
-            .replace(/&lt;/g, '<')
-            .replace(/&gt;/g, '>')
-            .replace(/&quot;/g, '"')
-            .replace(/&apos;/g, "'");
-
-        return text;
+        // Readable text extraction lives in HtmlText (src/web-browser.ts) - it is shared
+        // with the web_browser tool: removes page chrome, scripts, styles and markup,
+        // keeps headings/list structure and decodes entities.
+        return HtmlText.toText(html).replace(/\s+/g, ' ').trim();
     }
 
     static trimTrailingSlash = (s: string): string => {

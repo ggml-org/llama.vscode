@@ -773,7 +773,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "update_todo_list",
                 "delegate_task", 
                 "get_errors",
-                "rename_symbol"
+                "rename_symbol",
+                "web_browser"
               ]
             },
             {
@@ -1106,7 +1107,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "update_todo_list",
                 "delegate_task", 
                 "get_errors",
-                "rename_symbol"
+                "rename_symbol",
+                "web_browser"
               ]
             }
           ]],
