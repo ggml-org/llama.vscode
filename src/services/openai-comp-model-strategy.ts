@@ -6,17 +6,7 @@ import { Utils } from "../utils";
 import * as axios from "axios";
 import { OPENAI_COMP_PROVIDERS, OpenAiProvidersKeys, SETTING_TO_MODEL_TYPE } from "../constants";
 import { ServiceUtils } from "./service-utils";
-
-interface OpenAiCompModel {
-    name: string;
-    id: string;
-    description: string;
-    context_length: string;
-    pricing: {
-        completion: number;
-        prompt: number;
-    }
-}
+import { formatOpenAiCompModelItem, OpenAiCompModel } from "./openai-comp-model-item";
 
 export class OpenAiCompModelStrategy implements IAddStrategy {
     private app: Application;
@@ -57,11 +47,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
                 return
             }
             for (let mdl of models) {
-                providerModels.push({
-                    label: mdl.name,
-                    description: mdl.context_length + " context | $" + (mdl.pricing?.prompt*1000000).toFixed(2) + "/M input tokens | $" + (mdl.pricing?.completion*1000000).toFixed(2) + "/M output tokens",
-                    detail: mdl.description + " | "+ mdl.id,
-                });
+                providerModels.push(formatOpenAiCompModelItem(mdl));
             }
             const selModel = await vscode.window.showQuickPick(providerModels);
             if (!selModel){
