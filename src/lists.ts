@@ -760,6 +760,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 ""
               ],
               "tools": [
+                "parallel_web_search",
+                "parallel_web_fetch",
                 "run_terminal_command",
                 "search_source",
                 "read_file",

@@ -143,6 +143,25 @@ The extension includes Llama Agent
 - Attach the selection to the context
 - Configure maximum loops for Llama Agent
 
+### Web search and page fetching
+
+Llama Agent includes `parallel_web_search` and `parallel_web_fetch` through
+[Parallel Search MCP](https://docs.parallel.ai/integrations/mcp/search-mcp).
+Search uses Fast mode, with no account, API key or separate MCP installation.
+The agent can find current documentation and read public HTTP/HTTPS pages.
+
+Both tools are available by default. Saved agents keep their tool lists, and
+explicit web-tool settings survive automatic restoration. Enable or disable
+the tools in **Select Tools**, or with
+`llama-vscode.tool_parallel_web_search_enabled` and
+`llama-vscode.tool_parallel_web_fetch_enabled`.
+Existing custom tools and installed MCP servers remain available.
+
+Each request asks permission before sending its queries or URLs to Parallel.
+Workspace files are not attached by these tools. Web tools require a trusted
+workspace, stop when the agent is cancelled, and time out after 30 seconds.
+Anonymous use has service rate limits; failures are returned to the agent.
+
 ### Usage
 1. Open Llama Agent with Ctrl+Shift+A or from llama-vscode menu "Show Llama Agent"
 2. Select Env with an agent if you haven't done it before. 
