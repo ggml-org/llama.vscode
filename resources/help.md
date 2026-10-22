@@ -319,6 +319,14 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.71 is released (23.10.2026)
+### What is new
+- Agent tool web_browser added (for searching in internet)
+- Llama app added (for Windows and Mac) as OpenAI-compatible provider
+- API Route (https://api-route.com) LLM models provider added in the OpenAI-compatible providers
+- New predefined model DeepSeek V4.1 Flash 1017 added (good price/quality ratio)
+
+
 ## Version 0.0.70 is released (19.10.2026)
 ### What is new
 - Agent Commands Editor added
