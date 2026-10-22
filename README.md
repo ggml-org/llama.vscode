@@ -43,16 +43,6 @@ Install the [llama-vscode](https://marketplace.visualstudio.com/items?itemName=g
 
 Note: also available at [Open VSX](https://open-vsx.org/extension/ggml-org/llama-vscode)
 
-### API Route
-
-[API Route](https://api-route.com) is available in the OpenAI-compatible provider picker for chat and agent models.
-
-1. In the llama-vscode menu, open **API keys... → Add API key...**, use `https://global.api-route.com` as the endpoint, and save your API Route key.
-2. Add a chat or tools model from an OpenAI-compatible provider and select **API Route...**.
-3. Choose a model available to your account, for example `gpt-6.1-sol`.
-
-The extension appends `/v1/models` and `/v1/chat/completions`, so the endpoint above intentionally has no `/v1` suffix. Missing context and price metadata is left unspecified.
-
 ### `llama.cpp` setup
 - Now automatic on starting llama-vscode - from the [official llama.cpp shell script](https://llama.app/) or from brew (Mac, Linux) or Winget (Windows). The details below for the manual installation are left for reference.
 
