@@ -1563,3 +1563,32 @@ Extarnal server could be also a local one, but is not started by llama-vscode on
 
 
 
+## Web browser tool
+
+### Overview
+Llama-vscode provides a tool web_browser, which lets the agent search the internet and read web pages. Use it when the answer is not in the project source code - for example library documentation, API references, release notes, error messages or best practices.
+
+Only text is returned to the AI. Web pages are converted to plain text / simple markdown: scripts, styles, navigation, forms, SVG and HTML markup are removed, entities are decoded and headings/lists keep a readable structure. The result is therefore compact and does not waste the context of the model.
+
+### How to use it
+Enable the tool (settings -> tool_web_browser_enabled, or select it for an agent) and ask a question which needs internet information. The agent normally first searches and then reads the most promising result.
+
+The tool has two modes (the agent provides exactly one of them):
+- Search: parameter query - returns a numbered list of results with title, URL and a short snippet.
+- Read a page: parameter url - returns the readable text of the page. The optional parameter start_char continues reading a long page from a given char offset.
+
+The returned text of a page is limited (web_browser_max_chars, at most MAX_CHARS_TOOL_RETURN). If the page is longer, the tool tells the agent how many chars remain and how to continue, so the agent can read only the parts it needs.
+
+### Notes and limitations
+- Search uses public search endpoints (DuckDuckGo, Bing) and falls back to the next provider if one is rate limited or returns a bot challenge. Free search endpoints could be temporarily unavailable - in this case the agent is told to retry later or to open a known URL directly.
+- Pages which render their content only with javascript return little or no text.
+- Fetched pages are cached for a short time (10 minutes), so reading the same page again does not hit the network.
+- Timeouts per request are controlled by web_browser_timeout_s.
+- For security reasons only http/https URLs are allowed and local/private network addresses (localhost, 127.0.0.1, 10.*, 192.168.*, *.local, etc.) are blocked. Set web_browser_allow_local_urls to true if the AI should be able to read pages served by local servers (for example a local documentation server).
+
+Settings:
+- tool_web_browser_enabled - controls if the tool is enabled (disabled by default)
+- web_browser_max_chars - max chars of a page returned in one call (default 6000)
+- web_browser_max_results - default number of search results (default 5, the AI could ask for 1-10)
+- web_browser_timeout_s - timeout in seconds for a single web request (default 20)
+- web_browser_allow_local_urls - allow access to local/private network addresses (default false)
