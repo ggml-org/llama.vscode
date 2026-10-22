@@ -425,6 +425,30 @@ If the tool returns an error, retry with corrected input - ensure the file path 
 
 If the file's language has no rename provider registered, the tool returns an error.`
 
+TOOL_WEB_BROWSER_DESCRIPTION = `Search the internet and read web pages. Use this tool when the answer is not in the project source code (library documentation, API references, release notes, error messages, best practices, news, etc.).
+
+The tool returns plain text only - web pages are converted to readable text (navigation, scripts, styles and markup are removed), so the result is compact and ready to use.
+
+Two modes (provide exactly one):
+1. Search - {"query": "keywords"}: returns up to web_browser_max_results results (number, title, URL and a short snippet). Search results contain snippets only, not full page content.
+2. Read a page - {"url": "https://..."}: returns the readable text of the page.
+
+Recommended workflow:
+- Start with a search query, then read the most promising result(s) with the "url" mode.
+- Do not dump a whole page into the context. The tool already limits the returned text. When a page is longer, the result shows how many chars remain and the "start_char" parameter continues reading from that position. Read only the parts you need.
+- Prefer the official documentation of the library/framework over blogs and content farms, and prefer the newest sources.
+
+Input:
+- "query": the search keywords. Be specific, 2-6 words work best (e.g. "llama.cpp server ctx-size option").
+- "url": absolute http(s) URL of the page to read.
+- "max_results": optional number of search results, 1-10.
+- "start_char": optional char offset in the page text, used to continue reading a long page.
+
+Notes:
+- Only text is extracted. Pages rendered exclusively by javascript return little or no text - when that happens, try another source.
+- Local/private network addresses are blocked for security.
+- Internet access may be unavailable or rate limited; if the tool fails, retry later, reformulate the query, or open a known URL directly.`
+
 AUTO_MEMORY_PROMPT = `Use folder {auto_memory_folder} for persistent memory (auto memory). ONLY in this folder create, read, update and delete *.md files for persistent auto memory across conversations for the current project.
 Store codebase conventions, build commands, project structure facts, verified practices, user preferences, etc..
 Use descriptive file names for each note, e.g. "project_structure.md", "build_commands.md", "user_preferences.md". From the files names you should be able to determine if you need to read the file content. 

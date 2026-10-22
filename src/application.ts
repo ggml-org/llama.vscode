@@ -38,6 +38,7 @@ import { DslInterpreter } from "./dsl-interpreter";
 import { DslCommands } from "./dsl-commands"
 import { AgentReminder } from "./agent-reminder";
 import { Hooks } from "./hooks";
+import { WebBrowser } from "./web-browser";
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -80,6 +81,7 @@ export class Application {
     public dslCommands: DslCommands
     public agentReminder: AgentReminder
     public hooks: Hooks
+    public webBrowser: WebBrowser
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -108,6 +110,7 @@ export class Application {
         this.chatContext = new ChatContext(this)
         this.prompts = new Prompts(this)
         this.git = new Git(this)
+        this.webBrowser = new WebBrowser(this)
         this.tools = new Tools(this)
         this.llamaAgent = new LlamaAgent(this)
         this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this, context)

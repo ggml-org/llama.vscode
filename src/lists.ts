@@ -110,6 +110,13 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
+              "name": "(OrcaRouter) DeepSeek V4.1 Flash 1017 1M context $0.15/M input $0.60/M output cache $0.003 (twice the price during peek hours 01:00–04:00, 06:00–10:00 (UTC))",
+              "localStartCommand": "",
+              "endpoint": "https://api.orcarouter.ai",
+              "aiModel": "deepseek/deepseek-v4.1-flash-1017",
+              "isKeyRequired": true
+            },
+            {
               "name": "(OrcaRouter) DeepSeek V4 Flash 0731 1M context $0.15/M input $0.29/M output cache $0.02 (twice the price during peek hours 01:00–04:00, 06:00–10:00 (UTC))",
               "localStartCommand": "",
               "endpoint": "https://api.orcarouter.ai",
@@ -773,7 +780,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "update_todo_list",
                 "delegate_task", 
                 "get_errors",
-                "rename_symbol"
+                "rename_symbol",
+                "web_browser"
               ]
             },
             {
@@ -1106,7 +1114,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "update_todo_list",
                 "delegate_task", 
                 "get_errors",
-                "rename_symbol"
+                "rename_symbol",
+                "web_browser"
               ]
             }
           ]],

@@ -380,18 +380,23 @@ export const TELEGRAM_BOT_COMMANDS = {
 
 export enum OpenAiProvidersKeys {
   OpenRouter = 'OpenRouter...',
+  LlamaApp = 'Llama app...',
   OrcaRouter = 'OrcaRouter...',
   ApiRoute = 'API Route...',
   AtlasCloud = 'Atlas Cloud...',
   Custom = 'Custom...'
 }
-export const OPENAI_COMP_PROVIDERS = {
+// The "Llama app" provider is available only on Windows and macOS.
+export const IS_LLAMA_APP_SUPPORTED = process.platform === 'win32' || process.platform === 'darwin';
+
+export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
+  ...(IS_LLAMA_APP_SUPPORTED ? { [OpenAiProvidersKeys.LlamaApp]: "http://localhost:9931" } : {}),
   [OpenAiProvidersKeys.OpenRouter]: "https://openrouter.ai/api",
   [OpenAiProvidersKeys.OrcaRouter]: "https://api.orcarouter.ai",
   [OpenAiProvidersKeys.AtlasCloud]: "https://api.atlascloud.ai",
   [OpenAiProvidersKeys.ApiRoute]: "https://global.api-route.com",
   [OpenAiProvidersKeys.Custom]: ""
-} as const
+} as Record<OpenAiProvidersKeys, string>
 
 export const SUPPORTED_IMG_FILE_EXTS: { [key: string]: string } = {
     '.jpeg': 'image/jpeg',

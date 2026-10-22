@@ -10,9 +10,11 @@ import { formatOpenAiCompModelItem, OpenAiCompModel } from "./openai-comp-model-
 
 export class OpenAiCompModelStrategy implements IAddStrategy {
     private app: Application;
+    private modelEndpointsKeyRequired: Set<string> = new Set();
 
     constructor(app: Application) {
         this.app = app;
+        this.modelEndpointsKeyRequired.add(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.ApiRoute]);
     }
 
     add = async (details: ModelTypeDetails): Promise<void> => {
@@ -29,6 +31,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
             //if custom - ask for endpoint
             let endpoint = selProvider.description??""
             let isKeyRequired = true;
+            if (endpoint == OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.LlamaApp]) isKeyRequired = false
             if (selProvider.label == OpenAiProvidersKeys.Custom){
                 endpoint = await vscode.window.showInputBox({
                     placeHolder: 'endpoint (URL to the API) of an OpenAI compatible provider',
@@ -85,7 +88,20 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
 
         if (isKeyRequired) {
             // We get the saved key for this specific endpoint
-            const apiKey = this.app.persistence.getApiKey(endpoint);
+            let apiKey = this.app.persistence.getApiKey(endpoint);
+            if (!apiKey && this.modelEndpointsKeyRequired.has(endpoint)) {
+                let result = await vscode.window.showInputBox({
+                    placeHolder: 'Enter your api key for ' + endpoint,
+                    prompt: 'your api key for ' + endpoint,
+                    value: ''
+                });
+                apiKey = result ? result.trim() : '';
+                apiKey = result ? result.trim() : '';
+                if (apiKey) {
+                    this.app.persistence.setApiKey(endpoint ?? "", apiKey);
+                    vscode.window.showInformationMessage("Your API key for " + endpoint + " was saved.")
+                }
+            }
             if (apiKey) {
                 requestConfig = {
                     headers: {
