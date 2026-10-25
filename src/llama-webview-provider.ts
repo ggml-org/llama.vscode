@@ -6,13 +6,17 @@ import { LlmModel, Env, Agent, ContextCustom, AgentCommand } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
-import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS } from './constants';
+import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS, SUPPORTED_TEXT_FILE_EXTS, OPENAI_COMP_PROVIDERS, OpenAiProvidersKeys, IS_LLAMA_APP_SUPPORTED } from './constants';
 import { PREDEFINED_LISTS } from './lists';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
     private _webview: vscode.WebviewView | undefined;
     private commandHandlers: Map<string, (message: any, webviewView: vscode.WebviewView) => Promise<void>>;
+    // Used by setState() to keep state updates of an older, finished session
+    // from overwriting the state of the session that replaced it.
+    private lastStateSessionId: number = -1;
+    private lastStateFinished: boolean = true;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -56,6 +60,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["chatWithAI ", this.chatWithAI ],
                     ["installLlamacpp", this.installLlamacpp],
                     ["addHuggingfaceModel", this.addHuggingfaceModel],
+                    ["addModelFromLlamaApp", this.addModelFromLlamaApp],
                     ["selectEnv", this.selectEnv],
                     ["stopEnv", this.stopEnv],
                     ["showEnvView", this.showEnvView],
@@ -87,6 +92,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["deleteAgent", this.deleteAgent],
                     ["openContextFile", this.openContextFile          ],
                     ["addContextDroppedFile", this.addContextDroppedFile],
+                    ["importDroppedFile", this.importDroppedFile],
+                    ["addContextFileDialog", this.addContextFileDialog],
                     ["addEnv", this.addEnv],
                     ["toggleCompletionsEnabled", this.toggleCompletionsEnabled],
                     ["toggleRagEnabled", this.toggleRagEnabled],
@@ -257,6 +264,21 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     addHuggingfaceModel = async (message: any, webviewView: vscode.WebviewView) => {
         await this.app.modelService.addModel(ModelType.Chat, "hf");
     }
+
+    addModelFromLlamaApp = async (message: any, webviewView: vscode.WebviewView) => {
+        // The UI hides the entry point outside Windows/macOS, but a stale UI or
+        // an old bundle must not reach an endpoint that does not exist there.
+        if (!IS_LLAMA_APP_SUPPORTED) {
+            vscode.window.showWarningMessage('Llama app models are available on Windows and macOS only.');
+            return;
+        }
+        await this.app.openAiCompModelStrategy.addModleFromEndpoint(
+            OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.LlamaApp],
+            false,
+            OpenAiProvidersKeys.LlamaApp,
+            this.app.modelService.getTypeDetails(ModelType.Tools)
+        );
+    }
     
     selectEnv = async (message: any, webviewView: vscode.WebviewView) => {
         await this.app.envService.selectEnv(this.app.configuration.envs_list, true);    
@@ -411,23 +433,105 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     addContextProjectFile = async (message: any, webviewView: vscode.WebviewView) => {
         let fileNames = message.fileLongName.split("|");
         this.app.llamaAgent.addContextProjectFile(fileNames[1].trim(),fileNames[0].trim());
+        this.postContextFiles(webviewView);
+    }
+    
+    addContextDroppedFile = async (message: any, webviewView: vscode.WebviewView) => {
+        let filePath = message.filePath;
+        const fileName = message.fileName;
+        // A drop may only carry a workspace-relative label ("src/app.ts") when
+        // the drag exposed no absolute payload. `vscode.Uri.file()` would resolve
+        // that against the extension host CWD and `openTextDocument` would fail,
+        // so resolve it against the workspace folder first.
+        if (filePath && !path.isAbsolute(filePath)) {
+            const folder = vscode.workspace.workspaceFolders?.[0];
+            if (folder) filePath = path.join(folder.uri.fsPath, filePath);
+        }
+        if (filePath && fileName) {
+            this.app.llamaAgent.addContextProjectFile(filePath, fileName);
+            this.postContextFiles(webviewView);
+        }
+    }
+
+    // A file dropped from outside VS Code arrives as a `File` object whose real
+    // path is no longer exposed to a webview (Electron removed `File.path`), so
+    // the UI sends the content instead. It is stored in the extension's global
+    // storage and registered like any other context file, which keeps the rest
+    // of the agent pipeline (openTextDocument + line ranges) unchanged.
+    importDroppedFile = async (message: any, webviewView: vscode.WebviewView) => {
+        const fileName: string = message.fileName;
+        const text: string = message.text;
+        if (!fileName || typeof text !== 'string') return;
+
+        try {
+            const folder = path.join(this.context.globalStorageUri.fsPath, 'dropped');
+            await fs.promises.mkdir(folder, { recursive: true });
+            // Keep the original name (it is shown in the context chip) but make
+            // it unique so dropping the same file twice cannot collide.
+            const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+            const filePath = path.join(folder, `${unique}-${path.basename(fileName)}`);
+            await fs.promises.writeFile(filePath, text, 'utf8');
+            this.app.llamaAgent.addContextProjectFile(filePath, fileName);
+        } catch (error) {
+            vscode.window.showErrorMessage(`Could not import the dropped file: ${error}`);
+        }
+        this.postContextFiles(webviewView);
+    }
+
+    // VS Code blocks data for drags that start inside the workbench (Explorer ->
+    // webview arrives without a payload), so the agent view offers a file dialog
+    // instead. `fileName` is a best-effort hint from the drag: when VS Code leaked
+    // a name it is used to pre-select the extension filter and to name the dialog.
+    addContextFileDialog = async (message: any, webviewView: vscode.WebviewView) => {
+        const hintName: string = typeof message.fileName === 'string' ? path.basename(message.fileName) : '';
+
+        // Filters: one entry for the dropped file's own extension (so the dialog
+        // opens on the right kind of file), then the generic text groups.
+        const filters: { [name: string]: string[] } = {};
+        const hintExt = hintName.includes('.') ? path.extname(hintName).toLowerCase() : '';
+        if (hintExt && hintExt.length > 1) {
+            filters[`${hintExt.slice(1).toUpperCase()} files`] = [hintExt.slice(1)];
+        }
+        filters['Supported text files'] = SUPPORTED_TEXT_FILE_EXTS;
+        filters['All files'] = ['*'];
+
+        const root = vscode.workspace.workspaceFolders?.[0]?.uri;
+        const uris = await vscode.window.showOpenDialog({
+            canSelectMany: true,
+            openLabel: 'Add to Context',
+            defaultUri: root,
+            filters
+        });
+        if (!uris || uris.length === 0) return;
+
+        for (const uri of uris) {
+            this.app.llamaAgent.addContextProjectFile(uri.fsPath, path.basename(uri.fsPath));
+        }
+        this.postContextFiles(webviewView);
+    }
+
+    private postContextFiles(webviewView: vscode.WebviewView) {
         const contextFiles = this.app.llamaAgent.getContextProjectFiles();
         webviewView.webview.postMessage({
             command: 'updateContextFiles',
             files: Array.from(contextFiles.entries())
         });
     }
-    
-    addContextDroppedFile = async (message: any, webviewView: vscode.WebviewView) => {
-        const filePath = message.filePath;
-        const fileName = message.fileName;
-        if (filePath && fileName) {
-            this.app.llamaAgent.addContextProjectFile(filePath, fileName);
-            const contextFiles = this.app.llamaAgent.getContextProjectFiles();
-            webviewView.webview.postMessage({
-                command: 'updateContextFiles',
-                files: Array.from(contextFiles.entries())
-            });
+
+    // The files imported from an OS drop are copies in the extension storage.
+    // Remove the ones that are no longer attached so a long session does not
+    // accumulate them (they are only read while they are in the context).
+    public async cleanImportedDropFiles() {
+        const folder = path.join(this.context.globalStorageUri.fsPath, 'dropped');
+        try {
+            if (!fs.existsSync(folder)) return;
+            const attached = new Set(this.app.llamaAgent.getContextProjectFiles().keys());
+            for (const entry of await fs.promises.readdir(folder)) {
+                const full = path.join(folder, entry);
+                if (!attached.has(full)) await fs.promises.unlink(full);
+            }
+        } catch (error) {
+            console.warn('Could not clean the imported drop files:', error);
         }
     }
         
@@ -802,7 +906,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     updateRequestsInfoInView = () => {
         const chat = this.app.getChat()
         this._webview?.webview?.postMessage({
-            command: 'updateRquestsStats',
+            // Historical name was 'updateRquestsStats' (typo); the UI accepts both.
+            command: 'updateRequestsStats',
             totalTokens: chat?.tokenDetails?.lastReqTokens??0,
             inputTokens: chat?.tokenDetails?.inputTokens??0,
             outputTokens: chat?.tokenDetails?.outputTokens??0,
@@ -891,10 +996,32 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         });
     }
 
-    public setState(stateText: string) {
+    // Sends the human readable state plus the authoritative "is a session
+    // running" flag. The UI must not have to string-match "working".
+    //
+    // Session aware: a session that supersedes the previous one always forwards
+    // its state, and the updates that follow its "finished" state are still
+    // shown. Without this the not-yet-current session swallowed the
+    // stopping/stopped updates, which is what made the Stop button look
+    // unresponsive while a request was in flight.
+    public setState(stateText: string, sessionId?: number) {
+        const isNewSession = sessionId !== undefined && sessionId > this.lastStateSessionId;
+        // A session that is already finished must not overwrite a newer state.
+        if (sessionId !== undefined && !isNewSession && this.lastStateFinished) {
+            return;
+        }
+        if (sessionId !== undefined) {
+            this.lastStateSessionId = sessionId;
+            this.lastStateFinished = /finish|stopped|error|exceeded|not responding/i.test(stateText);
+        }
+
         this._webview?.webview?.postMessage({
             command: 'updateCurrentState',
-            text: stateText
+            text: stateText,
+            // Only a terminal wording means the run is over. Everything else -
+            // including "Stopping session..." - keeps the run alive, so the UI
+            // keeps showing the busy Stop button until the session unwinds.
+            inProgress: this.app.llamaAgent.isAgentInProgress() && !/finished|stopped|error|exceeded|not responding/i.test(stateText)
         });
     }
 
@@ -921,19 +1048,16 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     public async showAgentViewInUi(prompt: string = "") {
-        let isModelAvailable = await this.app.modelService.checkForToolsModel();
-        if (isModelAvailable) {
-            vscode.commands.executeCommand('extension.showLlamaWebview');
-            this.updateLlamaView();
-            setTimeout(() => {
-                if (this.webview) {
-                    this.webview.webview.postMessage({
-                        command: 'focusTextarea',
-                        text: prompt
-                    });
-                }
-            }, 100);
-        }
+        vscode.commands.executeCommand('extension.showLlamaWebview');
+        this.updateLlamaView();
+        setTimeout(() => {
+            if (this.webview) {
+                this.webview.webview.postMessage({
+                    command: 'focusTextarea',
+                    text: prompt
+                });
+            }
+        }, 100);
     }
 
      
@@ -972,6 +1096,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     public updateLlamaView() {
+        this.updateHostInfoInView();
         this.updateModels();
         this.updateTmpAgentModel();
         this.updateAgent();
@@ -982,6 +1107,17 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.logInUi(this.app.llamaAgent.getAgentLogText())
     }
 
+    // Tells the UI which host-only features to offer. `IS_LLAMA_APP_SUPPORTED`
+    // (process.platform win32/darwin) is the same flag that decides whether the
+    // "Llama app" OpenAI-compatible provider exists at all, so the menu entry
+    // and the provider list can never disagree.
+    public updateHostInfoInView() {
+        this._webview?.webview?.postMessage({
+            command: 'updateHostInfo',
+            llamaAppSupported: IS_LLAMA_APP_SUPPORTED
+        });
+    }
+
     public updateModels() {
         this.updateToolsModel(this.app.getModelState(ModelType.Tools));
         this.updateChatModel(this.app.getModelState(ModelType.Chat));
@@ -989,8 +1125,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateComplsModel(this.app.getModelState(ModelType.Completion));
     }
 
+    // Clears the attached context files in the UI (called after a chat reset).
     public updateContextFilesInfo() {
-        const fileKeys = this.app.chatContext.getProjectFiles();
         this._webview?.webview?.postMessage({
             command: 'updateContextFiles',
             files: []

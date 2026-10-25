@@ -85,7 +85,14 @@ export class Tools {
 
     public runTerminalCommandDesc = async (args: string ) => {
         let command = JSON.parse(args).command;
-        return "Executing terminal command: " + command;
+        // The agent log is line based and a tool description is one paragraph
+        // that must not contain an empty line: the UI ends the tool block there
+        // and renders the rest of the command as text of the AI answer. A blank
+        // line inside a command (heredoc bodies, scripted steps) is kept as a
+        // whitespace-only line, which looks the same but stays in the paragraph.
+        return "Executing terminal command: " + (command ?? "").split(/\r?\n/)
+            .map((line: string) => (line.trim().length === 0 ? " " : line))
+            .join("\n");
     }
 
 

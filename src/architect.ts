@@ -548,8 +548,7 @@ export class Architect {
             'extension.showLlamaWebview',
             async () => {
                 vscode.commands.executeCommand('llama-vscode.webview.focus');
-                if (this.app.isToolsModelSelected() || this.app.configuration.endpoint_tools) this.app.llamaWebviewProvider.setView(UiView.Agent)
-                else this.app.llamaWebviewProvider.setView(UiView.Environment)
+                this.app.llamaWebviewProvider.setView(UiView.Agent)
                 const editor = vscode.window.activeTextEditor;
                 if (editor && editor.selection) {
                     let fileLongName = editor.document.fileName;

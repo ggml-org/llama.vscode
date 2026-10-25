@@ -119,8 +119,9 @@ export class AgentCommandService {
 
     public async editAgentCommandFromList(agentCommands: any[]) {
         let allAgentCommands = agentCommands.concat(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[])
-        let agentComandItems: QuickPickItem[] = Utils.getStandardQpList(agentCommands, "");
-        agentComandItems = agentComandItems.concat(Utils.getStandardQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[], "(predefined) ", agentCommands.length));
+        // Mark commands executed periodically with a "(scheduled) " prefix.
+        let agentComandItems: QuickPickItem[] = this.getAgentCommandQpList(agentCommands, "");
+        agentComandItems = agentComandItems.concat(this.getAgentCommandQpList(PREDEFINED_LISTS.get(PREDEFINED_LISTS_KEYS.AGENT_COMMANDS) as AgentCommand[], "(predefined) ", agentCommands.length));
         let agentCommand = await vscode.window.showQuickPick(agentComandItems);
         if (agentCommand) {
             let agentCommandIndex = parseInt(agentCommand.label.split(". ")[0], 10) - 1;
@@ -193,6 +194,24 @@ export class AgentCommandService {
             items.push({
                 label: i + ". " + prefix + elem.name,
                 description: elem.description,
+            });
+        }
+        return items;
+    }
+
+    /**
+     * Same as getStandardQpList but marks agent commands scheduled for
+     * periodic execution (executePeriodically === true) with a
+     * "(scheduled) " prefix in front of the command name.
+     */
+    private getAgentCommandQpList(list: AgentCommand[], prefix: string, lastAgentCommandNumber: number = 0): QuickPickItem[] {
+        const items: QuickPickItem[] = [];
+        let i = lastAgentCommandNumber;
+        for (let elem of list) {
+            i++;
+            items.push({
+                label: i + ". " + prefix + (elem?.executePeriodically ? "(scheduled) " : "") + elem?.name,
+                description: elem?.description,
             });
         }
         return items;

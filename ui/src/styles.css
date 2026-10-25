@@ -1,23 +1,12 @@
-/* VS Code theme variables */
-:root {
-  --vscode-editor-background: #0d1117;
-  --vscode-editor-foreground: #f0f6fc;
-  --vscode-button-background: #238636;
-  --vscode-button-foreground: #ffffff;
-  --vscode-button-hoverBackground: #2ea043;
-  --vscode-input-background: #21262d;
-  --vscode-input-foreground: #f0f6fc;
-  --vscode-input-border: #30363d;
-  --vscode-textArea-background: #21262d;
-  --vscode-textArea-foreground: #f0f6fc;
-  --vscode-textArea-border: #30363d;
-  --vscode-panel-background: #161b22;
-  --vscode-panel-border: #30363d;
-  --accent-color: #58a6ff;
-  --success-color: #238636;
-  --warning-color: #d29922;
-  --error-color: #da3633;
-}
+/* ============================================================================
+   llama-vscode webview styles
+   Theme rules:
+   - Never redefine --vscode-* variables: VS Code injects them per theme.
+     Always use var(--vscode-x, <fallback>) so light / dark / high-contrast all
+     work and the fallbacks only apply outside VS Code (dev server).
+   - One accent (VS Code focus border) for interactive emphasis.
+   - The chat is the hero: chrome is compact and quiet.
+   ========================================================================== */
 
 * {
   box-sizing: border-box;
@@ -26,490 +15,1400 @@
 body {
   margin: 0;
   padding: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
+  font-family: var(--vscode-font-family, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif);
+  font-size: var(--vscode-font-size, 13px);
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  /* Let native scrollbars/inputs follow the theme */
+  color-scheme: light dark;
 }
+
+/* ---------------------------------------------------------------------------
+   App shell
+   ------------------------------------------------------------------------ */
 
 .app {
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  /* Views that grow with their content (AddEnvView) still need to scroll.
+     The agent view is sized by .view-host (flex:1 + min-height:0), so it fills
+     the available space exactly and never creates an outer scrollbar. */
   overflow-x: hidden;
   overflow-y: auto;
 }
 
-/* Modern Header */
+/* Host for a view that must fill the remaining height below the header */
+.view-host {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  /* A flex item is `min-width: auto` by default, i.e. its min-content width.
+     Without this the agent view refuses to shrink below the widest thing in
+     the chat (a code block or a table) and the whole panel is pushed out of
+     the sidebar - hiding the Send button and the scrollbar. */
+  min-width: 0;
+}
+
+/* ---------------------------------------------------------------------------
+   Global header (app level navigation)
+   ------------------------------------------------------------------------ */
+
 .header {
   padding: 0;
-  background-color: var(--vscode-panel-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
+  background-color: var(--vscode-panel-background, #161b22);
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
   position: relative;
+  flex-shrink: 0;
 }
 
 .header-content {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-}
-
-.header-title {
-  font-size: 16px;
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
-  margin: 0;
+  gap: 8px;
+  padding: 8px 10px;
+  flex-wrap: wrap;
 }
 
 .header-actions {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
 }
 
 .header-btn {
   background: none;
   border: none;
-  color: var(--vscode-editor-foreground);
-  padding: 8px;
-  border-radius: 6px;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  padding: 5px 8px;
+  border-radius: 5px;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
+  transition: background-color 0.15s ease;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 14px;
+  font-size: 12px;
 }
 
 .header-btn:hover {
-  background-color: var(--vscode-input-background);
+  background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-input-background, #21262d));
+}
+
+.header-btn.secondary {
+  background-color: var(--vscode-input-background, #21262d);
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  border: 1px solid var(--vscode-input-border, #30363d);
+}
+
+.header-btn.secondary:hover {
+  background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-list-hoverBackground, #2a2f36));
+}
+
+.header-btn.secondary.active {
+  border-color: var(--vscode-focusBorder, #58a6ff);
+  background-color: var(--vscode-list-activeSelectionBackground, #21262d);
+  color: var(--vscode-list-activeSelectionForeground, inherit);
 }
 
 .header-btn.primary {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  padding: 8px 16px;
+  background-color: var(--vscode-button-background, #238636);
+  color: var(--vscode-button-foreground, #ffffff);
+  padding: 6px 12px;
   font-weight: 500;
 }
 
 .header-btn.primary:hover {
-  background-color: var(--vscode-button-hoverBackground);
+  background-color: var(--vscode-button-hoverBackground, #2ea043);
 }
 
 .header-btn.danger {
-  background-color: var(--error-color);
-  color: white;
+  background-color: var(--vscode-inputValidation-errorBackground, #5a1d1d);
+  color: var(--vscode-errorForeground, #ffffff);
 }
 
-.header-btn.danger:hover {
-  background-color: #b62324;
-}
+/* ---------------------------------------------------------------------------
+   Content area (editor style views: AgentEditor / AgentCommandEditor / AddEnvView)
+   ------------------------------------------------------------------------ */
 
-.header-btn.secondary {
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-editor-foreground);
-  border: 1px solid var(--vscode-input-border);
-}
-
-.header-btn.secondary:hover {
-  background-color: var(--vscode-panel-border);
-}
-
-/* Main Content */
 .content {
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0; /* Allow content to shrink */
-}
-
-/* Chat Display Area */
-.chat-container {
-  flex: 1;
+  min-height: 0;
   overflow-y: auto;
-  padding: 20px;
-  background-color: var(--vscode-editor-background);
-  width: 100%;
 }
 
-.chat-message {
-  margin-bottom: 20px;
-  padding: 16px;
-  background-color: var(--vscode-panel-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 8px;
-  font-size: 14px;
-  line-height: 1.5;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  width: 100%;
-  box-sizing: border-box;
-}
-
-.chat-message.user {
-  background-color: var(--accent-color);
-  color: white;
-  margin-left: 0;
-  margin-right: 40px;
-}
-
-.chat-message.assistant {
-  background-color: var(--vscode-panel-background);
-  margin-left: 0;
-  margin-right: 0;
-}
-
-/* Input Section */
 .input-section {
-  background-color: var(--vscode-panel-background);
-  border-top: 1px solid var(--vscode-panel-border);
-  padding: 20px;
-  flex-shrink: 0; /* Prevent input section from shrinking */
+  background-color: var(--vscode-panel-background, #161b22);
+  padding: 12px 14px 16px;
+  flex-shrink: 0;
 }
 
 .input-container {
   position: relative;
-  margin-bottom: 16px;
 }
 
-.input-container.drag-over {
-  border: 2px dashed var(--accent-color);
-  border-radius: 8px;
-  background-color: rgba(88, 166, 255, 0.1);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2);
-}
-
-.input-header {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  margin-bottom: 12px;
-}
-
-.input-label {
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
-  margin: 0;
-}
-
-.context-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.context-chip {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 16px;
-  padding: 6px 12px;
-  font-size: 12px;
-  color: var(--vscode-editor-foreground);
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  transition: all 0.2s ease;
-  cursor: default;
-}
-
-.context-chip:hover {
-  background-color: var(--accent-color);
-  border-color: var(--accent-color);
-  color: white;
-}
-
-.context-chip .file-name {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  max-width: 120px;
-}
-
-.context-chip .file-name.clickable {
-  cursor: pointer;
-  text-decoration: underline;
-  text-decoration-color: var(--accent-color);
-}
-
-.context-chip .remove-btn {
-  background: none;
-  border: none;
-  color: inherit;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  padding: 0;
-  margin: 0;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  opacity: 0.7;
-  transition: all 0.2s ease;
-}
-
-.context-chip .remove-btn:hover {
-  opacity: 1;
-  background-color: rgba(255, 255, 255, 0.2);
-}
-
-/* Modern Textarea */
-.modern-textarea {
-  width: 100%;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 8px;
-  padding: 16px;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 14px;
-  line-height: 1.5;
-  color: var(--vscode-input-foreground);
-  resize: vertical;
-  min-height: 100px;
-  transition: all 0.2s ease;
-}
-
-.modern-textarea:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
-}
-
-.modern-textarea.drag-over {
-  border-color: var(--accent-color);
-  background-color: rgba(88, 166, 255, 0.1);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.2), inset 0 0 20px rgba(88, 166, 255, 0.05);
-}
-
-.modern-textarea::placeholder {
-  color: var(--vscode-input-foreground);
-  opacity: 0.6;
-}
-
-/* Modern Input (compact single-line inputs) */
-.modern-input {
-  width: 100%;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 6px;
-  padding: 6px 10px;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 13px;
-  line-height: 1.4;
-  color: var(--vscode-input-foreground);
-  transition: all 0.2s ease;
-  color-scheme: dark;
-}
-
-.modern-input:focus {
-  outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
-}
-
-.modern-input::placeholder {
-  color: var(--vscode-input-foreground);
-  opacity: 0.6;
-}
-
-/* Input Actions */
 .input-actions {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-top: 12px;
+  margin-top: 8px;
 }
 
 .input-buttons {
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
 }
+
+/* ---------------------------------------------------------------------------
+   Buttons / inputs shared by every view
+   ------------------------------------------------------------------------ */
 
 .modern-btn {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  border-radius: 6px;
-  padding: 8px 16px;
-  font-size: 14px;
+  background-color: var(--vscode-button-background, #238636);
+  color: var(--vscode-button-foreground, #ffffff);
+  border: 1px solid transparent;
+  border-radius: 5px;
+  padding: 5px 11px;
+  font-size: 12px;
+  font-family: inherit;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  line-height: 1.4;
+  /* Allow the button to shrink/wrap on narrow sidebars so it doesn't push
+     other controls off-screen. */
+  min-width: 0;
+  flex-shrink: 1;
+  white-space: normal;
 }
 
-.modern-btn:hover {
-  background-color: var(--vscode-button-hoverBackground);
-  transform: translateY(-1px);
+.modern-btn:hover:not(:disabled) {
+  background-color: var(--vscode-button-hoverBackground, #2ea043);
 }
 
 .modern-btn.secondary {
-  background-color: var(--vscode-input-background);
-  color: var(--vscode-editor-foreground);
-  border: 1px solid var(--vscode-input-border);
+  background-color: var(--vscode-button-secondaryBackground, var(--vscode-input-background, #21262d));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-editor-foreground, #f0f6fc));
+  border-color: var(--vscode-input-border, #30363d);
 }
 
-.modern-btn.secondary:hover {
-  background-color: var(--vscode-panel-border);
+.modern-btn.secondary:hover:not(:disabled) {
+  background-color: var(--vscode-button-secondaryHoverBackground, var(--vscode-list-hoverBackground, #2a2f36));
 }
 
 .modern-btn.icon {
-  padding: 8px;
-  min-width: 36px;
+  padding: 5px;
+  min-width: 26px;
+}
+
+.modern-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* Primary send action - the only accent button in the composer */
+.modern-btn.send {
+  background-color: var(--vscode-button-background, #238636);
+  color: var(--vscode-button-foreground, #ffffff);
+}
+
+.modern-btn.send-in-session {
+  font-size: 11px;
+}
+
+.modern-btn.stop {
+  background-color: var(--vscode-inputValidation-errorBorder, #b62324);
+  color: var(--vscode-button-foreground, #ffffff);
+}
+
+.modern-btn.stop:hover:not(:disabled) {
+  background-color: var(--vscode-inputValidation-errorBorder, #d13438);
+}
+
+/* Icon-only button - always paired with an aria-label */
+.icon-btn {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--vscode-icon-foreground, var(--vscode-editor-foreground, #f0f6fc));
+  border-radius: 5px;
+  padding: 5px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
+  transition: background-color 0.15s ease;
 }
 
-/* Model Info Cards */
-.model-info-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 12px;
-  margin-top: 16px;
+.icon-btn:hover:not(:disabled) {
+  background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-input-background, #21262d));
 }
 
-.model-card {
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 8px;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.icon-btn.active {
+  background-color: var(--vscode-list-activeSelectionBackground, #21262d);
+  color: var(--vscode-list-activeSelectionForeground, inherit);
 }
 
-.model-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+.icon-btn:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
-.model-label {
+.modern-textarea {
+  width: 100%;
+  background-color: var(--vscode-input-background, #21262d);
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace);
   font-size: 12px;
-  color: var(--vscode-editor-foreground);
-  opacity: 0.7;
-  font-weight: 500;
+  line-height: 1.5;
+  color: var(--vscode-input-foreground, #f0f6fc);
+  min-height: 32px;
+  transition: border-color 0.15s ease;
 }
 
-.model-value {
-  font-size: 13px;
-  color: var(--vscode-editor-foreground);
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-weight: 500;
+.modern-textarea:focus,
+.modern-input:focus {
+  outline: none;
+  border-color: var(--vscode-focusBorder, #58a6ff);
 }
 
-/* Status Bar */
-.status-bar {
-  margin-top: 8px;
-  padding: 8px 0;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+.modern-textarea::placeholder,
+.modern-input::placeholder {
+  color: var(--vscode-input-placeholderForeground, var(--vscode-input-foreground, #f0f6fc));
+  opacity: 0.75;
+}
+
+.modern-input {
+  width: 100%;
+  background-color: var(--vscode-input-background, #21262d);
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 5px;
+  padding: 5px 8px;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace);
   font-size: 12px;
-  color: var(--vscode-editor-foreground);
-  opacity: 0.8;
+  line-height: 1.4;
+  color: var(--vscode-input-foreground, #f0f6fc);
+  transition: border-color 0.15s ease;
 }
 
-/* Model Selection Frame */
+/* Frames used by AIRunnerView / AddEnvView / AgentEditor */
 .single-button-frame {
   position: relative;
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 8px;
-  padding: 16px;
-  margin-top: 12px;
-  background-color: var(--vscode-editor-background);
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 10px;
+  background-color: var(--vscode-editor-background, #1e1e1e);
   display: flex;
   align-items: center;
   gap: 8px;
-}
-
-.model-text {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 13px;
-  font-weight: 500;
+  flex-wrap: wrap;
 }
 
 .frame-label {
   position: absolute;
   top: -8px;
-  left: 12px;
-  background-color: var(--vscode-editor-background);
-  padding: 0 8px;
-  font-size: 12px;
+  left: 10px;
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  padding: 0 6px;
+  font-size: 11px;
   font-weight: 600;
-  color: var(--vscode-editor-foreground);
-  opacity: 0.8;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
 }
 
-/* LLM Model Selection Buttons */
 .llm-buttons {
   display: block;
   margin: 0;
   padding: 0;
 }
 
-.status-item {
+.model-text {
+  font-family: var(--vscode-editor-font-family, 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.checkbox-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Context chips (files + image) - one style for every kind of context
+   ------------------------------------------------------------------------ */
+
+.context-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+  /* Never overflow the composer width: a long chip shrinks/wraps instead. */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  /* Chips share the row and wrap onto a new line when it is full; one very
+     long chip shrinks (label truncates) instead of overflowing. */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  background-color: var(--vscode-badge-background, var(--vscode-input-background, #21262d));
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 10px;
+  padding: 2px 4px 2px 8px;
+  font-size: 11px;
+  color: var(--vscode-badge-foreground, var(--vscode-editor-foreground, #f0f6fc));
+  transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.context-chip:hover {
+  border-color: var(--vscode-focusBorder, #58a6ff);
+}
+
+.context-chip svg {
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+
+.context-chip .chip-label {
+  max-width: 180px;
+  /* Allow the label to shrink with the chip so the name truncates instead of
+     pushing the chip past the composer edge. */
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace);
+  font-size: 11px;
+  color: inherit;
+}
+
+button.chip-label {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--vscode-focusBorder, #58a6ff);
+  text-underline-offset: 2px;
+}
+
+.context-chip .chip-remove {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.15s ease, background-color 0.15s ease;
+}
+
+.context-chip .chip-remove:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.25));
+}
+
+.context-chip.image .chip-label {
+  font-family: inherit;
+}
+
+/* Legacy chip markup still used by the Agent Editor view */
+.context-chip .file-name {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-chip .file-name.clickable {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: var(--vscode-focusBorder, #58a6ff);
+  text-underline-offset: 2px;
+}
+
+.context-chip .remove-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  padding: 0 3px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0.7;
+  border-radius: 50%;
+}
+
+.context-chip .remove-btn:hover {
+  opacity: 1;
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.25));
+}
+
+/* ---------------------------------------------------------------------------
+   Agent view: layout
+   ------------------------------------------------------------------------ */
+
+.agent-view {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  /* Same reason as .view-host: this is the flex item that must be allowed to
+     become narrower than the chat content (see the note there). */
+  min-width: 0;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--vscode-editor-background, #1e1e1e);
+}
+
+/* Single compact toolbar row for chat level actions */
+.agent-toolbar {
   display: flex;
   align-items: center;
   gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
+  background-color: var(--vscode-panel-background, var(--vscode-editor-background, #1e1e1e));
+  flex-shrink: 0;
+}
+
+.agent-toolbar .toolbar-new {
+  margin-right: auto;
+}
+
+/* Drag & drop hint: an overlay, so the composer never jumps */
+.drop-hint {
+  position: absolute;
+  inset: 6px;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 16px;
+  pointer-events: none;
+  border: 1px dashed var(--vscode-focusBorder, #58a6ff);
+  border-radius: 8px;
+  background-color: var(--vscode-editor-background, #1e1e1e);
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  font-size: 12px;
+  opacity: 0.97;
+}
+
+/* No tools model selected */
+.agent-empty-state {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px 18px;
+  text-align: center;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+}
+
+.agent-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+.agent-empty-text {
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 320px;
+}
+
+.agent-empty-text code {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+}
+
+/* ---------------------------------------------------------------------------
+   Chat area
+   ------------------------------------------------------------------------ */
+
+.chat-area {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-scroll {
+  flex: 1;
+  min-height: 0;
+  /* min-width:0 lets the scroller be narrower than its content; wide content
+     (code blocks, tables) then scrolls or wraps inside instead of widening
+     the whole view. */
+  min-width: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  /* No smooth scrolling: it fights the pinned-to-bottom streaming updates. */
+  scroll-behavior: auto;
+}
+
+.chat-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  min-height: 160px;
+  padding: 24px 18px;
+  text-align: center;
+}
+
+.chat-empty-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+.chat-empty-subtitle {
+  font-size: 12px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  max-width: 300px;
+  line-height: 1.5;
+}
+
+.chat-empty-examples {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 6px;
+  width: 100%;
+  max-width: 300px;
+}
+
+.example-chip {
+  background-color: var(--vscode-input-background, #21262d);
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 12px;
+  padding: 5px 10px;
+  font-size: 11px;
+  font-family: inherit;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: border-color 0.15s ease;
+}
+
+.example-chip:hover {
+  border-color: var(--vscode-focusBorder, #58a6ff);
+}
+
+.jump-to-latest {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 20;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 9px;
+  border-radius: 12px;
+  border: 1px solid var(--vscode-input-border, #30363d);
+  background-color: var(--vscode-button-secondaryBackground, var(--vscode-input-background, #21262d));
+  color: var(--vscode-button-secondaryForeground, var(--vscode-editor-foreground, #f0f6fc));
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.jump-to-latest:hover {
+  border-color: var(--vscode-focusBorder, #58a6ff);
+}
+
+.show-earlier-btn {
+  display: block;
+  width: 100%;
+  margin: 0 0 12px 0;
+  padding: 5px;
+  border: 1px dashed var(--vscode-input-border, #30363d);
+  border-radius: 5px;
+  background: none;
+  color: var(--vscode-textLink-foreground, #58a6ff);
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+/* ---------------------------------------------------------------------------
+   Chat messages
+   ------------------------------------------------------------------------ */
+
+.markdown-content {
+  padding: 12px 12px 16px;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  font-family: var(--vscode-font-family, inherit);
+  font-size: var(--vscode-font-size, 13px);
+  line-height: 1.55;
+  /* Never let the chat content dictate the width of the sidebar: an
+     unbreakable token (a long path, a hash, a URL) wraps instead of pushing
+     the Send button and the scrollbar out of view. */
+  min-width: 0;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.message-row {
+  position: relative;
+  margin: 10px 0 14px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.message-row.user {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.message-row .msg-actions {
+  display: flex;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  margin-top: 2px;
+}
+
+.message-row.user .msg-actions {
+  justify-content: flex-end;
+}
+
+.message-row:hover .msg-actions,
+.message-row:focus-within .msg-actions {
+  opacity: 1;
+}
+
+.msg-action {
+  background: none;
+  border: none;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+  font-family: inherit;
+}
+
+.msg-action:hover {
+  background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-input-background, #21262d));
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+/* User bubble - white on soft dark grey is a deliberate user choice
+   (see auto-memory chat-display-user-bubbles.md): keep it, but as fallbacks
+   only so a themed input background still applies when available. */
+.markdown-content .user-message-bubble {
+  /* Share of the message column, never more than it (a long unbreakable word
+     used to push the bubble - and the whole view - past the panel edge). */
+  max-width: 82%;
+  min-width: 0;
+  background-color: var(--vscode-input-background, #3c3c3c);
+  color: #ffffff;
+  border-radius: 12px;
+  border-bottom-right-radius: 4px;
+  padding: 8px 12px;
+  line-height: 1.5;
+  word-break: break-word;
+  overflow-wrap: anywhere;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.markdown-content-inner {
+  /* Width of the message column, not of the message content */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.markdown-content-inner.assistant {
+  padding: 0;
+}
+
+/* Code blocks with a hover-revealed copy button */
+.code-block {
+  position: relative;
+  /* The <pre> below scrolls horizontally on its own; the wrapper must not be
+     widened by it (see .markdown-content pre). */
+  min-width: 0;
+  max-width: 100%;
+}
+
+.code-copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-input-border, #30363d);
+  background-color: var(--vscode-input-background, #21262d);
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  font-size: 10px;
+  font-family: inherit;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.code-block:hover .code-copy-btn,
+.code-copy-btn:focus-visible {
+  opacity: 1;
+}
+
+/* Tool call blocks: compact, dimmed, collapsed by default */
+.tool-block {
+  margin: 6px 0;
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 5px;
+  background-color: var(--vscode-textBlockQuote-background, var(--vscode-input-background, #21262d));
+  overflow: hidden;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.tool-block-header {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  width: 100%;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tool-block-header:hover {
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+.tool-block-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-block-state {
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.tool-block-details {
+  margin: 0;
+  padding: 6px 8px;
+  border-top: 1px solid var(--vscode-input-border, #30363d);
+  max-height: 220px;
+  overflow: auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+}
+
+/* Machine bookkeeping lines (Total iterations / Finish reason / errors) */
+.chat-notice {
+  margin: 4px 0;
+  padding: 3px 8px;
+  border-left: 2px solid var(--vscode-input-border, #30363d);
+  font-size: 11px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: pre-wrap;
+  /* Long paths/errors stay inside the panel instead of widening the view */
+  overflow-wrap: anywhere;
+  min-width: 0;
+  max-width: 100%;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  opacity: 0.85;
+}
+
+/* ---------------------------------------------------------------------------
+   Composer
+   ------------------------------------------------------------------------ */
+
+.composer-host {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  border-top: 1px solid var(--vscode-panel-border, #30363d);
+  background-color: var(--vscode-panel-background, var(--vscode-editor-background, #1e1e1e));
+}
+
+.composer {
+  padding: 8px 10px 4px;
+  min-width: 0;
+}
+
+.composer-textarea {
+  resize: none;
+  min-height: 64px;
+  max-height: 200px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: block;
+}
+
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+  /* No justify-content: space-between — on narrow sidebars it pushes the
+     tool buttons to the far left and the Send button off-screen. The Send
+     group is right aligned with margin-left:auto instead. */
+  width: 100%;
+  /* Ensure the toolbar itself doesn't overflow its parent */
+  min-width: 0;
+}
+
+.composer-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-wrap: wrap;
+  /* Takes the free space of the row, so the tool buttons stay left while the
+     Send group is pushed against the right edge. */
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.tool-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: none;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+  /* Allow tool buttons to shrink/wrap on narrow sidebars */
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.tool-btn:hover {
+  background-color: var(--vscode-toolbar-hoverBackground, var(--vscode-input-background, #21262d));
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+.tool-btn-key {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  line-height: 1;
+  width: 12px;
+  text-align: center;
+}
+
+.composer-send {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  /* Right aligned: the auto margin eats whatever space the tool buttons leave.
+     When the row is too narrow the group wraps onto its own line and the auto
+     margin keeps it on the right there too. */
+  margin-left: auto;
+  /* Never shrink: the toolbar wraps the group onto its own line instead, so the
+     Send / Stop button can never be squeezed out of view on a narrow sidebar.
+     Long button labels wrap inside the group. max-width keeps an extremely
+     narrow panel from overflowing horizontally. */
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.composer-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 10px 6px;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  flex-wrap: wrap;
+  /* The agent / tools-model group is right aligned: when it wraps onto its own
+     line it still sits against the right edge. */
+  justify-content: flex-end;
+}
+
+.composer-hint {
+  /* Grows to push the context group to the right and is the first thing to
+     truncate when space runs out (it is the least important footer content). */
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.composer-context {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 3px;
+  /* Right aligned: auto margin pins the group to the right edge of the footer
+     row (and of its own row once the footer wraps). It never shrinks - the
+     footer wraps it onto its own line instead, so the agent / model names
+     stay readable. */
+  margin-left: auto;
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  opacity: 0.9;
+}
+
+/* Clickable agent / tools-model names in the composer footer. Each one opens
+   the same picker as the matching "..." menu entry (Select Agent... /
+   Select Tools Model...). */
+.composer-context .context-link {
+  /* Both names share the available width and truncate with an ellipsis
+     instead of collapsing to nothing (the old max-width:45% made them hide
+     each other on narrow sidebars). */
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  background: none;
+  border: none;
+  padding: 0;
+  margin: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 3px;
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  text-decoration-color: var(--vscode-descriptionForeground, currentColor);
+}
+
+.composer-context .context-link:hover {
+  color: var(--vscode-textLink-foreground, #58a6ff);
+  text-decoration-style: solid;
+  text-decoration-color: var(--vscode-textLink-foreground, #58a6ff);
+}
+
+.composer-context .context-sep {
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+
+/* ---------------------------------------------------------------------------
+   "Stop requested" feedback
+   ------------------------------------------------------------------------ */
+
+/* Small rotating ring used by the stop button, the banner and the waiting row. */
+.spinner {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  flex-shrink: 0;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  opacity: 0.9;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* The Stop button turns into a busy "Stopping..." button so the click visibly
+   does something, even while the in-flight request is still unwinding. */
+.modern-btn.stop.stopping {
+  opacity: 0.75;
+  cursor: progress;
+  background-color: var(--vscode-inputValidation-warningBorder, var(--vscode-inputValidation-errorBorder, #b62324));
+}
+
+.modern-btn.stop.stopping:disabled {
+  opacity: 0.75;
+}
+
+/* Banner above the composer: states what is happening and offers a retry. */
+.stop-banner {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  background-color: var(--vscode-inputValidation-warningBackground, rgba(210, 153, 34, 0.15));
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-panel-border, #30363d));
+}
+
+.stop-banner-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.stop-banner-again {
+  flex-shrink: 0;
+  background: none;
+  border: 1px solid var(--vscode-inputValidation-warningBorder, var(--vscode-panel-border, #30363d));
+  border-radius: 3px;
+  color: inherit;
+  font-size: 10px;
+  font-family: inherit;
+  padding: 1px 6px;
+  cursor: pointer;
+}
+
+.stop-banner-again:hover {
+  background-color: var(--vscode-toolbar-hoverBackground, rgba(128, 128, 128, 0.2));
+}
+
+/* Inline "waiting for the model" / "stopping" row at the end of the log. */
+.agent-waiting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0 2px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+}
+
+/* Status dot while a stop is pending: same pulse as "working" but amber. */
+.status-indicator.stopping {
+  background-color: var(--vscode-charts-orange, var(--vscode-charts-yellow, #d29922));
+  animation: pulse 1.6s infinite;
+}
+
+/* Transient notices (rejected drops, added files, ...) */
+.composer-notice {
+  margin: 0 10px 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background-color: var(--vscode-inputValidation-infoBackground, rgba(88, 166, 255, 0.12));
+  border: 1px solid var(--vscode-inputValidation-infoBorder, transparent);
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  /* The text and the optional call-to-action share the row; on a narrow panel
+     the button wraps below the text instead of pushing it out. */
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.composer-notice .composer-notice-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.composer-notice .composer-notice-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.composer-notice .composer-notice-action {
+  padding: 2px 8px;
+  font-size: 11px;
+  min-width: auto;
+}
+
+.composer-notice .composer-notice-close {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.composer-notice .composer-notice-close:hover {
+  opacity: 1;
+}
+
+.composer-notice.error {
+  background-color: var(--vscode-inputValidation-errorBackground, rgba(218, 54, 51, 0.15));
+  border-color: var(--vscode-inputValidation-errorBorder, transparent);
+  color: var(--vscode-errorForeground, #f0f6fc);
+}
+
+/* ---------------------------------------------------------------------------
+   Status line (state dot + metrics)
+   ------------------------------------------------------------------------ */
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px 6px;
+  font-size: 11px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  min-height: 18px;
+  /* The state text and the token/price metrics share the row. On a narrow
+     sidebar they wrap onto separate lines instead of overflowing to the right
+     (which used to hide them behind the panel edge). */
+  flex-wrap: wrap;
+  min-width: 0;
+}
+
+.status-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.status-metrics {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  white-space: nowrap;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.metric-price {
+  opacity: 0.8;
+}
+
+.metric-sep {
+  opacity: 0.5;
 }
 
 .status-indicator {
-  width: 8px;
-  height: 8px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background-color: var(--success-color);
+  flex-shrink: 0;
+  background-color: var(--vscode-descriptionForeground, #8b949e);
+}
+
+.status-indicator.idle {
+  background-color: var(--vscode-descriptionForeground, #8b949e);
 }
 
 .status-indicator.working {
-  background-color: var(--warning-color);
-  animation: pulse 2s infinite;
+  background-color: var(--vscode-charts-yellow, #d29922);
+  animation: pulse 1.6s infinite;
+}
+
+.status-indicator.error {
+  background-color: var(--vscode-errorForeground, #da3633);
+}
+
+.status-indicator.done {
+  background-color: var(--vscode-charts-green, #3fb950);
 }
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.35; }
 }
 
-/* File Selector Dialog */
+/* ---------------------------------------------------------------------------
+   Inline picker (files / commands) - anchored above the composer
+   ------------------------------------------------------------------------ */
+
+.picker-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  background: transparent;
+}
+
+.picker-popover {
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: calc(100% - 4px);
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  max-height: 40vh;
+  background-color: var(--vscode-menu-background, var(--vscode-editor-background, #1e1e1e));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border, #30363d));
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+}
+
+.picker-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 6px 5px 10px;
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
+}
+
+.picker-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+.picker-count {
+  margin-left: auto;
+  font-size: 10px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+}
+
+.picker-search {
+  padding: 6px 8px;
+}
+
+.picker-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px 4px;
+}
+
+.picker-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  width: 100%;
+  padding: 4px 8px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground, #f0f6fc));
+  text-align: left;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.picker-item.selected {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, #04395e));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, #ffffff));
+}
+
+.picker-item-main {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+.picker-item-name {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.picker-item-detail {
+  font-size: 10px;
+  opacity: 0.7;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.badge {
+  flex-shrink: 0;
+  padding: 0 4px;
+  border-radius: 3px;
+  font-size: 9px;
+  line-height: 1.6;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  border: 1px solid currentColor;
+  opacity: 0.75;
+}
+
+.picker-empty {
+  padding: 10px 12px;
+  font-size: 11px;
+  font-style: italic;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+}
+
+/* ---------------------------------------------------------------------------
+   Modal file selector (still used by the Agent Editor view)
+   ------------------------------------------------------------------------ */
+
 .file-selector-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
 }
 
 .file-selector-dialog {
-  background-color: var(--vscode-panel-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 600px;
+  background-color: var(--vscode-editorWidget-background, var(--vscode-panel-background, #161b22));
+  border: 1px solid var(--vscode-editorWidget-border, var(--vscode-panel-border, #30363d));
+  border-radius: 8px;
+  width: 92%;
+  max-width: 560px;
   max-height: 80vh;
   display: flex;
   flex-direction: column;
@@ -520,470 +1419,262 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
 }
 
 .file-selector-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--vscode-editor-foreground);
 }
 
 .close-btn {
   background: none;
   border: none;
-  color: var(--vscode-editor-foreground);
-  font-size: 20px;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+  font-size: 16px;
   cursor: pointer;
-  padding: 8px;
-  border-radius: 6px;
-  transition: background-color 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  padding: 4px 6px;
+  border-radius: 4px;
 }
 
 .close-btn:hover {
-  background-color: var(--vscode-input-background);
+  background-color: var(--vscode-input-background, #21262d);
 }
 
 .file-selector-search {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
 }
 
 .file-selector-search input {
   width: 100%;
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-input-border);
-  border-radius: 8px;
-  padding: 12px 16px;
-  font-size: 14px;
-  color: var(--vscode-input-foreground);
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  transition: all 0.2s ease;
+  background-color: var(--vscode-input-background, #21262d);
+  border: 1px solid var(--vscode-input-border, #30363d);
+  border-radius: 5px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: var(--vscode-editor-font-family, monospace);
+  color: var(--vscode-input-foreground, #f0f6fc);
 }
 
 .file-selector-search input:focus {
   outline: none;
-  border-color: var(--accent-color);
-  box-shadow: 0 0 0 3px rgba(88, 166, 255, 0.1);
+  border-color: var(--vscode-focusBorder, #58a6ff);
 }
 
 .file-selector-list {
   flex: 1;
   overflow-y: auto;
   max-height: 400px;
+  outline: none;
 }
 
 .file-item {
-  padding: 12px 24px;
+  padding: 6px 14px;
   cursor: pointer;
-  border-bottom: 1px solid var(--vscode-panel-border);
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
-  font-size: 13px;
-  color: var(--vscode-editor-foreground);
-  transition: all 0.2s ease;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 12px;
+  color: var(--vscode-editor-foreground, #f0f6fc);
 }
 
 .file-item:hover {
-  background-color: var(--vscode-input-background);
+  background-color: var(--vscode-input-background, #21262d);
 }
 
 .file-item.selected {
-  background-color: var(--accent-color);
-  color: white;
-}
-
-.file-item:last-child {
-  border-bottom: none;
+  background-color: var(--vscode-list-activeSelectionBackground, #04395e);
+  color: var(--vscode-list-activeSelectionForeground, #ffffff);
 }
 
 .no-files {
-  padding: 40px 24px;
+  padding: 24px 14px;
   text-align: center;
-  color: var(--vscode-input-foreground);
-  opacity: 0.7;
+  font-size: 11px;
   font-style: italic;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
 }
 
-/* Scrollbar styling */
+/* ---------------------------------------------------------------------------
+   Scrollbars & focus rings
+   ------------------------------------------------------------------------ */
+
 ::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
+  height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--vscode-panel-background);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--vscode-panel-border);
-  border-radius: 4px;
+  background: var(--vscode-scrollbarSlider-background, rgba(121, 121, 121, 0.4));
+  border-radius: 5px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #5a5a5a;
+  background: var(--vscode-scrollbarSlider-hoverBackground, rgba(100, 100, 100, 0.7));
 }
 
-/* Markdown specific scrollbar styling */
-.markdown-content::-webkit-scrollbar {
-  width: 10px;
+:focus-visible {
+  outline: 1px solid var(--vscode-focusBorder, #58a6ff);
+  outline-offset: 1px;
 }
 
-.markdown-content::-webkit-scrollbar-track {
-  background: var(--vscode-panel-background);
-  border-radius: 4px;
-}
-
-.markdown-content::-webkit-scrollbar-thumb {
-  background: var(--vscode-panel-border);
-  border-radius: 5px;
-  border: 2px solid var(--vscode-panel-background);
-}
-
-.markdown-content::-webkit-scrollbar-thumb:hover {
-  background: var(--accent-color);
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .header-content {
-    padding: 12px 16px;
-  }
-  
-  .input-section {
-    padding: 16px;
-  }
-  
-  .model-info-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .file-selector-dialog {
-    width: 95%;
-    margin: 20px;
-  }
-}
-
-/* Markdown Display Area */
-.markdown-container {
-  background-color: var(--vscode-panel-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 8px;
-  margin: 0 20px 20px 20px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  /* Ensure proper sizing */
-  display: flex;
-  flex-direction: column;
-  flex: 1; /* Make it expand to fill available space */
-  min-height: 0; /* Allow it to shrink */
-}
-
-.markdown-header {
-  background-color: var(--vscode-input-background);
-  border-bottom: 1px solid var(--vscode-panel-border);
-  padding: 12px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.markdown-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
-  opacity: 0.9;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.markdown-header-controls {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-left: auto;
-}
-
-.scroll-status {
-  font-size: 12px;
-  color: var(--vscode-editor-foreground);
-  opacity: 0.7;
-  font-style: italic;
-}
-
-.markdown-header h3::after {
-  content: "📄";
-  font-size: 12px;
-  opacity: 0.7;
-}
-
-.markdown-header h3.scrollable::after {
-  content: "📄 📜";
-}
-
-.scroll-to-top-btn {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-}
-
-.scroll-to-top-btn:hover {
-  background-color: var(--vscode-button-hoverBackground);
-  transform: translateY(-1px);
-}
-
-.scroll-to-bottom-btn {
-  background-color: var(--vscode-button-background);
-  color: var(--vscode-button-foreground);
-  border: none;
-  border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  margin-left: 8px;
-}
-
-.scroll-to-bottom-btn:hover {
-  background-color: var(--vscode-button-hoverBackground);
-  transform: translateY(-1px);
-}
-
-.markdown-content {
-  padding: 20px;
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  line-height: 1.6;
-  flex: 1; /* Make it expand to fill the container */
-  min-height: 0; /* Allow it to shrink */
-  overflow-y: auto;
-  overflow-x: hidden;
-  scroll-behavior: smooth;
-  /* Force scrollbar to always show */
-  scrollbar-width: thin;
-  scrollbar-color: var(--vscode-panel-border) var(--vscode-panel-background);
-}
-
+/* ---------------------------------------------------------------------------
+   Markdown rendering
+   ------------------------------------------------------------------------ */
 .markdown-content h1,
 .markdown-content h2,
 .markdown-content h3,
 .markdown-content h4,
 .markdown-content h5,
 .markdown-content h6 {
-  margin-top: 24px;
-  margin-bottom: 16px;
+  margin-top: 18px;
+  margin-bottom: 10px;
   font-weight: 600;
   line-height: 1.25;
-  color: var(--vscode-editor-foreground);
+  color: var(--vscode-editor-foreground, #f0f6fc);
 }
 
 .markdown-content h1 {
-  font-size: 2em;
-  border-bottom: 1px solid var(--vscode-panel-border);
-  padding-bottom: 8px;
-}
-
-.markdown-content h2 {
   font-size: 1.5em;
-  border-bottom: 1px solid var(--vscode-panel-border);
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
   padding-bottom: 6px;
 }
 
+.markdown-content h2 {
+  font-size: 1.3em;
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
+  padding-bottom: 5px;
+}
+
 .markdown-content h3 {
-  font-size: 1.25em;
+  font-size: 1.15em;
+}
+
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  font-size: 1em;
 }
 
 .markdown-content p {
   margin-top: 0;
-  margin-bottom: 16px;
+  margin-bottom: 10px;
 }
 
-/* User message bubble - right aligned rounded rectangle */
-.markdown-content .user-message-bubble {
-  display: flex;
-  justify-content: flex-end;
-  margin: 12px 0 16px 0;
-}
-
-.markdown-content .user-message-bubble > .markdown-content-inner {
-  max-width: 80%;
-  background-color: #3c3c3c;
-  color: #ffffff;
-  border-radius: 12px;
-  border-bottom-right-radius: 4px;
-  padding: 10px 14px;
-  line-height: 1.5;
-  word-break: break-word;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+.markdown-content p:last-child {
+  margin-bottom: 0;
 }
 
 .markdown-content .user-message-bubble p {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .markdown-content .user-message-bubble p:last-child {
   margin-bottom: 0;
 }
 
-.markdown-content .user-message-bubble code {
-  background-color: rgba(0, 0, 0, 0.2);
-  border: none;
-  color: inherit;
-}
-
-.markdown-content .user-message-bubble pre {
-  background-color: rgba(0, 0, 0, 0.25);
-  border: none;
-  margin: 8px 0;
-  color: inherit;
-}
-
-.markdown-content .user-message-bubble a {
-  color: var(--vscode-button-foreground);
-  text-decoration: underline;
-}
-
-.markdown-content .user-message-bubble a:hover {
-  color: #ffffff;
-}
-
 .markdown-content ul,
 .markdown-content ol {
   margin-top: 0;
-  margin-bottom: 16px;
-  padding-left: 24px;
+  margin-bottom: 10px;
+  padding-left: 22px;
 }
 
 .markdown-content li {
+  margin-bottom: 3px;
+}
+
+.markdown-content li > p {
   margin-bottom: 4px;
 }
 
 .markdown-content blockquote {
-  margin: 16px 0;
-  padding: 0 16px;
-  color: var(--vscode-input-foreground);
-  border-left: 4px solid var(--vscode-panel-border);
-  background-color: var(--vscode-input-background);
+  margin: 10px 0;
+  padding: 0 12px;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  border-left: 3px solid var(--vscode-panel-border, #30363d);
+  background-color: var(--vscode-textBlockQuote-background, transparent);
 }
 
 .markdown-content code {
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-panel-border);
+  background-color: var(--vscode-textCodeBlock-background, var(--vscode-input-background, #21262d));
+  border: 1px solid var(--vscode-panel-border, #30363d);
   border-radius: 3px;
-  padding: 2px 6px;
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  padding: 1px 4px;
+  font-family: var(--vscode-editor-font-family, 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace);
   font-size: 0.9em;
 }
 
+.markdown-content .user-message-bubble code {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-color: transparent;
+  color: inherit;
+}
+
 .markdown-content pre {
-  background-color: var(--vscode-input-background);
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  padding: 16px;
+  background-color: var(--vscode-textCodeBlock-background, var(--vscode-input-background, #21262d));
+  border: 1px solid var(--vscode-panel-border, #30363d);
+  border-radius: 5px;
+  padding: 10px 12px;
+  /* A fenced code block scrolls horizontally inside its own box. It must not
+     report its content width upwards, or it widens the whole agent view and
+     pushes the Send button and the scrollbar out of the panel. */
   overflow-x: auto;
-  margin: 16px 0;
+  overflow-y: hidden;
+  min-width: 0;
+  max-width: 100%;
+  margin: 10px 0;
 }
 
 .markdown-content pre code {
   background: none;
   border: none;
   padding: 0;
-  font-size: 0.9em;
-  line-height: 1.4;
+  font-size: 0.92em;
+  line-height: 1.45;
 }
 
-.markdown-content table {
-  border-collapse: collapse;
-  width: 100%;
-  margin: 16px 0;
-  border: 1px solid var(--vscode-panel-border);
-  border-radius: 6px;
-  overflow: hidden;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.markdown-content th,
-.markdown-content td {
-  border: 1px solid var(--vscode-panel-border);
-  padding: 8px 12px;
-  text-align: left;
-  vertical-align: top;
-  word-wrap: break-word;
-  max-width: 0;
-}
-
-.markdown-content th {
-  background-color: var(--vscode-input-background);
-  font-weight: 600;
-  color: var(--vscode-editor-foreground);
-  position: sticky;
-  top: 0;
-  z-index: 1;
-}
-
-.markdown-content td {
-  background-color: var(--vscode-editor-background);
-  color: var(--vscode-editor-foreground);
-}
-
-.markdown-content tr:nth-child(even) td {
-  background-color: var(--vscode-panel-background);
-}
-
-.markdown-content tr:hover td {
-  background-color: var(--vscode-input-background);
-}
-
-/* Handle table overflow */
-.markdown-content .table-container {
-  overflow-x: auto;
-  border-radius: 6px;
-  border: 1px solid var(--vscode-panel-border);
-}
-
-.markdown-content .table-container table {
-  margin: 0;
-  border: none;
-  box-shadow: none;
+.markdown-content .user-message-bubble pre {
+  background-color: rgba(0, 0, 0, 0.3);
+  border-color: transparent;
+  margin: 6px 0;
+  color: inherit;
 }
 
 .markdown-content a {
-  color: var(--accent-color);
+  color: var(--vscode-textLink-foreground, #58a6ff);
   text-decoration: none;
 }
 
 .markdown-content a:hover {
+  color: var(--vscode-textLink-activeForeground, #58a6ff);
+  text-decoration: underline;
+}
+
+.markdown-content .user-message-bubble a {
+  color: #ffffff;
   text-decoration: underline;
 }
 
 /* Links to changed/deleted files in the agent session summary
    (rendered by llama-agent.ts getFileChangeLink as command: URIs) */
 .markdown-content a[href^="command:llama-vscode.openChangedFile"] {
-  font-family: 'SF Mono', 'Monaco', 'Inconsolata', 'Roboto Mono', monospace;
+  font-family: var(--vscode-editor-font-family, monospace);
   font-size: 12px;
-  cursor: pointer;
   text-decoration: underline;
-  text-decoration-color: var(--accent-color);
   text-underline-offset: 3px;
 }
 
 .markdown-content a[href^="command:llama-vscode.openChangedFile"]:hover {
-  color: var(--vscode-button-foreground);
-  background-color: var(--accent-color);
-  text-decoration: none;
+  background-color: var(--vscode-textLink-foreground, #58a6ff);
+  color: var(--vscode-editor-background, #1e1e1e);
   border-radius: 3px;
+  text-decoration: none;
 }
 
 .markdown-content img {
@@ -994,31 +1685,49 @@ body {
 
 .markdown-content hr {
   border: none;
-  border-top: 1px solid var(--vscode-panel-border);
-  margin: 24px 0;
+  border-top: 1px solid var(--vscode-panel-border, #30363d);
+  margin: 16px 0;
 }
 
-/* Additional table enhancements */
-.markdown-content table caption {
-  caption-side: top;
+/* A table has a min-content width of its widest row, which no amount of
+   wrapping can reduce, so it gets its own horizontal scroll container
+   (see the `table` renderer in ChatSegmentView.tsx). Without it a wide table
+   pushes the whole agent view wider than the panel. */
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  min-width: 0;
+  margin: 10px 0;
+}
+
+.markdown-content table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 0;
+  font-size: 0.95em;
+  border: 1px solid var(--vscode-panel-border, #30363d);
+}
+
+.markdown-content th,
+.markdown-content td {
+  border: 1px solid var(--vscode-panel-border, #30363d);
+  padding: 5px 8px;
   text-align: left;
+  vertical-align: top;
+  word-wrap: break-word;
+}
+
+.markdown-content th {
+  background-color: var(--vscode-input-background, #21262d);
   font-weight: 600;
-  color: var(--vscode-editor-foreground);
-  margin-bottom: 8px;
-  font-size: 0.9em;
 }
 
-.markdown-content table tbody tr:last-child td {
-  border-bottom: 1px solid var(--vscode-panel-border);
+.markdown-content tr:nth-child(even) td {
+  background-color: var(--vscode-panel-background, transparent);
 }
 
-.markdown-content table tbody tr:first-child td {
-  border-top: 1px solid var(--vscode-panel-border);
-}
-
-/* Ensure proper spacing for nested elements in tables */
 .markdown-content table p {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
 }
 
 .markdown-content table p:last-child {
@@ -1027,74 +1736,95 @@ body {
 
 .markdown-content table ul,
 .markdown-content table ol {
-  margin: 0 0 8px 0;
+  margin: 0 0 6px 0;
   padding-left: 16px;
 }
 
-.markdown-content table li:last-child {
-  margin-bottom: 0;
-}
+/* ---------------------------------------------------------------------------
+   "..." more actions dropdown (used by the app header and the agent toolbar)
+   ------------------------------------------------------------------------ */
 
-/* Handle code blocks in tables */
-.markdown-content table code {
-  font-size: 0.85em;
-  padding: 1px 4px;
-}
-
-/* Responsive table handling */
-@media (max-width: 768px) {
-  .markdown-content table {
-    font-size: 0.9em;
-  }
-  
-  .markdown-content th,
-  .markdown-content td {
-    padding: 6px 8px;
-  }
-} 
-
-/* "..." More Actions anchored dropdown menu */
 .more-actions-container {
   position: relative;
   display: inline-flex;
 }
 
-.more-actions-container .header-btn.active {
-  background-color: var(--vscode-list-activeSelectionBackground);
-  color: var(--vscode-list-activeSelectionForeground);
-}
-
 .more-actions-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 4px);
   right: 0;
-  min-width: 210px;
-  background-color: var(--vscode-menu-background, var(--vscode-editor-background));
-  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border));
-  border-radius: 6px;
+  min-width: 200px;
+  background-color: var(--vscode-menu-background, var(--vscode-editor-background, #1e1e1e));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border, #30363d));
+  border-radius: 5px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
-  padding: 4px;
+  padding: 3px;
   z-index: 1000;
   display: flex;
   flex-direction: column;
 }
 
+.more-actions-menu.align-left {
+  right: auto;
+  left: 0;
+}
+
 .more-actions-item {
   display: flex;
   align-items: center;
+  gap: 7px;
   width: 100%;
   background: none;
   border: none;
-  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground));
-  font-size: 13px;
+  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground, #f0f6fc));
+  font-size: 12px;
+  font-family: inherit;
   text-align: left;
-  padding: 8px 10px;
+  padding: 5px 8px;
   border-radius: 4px;
   cursor: pointer;
   white-space: nowrap;
 }
 
-.more-actions-item:hover {
-  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground));
-  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground));
+.more-actions-item:hover:not(:disabled) {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, #04395e));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, #ffffff));
+}
+
+.more-actions-item:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.more-actions-item.danger {
+  color: var(--vscode-errorForeground, #da3633);
+}
+
+.menu-item-icon {
+  display: inline-flex;
+  align-items: center;
+  opacity: 0.8;
+}
+
+.menu-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---------------------------------------------------------------------------
+   Responsive tweaks for narrow sidebars
+   ------------------------------------------------------------------------ */
+
+@media (max-width: 480px) {
+  .composer-hint {
+    display: none;
+  }
+
+  .tool-btn-label {
+    display: none;
+  }
+
+  .composer-context {
+    max-width: 100%;
+  }
 }

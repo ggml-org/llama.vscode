@@ -51,6 +51,12 @@ const App: React.FC<AppProps> = () => {
   );
   const [contextFiles, setContextFiles] = useState<Map<string, string>>(new Map());
   const [imagePath, setContextImage] = useState<string>("");
+  // Host-only features: the "Llama app" provider exists on Windows and macOS
+  // only. Defaults to false, so the entry point simply appears once the
+  // extension has confirmed support instead of being offered and then failing.
+  const [llamaAppSupported, setLlamaAppSupported] = useState<boolean>(
+    Boolean(initialState.llamaAppSupported)
+  );
   const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
   const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string, subagentEnabled: boolean}>({name:"", description:"", systemInstruction:"", toolsModel:"", subagentEnabled: false});
 
@@ -67,9 +73,10 @@ const App: React.FC<AppProps> = () => {
       currentAgent,
       currentEnv: currentEnv,
       currentState,
+      llamaAppSupported,
       view
     });
-  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, view]);
+  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, view]);
 
   useEffect(() => {
     // Listen for messages from the extension
@@ -105,6 +112,9 @@ const App: React.FC<AppProps> = () => {
           break;
         case 'updateContextImage':
           setContextImage(message.image || "");
+          break;
+        case 'updateHostInfo':
+          setLlamaAppSupported(Boolean(message.llamaAppSupported));
           break;
         case 'updateAgentEdit':
           setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel,subagentEnabled: message.subagentEnabled});
@@ -196,6 +206,34 @@ const App: React.FC<AppProps> = () => {
       <div className="header">
             <div className="header-content">
               <div className="header-actions">
+                  <button
+                    onClick={handleShowAgentView}
+                    className="header-btn secondary"
+                    title="Show Llama Agent View"
+                  >
+                    {"💬"}
+                  </button>
+                  <button
+                    onClick={handleShowAddEnvView}
+                    className="header-btn secondary"
+                    title="Show Current Environment"
+                  >
+                    {"\u{1F310}\uFE0E"}
+                  </button>
+                  <button
+                    onClick={handleShowAgentEditor}
+                    className="header-btn secondary"
+                    title="Show Edit Agent View"
+                  >
+                    {"✎"}
+                  </button>
+                  <button
+                    onClick={handleShowAgentCommandEditor}
+                    className="header-btn secondary"
+                    title="Show Edit Agent Command View"
+                  >
+                    {">_"}
+                  </button>
                   <div>
                     <button
                       onClick={handleSelectEnv}
@@ -211,34 +249,6 @@ const App: React.FC<AppProps> = () => {
                     className="modern-btn secondary"
                   >
                     Deselect Env
-                  </button>
-                  <button
-                    onClick={handleShowAddEnvView}
-                    className="header-btn secondary"
-                    title="Show Current Environment"
-                  >
-                    {"\u{1F310}\uFE0E"}
-                  </button>
-                  <button
-                    onClick={handleShowAgentView}
-                    className="header-btn secondary"
-                    title="Show Llama Agent View"
-                  >
-                    {"💬"}
-                  </button>
-                  <button
-                    onClick={handleShowAgentEditor}
-                    className="header-btn secondary"
-                    title="Show Edit Agent View"
-                  >
-                    {"✎"}
-                  </button>
-                  <button
-                    onClick={handleShowAgentCommandEditor}
-                    className="header-btn secondary"
-                    title="Show Edit Agent Command View"
-                  >
-                    {">_"}
                   </button>
                   <div className="more-actions-container" ref={moreActionsRef}>
                     <button
@@ -271,8 +281,8 @@ const App: React.FC<AppProps> = () => {
             </div>
           </div>
       {view === noViewSet && (
-        <div>
-          {/* Environment Selection Header for Agent View */}
+        <div className="view-host">
+          {/* Agent chat: the only view that fills the remaining height */}
           <AgentView
             displayText={displayText}
             setDisplayText={setDisplayText}
@@ -282,6 +292,7 @@ const App: React.FC<AppProps> = () => {
             currentAgent={currentAgent}
             currentState={currentState}
             setCurrentState={setCurrentState}
+            llamaAppSupported={llamaAppSupported}
             contextFiles={contextFiles}
             setContextFiles={setContextFiles}
             imagePath={imagePath}
