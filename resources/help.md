@@ -319,7 +319,7 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
-## Version 0.0.71 is released (23.10.2026)
+## Version 0.0.72 is released (25.10.2026)
 ### What is new
 - Improve agent chat UI
 - Drag & drop files from OS (drag & drop from VS Code stopped working since VS Code version 1.41.0)
