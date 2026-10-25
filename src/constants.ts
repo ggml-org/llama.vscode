@@ -404,3 +404,15 @@ export const SUPPORTED_IMG_FILE_EXTS: { [key: string]: string } = {
     '.png': 'image/png',
     '.webp': 'image/webp'
 } as const;
+
+// Text file extensions the agent can read as context. Mirrors
+// ALLOWED_DROP_EXTENSIONS in ui/src/utils/dropFiles.ts and is used to build the
+// filters of the "choose a file" dialog that replaces VS Code internal drags
+// (VS Code does not deliver a payload for Explorer -> webview drags).
+export const SUPPORTED_TEXT_FILE_EXTS: string[] = [
+    'ts', 'tsx', 'js', 'jsx', 'mjs', 'cjs', 'py', 'java', 'cpp', 'c', 'h', 'hpp',
+    'rs', 'go', 'rb', 'css', 'scss', 'less', 'html', 'json', 'jsonc', 'xml',
+    'md', 'mdx', 'txt', 'rst', 'sh', 'bat', 'ps1', 'yaml', 'yml', 'toml', 'ini',
+    'cfg', 'conf', 'env', 'sql', 'graphql', 'vue', 'svelte', 'astro', 'php', 'swift',
+    'kt', 'scala', 'dart', 'lua', 'r', 'm', 'mm', 'zig', 'nim', 'v', 'cs'
+];

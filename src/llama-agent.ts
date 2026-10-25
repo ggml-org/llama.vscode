@@ -33,29 +33,45 @@ export type LogDestinationType = 'ui' | 'file' | 'memory';
  * Interface for log destinations - allows different logging strategies per session
  */
 export interface LogDestination {
-    append(delta: string): void;
+    /**
+     * Appends a delta to the log. `deliver: false` keeps the text in the log
+     * without pushing it to the UI yet - used for status text that has to stay
+     * out of the final result (e.g. the "still streaming" spinner), so the UI
+     * can be updated while a request is in flight without queueing up a
+     * postMessage per spinner tick.
+     */
+    append(delta: string, deliver?: boolean): void;
     getContents(): string;
     flushToUi?(): void;
     flushToFile?(filePath: string): Promise<void>;
 }
+
+// Characters written to UI log while the model has not started answering yet.
+// The UI turns them into a "still waiting" indicator and drops them once a real
+// answer starts, so they never show up in the final log or a restored chat.
+export const AGENT_WAITING_MARKER = '·';
+const AGENT_WAITING_MARKER_REGEX = /^[·\u00b7\u2022]+[ .]*$/;
 
 /**
  * UI log destination - writes to instance logText and updates webview (current behavior)
  */
 export class UiLogDestination implements LogDestination {
     private parent: LlamaAgent;
+    private spinnerTimer: NodeJS.Timeout | null = null;
     
     constructor(parent: LlamaAgent) {
         this.parent = parent;
     }
     
-    append(delta: string): void {
+    append(delta: string, deliver: boolean = true): void {
         if (this.parent.isTelegramBotRequest()) {
             this.parent.app.telegramBot.sendResponse(delta);
         }
         this.parent.logText += delta;
-        // Automatically flush to UI after every append for real-time updates
-        this.flushToUi();
+        // Automatically flush to UI after every append for real-time updates.
+        // Non-delivered appends (the waiting spinner) are only pushed if nothing
+        // else is pushing right now, which is what makes them cheap.
+        if (deliver || !this.spinnerTimer) this.flushToUi();
     }
     
     getContents(): string {
@@ -64,6 +80,41 @@ export class UiLogDestination implements LogDestination {
     
     flushToUi(): void {
         this.parent.app.llamaWebviewProvider.logInUi(this.parent.logText);
+    }
+    
+    /**
+     * Starts (or keeps) a spinner in the UI while the model request is in
+     * flight and no answer has been streamed yet. Without it a stop request
+     * looks like nothing happened, because the answer only arrives once the
+     * request finishes.
+     */
+    startWaitingIndicator(): void {
+        if (this.spinnerTimer) return;
+        this.spinnerTimer = setInterval(() => {
+            this.append(AGENT_WAITING_MARKER, false);
+        }, 500);
+    }
+    
+    /** Stops the spinner and removes its markers from the log. */
+    stopWaitingIndicator(): void {
+        if (this.spinnerTimer) {
+            clearInterval(this.spinnerTimer);
+            this.spinnerTimer = null;
+        }
+        this.clearWaitingIndicator();
+    }
+    
+    /**
+     * Removes the spinner markers already written to the log (no UI flush).
+     * The markers are always the tail of the log, so only the trailing run is
+     * dropped - this also covers the case where the log already had content
+     * (e.g. the user message markers) when the spinner started.
+     */
+    clearWaitingIndicator(): void {
+        const text = this.parent.logText;
+        if (!text.includes(AGENT_WAITING_MARKER)) return;
+        const stripped = text.replace(/[·\u00b7]+[ .]*$/, '');
+        if (stripped !== text) this.parent.logText = stripped;
     }
 }
 
@@ -331,6 +382,8 @@ export class LlamaAgent {
         this.sentContextFiles.clear();
         this.contextImage = "";
         this.sentContextImages = [];
+        // Nothing references the imported drop files any more; remove the copies.
+        void this.app.llamaWebviewProvider.cleanImportedDropFiles();
     }
 
     addContextProjectFile = (fileLongName: string, fileShortName: string) => {
@@ -655,7 +708,7 @@ export class LlamaAgent {
         
         // Update UI state only for non-background sessions
         if (!session.options.background) {
-            this.setAgentState("AI is working...", true);
+            this.setAgentState("AI is working...", true, session);
         }
         
         if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
@@ -664,7 +717,7 @@ export class LlamaAgent {
         if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
             vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.");
             if (!session.options.background) {
-                this.setAgentState("AI is stopped", false);
+                this.setAgentState("AI is stopped", false, session);
             }
             session.logDestination.append("Tools model is not selected");
             return "Tools model is not selected";
@@ -696,12 +749,25 @@ export class LlamaAgent {
                     let deltaBuffer = "";
                     const maxChunkSize = this.app.configuration.telegram_chunk_size;
                     
+                    // Show that the agent is waiting for the model, so a stop
+                    // request has visible feedback before the first token lands.
+                    // Only the UI destination owns a spinner instance.
+                    const waitingIndicator = session.logDestination instanceof UiLogDestination
+                        ? session.logDestination
+                        : undefined;
+                    waitingIndicator?.startWaitingIndicator();
+                    
                     let data: LlamaToolsResponse | undefined = await this.app.llamaServer.getAgentCompletion(
                         session.messages, 
                         false, 
                         (delta: string) => {
                             streamed += delta;
                             deltaBuffer += delta;
+                            
+                            // First real token: stop the spinner and strip its
+                            // trailing markers synchronously, so the answer does
+                            // not start with leftover commas.
+                            if (!streamed) waitingIndicator?.stopWaitingIndicator();
                             
                             // Append to session log destination (automatically flushes for UI destination)
                             session.logDestination.append(delta);
@@ -717,6 +783,8 @@ export class LlamaAgent {
                         session.iterations
                     );
                     
+                    waitingIndicator?.stopWaitingIndicator();
+                    
                     if (session.isTlgrBotRequest && deltaBuffer.length > 0) {
                         this.app.telegramBot.sendResponse(deltaBuffer); 
                     }
@@ -726,7 +794,7 @@ export class LlamaAgent {
                         this.app.logger.addEventLog('AGENT', 'NO_RESPONSE', `iteration=${session.iterations}`);
                         session.logDestination.append("No response from AI" + "  \n");
                         if (!session.options.background) {
-                            this.setAgentState("AI not responding", false);
+                            this.setAgentState("AI not responding", false, session);
                         }
                         return "No response from AI";
                     }
@@ -749,7 +817,7 @@ export class LlamaAgent {
                         }
 
                         if (!session.options.background) {
-                            this.setAgentState("Context limit exceeded", false);
+                            this.setAgentState("Context limit exceeded", false, session);
                         }
                         return data.error.message;
                     }
@@ -814,7 +882,7 @@ export class LlamaAgent {
                         session.logDestination.flushToUi();
                     }
                     if (!session.options.background) {
-                        this.setAgentState("Error", false);
+                        this.setAgentState("Error", false, session);
                     }
                     return "An error occurred: " + error;
                 }
@@ -839,7 +907,7 @@ export class LlamaAgent {
             }
             
             if (!session.options.background) {
-                this.setAgentState("AI finished", false);
+                this.setAgentState("AI finished", false, session);
             }
             
             // Update the selected chat for non-background sessions. Background
@@ -851,6 +919,10 @@ export class LlamaAgent {
             
             return session.response;
         } finally {
+            // Never leave the "waiting" spinner running (e.g. on stop/error).
+            if (session.logDestination instanceof UiLogDestination) {
+                session.logDestination.stopWaitingIndicator();
+            }
             // Clean up AbortController
             session.abortController = null as any;
         }
@@ -1007,12 +1079,25 @@ export class LlamaAgent {
         return true;
     }
 
+    // Requests a stop. The running loop notices `lastStopRequestTime` at every
+    // iteration boundary, so aborting the in-flight request is what makes the
+    // stop take effect immediately instead of after the current answer.
     stopAgent = () => {
         this.lastStopRequestTime = Date.now();
         if (this.abortController) {
             this.abortController.abort();
             this.abortController = null;
         }
+        // Stop every live session (foreground and background). The streaming
+        // request of a session is bound to session.abortController; the instance
+        // level controller above is only used by the summarization helper, so
+        // aborting it alone left the actual answer streaming to the end.
+        for (const session of this.activeSessions.values()) {
+            session.abortController?.abort();
+        }
+        // Give the UI instant feedback; the session will confirm with its own
+        // "Session stopped." message when it unwinds.
+        this.app.llamaWebviewProvider.setState("Stopping session...");
     }
 
     getStepContext = (plan: Step[]) => {
@@ -1045,13 +1130,17 @@ export class LlamaAgent {
             session.logDestination.flushToUi();
         }
         if (!session.options.background) {
-            this.setAgentState("AI is stopped", false);
+            this.setAgentState("AI is stopped", false, session);
         }
     }
 
-    private setAgentState(uiState: string, isInProgress: boolean) {
-        this.app.llamaWebviewProvider.setState(uiState);
+    private setAgentState(uiState: string, isInProgress: boolean, session?: AgentSession) {
+        // Set the flag first: setState() reads isAgentInProgress() to report the
+        // authoritative "session running" state to the UI.
         this.agentInProgress = isInProgress;
+        // Each session gets an increasing id, which lets the provider tell the
+        // state of the current session from a stale update of a finished one.
+        this.app.llamaWebviewProvider.setState(uiState, session?.startedAt);
     }
 
     private updateLogText(logDelta: string) {

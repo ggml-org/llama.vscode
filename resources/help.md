@@ -319,6 +319,11 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.72 is released (25.10.2026)
+### What is new
+- Improve agent chat UI
+- Drag & drop files from OS (drag & drop from VS Code stopped working since VS Code version 1.41.0)
+
 ## Version 0.0.71 is released (23.10.2026)
 ### What is new
 - Agent tool web_browser added (for searching in internet)
@@ -692,10 +697,8 @@ llama-vscode is an extension for code completion, chat with ai and agentic codin
 If you want to use llama-vscode only for code completion - you could disable RAG from llama-vscode menu to avoid indexing files.
 
 
-If you are an existing user - you could continue using llama-vscode as before.
-
-
 For more details - select 'View Documentation' from llama-vscode menu
+
 
 ## Llama Agent 
 

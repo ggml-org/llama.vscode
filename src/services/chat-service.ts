@@ -20,11 +20,16 @@ export class ChatService {
             return;
         }
         
-        let chatsItems: QuickPickItem[] = Utils.getStandardQpList(chatsList, "");
+        // chats are stored from the oldest to the newest - display them newest first
+        const sortedChats: Chat[] = [...chatsList].reverse().map(chat => {
+            chat.name = chat.name.replace(/^\*\*\*|\*\*\*$/g, '');
+            return chat;
+        });
+        let chatsItems: QuickPickItem[] = Utils.getStandardQpList(sortedChats, "");
         const chat = await vscode.window.showQuickPick(chatsItems);
         if (chat) {
             let futureChat: Chat;
-            futureChat = chatsList[parseInt(chat.label.split(". ")[0], 10) - 1] 
+            futureChat = sortedChats[parseInt(chat.label.split(". ")[0], 10) - 1] 
             if(!futureChat){
                 vscode.window.showWarningMessage("No chat selected.");
                 return;
