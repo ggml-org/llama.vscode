@@ -442,7 +442,7 @@ export class LlamaServer {
         let toolChoice = "auto";
         let allTools = [...this.app.tools.getTools(),  ...this.app.tools.vscodeTools]
         
-        if (model.trim() == "kimi-k3" && endpoint.toLowerCase().includes("api.moonshot.ai")) {
+        if (model.trim().startsWith("kimi-k3") && endpoint.toLowerCase().includes("api.moonshot.ai")) {
             allTools = [this.app.tools.getSearchToolsTool()];
             if (iterationsCount == 1) toolChoice = "required"
             else if (this.app.tools.getLastSearchToolsResult().length > 0) {

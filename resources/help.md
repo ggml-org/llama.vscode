@@ -319,6 +319,12 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.73 is released (26.10.2026)
+### What is new
+- Kimi K3.1 Pro and Kimi K3.1 Pro Highspeed added as predefined models for providers - moonshotai (supports tools on demand), openrouter, orcarouter
+
+
+
 ## Version 0.0.72 is released (25.10.2026)
 ### What is new
 - Improve agent chat UI

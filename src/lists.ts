@@ -110,6 +110,13 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isKeyRequired": false
             },
             {
+              "name": "(OrcaRouter) Kimi K3.1 Pro 1M context $2/M input $10/M output cache $0.20",
+              "localStartCommand": "",
+              "endpoint": "https://api.orcarouter.ai",
+              "aiModel": "kimi/kimi-k3.1-pro",
+              "isKeyRequired": true
+            },
+            {
               "name": "(OrcaRouter) DeepSeek V4.1 Flash 1017 1M context $0.15/M input $0.60/M output cache $0.003 (twice the price during peek hours 01:00–04:00, 06:00–10:00 (UTC))",
               "localStartCommand": "",
               "endpoint": "https://api.orcarouter.ai",
@@ -194,10 +201,28 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "aiModel": "kimi-k3"
             },
             {
+              "name": "Kimi K3.1 Pro tools on demand 1M context $2/M input, $10/M output (moonshot.ai)",
+              "endpoint": "https://api.moonshot.ai",
+              "isKeyRequired": true,
+              "aiModel": "kimi-k3.1-pro"
+            },
+            {
+              "name": "Kimi K3.1 Pro Highspeed tools on demand 1M context $4/M input, $20/M output (moonshot.ai)",
+              "endpoint": "https://api.moonshot.ai",
+              "isKeyRequired": true,
+              "aiModel": "kimi-k3.1-pro-highspeed"
+            },
+            {
               "name": "Kimi K3 - 1M context $3/M input, $15/M output, $0.30/M cache (OpenRouter)",
               "endpoint": "https://openrouter.ai/api",
               "isKeyRequired": true,
               "aiModel": "moonshotai/kimi-k3"
+            },
+            {
+              "name": "(OpenRouter) Kimi K3.1 Pro - 1M context $2/M input, $10/M output, $0.20/M cache",
+              "endpoint": "https://openrouter.ai/api",
+              "isKeyRequired": true,
+              "aiModel": "moonshotai/kimi-k3.1-pro"
             },
             {
               "name": "Google: Gemini 2.5 Flash Lite - 1.05M context $0.10/M input tokens $0.40/M output tokens (OpenRouter)",
