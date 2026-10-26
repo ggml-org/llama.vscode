@@ -23,7 +23,7 @@ Local LLM-assisted text completion, chat with AI and agentic coding extension fo
 - Llama Agent for agentic coding
 - Access to the llama-vscode agents from phone via a Telegram bot
 - Deep links [vscode://ggml-org.llama-vscode?view=agent&prompt=Hello](vscode://ggml-org.llama-vscode?view=agent&prompt=Hello) opens VS Code (if not open), shows lama-vscode agent view and enters "Hello" as a prompt
-- Kimi K3 - support for [dynamically loaded tools](https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading) (tools on demand) when used from moonshot.ai.
+- Kimi K3, Kimi K3.1 Pro, Kimi K3 Pro Highspeed - support for [dynamically loaded tools](https://platform.kimi.ai/docs/guide/use-dynamic-tool-loading) (tools on demand) when used from moonshot.ai.
 - Add/remove/export/import for models - completion, chat, embeddings and tools
 - Model selection - for completion, chat, embeddings and tools
 - Env (group of models) concept introduced. Selecting/Deselecting env selects/deselects all the models in it
