@@ -125,7 +125,16 @@ export class Tools {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
             absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
-            const stats = await fs.promises.stat(absolutePath);
+            let stats: fs.Stats;
+            try {
+                stats = await fs.promises.stat(absolutePath);
+            } catch (statError: any) {
+                // A missing file is an expected outcome for the agent, not a crash: report it
+                // clearly instead of returning the raw ENOENT text, which leaks the absolute
+                // path and does not tell the model what went wrong.
+                if (statError?.code === 'ENOENT') return "File not found: " + filePath;
+                throw statError;
+            }
             this.fileReadTimestamps.set(absolutePath, stats.mtimeMs);
             uri = vscode.Uri.file(absolutePath);
             const document = await vscode.workspace.openTextDocument(uri)
