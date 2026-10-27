@@ -24,6 +24,13 @@ interface AgentViewProps {
   inputText: string;
   setInputText: (text: string) => void;
   currentToolsModel: string;
+  // True when `endpoint_tools` is configured: the agent then works without a
+  // selected tools model, so the "no tools model" empty state would be wrong.
+  hasToolsEndpoint?: boolean;
+  // True while the extension is starting the default tools model.
+  startingDefaultToolsModel?: boolean;
+  // Name of the configured default tools model, used to explain the wait.
+  defaultToolsModel?: string;
   currentAgent: string;
   currentState: string;
   setCurrentState: (state: string) => void;
@@ -60,6 +67,9 @@ const AgentView: React.FC<AgentViewProps> = ({
   inputText,
   setInputText,
   currentToolsModel,
+  hasToolsEndpoint = false,
+  startingDefaultToolsModel = false,
+  defaultToolsModel = '',
   currentAgent,
   currentState,
   setCurrentState,
@@ -115,7 +125,7 @@ const AgentView: React.FC<AgentViewProps> = ({
   const inputTextRef = useRef(inputText);
   inputTextRef.current = inputText;
 
-  const hasToolsModel = !currentToolsModel.startsWith(NO_MODEL);
+  const hasToolsModel = !currentToolsModel.startsWith(NO_MODEL) || hasToolsEndpoint;
 
   const showNotice = useCallback((text: string, kind: Notice['kind'] = 'info', action?: Notice['action']) => {
     setNotice({ text, kind, action });
@@ -731,19 +741,48 @@ const AgentView: React.FC<AgentViewProps> = ({
 
       {!hasToolsModel ? (
         <div className="agent-empty-state">
-          <WrenchIcon size={28} />
-          <div className="agent-empty-title">No tools model selected</div>
-          <div className="agent-empty-text">
-            The agent needs a tools-capable model (or an endpoint configured in{' '}
-            <code>endpoint_tools</code>) to read files and run commands.
-          </div>
-          <button
-            type="button"
-            className="modern-btn"
-            onClick={() => vscode.postMessage({ command: 'selectModelWithTools' })}
-          >
-            Select Tools Model
-          </button>
+          {startingDefaultToolsModel ? (
+            <>
+              {/* The default tools model is being started. Showing the empty
+                  state here would be wrong (a model IS on its way) and would
+                  make the page look broken while weights download. */}
+              <span className="spinner" aria-hidden="true" />
+              <div className="agent-empty-title">Starting the default tools model…</div>
+              <div className="agent-empty-text">
+                {defaultToolsModel ? (
+                  <>
+                    <code>{defaultToolsModel}</code> is set as the default tools model and is being
+                    started. This can take a while while the model is downloading.
+                  </>
+                ) : (
+                  'The default tools model is being started. This can take a while while the model is downloading.'
+                )}
+              </div>
+              <button
+                type="button"
+                className="modern-btn secondary"
+                onClick={() => vscode.postMessage({ command: 'selectModelWithTools' })}
+              >
+                Choose Another Model
+              </button>
+            </>
+          ) : (
+            <>
+              <WrenchIcon size={28} />
+              <div className="agent-empty-title">No tools model selected</div>
+              <div className="agent-empty-text">
+                The agent needs a tools-capable model (or an endpoint configured in{' '}
+                <code>endpoint_tools</code>) to read files and run commands.
+              </div>
+              <button
+                type="button"
+                className="modern-btn"
+                onClick={() => vscode.postMessage({ command: 'selectModelWithTools' })}
+              >
+                Select Tools Model
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <>

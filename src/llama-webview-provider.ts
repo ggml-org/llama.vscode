@@ -6,7 +6,7 @@ import { LlmModel, Env, Agent, ContextCustom, AgentCommand } from './types';
 import { Configuration } from './configuration';
 import { Plugin } from './plugin';
 import { Utils } from './utils';
-import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS, SUPPORTED_TEXT_FILE_EXTS, OPENAI_COMP_PROVIDERS, OpenAiProvidersKeys, IS_LLAMA_APP_SUPPORTED } from './constants';
+import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS, SUPPORTED_TEXT_FILE_EXTS, OPENAI_COMP_PROVIDERS, OpenAiProvidersKeys, IS_LLAMA_APP_SUPPORTED, UiView } from './constants';
 import { PREDEFINED_LISTS } from './lists';
 import { WorkspaceFileCatalog } from './services/workspace-file-catalog';
 
@@ -21,6 +21,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     // from overwriting the state of the session that replaced it.
     private lastStateSessionId: number = -1;
     private lastStateFinished: boolean = true;
+    // True while the default tools model is being started for the agent page, so
+    // the UI shows "starting <default model>" instead of the empty state.
+    private startingDefaultToolsModel: boolean = false;
 
     constructor(
         private readonly _extensionUri: vscode.Uri,
@@ -892,6 +895,12 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 command: 'updateContextFiles',
                 files: Array.from(contextFiles.entries())
             });
+
+            // The agent page is what is shown by default when the sidebar opens,
+            // so the default tools model has to be picked up here as well - this
+            // is the path taken when the user just clicks the llama icon and never
+            // goes through showAgentViewInUi().
+            void this.selectDefaultToolsModelForAgentView();
         }, 1000);
 
         // Refresh context files when the webview becomes visible again
@@ -904,6 +913,10 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     command: 'updateContextFiles',
                     files: Array.from(contextFiles.entries())
                 });
+                // The user may have configured a default tools model (or an
+                // endpoint_tools) while the panel was hidden, so retry here. The
+                // call is a no-op once a model is selected.
+                void this.selectDefaultToolsModelForAgentView();
             }
         });
     }    
@@ -1018,7 +1031,17 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             modelName += ": " + status;
         this._webview?.webview?.postMessage({
             command: 'updateToolsModel',
-            model: modelName || 'No model selected'
+            model: modelName || 'No model selected',
+            // A configured endpoint_tools makes the agent usable without any
+            // selected model (llama-agent.ts accepts that combination), so the UI
+            // must not show the "no tools model" empty state in that case.
+            toolsEndpoint: this.app.modelService.hasToolsEndpoint(),
+            // True while the default tools model is being started, so the page can
+            // show progress instead of the empty state for a few seconds.
+            startingDefault: this.startingDefaultToolsModel,
+            // The default model is worth naming: it explains why the page is busy
+            // and where the selection comes from.
+            defaultModel: this.app.modelService.getDefaultToolsModel()?.name ?? ''
         });
     }
 
@@ -1098,13 +1121,17 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             command: 'updateView',
             text: view
         });
+        // Single funnel for "the agent chat page is now open" (the sidebar icon,
+        // Ctrl+Shift+A, the URI handler, moving the view to the other side, ...).
+        // Picking the default tools model here keeps every entry point covered
+        // without repeating the call at each one.
+        if (view === UiView.Agent) {
+            void this.selectDefaultToolsModelForAgentView();
+        }
     }
 
     public set(view: string) {
-        this._webview?.webview?.postMessage({
-            command: 'updateView',
-            text: view
-        });
+        this.setView(view);
     }
 
     public showEnvViewInUi() {
@@ -1126,6 +1153,41 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 });
             }
         }, 100);
+        // `extension.showLlamaWebview` already calls setView(UiView.Agent), which
+        // selects the default tools model. This call keeps the behaviour when the
+        // command is not registered (e.g. a bare provider in a test or a host that
+        // opens the view some other way); it is a guarded no-op otherwise.
+        void this.selectDefaultToolsModelForAgentView();
+    }
+
+    // The default tools model is the reason the env view offers a "set as
+    // default" button: opening the agent chat has to pick it up on its own, so a
+    // user with a default configured never sees the "no tools model" state.
+    // Guarded inside ModelService, so being called from several entry points (the
+    // page opening, the sidebar becoming visible, a starting session) is safe.
+    public async selectDefaultToolsModelForAgentView() {
+        // Nothing to do: already usable (a model is selected or endpoint_tools is
+        // configured) or no default configured. Keeping this cheap matters because
+        // it also runs on every visibility change.
+        if (!this.app.modelService.shouldStartDefaultToolsModel()) {
+            this.updateModels();
+            return;
+        }
+        this.startingDefaultToolsModel = true;
+        // Immediately, so the page shows progress before the (possibly slow)
+        // model start begins.
+        this.updateModels();
+        try {
+            await this.app.modelService.selectDefaultToolsModelIfNone();
+        } catch (error) {
+            // A failed default selection must not break opening the agent page:
+            // the empty state with the "Select Tools Model" button is the fallback.
+            console.error('Failed to select the default tools model:', error);
+        } finally {
+            this.startingDefaultToolsModel = false;
+            // Reports the outcome (new model, or back to the empty state).
+            this.updateModels();
+        }
     }
 
      

@@ -6,7 +6,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { AGENT_COMMAND, HooksEvents, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
+import { AGENT_COMMAND, HooksEvents, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
@@ -891,10 +891,12 @@ export class LlamaAgent {
             this.setAgentState("AI is working...", true, session);
         }
         
-        if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
-            await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
-        }
-        if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
+        // The agent page selects the default tools model when it is opened, but a
+        // session can also be started without the page having been shown (agent
+        // commands, telegram, hooks). Same guarded call, so a model that is
+        // already being started is never started twice.
+        const hasToolsModel = await this.app.modelService.selectDefaultToolsModelIfNone();
+        if (!hasToolsModel) {
             vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.");
             if (!session.options.background) {
                 this.setAgentState("AI is stopped", false, session);
@@ -941,13 +943,18 @@ export class LlamaAgent {
                         session.messages, 
                         false, 
                         (delta: string) => {
+                            // First real token: stop the spinner and strip its
+                            // trailing markers BEFORE the token reaches the log,
+                            // otherwise the markers stay glued inside the
+                            // streamed answer (the tail-strip cannot reach them
+                            // once more text has been appended after them). This
+                            // check must come first: `streamed` already contains
+                            // the current delta after the line below, so testing
+                            // it afterwards is never true.
+                            if (streamed.length === 0) waitingIndicator?.stopWaitingIndicator();
+                            
                             streamed += delta;
                             deltaBuffer += delta;
-                            
-                            // First real token: stop the spinner and strip its
-                            // trailing markers synchronously, so the answer does
-                            // not start with leftover commas.
-                            if (!streamed) waitingIndicator?.stopWaitingIndicator();
                             
                             // Append to session log destination (automatically flushes for UI destination)
                             session.logDestination.append(delta);
