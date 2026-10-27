@@ -8,10 +8,14 @@ import { Plugin } from './plugin';
 import { Utils } from './utils';
 import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS, SUPPORTED_TEXT_FILE_EXTS, OPENAI_COMP_PROVIDERS, OpenAiProvidersKeys, IS_LLAMA_APP_SUPPORTED } from './constants';
 import { PREDEFINED_LISTS } from './lists';
+import { WorkspaceFileCatalog } from './services/workspace-file-catalog';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
     private _webview: vscode.WebviewView | undefined;
+    private readonly workspaceFileCatalog = new WorkspaceFileCatalog();
+    private fileListCancellation: vscode.CancellationTokenSource | undefined;
+    private fileListRequestSequence = 0;
     private commandHandlers: Map<string, (message: any, webviewView: vscode.WebviewView) => Promise<void>>;
     // Used by setState() to keep state updates of an older, finished session
     // from overwriting the state of the session that replaced it.
@@ -75,6 +79,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["showAgentViewLocation", this.showAgentViewLocation],
                     ["showSelectedModels", this.showSelectedModels],
                     ["getFileList", this.getFileList],
+                    ["cancelFileList", this.cancelFileList],
                     ["getAgentCommands", this.getAgentCommands],
                     ["getAgentTools", this.getAgentTools],
                     ["addContextProjectFile", this.addContextProjectFile],
@@ -141,7 +146,19 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
 
     sendInSessionText = async (message: any, webviewView: vscode.WebviewView) => {
-        this.app.llamaAgent.setInSessionText(message.text)
+        const accepted = this.app.llamaAgent.setInSessionText(message.text ?? "");
+        if (!accepted) {
+            // No foreground session is listening (the run finished between the
+            // click and this handler): hand the text back so the composer can
+            // restore it instead of losing what the user typed.
+            webviewView.webview.postMessage({
+                command: 'inSessionTextRejected',
+                text: message.text ?? "",
+                // Context files travel with the message on the host side, so a
+                // restored draft needs them back as chips as well.
+                files: this.app.llamaAgent.getContextProjectFilesInfo()
+            });
+        }
     }
 
     sendText = async (message: any, webviewView: vscode.WebviewView) => {
@@ -397,20 +414,69 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     }
     
     getFileList = async (message: any, webviewView: vscode.WebviewView) => {
-        let fileKeys: string[]
-        let contextCustom = this.app.configuration.context_custom as ContextCustom
-        if (contextCustom && contextCustom.get_list) {
-            if (fs.existsSync(contextCustom.get_list)) {
-                let toolFunction = await Utils.getFunctionFromFile(contextCustom.get_list);
-                fileKeys = toolFunction()
-            } else fileKeys = (await Plugin.execute(contextCustom.get_list as keyof typeof Plugin.methods)) as string[];
-        } else {
-            fileKeys = await this.app.chatContext.getProjectFiles();
+        const requestId = typeof message.requestId === 'number' ? message.requestId : ++this.fileListRequestSequence;
+        let requestKind: 'workspace' | 'custom' = 'workspace';
+        let fileKeys: string[] = [];
+        let fileDetails: Record<string, string> = {};
+        let truncated = false;
+        let workspaceEmpty = false;
+        let error = '';
+        let cancellation: vscode.CancellationTokenSource | undefined;
+
+        try {
+            const contextCustom = this.app.configuration.context_custom as ContextCustom;
+            if (contextCustom && contextCustom.get_list) {
+                requestKind = 'custom';
+                if (fs.existsSync(contextCustom.get_list)) {
+                    const toolFunction = await Utils.getFunctionFromFile(contextCustom.get_list);
+                    fileKeys = await toolFunction();
+                } else {
+                    fileKeys = (await Plugin.execute(contextCustom.get_list as keyof typeof Plugin.methods)) as string[];
+                }
+                fileKeys = Array.isArray(fileKeys) ? fileKeys : [];
+            } else {
+                this.fileListCancellation?.cancel();
+                this.fileListCancellation?.dispose();
+                cancellation = new vscode.CancellationTokenSource();
+                this.fileListCancellation = cancellation;
+                const result = await this.workspaceFileCatalog.search(
+                    typeof message.query === 'string' ? message.query : '',
+                    cancellation.token
+                );
+                fileKeys = result.files;
+                fileDetails = result.fileDetails;
+                truncated = result.truncated;
+                workspaceEmpty = result.workspaceEmpty;
+            }
+        } catch (err) {
+            // A cancelled, superseded request must not replace the new picker's
+            // loading state with an error. Its response is ignored in the UI too.
+            if (cancellation?.token.isCancellationRequested) return;
+            console.error('Failed to get file list:', err);
+            error = 'Could not load the file list. Choose Retry to try again.';
+        } finally {
+            if (cancellation && this.fileListCancellation === cancellation) {
+                this.fileListCancellation = undefined;
+                cancellation.dispose();
+            }
         }
+
         webviewView.webview.postMessage({
             command: 'updateFileList',
-            files: fileKeys
+            requestId,
+            kind: requestKind,
+            files: fileKeys,
+            fileDetails,
+            truncated,
+            workspaceEmpty,
+            error
         });
+    }
+
+    cancelFileList = async (_message: any, _webviewView: vscode.WebviewView) => {
+        // getFileList's finally block owns disposal. Leaving the source in place
+        // also lets a subsequent search supersede the same in-flight operation.
+        this.fileListCancellation?.cancel();
     }
     
     getAgentCommands = async (message: any, webviewView: vscode.WebviewView) => {
@@ -418,6 +484,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         
         webviewView.webview.postMessage({
             command: 'updateFileList',
+            requestId: message.requestId,
+            kind: 'commands',
             files: agentCommands
         });
     }

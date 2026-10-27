@@ -189,7 +189,17 @@ export interface AgentSession {
     lastReqTokens: number;                 // Per-session token tracking
     abortController: AbortController;      // Per-session controller
     isTlgrBotRequest: boolean;             // Per-session flag
-    inSessionText: string;                 // Per-session text
+    // Texts the user queued with "Send to session" while the run was busy. They
+    // are handed to the model at the next tool-call boundary (or at the end of
+    // the current answer, when no tool call follows) and merged into ONE user
+    // message, because the loop drains the queue in a single step.
+    inSessionTexts: string[];
+    // True while a "Send to session" text is waiting to be delivered.
+    inSessionPending: boolean;
+    // Session whose chat the instance conversation state follows. Only the
+    // foreground session of the loaded chat may answer a "Send to session"
+    // request; background sessions have no composer of their own.
+    isForeground: boolean;
     originalQuery: string;                 // Per-session query
     contexProjectFiles: Map<string,string>; // Per-session context files
     sentContextFiles: Map<string,string>;   // Per-session sent context
@@ -213,7 +223,6 @@ export class LlamaAgent {
     public contextImage: string = "";
     public sentContextImages: string[] = [];
     private abortController: AbortController | null = null;
-    private inSessionText: string = ""
     private isTlgrBotRequest: boolean = false;
     private agentInProgress: boolean = false;
     private originalQuery: string = "";
@@ -433,6 +442,15 @@ export class LlamaAgent {
         return this.contextImage;
     }
 
+    /**
+     * The attached context files (long name -> short name), sent to the UI so it
+     * can re-attach them when a "Send to session" text is handed back because no
+     * foreground session was available to receive it.
+     */
+    getContextProjectFilesInfo = (): [string, string][] => {
+        return Array.from(this.contexProjectFiles.entries());
+    }
+
     run = async (query:string, agentCommand?:string, isTelegramBotReq:boolean=false) => {
         
         await this.askAgent(query, agentCommand, isTelegramBotReq);
@@ -451,9 +469,90 @@ export class LlamaAgent {
         });
     }
 
-    setInSessionText = async (inSessionText:string) => {
-        
-        this.inSessionText += inSessionText.trim();
+    /**
+     * Returns the session a "Send to session" text belongs to: the foreground
+     * session of the loaded chat. Background sessions (agent command scheduler,
+     * periodic tasks) run detached from the composer, so a text typed into the
+     * chat must never be injected into one of them.
+     */
+    private getForegroundSession = (): AgentSession | undefined => {
+        for (const session of this.activeSessions.values()) {
+            if (session.isForeground) return session;
+        }
+        return undefined;
+    }
+
+    /**
+     * Queues a text typed with "Send to session" into the running session. The
+     * text is handed to the model at the next tool-call boundary (or at the end
+     * of the current answer, when no tool call follows), so it reaches the agent
+     * as early as possible instead of starting a new prompt.
+     *
+     * Returns true when a session accepted the text and false when nothing could
+     * take it, so the UI can hand the text back to the composer instead of
+     * dropping it.
+     */
+    setInSessionText = (inSessionText: string): boolean => {
+        const text = inSessionText.trim();
+        if (!text) return false;
+        const session = this.getForegroundSession();
+        if (!session) return false;
+
+        const logDestination = session.logDestination;
+        // Echo the text straight into the log: the chat is where the user looked
+        // for the message, and until now the text was silently buffered and never
+        // confirmed. Conversations without a visible log get the echo only when
+        // it reaches the model (see deliverInSessionTextsForSession).
+        if (session.options.logDestination === 'ui') {
+            logDestination.append(this.formatInSessionTextForUi(text));
+        }
+        session.inSessionTexts.push(text);
+        session.inSessionPending = true;
+        if (logDestination.flushToUi && session.options.logDestination === 'ui') {
+            logDestination.flushToUi();
+        }
+        if (!session.options.background) {
+            this.setAgentState(
+                "Message queued - waiting for the next tool-call boundary",
+                true,
+                session
+            );
+        }
+        return true;
+    }
+
+    // The chat log wraps user messages in ***...*** (see parseChatSegments.ts),
+    // and the two-space hard break keeps multi-line texts from gaining blank
+    // lines of their own, which the UI would render as separate paragraphs.
+    private formatInSessionTextForUi = (text: string): string =>
+        "\n\n***" + text.split(/\r?\n/).join("  \n") + "***\n\n"
+
+    /**
+     * Delivers every text queued with "Send to session" to the model as one user
+     * message. The texts are merged because the loop drains the queue in a single
+     * step; the chat log has already shown each of them separately.
+     */
+    private deliverInSessionTextsForSession = (session: AgentSession) => {
+        if (session.inSessionTexts.length === 0) {
+            session.inSessionPending = false;
+            return;
+        }
+        const text = session.inSessionTexts.join("\n\n");
+        session.inSessionTexts = [];
+        session.inSessionPending = false;
+        if (session.options.logDestination !== 'ui') {
+            // Conversations without a visible log only learn about the text now,
+            // at the moment it is really handed to the model.
+            session.logDestination.append(this.formatInSessionTextForUi(text));
+        }
+        session.messages.push({"role": "user", "content": text});
+        this.app.logger.addEventLog('AGENT', 'IN_SESSION_TEXT', `session=${session.sessionId}`);
+        // The "Message queued..." state has served its purpose: the text is in
+        // the conversation now, so the status line must not claim otherwise for
+        // the rest of the run.
+        if (!session.options.background) {
+            this.setAgentState("AI is working...", true, session);
+        }
     }
 
     getMdFilesContext = () => {
@@ -638,7 +737,12 @@ export class LlamaAgent {
             lastReqTokens: sessionLastReqTokens,
             abortController: new AbortController(),
             isTlgrBotRequest: isTelegramBotReq,
-            inSessionText: "",
+            inSessionTexts: [],
+            inSessionPending: false,
+            // Only a run started from the chat view may take a "Send to session"
+            // text: background sessions and Telegram requests have their own
+            // conversations, even though they log to the same UI.
+            isForeground: !isBackgroundSession && !isTelegramBotReq,
             originalQuery: query,
             contexProjectFiles: new Map(this.contexProjectFiles),
             sentContextFiles: new Map(),
@@ -841,7 +945,10 @@ export class LlamaAgent {
                     
                     session.messages.push(data.choices[0].message as ChatMessage);
                     
-                    if (!session.inSessionText 
+                    // A text queued with "Send to session" must reach the agent
+                    // even when this answer ends without a tool call (the model
+                    // may simply have finished): only then may the loop stop.
+                    if (!session.inSessionPending
                         && finishReason != "tool_calls" 
                         && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
                         session.logDestination.append("  \n" + "Finish reason: " + finishReason);
@@ -863,14 +970,10 @@ export class LlamaAgent {
                         return "agent stopped by preToolUse hook";
                     }
                 
-                    if (session.inSessionText){
-                        session.logDestination.append("\n\n***" + session.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n");
-                        session.messages.push({"role": "user", "content": session.inSessionText});
-                        session.inSessionText = "";
-                        if (session.logDestination.flushToUi && session.options.logDestination === 'ui') {
-                            session.logDestination.flushToUi();
-                        }
-                    }
+                    // Hand every queued text to the model now - "Send to session"
+                    // promises delivery at the earliest possible moment, i.e. right
+                    // after this answer and the tool calls it asked for.
+                    this.deliverInSessionTextsForSession(session);
                 } catch (error) {
                     // Handle the error
                     console.error("An error occurred:", error);
@@ -919,6 +1022,17 @@ export class LlamaAgent {
             
             return session.response;
         } finally {
+            // A queued "Send to session" text that never made it into the model
+            // messages (the run was stopped or failed first) must not disappear
+            // silently: the chat keeps the text, so say why it was not used.
+            if (session.inSessionPending && session.options.logDestination === 'ui') {
+                session.logDestination.append(
+                    `  \nThe message above was not passed to the agent - the session ended before the next tool call.  \n\n`
+                );
+                if (session.logDestination.flushToUi) session.logDestination.flushToUi();
+            }
+            session.inSessionTexts = [];
+            session.inSessionPending = false;
             // Never leave the "waiting" spinner running (e.g. on stop/error).
             if (session.logDestination instanceof UiLogDestination) {
                 session.logDestination.stopWaitingIndicator();
@@ -1416,7 +1530,9 @@ export class LlamaAgent {
             lastReqTokens: this.lastReqTokens,
             abortController: new AbortController(),
             isTlgrBotRequest: this.isTelegramBotRequest(),
-            inSessionText: this.inSessionText,
+            inSessionTexts: [],
+            inSessionPending: false,
+            isForeground: false,
             originalQuery: this.originalQuery,
             contexProjectFiles: this.contexProjectFiles,
             sentContextFiles: this.sentContextFiles,

@@ -31,7 +31,7 @@ const shortenPath = (absolutePath: string): string => {
   return '…/' + parts.slice(-2).join('/');
 };
 
-export const parsePickerItem = (raw: string, mode: PickerMode): PickerItem => {
+export const parsePickerItem = (raw: string, mode: PickerMode, workspacePath?: string): PickerItem => {
   if (mode === 'files') {
     const separatorIndex = raw.indexOf('|');
     const name = (separatorIndex >= 0 ? raw.slice(0, separatorIndex) : raw).trim();
@@ -39,7 +39,7 @@ export const parsePickerItem = (raw: string, mode: PickerMode): PickerItem => {
     return {
       raw,
       name: name || raw,
-      detail: path ? shortenPath(path) : '',
+      detail: workspacePath || (path ? shortenPath(path) : ''),
       fullText: path || raw,
       kind: 'file',
       scheduled: false
@@ -83,6 +83,40 @@ export const getCommandName = (raw: string): string => {
   if (working.startsWith('[s]') || working.startsWith('[p]')) working = working.slice(3).trim();
   const separatorIndex = working.indexOf('|');
   return (separatorIndex >= 0 ? working.slice(0, separatorIndex) : working).trim();
+};
+
+const pickerMatchRank = (item: PickerItem, query: string): number => {
+  const name = item.name.toLocaleLowerCase();
+  const detail = item.detail.toLocaleLowerCase();
+  if (name === query) return 0;
+  if (name.startsWith(query)) return 1;
+  if (name.includes(query)) return 2;
+  if (detail.includes(query)) return 3;
+  return 4;
+};
+
+// All terms must match, but their order is irrelevant: "components agent" can
+// find a file by its path. Ranking only changes presentation; raw is preserved
+// for the extension's attachment command.
+export const filterPickerItems = (items: PickerItem[], filter: string): PickerItem[] => {
+  const query = filter.trim().toLocaleLowerCase();
+  if (!query) return items;
+  const terms = query.split(/\s+/).filter(Boolean);
+  return items
+    .map((item, index) => ({ item, index }))
+    .filter(({ item }) => {
+      const text = `${item.name} ${item.detail}`.toLocaleLowerCase();
+      return terms.every(term => text.includes(term));
+    })
+    .sort((a, b) => {
+      const byRank = pickerMatchRank(a.item, query) - pickerMatchRank(b.item, query);
+      if (byRank !== 0) return byRank;
+      const byName = a.item.name.localeCompare(b.item.name);
+      if (byName !== 0) return byName;
+      const byDetail = a.item.detail.localeCompare(b.item.detail);
+      return byDetail !== 0 ? byDetail : a.index - b.index;
+    })
+    .map(({ item }) => item);
 };
 
 // Where the character that opened the picker sits in the composer text. The
