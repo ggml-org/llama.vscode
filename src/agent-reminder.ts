@@ -1,5 +1,4 @@
 import { Application } from "./application";
-import { Utils } from "./utils";
 import * as fs from 'fs';
 import type { AgentSession } from './llama-agent';
 
@@ -69,18 +68,15 @@ export class AgentReminder {
         return remindersText;
     }
 
-    remindTodos = (_iteration: number ) => {
-        const todoFile = Utils.getTodosFilePath()
-        // iteration % this.app.configuration.plan_review_frequency == 0
-        if (fs.existsSync(todoFile) ){
-            const goal = "Task: \n" + this.app.llamaAgent.getOriginalQuery()
-            let currentPlan = "Below is the todo list:\n"
-            currentPlan += fs.readFileSync(todoFile, "utf-8")
-            // this.messages.push({"role": "user", "content": goal + "\n\n" + currentPlan})                   
-            return `${goal} + "\n\n" + ${currentPlan}`
-        }
-        return ''
-        
+    /**
+     * The todo reminder is added by getRemindersWithSession, which knows the
+     * session (in-memory plan or the session's todo file). It must not read the
+     * todo file here: the same text would be sent twice, and the file at the
+     * workspace root may belong to a different session or be a leftover of an
+     * interrupted run.
+     */
+    remindTodos = (_iteration: number): string => {
+        return '';
     }
 
     remindEditFile = (_iteration: number ) => {

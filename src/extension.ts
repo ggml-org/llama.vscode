@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import {Application} from "./application";
+import {Utils} from "./utils";
 
 let app: Application
 export function activate(context: vscode.ExtensionContext) {
@@ -35,6 +36,9 @@ export function activate(context: vscode.ExtensionContext) {
     app.architect.registerCommandSelectNextSuggestion(context)
     app.architect.registerCommandSelectPreviousSuggestion(context)
     app.architect.registerLlavaVscodeModelProvider(context)
+    // The agent keeps a temporary todo file in the workspace root: make sure git
+    // never sees it, even if a run is interrupted before it removes the file.
+    Utils.excludeAgentTempFilesFromGit()
     app.architect.init()
 
     
@@ -43,6 +47,9 @@ export function activate(context: vscode.ExtensionContext) {
 export async function deactivate() {
     // VS Code will dispose all registerd disposables
     app.agentCommandScheduler.stop();
+    // A run interrupted by the shutdown never cleans up after itself - the
+    // temporary todo file must not stay in the workspace.
+    app.llamaAgent.cleanupTodoFileOnExit();
     app.llamaServer.killFimCmd();
     app.llamaServer.killChatCmd();
     app.llamaServer.killEmbeddingsCmd();

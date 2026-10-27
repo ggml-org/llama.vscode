@@ -229,6 +229,8 @@ export class LlamaAgent {
     
     // Session registry for parallel/background sessions
     private activeSessions: Map<string, AgentSession> = new Map();
+    // Session owning the tool call that is currently being executed.
+    private currentToolSession: AgentSession | undefined = undefined;
 
     constructor(application: Application) {
         this.app = application;
@@ -276,6 +278,67 @@ export class LlamaAgent {
     
     getActiveSessionCount(): number {
         return this.activeSessions.size;
+    }
+
+    /**
+     * The session whose tool call is being executed right now. Tools that do not
+     * receive the session id from the model (update_todo_list, for example) use
+     * it to reach the session state, so the plan goes to the right place.
+     */
+    getCurrentToolSession(): AgentSession | undefined {
+        return this.currentToolSession;
+    }
+
+    /**
+     * Counts the live sessions that still need the given todo file. Sessions
+     * that keep their todo in memory, and the excluded session, are skipped.
+     * The todo file is a single scratch pad at the workspace root, so several
+     * sessions can share one path and the file may only be deleted by the last
+     * of them.
+     */
+    private countSessionsUsingTodoFile(todoFile: string, exceptSessionId?: string): number {
+        if (!todoFile) return 0;
+        let count = 0;
+        for (const session of this.activeSessions.values()) {
+            if (session.sessionId === exceptSessionId) continue;
+            if (session.options.useInMemoryTodo) continue;
+            if (session.todoFile === todoFile) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Deletes the temporary todo file of a finished session. The file is a
+     * scratch pad for the current tool loop only ("Todo items are not reused
+     * between the user requests"), so it must not survive the session and be
+     * committed by mistake.
+     */
+    removeTodoFileForSession(session: AgentSession) {
+        if (!session.todoFile || session.options.useInMemoryTodo) return;
+        // Another live session still plans in the same file - keep it.
+        if (this.countSessionsUsingTodoFile(session.todoFile, session.sessionId) > 0) return;
+        this.removeFile(session.todoFile);
+        session.todoContent = null;
+    }
+
+    /**
+     * Removes a todo file left behind by an interrupted or crashed run, so a new
+     * session never starts with (and reports) stale items. Skipped while any
+     * live session still uses the same file.
+     */
+    removeStaleTodoFile(todoFile: string) {
+        if (!todoFile) return;
+        if (this.countSessionsUsingTodoFile(todoFile) > 0) return;
+        this.removeFile(todoFile);
+    }
+
+    /**
+     * Drops the temporary todo file when the extension shuts down. A run that is
+     * still in progress never reaches its own cleanup, and the file must not be
+     * left in the workspace where it could be committed by mistake.
+     */
+    cleanupTodoFileOnExit() {
+        this.removeFile(Utils.getTodosFilePath());
     }
 
     preprocessCommandPrompt = async (prompt: string): Promise<string> => {
@@ -754,6 +817,13 @@ export class LlamaAgent {
             defaultAgent: this.app.isAgentSelected() ? this.app.getAgent() : undefined
         };
         
+        // Remove a todo file left behind by an interrupted run before the new
+        // session starts: todo items are never reused between user requests, so
+        // the agent must not pick up (and repeat) stale items.
+        if (!resolvedOptions.useInMemoryTodo) {
+            this.removeStaleTodoFile(session.todoFile);
+        }
+        
         // Register session
         this.registerSession(session);
         
@@ -772,13 +842,19 @@ export class LlamaAgent {
                 }
             }
             
-            // Cleanup
+            // Cleanup. Every step is guarded: this block runs on all exit paths
+            // and must always reach the todo file removal below.
             this.unregisterSession(sessionId);
-            session.abortController.abort();
-            session.abortController = null as any;
-            if (!options?.useInMemoryTodo) {
-                this.removeFile(session.todoFile);
+            try {
+                session.abortController?.abort();
+            } catch (error) {
+                console.error("Failed to abort the agent session:", error);
             }
+            session.abortController = null as any;
+            // The todo file is a scratch pad for this run only (executeSession
+            // also removes it at the end of the loop); remove it here as a
+            // safety net so no exit path can leave it in the workspace.
+            this.removeTodoFileForSession(session);
             
             // Call completion callback if provided
             if (options?.onComplete) {
@@ -1037,6 +1113,10 @@ export class LlamaAgent {
             if (session.logDestination instanceof UiLogDestination) {
                 session.logDestination.stopWaitingIndicator();
             }
+            // The tool loop is over: the todo list was only a scratch pad for
+            // this run, so the file must not survive it (otherwise it lingers in
+            // the workspace and can be committed by mistake).
+            this.removeTodoFileForSession(session);
             // Clean up AbortController
             session.abortController = null as any;
         }
@@ -1471,8 +1551,19 @@ export class LlamaAgent {
                                     }                                        
                                 }
                                 
-                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                else commandOutput = preToolResult.resultInfo;
+                                // Expose the owning session to the tool: tools that
+                                // do not get the session id from the model (e.g.
+                                // update_todo_list) need it to store their state in
+                                // the right session. Restored afterwards because a
+                                // tool may run a nested session (delegate_task).
+                                const previousToolSession = this.currentToolSession;
+                                this.currentToolSession = session;
+                                try {
+                                    if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                    else commandOutput = preToolResult.resultInfo;
+                                } finally {
+                                    this.currentToolSession = previousToolSession;
+                                }
 
                                 if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
                                     let changedFile = commandDescription;
@@ -1545,9 +1636,19 @@ export class LlamaAgent {
         };
     }
 
+    /**
+     * Deletes a temporary file without ever throwing: cleanup runs in `finally`
+     * blocks, and a failure here (for example a file locked by an editor) must
+     * not mask the session result or skip the remaining cleanup.
+     */
     private removeFile(todoFile: string) {
-        if (fs.existsSync(todoFile)) {
-            fs.unlinkSync(todoFile);
+        if (!todoFile) return;
+        try {
+            if (fs.existsSync(todoFile)) {
+                fs.unlinkSync(todoFile);
+            }
+        } catch (error) {
+            console.error("Failed to remove the temporary file " + todoFile + ":", error);
         }
     }
 
