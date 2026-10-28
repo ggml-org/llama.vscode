@@ -10,7 +10,10 @@ import { suite, test, setup } from 'mocha';
 // Mock the Application class for testing
 class MockApplication {
     configuration = {
-        MAX_CHARS_TOOL_RETURN: 10000
+        MAX_CHARS_TOOL_RETURN: 10000,
+        tool_permit_some_terminal_commands: true,
+        tool_run_terminal_command_timeout: 300,
+        tool_run_terminal_command_max_chars: 5000
     };
     
     chatContext = {
@@ -20,7 +23,9 @@ class MockApplication {
     };
     
     llamaServer = {
-        executeCommandWithTerminalFeedback: () => Promise.resolve({ stdout: '', stderr: '' })
+        executeCommandWithTerminalFeedback: () => Promise.resolve({
+            stdout: '', stderr: '', exitCode: 0, timedOut: false, cancelled: false
+        })
     };
     
     git = {

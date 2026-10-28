@@ -1354,6 +1354,16 @@
           "default": true,
           "description": "Enable/disable tool run_terminal_command"
         },
+        "llama-vscode.tool_run_terminal_command_timeout": {
+          "type": "number",
+          "default": 300,
+          "description": "How long (in seconds) a run_terminal_command may run before it is killed. Minimum 5, maximum 3600. Commands without a TTY can neither ask nor prompt, so a command that waits for input would otherwise block the agent forever."
+        },
+        "llama-vscode.tool_run_terminal_command_max_chars": {
+          "type": "number",
+          "default": 5000,
+          "description": "Max number of chars of the output returned by run_terminal_command. Limited to MAX_CHARS_TOOL_RETURN (5000). Head and tail of the output are kept, the middle is cut."
+        },
         "llama-vscode.tool_create_agent_enabled": {
           "type": "boolean",
           "default": true,

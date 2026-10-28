@@ -6,6 +6,16 @@ import fs from 'fs';
 import { Plugin } from './plugin';
 import { CONFIRMATION_STATE, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
 import { Chat, Agent } from "./types";
+import {
+    analyzeCommand,
+    formatCommandOutput,
+    DEFAULT_MAX_OUTPUT_CHARS,
+    DEFAULT_TIMEOUT_MS,
+    MAX_COMMAND_CHARS,
+    MAX_TIMEOUT_MS,
+    MIN_OUTPUT_CHARS,
+    MIN_TIMEOUT_MS
+} from "./services/terminal-command";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -54,43 +64,91 @@ export class Tools {
         this.toolsFuncDesc.set("custom_eval_tool", this.customEvalToolDesc)
         this.toolsFuncDesc.set("llama_vscode_help", this.llamaVscodeHelpDesc)
         this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc)
-        this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc);
         this.toolsFuncDesc.set("delegate_task", this.delegateTaskDesc)
-        this.toolsFuncDesc.set("create_agent ", this.createAgentDesc);
-        this.toolsFuncDesc.set("get_errors ", this.getErrorsDesc);
-        this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
+        this.toolsFuncDesc.set("create_agent", this.createAgentDesc);
+        this.toolsFuncDesc.set("get_errors", this.getErrorsDesc);
+        this.toolsFuncDesc.set("rename_symbol", this.renameSymbolDesc);
         this.toolsFuncDesc.set("multi_edit_file", this.multiEditFileDesc);
         this.toolsFuncDesc.set("web_browser", this.webBrowserDesc);
         this.toolsFuncDesc.set("search_tools", this.searchToolsDesc);
     }
 
     public runTerminalCommand = async (args: string ) => {
-        let command = JSON.parse(args).command;
-        
-        if (command == undefined) return "The terminal command is not provided."
+        let command: string | undefined;
+        try {
+            const params = JSON.parse(args);
+            // A malformed or non-string argument must not throw: the agent loop
+            // turns a throw into a 400-char slice of the stack trace.
+            if (typeof params?.command === "string") command = params.command;
+        } catch {
+            return "The tool arguments are not valid JSON.";
+        }
 
-        if ((!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
-            let [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command + 
+        if (command == undefined || command.trim() === "") return "The terminal command is not provided."
+        if (command.length > MAX_COMMAND_CHARS) return "The terminal command is too long (" + command.length +
+            " chars, max " + MAX_COMMAND_CHARS + "). Split it into smaller commands."
+
+        const analysis = analyzeCommand(command);
+        // The permission gate: a command that can change files or the environment
+        // is ALWAYS confirmed, whatever the "don't ask again" shortcut says.
+        if (analysis.modifying || !this.app.configuration.tool_permit_some_terminal_commands) {
+            const [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command +
+                (analysis.modifying ? "\n\n Reason: " + analysis.reason : "") +
                 "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
             if (yesDontAsk) {
-                this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
+                // Awaited on purpose: a second tool call of the same batch must
+                // already see the elevated value or it prompts again.
+                await this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
                 vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
             }
-            if (!yesApply) return "The user doesn't give a permission to execute this command.";;
+            if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
         }
-        
-        let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
-        return (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
+
+        const session = this.app.llamaAgent?.getCurrentToolSession();
+        // The system prompt tells the model the project root is the workspace
+        // folder, so relative paths must resolve there and not in whatever cwd
+        // the extension host happens to have.
+        const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const timeoutMs = this.getTerminalTimeoutMs();
+
+        const result = await this.app.llamaServer.executeCommandWithTerminalFeedback(command, {
+            cwd,
+            timeoutMs,
+            // Stop aborts the session controller only; without passing it here
+            // the child process kept running and the tool call never returned.
+            signal: session?.abortController?.signal
+        });
+
+        const note = result.timedOut
+            ? "The command timed out after " + Math.round(timeoutMs / 1000) + "s and was killed. " +
+              "Split it into smaller commands or raise the setting tool_run_terminal_command_timeout."
+            : result.cancelled ? "Command cancelled by the user." : undefined;
+
+        return formatCommandOutput(result, { maxChars: this.getTerminalMaxChars(), note });
     }
 
+    /** Timeout in ms, clamped so a wrong setting cannot hang the agent forever. */
+    private getTerminalTimeoutMs = (): number =>
+        Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS,
+            Number(this.app.configuration.tool_run_terminal_command_timeout) * 1000 || DEFAULT_TIMEOUT_MS))
+
+    /** Output limit: a setting may only lower MAX_CHARS_TOOL_RETURN. */
+    private getTerminalMaxChars = (): number =>
+        Math.min(this.app.configuration.MAX_CHARS_TOOL_RETURN,
+            Math.max(MIN_OUTPUT_CHARS, Number(this.app.configuration.tool_run_terminal_command_max_chars) || DEFAULT_MAX_OUTPUT_CHARS))
+
     public runTerminalCommandDesc = async (args: string ) => {
-        let command = JSON.parse(args).command;
+        let command = "";
+        try {
+            const params = JSON.parse(args);
+            if (typeof params?.command === "string") command = params.command;
+        } catch { /* the log line below still renders */ }
         // The agent log is line based and a tool description is one paragraph
         // that must not contain an empty line: the UI ends the tool block there
         // and renders the rest of the command as text of the AI answer. A blank
         // line inside a command (heredoc bodies, scripted steps) is kept as a
         // whitespace-only line, which looks the same but stays in the paragraph.
-        return "Executing terminal command: " + (command ?? "").split(/\r?\n/)
+        return "Executing terminal command: " + command.split(/\r?\n/)
             .map((line: string) => (line.trim().length === 0 ? " " : line))
             .join("\n");
     }
@@ -799,7 +857,7 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "run_terminal_command",
-                    "description": "Runs the provided command in a terminal and returns the result. For Windows uses powershell.",
+                    "description": "Runs the provided command in a non-interactive shell (PowerShell on Windows) and returns its output. The command runs in the project root folder, without a TTY and without stdin, so interactive commands (git commit, nano, less, npm create) will hang or fail - avoid them. Output is truncated, keeping its head and tail. Timeout: " + this.app.configuration.tool_run_terminal_command_timeout + "s.",
                     "parameters": {
                         "type": "object",
                         "properties": {

@@ -79,6 +79,8 @@ export class Configuration {
     rag_ignore_file = ""
 
     tool_run_terminal_command_enabled = true;
+    tool_run_terminal_command_timeout = 300;
+    tool_run_terminal_command_max_chars = 5000;
     tool_create_agent_enabled = true;
     tool_search_source_enabled = true;
     tool_read_file_enabled = true;
@@ -254,6 +256,8 @@ export class Configuration {
         this.rag_max_context_files = Number(config.get<number>("rag_max_context_files"));
         this.rag_max_context_file_chars = Number(config.get<number>("rag_max_context_file_chars"));
         this.tool_run_terminal_command_enabled = Boolean(config.get<boolean>("tool_run_terminal_command_enabled"));
+        this.tool_run_terminal_command_timeout = Number(config.get<number>("tool_run_terminal_command_timeout"));
+        this.tool_run_terminal_command_max_chars = Number(config.get<number>("tool_run_terminal_command_max_chars"));
         this.tool_create_agent_enabled = Boolean(config.get<boolean>("tool_create_agent_enabled"));
         this.tool_search_source_enabled = Boolean(config.get<boolean>("tool_search_source_enabled"));
         this.tool_read_file_enabled = Boolean(config.get<boolean>("tool_read_file_enabled"));

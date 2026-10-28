@@ -9,6 +9,7 @@ import { URL } from 'url';
 import { Application } from "./application";
 import { UI_TEXT_KEYS } from "./constants";
 import { HtmlText } from "./web-browser";
+import { analyzeCommand } from "./services/terminal-command";
 
 
 interface BM25Stats {
@@ -210,106 +211,11 @@ export class Utils {
 
     
 
-    static isModifyingCommand = (command: string): boolean => {
-        if (!command || typeof command !== 'string') {
-            return false;
-        }
-
-        const normalizedCmd = command.trim().toLowerCase();
-
-        // List of modifying command patterns (both Windows and Unix)
-        const modifyingPatterns = [
-            // File operations
-            /^(rm|del|erase|remove)\b/,
-            /^rd\b/,
-            /^rmdir\b/,
-            /^(mv|move|ren|rename)\b/,
-            /^(cp|copy)\b/,
-            /^mkdir\b/,
-            /^ni\b/,          // New-Item (PowerShell)
-            /^out\-file\b/,
-            /^set\-content\b/,
-            /^add\-content\b/,
-            /^scp\b/,
-            /^rsync\b/,
-            
-            // System modifications
-            /^chmod\b/,
-            /^chown\b/,
-            /^attrib\b/,
-            /^icacls\b/,
-            /^cacls\b/,
-            /^reg\b/,         // regedit operations
-            /^netsh\b/,
-            /^net\b/,
-            /^diskpart\b/,
-            /^format\b/,
-            
-            // Package management
-            /^(apt|yum|dnf|pacman|brew|pip|npm|pnpm|yarn|dotnet|winget|choco)\b/,
-            
-            // Process management
-            /^(kill|taskkill|stop\-process)\b/,
-            /^start\b/,
-            
-            // Network operations
-            /^(ssh|ftp|sftp)\b/,
-            
-            // Installation/execution
-            /^\.\/\S+/,
-            /^\.\\\S+/,
-            /^\w+:\\\S+/,
-            /^\.\S+\b/,
-            /^install\b/,
-            /^uninstall\b/,
-            /^setup\b/,
-            /^msiexec\b/,
-            
-            // Dangerous patterns
-            /^>/,             // Output redirection (overwrite)
-            /^>>/,            // Output redirection (append)
-            /^\|/,            // Piping might modify if the receiving command does
-            /^&\S*/,          // Command chaining
-            /^;\S*/,          // Command sequencing
-            /^\$\w+\s*=/      // Variable assignment (might lead to modifications)
-        ];
-
-        if (modifyingPatterns.some(pattern => pattern.test(normalizedCmd))) {
-            return true;
-        }
-
-        const readOnlyPatterns = [
-            /^echo\b/,
-            /^dir\b/,
-            /^ls\b/,
-            /^cat\b/,
-            /^type\b/,
-            /^get\-content\b/,
-            /^get\-childitem\b/,
-            /^pwd\b/,
-            /^cd\b/,
-            /^chdir\b/,
-            /^where\b/,
-            /^which\b/,
-            /^find\b/,
-            /^grep\b/,
-            /^select\-string\b/,
-            /^help\b/,
-            /^man\b/,
-            /^--help\b/,
-            /^-h\b/,
-            /^\?/,
-            /^exit\b/,
-            /^clear\b/,
-            /^cls\b/
-        ];
-
-        if (readOnlyPatterns.some(pattern => pattern.test(normalizedCmd))) {
-            return false;
-        }
-
-        return true;
-    }
+    /**
+     * @deprecated Use analyzeCommand().modifying from services/terminal-command.
+     * Kept as a thin delegator so existing call sites keep working.
+     */
+    static isModifyingCommand = (command: string): boolean => analyzeCommand(command).modifying;
 
     
 
