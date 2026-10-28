@@ -384,6 +384,7 @@ export enum OpenAiProvidersKeys {
   OrcaRouter = 'OrcaRouter...',
   ApiRoute = 'API Route...',
   AtlasCloud = 'Atlas Cloud...',
+  Runcrate = 'Runcrate...',
   Custom = 'Custom...'
 }
 // The "Llama app" provider is available only on Windows and macOS.
@@ -395,6 +396,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.OrcaRouter]: "https://api.orcarouter.ai",
   [OpenAiProvidersKeys.AtlasCloud]: "https://api.atlascloud.ai",
   [OpenAiProvidersKeys.ApiRoute]: "https://global.api-route.com",
+  [OpenAiProvidersKeys.Runcrate]: "https://api.runcrate.ai",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
 
