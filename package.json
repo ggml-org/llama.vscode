@@ -683,7 +683,7 @@
                 "search_source: searches the code base for the provided query and returns the most relevant chungs (works if RAG is enabled)",
                 "read_file: reads a file",
                 "list_directory: returns the content of a directory/folder",
-                "regex_search: does a regex search in the code base (requires RAG)",
+                "regex_search: does a regex search in the code base (does not require RAG)",
                 "delete_file: deletes the a file",
                 "edit_file: creates are changes a source file",
                 "ask_user: asks user a question without interrupting the tools loop of the agent",

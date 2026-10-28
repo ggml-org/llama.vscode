@@ -281,81 +281,25 @@ const isIgnoredValue = (
     return false;
 };
 
-export class WorkspaceFileCatalog {
-    private ignoreCache: WorkspaceIgnoreCacheEntry | undefined;
+// Reads every local ignore file of the workspace folders, with a short TTL.
+// Ignore-file support lives here because workspace.findFiles deliberately passes
+// `useIgnoreFiles: { local: false }`, i.e. VS Code never applies `.gitignore` to
+// an extension's own file search. Extracted into its own class so the file
+// picker (WorkspaceFileCatalog) and the agent's regex_search share one
+// implementation - and, when wired through Application, one cache.
+export class WorkspaceIgnoreFileCache {
+    private cache: WorkspaceIgnoreCacheEntry | undefined;
 
     constructor(
-        private readonly host: WorkspaceFileCatalogHost = createWorkspaceFileCatalogHost(),
-        private readonly resultLimit: number = DEFAULT_WORKSPACE_FILE_RESULT_LIMIT,
-        private readonly ignoreCacheTtlMs: number = DEFAULT_IGNORE_CACHE_TTL_MS
+        private readonly host: WorkspaceFileCatalogHost,
+        private readonly ttlMs: number = DEFAULT_IGNORE_CACHE_TTL_MS
     ) {}
 
-    async search(query: string, token: vscode.CancellationToken): Promise<WorkspaceFileList> {
-        const workspaceEmpty = !this.host.workspaceFolders || this.host.workspaceFolders.length === 0;
-        if (workspaceEmpty) {
-            return { files: [], fileDetails: {}, truncated: false, workspaceEmpty: true };
-        }
-
-        const filesExclude = this.host.getConfiguration('files').get<Record<string, unknown>>('exclude', {});
-        const searchExclude = this.host.getConfiguration('search').get<Record<string, unknown>>('exclude', {});
-        const uris = await this.host.findFiles(
-            createWorkspaceFileSearchPattern(query),
-            createWorkspaceFileExclude(filesExclude, searchExclude),
-            this.resultLimit + 1,
-            token
-        );
-        if (token.isCancellationRequested) {
-            return { files: [], fileDetails: {}, truncated: false, workspaceEmpty: false };
-        }
-
-        const roots = this.host.workspaceFolders!.map(folder => folder.uri.fsPath);
-        const ignoreRules = await this.getIgnoreRules(roots, token);
-        if (token.isCancellationRequested) {
-            return { files: [], fileDetails: {}, truncated: false, workspaceEmpty: false };
-        }
-
-        const seenPaths = new Set<string>();
-        const candidates: Array<WorkspaceFileDescriptor & { absolutePath: string }> = [];
-        for (const uri of uris) {
-            if (seenPaths.has(uri.fsPath)) continue;
-            seenPaths.add(uri.fsPath);
-            const name = path.basename(uri.fsPath);
-            const relativePath = this.host.asRelativePath(uri).replace(/\\/g, '/');
-            if (!matchesWorkspaceFileQuery(name, relativePath, query)) continue;
-            // The picker offers what the Explorer shows, so ignore files apply
-            // to typed searches too: "dist" must not resurface build output.
-            // The picker's "Choose file..." action still reaches any file.
-            if (ignoreRules.ignores(uri.fsPath)) continue;
-            candidates.push({ name, relativePath, absolutePath: uri.fsPath });
-        }
-
-        const ranked = rankWorkspaceFiles(candidates, query);
-        const selected = ranked.slice(0, this.resultLimit);
-        const files: string[] = [];
-        const fileDetails: Record<string, string> = {};
-        for (const item of selected) {
-            const raw = `${item.name} | ${item.absolutePath}`;
-            files.push(raw);
-            fileDetails[raw] = item.relativePath;
-        }
-
-        return {
-            files,
-            fileDetails,
-            truncated: uris.length > this.resultLimit || ranked.length > this.resultLimit,
-            workspaceEmpty: false
-        };
-    }
-
-    // Reads every local ignore file of the workspace folders. Ignore-file
-    // support lives here because workspace.findFiles deliberately passes
-    // `useIgnoreFiles: { local: false }`, i.e. VS Code never applies
-    // `.gitignore` to an extension's own file search.
-    private async getIgnoreRules(workspaceRoots: string[], token: vscode.CancellationToken): Promise<WorkspaceIgnoreRules> {
+    async getRules(workspaceRoots: string[], token?: vscode.CancellationToken): Promise<WorkspaceIgnoreRules> {
         const snapshot = workspaceRoots.join('\n');
         const now = Date.now();
-        const cached = this.ignoreCache;
-        if (cached && cached.snapshot === snapshot && now - cached.readAt < this.ignoreCacheTtlMs) {
+        const cached = this.cache;
+        if (cached && cached.snapshot === snapshot && now - cached.readAt < this.ttlMs) {
             return createWorkspaceIgnoreRules(cached.ignoreFiles, workspaceRoots);
         }
 
@@ -392,7 +336,76 @@ export class WorkspaceFileCatalog {
         const ignoreFiles = contents.filter(
             (item): item is WorkspaceIgnoreFile => item !== undefined
         );
-        this.ignoreCache = { ignoreFiles, snapshot, readAt: now };
+        this.cache = { ignoreFiles, snapshot, readAt: now };
         return createWorkspaceIgnoreRules(ignoreFiles, workspaceRoots);
+    }
+}
+
+export class WorkspaceFileCatalog {
+    private readonly ignoreFiles: WorkspaceIgnoreFileCache;
+
+    constructor(
+        private readonly host: WorkspaceFileCatalogHost = createWorkspaceFileCatalogHost(),
+        private readonly resultLimit: number = DEFAULT_WORKSPACE_FILE_RESULT_LIMIT,
+        ignoreCacheTtlMs: number = DEFAULT_IGNORE_CACHE_TTL_MS
+    ) {
+        this.ignoreFiles = new WorkspaceIgnoreFileCache(host, ignoreCacheTtlMs);
+    }
+
+    async search(query: string, token: vscode.CancellationToken): Promise<WorkspaceFileList> {
+        const workspaceEmpty = !this.host.workspaceFolders || this.host.workspaceFolders.length === 0;
+        if (workspaceEmpty) {
+            return { files: [], fileDetails: {}, truncated: false, workspaceEmpty: true };
+        }
+
+        const filesExclude = this.host.getConfiguration('files').get<Record<string, unknown>>('exclude', {});
+        const searchExclude = this.host.getConfiguration('search').get<Record<string, unknown>>('exclude', {});
+        const uris = await this.host.findFiles(
+            createWorkspaceFileSearchPattern(query),
+            createWorkspaceFileExclude(filesExclude, searchExclude),
+            this.resultLimit + 1,
+            token
+        );
+        if (token.isCancellationRequested) {
+            return { files: [], fileDetails: {}, truncated: false, workspaceEmpty: false };
+        }
+
+        const roots = this.host.workspaceFolders!.map(folder => folder.uri.fsPath);
+        const ignoreRules = await this.ignoreFiles.getRules(roots, token);
+        if (token.isCancellationRequested) {
+            return { files: [], fileDetails: {}, truncated: false, workspaceEmpty: false };
+        }
+
+        const seenPaths = new Set<string>();
+        const candidates: Array<WorkspaceFileDescriptor & { absolutePath: string }> = [];
+        for (const uri of uris) {
+            if (seenPaths.has(uri.fsPath)) continue;
+            seenPaths.add(uri.fsPath);
+            const name = path.basename(uri.fsPath);
+            const relativePath = this.host.asRelativePath(uri).replace(/\\/g, '/');
+            if (!matchesWorkspaceFileQuery(name, relativePath, query)) continue;
+            // The picker offers what the Explorer shows, so ignore files apply
+            // to typed searches too: "dist" must not resurface build output.
+            // The picker's "Choose file..." action still reaches any file.
+            if (ignoreRules.ignores(uri.fsPath)) continue;
+            candidates.push({ name, relativePath, absolutePath: uri.fsPath });
+        }
+
+        const ranked = rankWorkspaceFiles(candidates, query);
+        const selected = ranked.slice(0, this.resultLimit);
+        const files: string[] = [];
+        const fileDetails: Record<string, string> = {};
+        for (const item of selected) {
+            const raw = `${item.name} | ${item.absolutePath}`;
+            files.push(raw);
+            fileDetails[raw] = item.relativePath;
+        }
+
+        return {
+            files,
+            fileDetails,
+            truncated: uris.length > this.resultLimit || ranked.length > this.resultLimit,
+            workspaceEmpty: false
+        };
     }
 }

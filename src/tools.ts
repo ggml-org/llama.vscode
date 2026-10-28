@@ -222,13 +222,30 @@ export class Tools {
         return "Listing directory: " + dirPath;
     }
 
+    // RAG-free: searches the workspace files themselves (see
+    // services/workspace-text-search.ts). indexFilesIfNeeded() deliberately stays
+    // out of this tool - search_source is the only one that needs the index.
     public getRegextMatches = async (args: string ) => {
-        let params = JSON.parse(args);
-        
-        if (params.regex == undefined) return "The regex is not provided."
-        
-        await this.indexFilesIfNeeded();
-        return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern??"", params.regex, this.app.chatContext.entries)
+        let params: any;
+        try { params = JSON.parse(args); } catch { return "The tool arguments are not valid JSON."; }
+
+        if (params.regex == undefined || String(params.regex) === "") return "The regex is not provided."
+
+        // The agent's Stop button aborts an AbortController, not a
+        // vscode.CancellationToken, so cancellation is passed as a predicate.
+        const session = this.app.llamaAgent?.getCurrentToolSession();
+        const result = await this.app.workspaceTextSearch.search(
+            {
+                regex: String(params.regex),
+                includePattern: params.include_pattern,
+                excludePattern: params.exclude_pattern
+            },
+            undefined,
+            () => !!session?.abortController?.signal.aborted,
+            this.app.configuration.MAX_CHARS_TOOL_RETURN
+        );
+
+        return result.text;
     }   
 
     public getRegextMatchesDesc = async (args: string ) => {
@@ -882,7 +899,7 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "regex_search",
-                    "description": "Fast text-based regex search in the code base (prefer it for finding exact function names or expressions) that finds exact pattern matches with file names and line numbers within files or directories. If there is no exclude_pattern - provide an empty string. Returns up to 50 matches in format file_name:line_number: line_content",
+                    "description": "Fast text-based regex search in the workspace (prefer it for finding exact function names or expressions). Returns up to 50 matches as file_name:line_number: line_content. Respects .gitignore, node_modules and the files.exclude/search.exclude settings. If there is no exclude_pattern - provide an empty string.",
                     "parameters": {
                         "type": "object",
                         "properties": {
