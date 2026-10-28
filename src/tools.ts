@@ -125,7 +125,16 @@ export class Tools {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
             absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
-            const stats = await fs.promises.stat(absolutePath);
+            let stats: fs.Stats;
+            try {
+                stats = await fs.promises.stat(absolutePath);
+            } catch (statError: any) {
+                // A missing file is an expected outcome for the agent, not a crash: report it
+                // clearly instead of returning the raw ENOENT text, which leaks the absolute
+                // path and does not tell the model what went wrong.
+                if (statError?.code === 'ENOENT') return "File not found: " + filePath;
+                throw statError;
+            }
             this.fileReadTimestamps.set(absolutePath, stats.mtimeMs);
             uri = vscode.Uri.file(absolutePath);
             const document = await vscode.workspace.openTextDocument(uri)
@@ -636,31 +645,31 @@ export class Tools {
 
         if (params.todos == undefined) return "The todos are not provided."
         
-        // Check if a sessionId is provided for session-scoped storage
-        const sessionId = params.sessionId as string | undefined;
+        // The session that is currently executing a tool call owns the todo
+        // list. It is the reliable source of truth: the model never sends the
+        // session id, and the todo file must not be written for sessions that
+        // keep their plan in memory (subagents, background runs) - otherwise a
+        // global todo file would be created that no session cleans up.
+        const session = this.app.llamaAgent?.getCurrentToolSession()
+            ?? (params.sessionId ? this.app.llamaAgent?.getSession(params.sessionId as string) : undefined);
         
-        if (sessionId && this.app.llamaAgent) {
-            const session = this.app.llamaAgent.getSession(sessionId);
-            if (session) {
-                // Update in-memory todo for this session
-                session.todoContent = params.todos;
-                
-                // Also update file if not using pure in-memory mode
-                if (!session.options.useInMemoryTodo && session.todoFile) {
-                    try {
-                        fs.writeFileSync(session.todoFile, params.todos, 'utf8');
-                    } catch (error) {
-                        console.error('Failed to write todo file:', error);
-                    }
+        if (session) {
+            // Always keep the current plan in memory (reminders read it back).
+            session.todoContent = params.todos;
+            
+            // Write the file only for sessions that use it for the plan.
+            if (!session.options.useInMemoryTodo && session.todoFile) {
+                try {
+                    fs.writeFileSync(session.todoFile, params.todos, 'utf8');
+                } catch (error) {
+                    console.error('Failed to write todo file:', error);
                 }
-                
-                return "The todos are created/updated for session " + sessionId + ".";
-            } else {
-                return "Session not found: " + sessionId;
             }
+            
+            return "The todos are created/updated.";
         }
         
-        // Fallback to global file (backward compatibility)
+        // Fallback to global file (tool called outside an agent session).
         let filePath = Utils.getTodosFilePath();
         
         try {
@@ -676,7 +685,6 @@ export class Tools {
         let ret = "update_todo_list tool is executed. \n\n"
         let params = JSON.parse(args);
         if (params.todos) ret += params.todos.split(/\r?\n/).join("  \n")
-        if (params.sessionId) ret += "\n\nSession ID: " + params.sessionId
         return ret
     }
 
@@ -713,7 +721,12 @@ export class Tools {
             await this.app.chatService.selectUpdateChat(newChat)
 
             if (params.task) {
-                finalAnswer = await this.app.llamaAgent.askAgent(params.task)
+                // The subagent keeps its plan in memory: the todo file at the
+                // workspace root belongs to the parent session's tool loop, and
+                // a nested run must not overwrite (or delete) it.
+                finalAnswer = await this.app.llamaAgent.askAgent(params.task, undefined, false, {
+                    useInMemoryTodo: true
+                })
             } else {
                 return "No task provided."
             }

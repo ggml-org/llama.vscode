@@ -1550,7 +1550,7 @@ Llama-vscode provides a tool update_todo_list to the agent for planning and trac
 
 ### How to use it
 Update todos tool is based on Roocode's tool with the same name (the tool description is copied from Roocode). 
-If the update_todo_list is enabled (selected), the agent could use it for planning non trivial tasks (user requests). This tools is used for both creating and updating the todo items. The todo items are saved in file <project_root>\.llama-vscode-todos.md. The todo items are updated by the agent to track the execution of the plan. This file is removed after the execution of the current user request is finished. If this file is updated by the user, the change might be taken into account by the agent. The content of the file (together with the inital user request) is sent to the agent periodically (every 5-th iteration by default, but this could be changed from setting plan_review_frequency). The agent could overwrite the user changes in the todo items file before reading it.  
+If the update_todo_list is enabled (selected), the agent could use it for planning non trivial tasks (user requests). This tools is used for both creating and updating the todo items. The todo items are saved in file <project_root>\.llama-vscode-todos.md. The todo items are updated by the agent to track the execution of the plan. This file is temporary and it is removed automatically at the end of the agent tool loop (when the current user request is finished, fails or is stopped). As an additional guard, the extension adds the file to the local .git/info/exclude, so it can not be committed by mistake even if a run is interrupted (VS Code closed, crash). If this file is updated by the user, the change might be taken into account by the agent. The content of the file (together with the inital user request) is sent to the agent periodically (every 5-th iteration by default, but this could be changed from setting plan_review_frequency). The agent could overwrite the user changes in the todo items file before reading it.  
 Each time the agent uses the tool, the todo items are shown in the agent chat window. The state of the items tracked with [ ] (not started), [-] (in progres) [x] (finished)
 Todo items are not reused between the user requests.
 
@@ -1558,9 +1558,7 @@ Settings:
 - plan_review_frequency: Sets how often the todo items are sent to the agent to remind/review what is the current state of the plan
 - tool_update_todo_list_enabled - controls if the tool is enabled
 
-<img width="750" height="922" alt="image" src="https://github.com/user-attachments/assets/a4049df0-17da-4c6d-868f-a6bcbfa5f65c" />
-
-## Use cases  
+<img width="750" height="922" alt="image" src="https://github.com/user-attachments/assets/a4049df0-17da-4c6d-868f-a6bcbfa5f65c" />## Use cases  
 
 ### Overview
 The use cases below describe how to prepare and use llama-vscode in some specific cases. There are already some configurations for models and env, which could be selected and used directly

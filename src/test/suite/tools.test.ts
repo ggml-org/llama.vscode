@@ -100,14 +100,20 @@ suite('Tools readFile Function Test Suite', () => {
     });
 
     test('should return error for non-existent file', async () => {
-        const args = JSON.stringify({
-            file_path: 'non-existent-file.txt',
-            first_line: 1,
-            last_line_inclusive: 10
-        });
+        const originalGetAbsolutFilePath = Utils.getAbsolutFilePath;
+        Utils.getAbsolutFilePath = () => path.resolve(__dirname, '../../../definitely-not-present-llama-test.txt');
+        try {
+            const args = JSON.stringify({
+                file_path: 'non-existent-file.txt',
+                first_line: 1,
+                last_line_inclusive: 10
+            });
 
-        const result = await tools.readFile(args);
-        assert.ok(result.includes('File not found'), `Expected file not found error but got: ${result}`);
+            const result = await tools.readFile(args);
+            assert.ok(result.includes('File not found'), `Expected file not found error but got: ${result}`);
+        } finally {
+            Utils.getAbsolutFilePath = originalGetAbsolutFilePath;
+        }
     });
 
     test('should return error for invalid line range', async () => {

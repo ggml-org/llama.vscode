@@ -899,9 +899,14 @@ export class Utils {
         return lines.join('\n'); // Join the remaining lines back into a string
     }
 
+    // Name of the temporary todo list file the agent keeps in the workspace
+    // root while a tool loop runs. It is a scratch pad only: it must never be
+    // committed, which is why the agent removes it when the session ends.
+    static readonly TODO_FILE_NAME = '.llama-vscode-todos.md';
+
     static getTodosFilePath = () => {
         let filePath = "";
-        const TODO_FILE = '.llama-vscode-todos.md';
+        const TODO_FILE = Utils.TODO_FILE_NAME;
         if (!vscode.workspace.workspaceFolders || vscode.workspace.workspaceFolders.length === 0) {
             filePath = TODO_FILE;
         } else {
@@ -909,6 +914,48 @@ export class Utils {
             filePath = path.join(workspaceRoot, TODO_FILE);
         }
         return filePath;
+    }
+
+    /**
+     * Adds the temporary agent files to the local git exclude file of the
+     * workspace, so they can never be committed - not even when a run is
+     * interrupted (VS Code closed, crash) and the file survives on disk.
+     *
+     * `.git/info/exclude` is used on purpose: it is local to the repository and
+     * is not part of the project, so the user's `.gitignore` is left untouched.
+     */
+    static excludeAgentTempFilesFromGit = () => {
+        const workspaceRoot = Utils.getWorkspaceFolder();
+        if (!workspaceRoot) return;
+
+        const patterns = [Utils.TODO_FILE_NAME, '.llama-vscode-logs-*.md'];
+        try {
+            const gitDir = path.join(workspaceRoot, '.git');
+            // A worktree/submodule stores .git as a file - not supported here.
+            if (!fs.existsSync(gitDir) || !fs.statSync(gitDir).isDirectory()) return;
+
+            const infoDir = path.join(gitDir, 'info');
+            const excludeFile = path.join(infoDir, 'exclude');
+            const existing = fs.existsSync(excludeFile) ? fs.readFileSync(excludeFile, 'utf-8') : '';
+
+            const missing = patterns.filter(pattern => {
+                // Match the pattern as a whole line to avoid partial matches.
+                const lineRegex = new RegExp('^' + pattern.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'm');
+                return !lineRegex.test(existing);
+            });
+            if (missing.length === 0) return;
+
+            if (!fs.existsSync(infoDir)) fs.mkdirSync(infoDir, { recursive: true });
+            const newLine = existing === '' || existing.endsWith('\n') ? '' : '\n';
+            fs.appendFileSync(
+                excludeFile,
+                newLine + "# Temporary files of the llama-vscode agent\n" + missing.join('\n') + '\n',
+                'utf-8'
+            );
+        } catch (error) {
+            // Never break activation because of this best-effort guard.
+            console.warn('Could not add the llama-vscode temp files to .git/info/exclude:', error);
+        }
     }
 
     static getWorkspaceFolder = () => {

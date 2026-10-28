@@ -191,7 +191,7 @@ const Composer: React.FC<ComposerProps> = ({
                 className="modern-btn secondary send-in-session"
                 onClick={onSendInSession}
                 disabled={!hasText || stopRequested}
-                title="Send in the current session, at the next tool-call boundary (Ctrl/Cmd+Enter)"
+                title="Queue a message for the running session - the agent gets it at the next tool-call boundary (Ctrl/Cmd+Enter)"
               >
                 <QueueIcon />
                 <span>Send to session</span>
@@ -229,7 +229,7 @@ const Composer: React.FC<ComposerProps> = ({
       </div>
 
       <div className="composer-footer">
-        <span className="composer-hint">Enter to send · Shift+Enter for a new line · @ files · / commands</span>
+        <span className="composer-hint">Enter to send · Shift+Enter for a new line · Ctrl/Cmd+Enter queues for the running session · @ files · / commands</span>
         <span className="composer-context">
           <button
             type="button"

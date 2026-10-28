@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { vscode } from '../../types/vscode';
-import { EMPTY_REQUEST_STATS, RequestStats, useExtensionMessages } from '../../hooks/useExtensionMessages';
+import { EMPTY_REQUEST_STATS, FileListUpdate, RequestStats, useExtensionMessages } from '../../hooks/useExtensionMessages';
 import { bestEffortDroppedFileName, collectDroppedFiles, isDropExtensionAllowed, readableDroppedFileCount, readDroppedFileContents } from '../../utils/dropFiles';
 import { getCommandName, PickerItem, PickerMode, PickerTrigger, replaceTrigger } from '../../utils/pickerItems';
 import ChatMessages from './ChatMessages';
@@ -24,6 +24,13 @@ interface AgentViewProps {
   inputText: string;
   setInputText: (text: string) => void;
   currentToolsModel: string;
+  // True when `endpoint_tools` is configured: the agent then works without a
+  // selected tools model, so the "no tools model" empty state would be wrong.
+  hasToolsEndpoint?: boolean;
+  // True while the extension is starting the default tools model.
+  startingDefaultToolsModel?: boolean;
+  // Name of the configured default tools model, used to explain the wait.
+  defaultToolsModel?: string;
   currentAgent: string;
   currentState: string;
   setCurrentState: (state: string) => void;
@@ -60,6 +67,9 @@ const AgentView: React.FC<AgentViewProps> = ({
   inputText,
   setInputText,
   currentToolsModel,
+  hasToolsEndpoint = false,
+  startingDefaultToolsModel = false,
+  defaultToolsModel = '',
   currentAgent,
   currentState,
   setCurrentState,
@@ -76,12 +86,19 @@ const AgentView: React.FC<AgentViewProps> = ({
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [pickerMode, setPickerMode] = useState<PickerMode | null>(null);
   const [pickerItems, setPickerItems] = useState<string[]>([]);
-  // True while the extension is still computing the list (this can take a
-  // moment on big projects), so we do not falsely report "0 results".
+  const [pickerFilter, setPickerFilter] = useState('');
+  const [pickerFileDetails, setPickerFileDetails] = useState<Record<string, string>>({});
+  const [pickerTruncated, setPickerTruncated] = useState(false);
+  const [pickerWorkspaceEmpty, setPickerWorkspaceEmpty] = useState(false);
+  const [pickerError, setPickerError] = useState('');
+  // True while the extension is still computing the current list/search.
   const [pickerLoading, setPickerLoading] = useState<boolean>(false);
   // Where the "@" / "/" that opened the picker sits in the composer text. Kept
   // in a ref because the picker callbacks must not re-create the element.
   const pickerTriggerRef = useRef<PickerTrigger | null>(null);
+  const pickerRequestIdRef = useRef(0);
+  const pickerSearchTimerRef = useRef<number | null>(null);
+  const pickerRemoteSearchRef = useRef(true);
   // Set the moment the user presses Stop. The run may keep streaming for a
   // while (the in-flight request has to unwind), so the composer has to show
   // that the request was received instead of looking frozen.
@@ -91,8 +108,24 @@ const AgentView: React.FC<AgentViewProps> = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const stopResetTimerRef = useRef<number | null>(null);
+  // Texts posted with "Send to session" that the extension has not confirmed
+  // yet. They are rendered as pending user bubbles, so the message appears in
+  // the chat the moment the user sends it instead of only when the agent loop
+  // reaches the next tool-call boundary. The refs mirror the state so the
+  // message handlers can compare without being re-created.
+  const [pendingInSession, setPendingInSession] = useState<string[]>([]);
+  const pendingInSessionRef = useRef<string[]>([]);
+  pendingInSessionRef.current = pendingInSession;
+  // The log the last "Send to session" was posted against. The extension only
+  // appends to it, so text that was already there belongs to an earlier message
+  // (the same prompt can legitimately be sent twice) and must not be mistaken
+  // for the echo of this one.
+  const inSessionBaseLogRef = useRef('');
+  // Mirrors the composer text for the message handlers.
+  const inputTextRef = useRef(inputText);
+  inputTextRef.current = inputText;
 
-  const hasToolsModel = !currentToolsModel.startsWith(NO_MODEL);
+  const hasToolsModel = !currentToolsModel.startsWith(NO_MODEL) || hasToolsEndpoint;
 
   const showNotice = useCallback((text: string, kind: Notice['kind'] = 'info', action?: Notice['action']) => {
     setNotice({ text, kind, action });
@@ -111,6 +144,8 @@ const AgentView: React.FC<AgentViewProps> = ({
   useEffect(() => () => {
     if (noticeTimerRef.current !== null) window.clearTimeout(noticeTimerRef.current);
     if (stopResetTimerRef.current !== null) window.clearTimeout(stopResetTimerRef.current);
+    if (pickerSearchTimerRef.current !== null) window.clearTimeout(pickerSearchTimerRef.current);
+    vscode.postMessage({ command: 'cancelFileList' });
   }, []);
 
   // The pending stop request is settled when the run is really over. It
@@ -136,9 +171,44 @@ const AgentView: React.FC<AgentViewProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // The chat is the log built by the extension plus the in-session texts that
+  // are still on their way. Each one is written in the same ***...*** form the
+  // extension uses for user messages (see formatInSessionTextForUi), so the
+  // optimistic bubble and the real one look identical.
+  const chatText = useMemo(() => {
+    if (pendingInSession.length === 0) return displayText;
+    return displayText + pendingInSession
+      .map(text => '\n\n***' + text.split(/\r?\n/).join('  \n') + '***\n\n')
+      .join('');
+  }, [displayText, pendingInSession]);
+
+  // Drops the pending entries whose text the extension has echoed into the log.
+  // Only the part of the log that grew since the text was posted is searched, so
+  // an identical message from earlier cannot be mistaken for this echo. The echo
+  // uses two-space hard breaks, so the comparison applies them to the queued text
+  // as well. A text the extension hands back is never echoed: it keeps its bubble
+  // until the rejection puts it back into the composer.
+  const settlePendingInSession = useCallback((log: string) => {
+    const before = pendingInSessionRef.current;
+    if (before.length === 0) return;
+    const base = inSessionBaseLogRef.current;
+    const fresh = log.startsWith(base) ? log.slice(base.length) : log;
+    const stillPending = before.filter(entry => !fresh.includes(entry.split(/\r?\n/).join('  \n')));
+    if (stillPending.length === before.length) return;
+    pendingInSessionRef.current = stillPending;
+    setPendingInSession(stillPending);
+  }, []);
+
   useExtensionMessages({
-    onUpdateText: setDisplayText,
-    onClearText: () => setDisplayText(''),
+    onUpdateText: (text: string) => {
+      setDisplayText(text);
+      settlePendingInSession(text);
+    },
+    onClearText: () => {
+      setDisplayText('');
+      pendingInSessionRef.current = [];
+      setPendingInSession([]);
+    },
     onFocusTextarea: (text: string) => {
       if (text) setInputText(text);
       textareaRef.current?.focus();
@@ -149,16 +219,35 @@ const AgentView: React.FC<AgentViewProps> = ({
       // that do not send the `inProgress` flag.
       setIsWorking(typeof inProgress === 'boolean' ? inProgress : text.toLowerCase().includes('working'));
     },
-    onUpdateFileList: (files: string[]) => {
-      setPickerItems(files);
+    onUpdateFileList: (update: FileListUpdate) => {
+      // No request id is used by older/custom list replies. New replies must
+      // belong to the currently open picker, otherwise a cancelled or previous
+      // request could replace the current filter's results.
+      if (update.requestId !== undefined && update.requestId !== pickerRequestIdRef.current) return;
+      if (!pickerMode) return;
+      pickerRemoteSearchRef.current = update.kind === 'workspace';
+      setPickerItems(update.files);
+      setPickerFileDetails(update.fileDetails ?? {});
+      setPickerTruncated(Boolean(update.truncated));
+      setPickerWorkspaceEmpty(Boolean(update.workspaceEmpty));
+      setPickerError(update.error ?? '');
       setPickerLoading(false);
-      // Only fill a picker that is still open - the user may have closed it
-      // while the list was being computed.
-      setPickerMode((prev: PickerMode | null) => prev);
     },
     onUpdateContextFiles: setContextFiles,
     onUpdateContextImage: setContextImage,
-    onUpdateRequestStats: setStats
+    onUpdateRequestStats: setStats,
+    // No foreground session took the text (the run ended in between). Put the
+    // draft back so the user does not have to retype it.
+    onInSessionTextRejected: (text: string, files: Map<string, string>) => {
+      pendingInSessionRef.current = pendingInSessionRef.current.filter(entry => entry !== text);
+      setPendingInSession(pendingInSessionRef.current);
+      if (!inputTextRef.current) setInputText(text);
+      if (files.size > 0) setContextFiles(files);
+      showNotice(
+        'The session had already finished - the message was put back in the composer. Press Send to start a new one.',
+        'error'
+      );
+    }
   });
 
   // Bridge kept for the extension (`window.focusTextarea`, see architect.ts).
@@ -175,7 +264,16 @@ const AgentView: React.FC<AgentViewProps> = ({
     pickerTriggerRef.current = null;
     setPickerMode(null);
     setPickerItems([]);
+    setPickerFilter('');
+    setPickerFileDetails({});
     setPickerLoading(false);
+    pickerRequestIdRef.current++;
+    pickerRemoteSearchRef.current = false;
+    if (pickerSearchTimerRef.current !== null) {
+      window.clearTimeout(pickerSearchTimerRef.current);
+      pickerSearchTimerRef.current = null;
+    }
+    vscode.postMessage({ command: 'cancelFileList' });
     vscode.postMessage({ command: 'clearText' });
   }, []);
 
@@ -285,11 +383,64 @@ const AgentView: React.FC<AgentViewProps> = ({
   // composer: the character is already in the text and gets replaced by the
   // picked item. It is null for the toolbar buttons, which just open the list.
   const openPicker = (mode: PickerMode, trigger?: PickerTrigger | null) => {
+    if (pickerSearchTimerRef.current !== null) {
+      window.clearTimeout(pickerSearchTimerRef.current);
+      pickerSearchTimerRef.current = null;
+    }
+    const requestId = ++pickerRequestIdRef.current;
+    pickerRemoteSearchRef.current = mode === 'files';
     pickerTriggerRef.current = trigger ?? null;
     setPickerItems([]);
+    setPickerFilter('');
+    setPickerFileDetails({});
+    setPickerTruncated(false);
+    setPickerWorkspaceEmpty(false);
+    setPickerError('');
     setPickerLoading(true);
     setPickerMode(mode);
-    vscode.postMessage({ command: mode === 'files' ? 'getFileList' : 'getAgentCommands' });
+    vscode.postMessage({ command: 'cancelFileList' });
+    vscode.postMessage({
+      command: mode === 'files' ? 'getFileList' : 'getAgentCommands',
+      requestId,
+      kind: mode,
+      query: ''
+    });
+  };
+
+  const searchWorkspaceFiles = useCallback((query: string, debounce = false) => {
+    if (pickerSearchTimerRef.current !== null) {
+      window.clearTimeout(pickerSearchTimerRef.current);
+      pickerSearchTimerRef.current = null;
+    }
+    // Invalidate immediately, not after the debounce: an older search may
+    // finish while the user is still typing and must not become current again.
+    const requestId = ++pickerRequestIdRef.current;
+    setPickerItems([]);
+    setPickerFileDetails({});
+    setPickerTruncated(false);
+    setPickerWorkspaceEmpty(false);
+    setPickerError('');
+    setPickerLoading(true);
+    vscode.postMessage({ command: 'cancelFileList' });
+    const postSearch = () => {
+      pickerSearchTimerRef.current = null;
+      vscode.postMessage({ command: 'getFileList', requestId, kind: 'workspace', query });
+    };
+    if (debounce) pickerSearchTimerRef.current = window.setTimeout(postSearch, 200);
+    else postSearch();
+  }, []);
+
+  const changePickerFilter = (filter: string) => {
+    setPickerFilter(filter);
+    if (pickerSearchTimerRef.current !== null) {
+      window.clearTimeout(pickerSearchTimerRef.current);
+      pickerSearchTimerRef.current = null;
+    }
+    // Custom context lists and commands are cheap, complete local lists. Only
+    // workspace files need a debounced search so files beyond the initial cap
+    // remain discoverable without running one filesystem search per keystroke.
+    if (pickerMode !== 'files' || !pickerRemoteSearchRef.current) return;
+    searchWorkspaceFiles(filter, true);
   };
 
   // Moves the focus (and the caret) back into the composer after the picker
@@ -308,10 +459,34 @@ const AgentView: React.FC<AgentViewProps> = ({
   const resetPicker = () => {
     const trigger = pickerTriggerRef.current;
     pickerTriggerRef.current = null;
+    pickerRequestIdRef.current++;
+    pickerRemoteSearchRef.current = false;
+    if (pickerSearchTimerRef.current !== null) {
+      window.clearTimeout(pickerSearchTimerRef.current);
+      pickerSearchTimerRef.current = null;
+    }
     setPickerMode(null);
     setPickerItems([]);
+    setPickerFilter('');
+    setPickerFileDetails({});
+    setPickerTruncated(false);
+    setPickerWorkspaceEmpty(false);
+    setPickerError('');
     setPickerLoading(false);
+    vscode.postMessage({ command: 'cancelFileList' });
     return trigger;
+  };
+
+  const retryPicker = () => {
+    if (pickerMode !== 'files') return;
+    if (pickerRemoteSearchRef.current) {
+      searchWorkspaceFiles(pickerFilter);
+      return;
+    }
+    const requestId = ++pickerRequestIdRef.current;
+    setPickerError('');
+    setPickerLoading(true);
+    vscode.postMessage({ command: 'getFileList', requestId, kind: 'custom', query: '' });
   };
 
   const closePicker = () => {
@@ -328,23 +503,33 @@ const AgentView: React.FC<AgentViewProps> = ({
     textareaRef.current?.focus();
   }, [setInputText]);
 
+  const sendInSession = useCallback(() => {
+    const text = inputText.trim();
+    if (!text) return;
+    // Show the message right away: the extension only echoes it back on the next
+    // log update, and the agent receives it at the next tool-call boundary, which
+    // can be minutes away. Without the pending bubble the button looked dead.
+    // The log as it is now is the baseline the echo of this text is searched in.
+    inSessionBaseLogRef.current = displayText;
+    pendingInSessionRef.current = [...pendingInSessionRef.current, text];
+    setPendingInSession(pendingInSessionRef.current);
+    vscode.postMessage({ command: 'sendInSessionText', text });
+    setInputText('');
+  }, [displayText, inputText, setInputText]);
+
   const sendText = useCallback(() => {
     if (!inputText.trim()) return;
+    // Enter and Ctrl/Cmd+Enter share this path, and during a run it means the
+    // same as the "Send to session" button.
     if (isWorking) {
-      vscode.postMessage({ command: 'sendInSessionText', text: inputText });
-    } else {
-      vscode.postMessage({ command: 'sendText', text: inputText });
+      sendInSession();
+      return;
     }
+    vscode.postMessage({ command: 'sendText', text: inputText });
     setInputText('');
     setIsWorking(true);
     setCurrentState('AI is working...');
-  }, [inputText, isWorking, setInputText, setCurrentState]);
-
-  const sendInSession = useCallback(() => {
-    if (!inputText.trim()) return;
-    vscode.postMessage({ command: 'sendInSessionText', text: inputText });
-    setInputText('');
-  }, [inputText, setInputText]);
+  }, [inputText, isWorking, sendInSession, setInputText, setCurrentState]);
 
   const stopSession = () => {
     // Immediate local feedback: the extension answers with "Stopping session..."
@@ -556,24 +741,53 @@ const AgentView: React.FC<AgentViewProps> = ({
 
       {!hasToolsModel ? (
         <div className="agent-empty-state">
-          <WrenchIcon size={28} />
-          <div className="agent-empty-title">No tools model selected</div>
-          <div className="agent-empty-text">
-            The agent needs a tools-capable model (or an endpoint configured in{' '}
-            <code>endpoint_tools</code>) to read files and run commands.
-          </div>
-          <button
-            type="button"
-            className="modern-btn"
-            onClick={() => vscode.postMessage({ command: 'selectModelWithTools' })}
-          >
-            Select Tools Model
-          </button>
+          {startingDefaultToolsModel ? (
+            <>
+              {/* The default tools model is being started. Showing the empty
+                  state here would be wrong (a model IS on its way) and would
+                  make the page look broken while weights download. */}
+              <span className="spinner" aria-hidden="true" />
+              <div className="agent-empty-title">Starting the default tools model…</div>
+              <div className="agent-empty-text">
+                {defaultToolsModel ? (
+                  <>
+                    <code>{defaultToolsModel}</code> is set as the default tools model and is being
+                    started. This can take a while while the model is downloading.
+                  </>
+                ) : (
+                  'The default tools model is being started. This can take a while while the model is downloading.'
+                )}
+              </div>
+              <button
+                type="button"
+                className="modern-btn secondary"
+                onClick={() => vscode.postMessage({ command: 'selectModelWithTools' })}
+              >
+                Choose Another Model
+              </button>
+            </>
+          ) : (
+            <>
+              <WrenchIcon size={28} />
+              <div className="agent-empty-title">No tools model selected</div>
+              <div className="agent-empty-text">
+                The agent needs a tools-capable model (or an endpoint configured in{' '}
+                <code>endpoint_tools</code>) to read files and run commands.
+              </div>
+              <button
+                type="button"
+                className="modern-btn"
+                onClick={() => vscode.postMessage({ command: 'selectModelWithTools' })}
+              >
+                Select Tools Model
+              </button>
+            </>
+          )}
         </div>
       ) : (
         <>
           <ChatMessages
-            displayText={displayText}
+            displayText={chatText}
             onUseExamplePrompt={usePrompt}
             onReRun={usePrompt}
             waiting={isWorking || stopRequested}
@@ -618,6 +832,18 @@ const AgentView: React.FC<AgentViewProps> = ({
               <Picker
                 mode={pickerMode}
                 items={pickerItems}
+                filter={pickerFilter}
+                onFilterChange={changePickerFilter}
+                fileDetails={pickerFileDetails}
+                loading={pickerLoading}
+                truncated={pickerTruncated}
+                workspaceEmpty={pickerWorkspaceEmpty}
+                error={pickerError}
+                onRetry={pickerMode === 'files' ? retryPicker : undefined}
+                onChooseFile={pickerMode === 'files' ? () => {
+                  closePicker();
+                  vscode.postMessage({ command: 'addContextFileDialog' });
+                } : undefined}
                 onSelect={handlePickerSelect}
                 onClose={closePicker}
                 disabled={pickerMode === 'commands' && isWorking}

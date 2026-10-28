@@ -68,10 +68,35 @@ const isWaitingLine = (line: string) => line.trim().length > 0 && WAITING_ONLY_R
 
 // Removes the waiting markers from a line WITHOUT dropping the line: an empty
 // result means the line only carried markers, and dropping those lines would
-// break the blank-line based tool block structure. A surviving line is returned
-// trimmed on the right, which is where the markers are appended.
-const stripWaitingMarkers = (line: string): string =>
-  line.includes(WAITING_MARKER) ? line.replace(/[\u00b7\u2022]+[ .]*/g, '').replace(/\s+$/, '') : line;
+// break the blank-line based tool block structure.
+//
+// The markers are appended to the TAIL of the log, so they often end up after
+// the answer line - and an earlier version of this helper right-trimmed the
+// result, which silently removed the two trailing spaces the extension puts
+// there as a markdown hard break. Those two spaces are exactly what tells the
+// parser that the `Total iterations: N` line glued after the answer is
+// bookkeeping: without them the line was rendered as part of the answer, on the
+// SAME line as its last sentence. Trailing whitespace is therefore preserved.
+//
+// A marker that landed between two words (the spinner kept ticking while the
+// answer streamed) is replaced by a single space so the words are not glued
+// together.
+const stripWaitingMarkers = (line: string): string => {
+  if (!line.includes(WAITING_MARKER)) return line;
+  // The marker pattern below also eats the blanks that follow the run, which
+  // are exactly the trailing two spaces of the line when the spinner ticked
+  // after the answer was written (`"...answer··  "`). Split them off first and
+  // re-append them untouched, so the hard break survives.
+  const trailing = /[ \t]+$/.exec(line)?.[0] ?? '';
+  const body = line.slice(0, line.length - trailing.length);
+  const stripped = body.replace(/[\u00b7\u2022]+[ .]*/g, (match: string, offset: number, whole: string) => {
+    const before = whole[offset - 1];
+    const after = whole[offset + match.length];
+    const betweenWords = !!before && !!after && !/\s/.test(before) && !/\s/.test(after);
+    return betweenWords ? ' ' : '';
+  });
+  return stripped + trailing;
+};
 
 const splitUserSegments = (text: string): { type: 'user' | 'assistant'; content: string }[] => {
   const segments: { type: 'user' | 'assistant'; content: string }[] = [];
@@ -108,13 +133,22 @@ const splitUserSegments = (text: string): { type: 'user' | 'assistant'; content:
 // exception - there such a line is sample content). Everything else keeps its
 // blank-line structure, so the renderer still receives whole paragraphs.
 const pushMarkdown = (segments: ChatSegment[], rawLines: string[]) => {
-  // Drop marker-only lines (they would become stray "·" lines) and strip
-  // inline markers from the rest; the text is otherwise left untouched, so
-  // paragraph spacing for the markdown renderer is preserved.
+  // Marker-only lines must never reach the renderer as stray "·" lines, but
+  // they are not simply dropped: a tick that landed on its own line stands for
+  // "the answer stopped here", so it becomes a blank line. Keeping it also
+  // preserves the "bookkeeping follows" signal below - dropping it made the
+  // `Total iterations: N` line glued behind such a tick look like part of the
+  // answer again.
+  // Inline markers of the other lines are stripped; the text is otherwise left
+  // untouched, so paragraph spacing for the markdown renderer is preserved.
   const lines: string[] = [];
+  // Parallel array with the untouched lines, used only to know whether the
+  // spinner appended its markers to the tail of a line (see
+  // followsBookkeepingBreak).
+  const rawByIndex: string[] = [];
   for (const raw of rawLines) {
-    if (isWaitingLine(raw)) continue;
-    lines.push(stripWaitingMarkers(raw));
+    rawByIndex.push(raw);
+    lines.push(isWaitingLine(raw) ? '' : stripWaitingMarkers(raw));
   }
 
   let body: string[] = [];
@@ -126,9 +160,21 @@ const pushMarkdown = (segments: ChatSegment[], rawLines: string[]) => {
   // two-space hard break (or puts it after a blank line), so that is what tells
   // a bookkeeping line apart from the model writing a line that merely starts
   // with the same words (e.g. quoting `Error: ...` from a build).
-  const followsBookkeepingBreak = (prev: string | null): boolean =>
-    prev === null || isBlank(prev) || META_LINE_REGEX.test(prev) || /[ \t]{2}$/.test(prev);
+  // A spinner tick at the tail of the previous line means the same thing: the
+  // answer stopped right there and the bookkeeping came next. Testing this on
+  // the RAW line keeps the detection working when the tick sits where the hard
+  // break was (`"...answer·  "`), which used to make the answer swallow the
+  // `Total iterations:` line.
+  const endsWithWaitingTick = (raw: string | null): boolean =>
+    !!raw && /[\u00b7\u2022][ .]*$/.test(raw);
+  const followsBookkeepingBreak = (prev: string | null, prevRaw: string | null): boolean =>
+    prev === null ||
+    isBlank(prev) ||
+    META_LINE_REGEX.test(prev) ||
+    /[ \t]{2}$/.test(prev) ||
+    endsWithWaitingTick(prevRaw);
   let prevLine: string | null = null;
+  let prevRawLine: string | null = null;
 
   const flushNotices = () => {
     if (notices.length === 0) return;
@@ -154,9 +200,12 @@ const pushMarkdown = (segments: ChatSegment[], rawLines: string[]) => {
     segments.push({ type: 'assistant', content: content.join('\n') });
   };
 
-  for (const line of lines) {
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index];
     const prev = prevLine;
+    const prevRaw = prevRawLine;
     prevLine = line;
+    prevRawLine = rawByIndex[index];
     if (isFence(line)) {
       flushNotices();
       body.push(line);
@@ -164,7 +213,7 @@ const pushMarkdown = (segments: ChatSegment[], rawLines: string[]) => {
       lastBodyLineIsCode = false;
       continue;
     }
-    if (!insideFence && META_LINE_REGEX.test(line) && followsBookkeepingBreak(prev)) {
+    if (!insideFence && META_LINE_REGEX.test(line) && followsBookkeepingBreak(prev, prevRaw)) {
       flushBody();
       notices.push(line.trim());
       continue;

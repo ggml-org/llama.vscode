@@ -27,15 +27,28 @@ export const EMPTY_REQUEST_STATS: RequestStats = {
   chatPrice: 0
 };
 
+export interface FileListUpdate {
+  requestId?: number;
+  kind?: 'workspace' | 'custom' | 'commands';
+  files: string[];
+  fileDetails?: Record<string, string>;
+  truncated?: boolean;
+  workspaceEmpty?: boolean;
+  error?: string;
+}
+
 export interface ExtensionMessageHandlers {
   onUpdateText: (text: string) => void;
   onClearText: () => void;
   onFocusTextarea: (text: string) => void;
   onUpdateCurrentState: (text: string, inProgress: boolean | undefined) => void;
-  onUpdateFileList: (files: string[]) => void;
+  onUpdateFileList: (update: FileListUpdate) => void;
   onUpdateContextFiles: (files: Map<string, string>) => void;
   onUpdateContextImage: (image: string) => void;
   onUpdateRequestStats: (stats: RequestStats) => void;
+  // A "Send to session" text was not accepted (no foreground session left), so
+  // the UI can restore the draft instead of dropping it.
+  onInSessionTextRejected: (text: string, files: Map<string, string>) => void;
 }
 
 /**
@@ -65,13 +78,27 @@ export const useExtensionMessages = (handlers: ExtensionMessageHandlers) => {
           current.onUpdateCurrentState(message.text || '', message.inProgress);
           break;
         case 'updateFileList':
-          current.onUpdateFileList(message.files || []);
+          current.onUpdateFileList({
+            requestId: typeof message.requestId === 'number' ? message.requestId : undefined,
+            kind: message.kind,
+            files: message.files || [],
+            fileDetails: message.fileDetails || {},
+            truncated: Boolean(message.truncated),
+            workspaceEmpty: Boolean(message.workspaceEmpty),
+            error: typeof message.error === 'string' ? message.error : ''
+          });
           break;
         case 'updateContextFiles':
           current.onUpdateContextFiles(new Map(message.files || []));
           break;
         case 'updateContextImage':
           current.onUpdateContextImage(message.image || '');
+          break;
+        case 'inSessionTextRejected':
+          current.onInSessionTextRejected(
+            typeof message.text === 'string' ? message.text : '',
+            new Map(message.files || [])
+          );
           break;
         // `updateRquestsStats` is the historical (typo) name; the extension now
         // sends `updateRequestsStats`. Both are accepted for one release.

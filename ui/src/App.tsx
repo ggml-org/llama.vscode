@@ -25,6 +25,17 @@ const App: React.FC<AppProps> = () => {
   const [currentToolsModel, setCurrentToolsModel] = useState<string>(
     initialState.currentToolsModel || noModelSelected
   );
+  // A configured `endpoint_tools` makes the agent usable without a selected
+  // model, so the view must not claim there is no tools model in that case.
+  const [hasToolsEndpoint, setHasToolsEndpoint] = useState<boolean>(
+    Boolean(initialState.hasToolsEndpoint)
+  );
+  // True while the extension is starting the default tools model. Shown as
+  // progress instead of the empty state, which would flash for a few seconds.
+  const [startingDefaultToolsModel, setStartingDefaultToolsModel] = useState<boolean>(false);
+  const [defaultToolsModel, setDefaultToolsModel] = useState<string>(
+    initialState.defaultToolsModel || ''
+  );
   const [currentAgentModel, setCurrentAgentModel] = useState<string>(
     initialState.currentAgentModel || noModelSelected
   );
@@ -74,9 +85,13 @@ const App: React.FC<AppProps> = () => {
       currentEnv: currentEnv,
       currentState,
       llamaAppSupported,
+      // Kept so a webview reload does not show the "no tools model" empty state
+      // for a page that is usable through endpoint_tools or a pending default.
+      hasToolsEndpoint,
+      defaultToolsModel,
       view
     });
-  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, view]);
+  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, hasToolsEndpoint, defaultToolsModel, view]);
 
   useEffect(() => {
     // Listen for messages from the extension
@@ -85,6 +100,9 @@ const App: React.FC<AppProps> = () => {
       switch (message.command) {
         case 'updateToolsModel':
           setCurrentToolsModel(message.model || noModelSelected);
+          setHasToolsEndpoint(Boolean(message.toolsEndpoint));
+          setStartingDefaultToolsModel(Boolean(message.startingDefault));
+          setDefaultToolsModel(typeof message.defaultModel === 'string' ? message.defaultModel : '');
           break;
         case 'updateTmpAgentModel':
           setCurrentAgentModel(message.model || "");
@@ -289,6 +307,9 @@ const App: React.FC<AppProps> = () => {
             inputText={inputText}
             setInputText={setInputText}
             currentToolsModel={currentToolsModel}
+            hasToolsEndpoint={hasToolsEndpoint}
+            startingDefaultToolsModel={startingDefaultToolsModel}
+            defaultToolsModel={defaultToolsModel}
             currentAgent={currentAgent}
             currentState={currentState}
             setCurrentState={setCurrentState}

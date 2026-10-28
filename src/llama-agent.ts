@@ -6,7 +6,7 @@ import { Utils } from "./utils"
 import { Chat } from "./types"
 import { Plugin } from './plugin';
 import * as fs from 'fs';
-import { AGENT_COMMAND, HooksEvents, ModelType, PERSISTENCE_KEYS, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
+import { AGENT_COMMAND, HooksEvents, PREDEFINED_LISTS_KEYS, SUPPORTED_IMG_FILE_EXTS, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
 import path from "path";
 import { DEFAULT_CONTEXT_SAFETY_MARGIN_TOKENS, DEFAULT_MAX_OUTPUT_TOKENS, resolveBoundedMaxOutputTokens } from './language-model-token-limits';
 import { PREDEFINED_LISTS } from "./lists";
@@ -189,7 +189,17 @@ export interface AgentSession {
     lastReqTokens: number;                 // Per-session token tracking
     abortController: AbortController;      // Per-session controller
     isTlgrBotRequest: boolean;             // Per-session flag
-    inSessionText: string;                 // Per-session text
+    // Texts the user queued with "Send to session" while the run was busy. They
+    // are handed to the model at the next tool-call boundary (or at the end of
+    // the current answer, when no tool call follows) and merged into ONE user
+    // message, because the loop drains the queue in a single step.
+    inSessionTexts: string[];
+    // True while a "Send to session" text is waiting to be delivered.
+    inSessionPending: boolean;
+    // Session whose chat the instance conversation state follows. Only the
+    // foreground session of the loaded chat may answer a "Send to session"
+    // request; background sessions have no composer of their own.
+    isForeground: boolean;
     originalQuery: string;                 // Per-session query
     contexProjectFiles: Map<string,string>; // Per-session context files
     sentContextFiles: Map<string,string>;   // Per-session sent context
@@ -213,13 +223,14 @@ export class LlamaAgent {
     public contextImage: string = "";
     public sentContextImages: string[] = [];
     private abortController: AbortController | null = null;
-    private inSessionText: string = ""
     private isTlgrBotRequest: boolean = false;
     private agentInProgress: boolean = false;
     private originalQuery: string = "";
     
     // Session registry for parallel/background sessions
     private activeSessions: Map<string, AgentSession> = new Map();
+    // Session owning the tool call that is currently being executed.
+    private currentToolSession: AgentSession | undefined = undefined;
 
     constructor(application: Application) {
         this.app = application;
@@ -267,6 +278,67 @@ export class LlamaAgent {
     
     getActiveSessionCount(): number {
         return this.activeSessions.size;
+    }
+
+    /**
+     * The session whose tool call is being executed right now. Tools that do not
+     * receive the session id from the model (update_todo_list, for example) use
+     * it to reach the session state, so the plan goes to the right place.
+     */
+    getCurrentToolSession(): AgentSession | undefined {
+        return this.currentToolSession;
+    }
+
+    /**
+     * Counts the live sessions that still need the given todo file. Sessions
+     * that keep their todo in memory, and the excluded session, are skipped.
+     * The todo file is a single scratch pad at the workspace root, so several
+     * sessions can share one path and the file may only be deleted by the last
+     * of them.
+     */
+    private countSessionsUsingTodoFile(todoFile: string, exceptSessionId?: string): number {
+        if (!todoFile) return 0;
+        let count = 0;
+        for (const session of this.activeSessions.values()) {
+            if (session.sessionId === exceptSessionId) continue;
+            if (session.options.useInMemoryTodo) continue;
+            if (session.todoFile === todoFile) count++;
+        }
+        return count;
+    }
+
+    /**
+     * Deletes the temporary todo file of a finished session. The file is a
+     * scratch pad for the current tool loop only ("Todo items are not reused
+     * between the user requests"), so it must not survive the session and be
+     * committed by mistake.
+     */
+    removeTodoFileForSession(session: AgentSession) {
+        if (!session.todoFile || session.options.useInMemoryTodo) return;
+        // Another live session still plans in the same file - keep it.
+        if (this.countSessionsUsingTodoFile(session.todoFile, session.sessionId) > 0) return;
+        this.removeFile(session.todoFile);
+        session.todoContent = null;
+    }
+
+    /**
+     * Removes a todo file left behind by an interrupted or crashed run, so a new
+     * session never starts with (and reports) stale items. Skipped while any
+     * live session still uses the same file.
+     */
+    removeStaleTodoFile(todoFile: string) {
+        if (!todoFile) return;
+        if (this.countSessionsUsingTodoFile(todoFile) > 0) return;
+        this.removeFile(todoFile);
+    }
+
+    /**
+     * Drops the temporary todo file when the extension shuts down. A run that is
+     * still in progress never reaches its own cleanup, and the file must not be
+     * left in the workspace where it could be committed by mistake.
+     */
+    cleanupTodoFileOnExit() {
+        this.removeFile(Utils.getTodosFilePath());
     }
 
     preprocessCommandPrompt = async (prompt: string): Promise<string> => {
@@ -433,6 +505,15 @@ export class LlamaAgent {
         return this.contextImage;
     }
 
+    /**
+     * The attached context files (long name -> short name), sent to the UI so it
+     * can re-attach them when a "Send to session" text is handed back because no
+     * foreground session was available to receive it.
+     */
+    getContextProjectFilesInfo = (): [string, string][] => {
+        return Array.from(this.contexProjectFiles.entries());
+    }
+
     run = async (query:string, agentCommand?:string, isTelegramBotReq:boolean=false) => {
         
         await this.askAgent(query, agentCommand, isTelegramBotReq);
@@ -451,9 +532,90 @@ export class LlamaAgent {
         });
     }
 
-    setInSessionText = async (inSessionText:string) => {
-        
-        this.inSessionText += inSessionText.trim();
+    /**
+     * Returns the session a "Send to session" text belongs to: the foreground
+     * session of the loaded chat. Background sessions (agent command scheduler,
+     * periodic tasks) run detached from the composer, so a text typed into the
+     * chat must never be injected into one of them.
+     */
+    private getForegroundSession = (): AgentSession | undefined => {
+        for (const session of this.activeSessions.values()) {
+            if (session.isForeground) return session;
+        }
+        return undefined;
+    }
+
+    /**
+     * Queues a text typed with "Send to session" into the running session. The
+     * text is handed to the model at the next tool-call boundary (or at the end
+     * of the current answer, when no tool call follows), so it reaches the agent
+     * as early as possible instead of starting a new prompt.
+     *
+     * Returns true when a session accepted the text and false when nothing could
+     * take it, so the UI can hand the text back to the composer instead of
+     * dropping it.
+     */
+    setInSessionText = (inSessionText: string): boolean => {
+        const text = inSessionText.trim();
+        if (!text) return false;
+        const session = this.getForegroundSession();
+        if (!session) return false;
+
+        const logDestination = session.logDestination;
+        // Echo the text straight into the log: the chat is where the user looked
+        // for the message, and until now the text was silently buffered and never
+        // confirmed. Conversations without a visible log get the echo only when
+        // it reaches the model (see deliverInSessionTextsForSession).
+        if (session.options.logDestination === 'ui') {
+            logDestination.append(this.formatInSessionTextForUi(text));
+        }
+        session.inSessionTexts.push(text);
+        session.inSessionPending = true;
+        if (logDestination.flushToUi && session.options.logDestination === 'ui') {
+            logDestination.flushToUi();
+        }
+        if (!session.options.background) {
+            this.setAgentState(
+                "Message queued - waiting for the next tool-call boundary",
+                true,
+                session
+            );
+        }
+        return true;
+    }
+
+    // The chat log wraps user messages in ***...*** (see parseChatSegments.ts),
+    // and the two-space hard break keeps multi-line texts from gaining blank
+    // lines of their own, which the UI would render as separate paragraphs.
+    private formatInSessionTextForUi = (text: string): string =>
+        "\n\n***" + text.split(/\r?\n/).join("  \n") + "***\n\n"
+
+    /**
+     * Delivers every text queued with "Send to session" to the model as one user
+     * message. The texts are merged because the loop drains the queue in a single
+     * step; the chat log has already shown each of them separately.
+     */
+    private deliverInSessionTextsForSession = (session: AgentSession) => {
+        if (session.inSessionTexts.length === 0) {
+            session.inSessionPending = false;
+            return;
+        }
+        const text = session.inSessionTexts.join("\n\n");
+        session.inSessionTexts = [];
+        session.inSessionPending = false;
+        if (session.options.logDestination !== 'ui') {
+            // Conversations without a visible log only learn about the text now,
+            // at the moment it is really handed to the model.
+            session.logDestination.append(this.formatInSessionTextForUi(text));
+        }
+        session.messages.push({"role": "user", "content": text});
+        this.app.logger.addEventLog('AGENT', 'IN_SESSION_TEXT', `session=${session.sessionId}`);
+        // The "Message queued..." state has served its purpose: the text is in
+        // the conversation now, so the status line must not claim otherwise for
+        // the rest of the run.
+        if (!session.options.background) {
+            this.setAgentState("AI is working...", true, session);
+        }
     }
 
     getMdFilesContext = () => {
@@ -638,7 +800,12 @@ export class LlamaAgent {
             lastReqTokens: sessionLastReqTokens,
             abortController: new AbortController(),
             isTlgrBotRequest: isTelegramBotReq,
-            inSessionText: "",
+            inSessionTexts: [],
+            inSessionPending: false,
+            // Only a run started from the chat view may take a "Send to session"
+            // text: background sessions and Telegram requests have their own
+            // conversations, even though they log to the same UI.
+            isForeground: !isBackgroundSession && !isTelegramBotReq,
             originalQuery: query,
             contexProjectFiles: new Map(this.contexProjectFiles),
             sentContextFiles: new Map(),
@@ -649,6 +816,13 @@ export class LlamaAgent {
             options: resolvedOptions,
             defaultAgent: this.app.isAgentSelected() ? this.app.getAgent() : undefined
         };
+        
+        // Remove a todo file left behind by an interrupted run before the new
+        // session starts: todo items are never reused between user requests, so
+        // the agent must not pick up (and repeat) stale items.
+        if (!resolvedOptions.useInMemoryTodo) {
+            this.removeStaleTodoFile(session.todoFile);
+        }
         
         // Register session
         this.registerSession(session);
@@ -668,13 +842,19 @@ export class LlamaAgent {
                 }
             }
             
-            // Cleanup
+            // Cleanup. Every step is guarded: this block runs on all exit paths
+            // and must always reach the todo file removal below.
             this.unregisterSession(sessionId);
-            session.abortController.abort();
-            session.abortController = null as any;
-            if (!options?.useInMemoryTodo) {
-                this.removeFile(session.todoFile);
+            try {
+                session.abortController?.abort();
+            } catch (error) {
+                console.error("Failed to abort the agent session:", error);
             }
+            session.abortController = null as any;
+            // The todo file is a scratch pad for this run only (executeSession
+            // also removes it at the end of the loop); remove it here as a
+            // safety net so no exit path can leave it in the workspace.
+            this.removeTodoFileForSession(session);
             
             // Call completion callback if provided
             if (options?.onComplete) {
@@ -711,10 +891,12 @@ export class LlamaAgent {
             this.setAgentState("AI is working...", true, session);
         }
         
-        if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools){
-            await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
-        }
-        if (!this.app.isToolsModelSelected() && !this.app.configuration.endpoint_tools) {
+        // The agent page selects the default tools model when it is opened, but a
+        // session can also be started without the page having been shown (agent
+        // commands, telegram, hooks). Same guarded call, so a model that is
+        // already being started is never started twice.
+        const hasToolsModel = await this.app.modelService.selectDefaultToolsModelIfNone();
+        if (!hasToolsModel) {
             vscode.window.showErrorMessage("Error: Tools model is not selected! Select tools model (or env with tools model) or set and endpoint in setting endpoint_tools if you want to to use Llama Agent View.");
             if (!session.options.background) {
                 this.setAgentState("AI is stopped", false, session);
@@ -761,13 +943,18 @@ export class LlamaAgent {
                         session.messages, 
                         false, 
                         (delta: string) => {
+                            // First real token: stop the spinner and strip its
+                            // trailing markers BEFORE the token reaches the log,
+                            // otherwise the markers stay glued inside the
+                            // streamed answer (the tail-strip cannot reach them
+                            // once more text has been appended after them). This
+                            // check must come first: `streamed` already contains
+                            // the current delta after the line below, so testing
+                            // it afterwards is never true.
+                            if (streamed.length === 0) waitingIndicator?.stopWaitingIndicator();
+                            
                             streamed += delta;
                             deltaBuffer += delta;
-                            
-                            // First real token: stop the spinner and strip its
-                            // trailing markers synchronously, so the answer does
-                            // not start with leftover commas.
-                            if (!streamed) waitingIndicator?.stopWaitingIndicator();
                             
                             // Append to session log destination (automatically flushes for UI destination)
                             session.logDestination.append(delta);
@@ -841,7 +1028,10 @@ export class LlamaAgent {
                     
                     session.messages.push(data.choices[0].message as ChatMessage);
                     
-                    if (!session.inSessionText 
+                    // A text queued with "Send to session" must reach the agent
+                    // even when this answer ends without a tool call (the model
+                    // may simply have finished): only then may the loop stop.
+                    if (!session.inSessionPending
                         && finishReason != "tool_calls" 
                         && !(data.choices[0].message.tool_calls && data.choices[0].message.tool_calls.length > 0)){
                         session.logDestination.append("  \n" + "Finish reason: " + finishReason);
@@ -863,14 +1053,10 @@ export class LlamaAgent {
                         return "agent stopped by preToolUse hook";
                     }
                 
-                    if (session.inSessionText){
-                        session.logDestination.append("\n\n***" + session.inSessionText.split(/\r?\n/).join("  \n") + "***\n\n");
-                        session.messages.push({"role": "user", "content": session.inSessionText});
-                        session.inSessionText = "";
-                        if (session.logDestination.flushToUi && session.options.logDestination === 'ui') {
-                            session.logDestination.flushToUi();
-                        }
-                    }
+                    // Hand every queued text to the model now - "Send to session"
+                    // promises delivery at the earliest possible moment, i.e. right
+                    // after this answer and the tool calls it asked for.
+                    this.deliverInSessionTextsForSession(session);
                 } catch (error) {
                     // Handle the error
                     console.error("An error occurred:", error);
@@ -919,10 +1105,25 @@ export class LlamaAgent {
             
             return session.response;
         } finally {
+            // A queued "Send to session" text that never made it into the model
+            // messages (the run was stopped or failed first) must not disappear
+            // silently: the chat keeps the text, so say why it was not used.
+            if (session.inSessionPending && session.options.logDestination === 'ui') {
+                session.logDestination.append(
+                    `  \nThe message above was not passed to the agent - the session ended before the next tool call.  \n\n`
+                );
+                if (session.logDestination.flushToUi) session.logDestination.flushToUi();
+            }
+            session.inSessionTexts = [];
+            session.inSessionPending = false;
             // Never leave the "waiting" spinner running (e.g. on stop/error).
             if (session.logDestination instanceof UiLogDestination) {
                 session.logDestination.stopWaitingIndicator();
             }
+            // The tool loop is over: the todo list was only a scratch pad for
+            // this run, so the file must not survive it (otherwise it lingers in
+            // the workspace and can be committed by mistake).
+            this.removeTodoFileForSession(session);
             // Clean up AbortController
             session.abortController = null as any;
         }
@@ -1357,8 +1558,19 @@ export class LlamaAgent {
                                     }                                        
                                 }
                                 
-                                if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
-                                else commandOutput = preToolResult.resultInfo;
+                                // Expose the owning session to the tool: tools that
+                                // do not get the session id from the model (e.g.
+                                // update_todo_list) need it to store their state in
+                                // the right session. Restored afterwards because a
+                                // tool may run a nested session (delegate_task).
+                                const previousToolSession = this.currentToolSession;
+                                this.currentToolSession = session;
+                                try {
+                                    if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
+                                    else commandOutput = preToolResult.resultInfo;
+                                } finally {
+                                    this.currentToolSession = previousToolSession;
+                                }
 
                                 if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
                                     let changedFile = commandDescription;
@@ -1416,7 +1628,9 @@ export class LlamaAgent {
             lastReqTokens: this.lastReqTokens,
             abortController: new AbortController(),
             isTlgrBotRequest: this.isTelegramBotRequest(),
-            inSessionText: this.inSessionText,
+            inSessionTexts: [],
+            inSessionPending: false,
+            isForeground: false,
             originalQuery: this.originalQuery,
             contexProjectFiles: this.contexProjectFiles,
             sentContextFiles: this.sentContextFiles,
@@ -1429,9 +1643,19 @@ export class LlamaAgent {
         };
     }
 
+    /**
+     * Deletes a temporary file without ever throwing: cleanup runs in `finally`
+     * blocks, and a failure here (for example a file locked by an editor) must
+     * not mask the session result or skip the remaining cleanup.
+     */
     private removeFile(todoFile: string) {
-        if (fs.existsSync(todoFile)) {
-            fs.unlinkSync(todoFile);
+        if (!todoFile) return;
+        try {
+            if (fs.existsSync(todoFile)) {
+                fs.unlinkSync(todoFile);
+            }
+        } catch (error) {
+            console.error("Failed to remove the temporary file " + todoFile + ":", error);
         }
     }
 

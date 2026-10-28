@@ -2,7 +2,6 @@ import * as vscode from "vscode";
 import { QuickPickItem } from "vscode";
 import { Application } from "../application";
 import { IAddStrategy, LlmModel, ModelTypeDetails } from "../types";
-import { Utils } from "../utils";
 import { ModelType, UI_TEXT_KEYS, MODEL_TYPE_CONFIG, PERSISTENCE_KEYS } from "../constants";
 import * as path from "path";
 import * as fs from "fs";
@@ -214,6 +213,70 @@ export class ModelService {
             await this.selectStartModel(defaultModel, modelType, this.getTypeDetails(modelType));
         }
         this.app.llamaWebviewProvider.updateLlamaView();
+    }
+
+    // Guards against two concurrent default-tools-model selections. Starting a
+    // local model kills the previous terminal and may download weights, so doing
+    // it twice (e.g. the agent page mounts while a session starts) is not
+    // harmless - the second start would tear down the one just launched.
+    private defaultToolsModelSelection: Promise<boolean> | undefined;
+
+    /** True when `endpoint_tools` gives the agent a usable endpoint on its own. */
+    public hasToolsEndpoint(): boolean {
+        const endpoint = this.app.configuration.endpoint_tools;
+        return Boolean(endpoint && endpoint.trim() !== "");
+    }
+
+    public getDefaultToolsModel(): LlmModel | undefined {
+        const defaultModel = this.app.persistence.getGlobalValue(PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL) as LlmModel | undefined;
+        return defaultModel && defaultModel.name && defaultModel.name.trim() !== "" ? defaultModel : undefined;
+    }
+
+    /**
+     * True when opening the agent page should start the default tools model:
+     * nothing is selected, `endpoint_tools` does not already provide a working
+     * endpoint, and the user configured a default.
+     *
+     * Used by the UI to show progress instead of the empty state. Never starts
+     * anything, so it is cheap enough for a render path.
+     */
+    public shouldStartDefaultToolsModel(): boolean {
+        return !this.app.isToolsModelSelected() && !this.hasToolsEndpoint() && this.getDefaultToolsModel() !== undefined;
+    }
+
+    /**
+     * Selects the default tools model when none is selected.
+     *
+     * This is what makes the "default model" button of the env view work for the
+     * agent chat: opening the agent page (or starting a session) picks the default
+     * up automatically instead of leaving the user with the "no tools model"
+     * empty state.
+     *
+     * Returns true when the agent can use a tools model afterwards: one is
+     * selected, the default was selected, or `endpoint_tools` is configured.
+     * With `respectToolsEndpoint` (the default) a configured `endpoint_tools`
+     * counts as usable, so no local model is started on top of it.
+     */
+    public async selectDefaultToolsModelIfNone(respectToolsEndpoint: boolean = true): Promise<boolean> {
+        if (this.app.isToolsModelSelected()) return true;
+        if (respectToolsEndpoint && this.hasToolsEndpoint()) return true;
+        if (this.defaultToolsModelSelection) return this.defaultToolsModelSelection;
+
+        const selection = this.startDefaultToolsModel();
+        this.defaultToolsModelSelection = selection;
+        try {
+            return await selection;
+        } finally {
+            this.defaultToolsModelSelection = undefined;
+        }
+    }
+
+    private async startDefaultToolsModel(): Promise<boolean> {
+        const defaultModel = this.getDefaultToolsModel();
+        if (defaultModel) {
+            await this.selectStartModel(defaultModel, ModelType.Tools, this.getTypeDetails(ModelType.Tools));
+        }
+        return this.app.isToolsModelSelected() || this.hasToolsEndpoint();
     }
 
     public async selectStartModel(model: LlmModel, type: ModelType, details: ModelTypeDetails) {
@@ -478,28 +541,25 @@ export class ModelService {
         return Application.emptyModel
     }
 
+    /**
+     * Selects the default tools model if none is selected and reports whether the
+     * agent has a usable endpoint afterwards, offering model selection when not.
+     *
+     * Kept for callers that want the interactive dialog. The default selection
+     * itself is delegated to `selectDefaultToolsModelIfNone()`, so there is only
+     * one implementation of "pick the default up".
+     */
     public async checkForToolsModel() {
-        let toolsModel = this.app.getToolsModel();
-        let targetUrl = this.app.configuration.endpoint_tools ? this.app.configuration.endpoint_tools + "/" : "";
-        if (!toolsModel || !toolsModel.name) {
-            await this.app.modelService.selectDefaultModel(ModelType.Tools, PERSISTENCE_KEYS.DEFAULT_TOOLS_MODEL);
-            toolsModel = this.app.getToolsModel();
+        if (await this.selectDefaultToolsModelIfNone()) {
+            return true;
         }
-        if (toolsModel && toolsModel.endpoint) {
-            const toolsEndpoint = Utils.trimTrailingSlash(toolsModel.endpoint);
-            targetUrl = toolsEndpoint ? toolsEndpoint + "/" : "";
-        }
-        if (!targetUrl) {
-            await this.app.dialogs.suggestModelSelection(
-                "Select a tools model or an env with tools model to use Llama Agent.",
-                "After the tools model is loaded, try again opening llama agent.",
-                "No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools.",
-                this.app
-            );
-
-            return false;
-        }
-        else return true;
+        await this.app.dialogs.suggestModelSelection(
+            "Select a tools model or an env with tools model to use Llama Agent.",
+            "After the tools model is loaded, try again opening llama agent.",
+            "No endpoint for the tools model. Select an env with tools model or enter the endpoint of a running llama.cpp server with tools model in setting endpoint_tools.",
+            this.app
+        );
+        return false;
     }
 
     periodicModelHealthUpdate = async () => {
