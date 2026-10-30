@@ -13,7 +13,10 @@ import {
     formatCommandOutput,
     isModifyingCommand,
     MAX_CAPTURED_OUTPUT_BYTES,
-    splitSegments
+    splitSegments,
+    formatExitCodeHex,
+    summarizeCommandResult,
+    unsignedExitCode
 } from '../../services/terminal-command';
 
 // The whole suite runs without a VS Code host: services/terminal-command.ts
@@ -241,6 +244,82 @@ suite('Terminal command output formatting', () => {
         const text = formatCommandOutput(result({ exitCode: -1, cancelled: true }), { note: 'Command cancelled by the user.' });
         assert.ok(text.startsWith('Command cancelled by the user.'));
         assert.ok(text.includes('exit code: -1'));
+    });
+});
+
+suite('Command result summary for the user', () => {
+    // The user-facing answer to "did the install work?". Winget fails with an
+    // HRESULT in the exit code, and Windows returns it as a SIGNED int32, so
+    // "already installed" (0x8A150061) reaches the extension as -1978335135.
+
+    test('normalizes the signed int32 winget HRESULT back to unsigned', () => {
+        assert.strictEqual(unsignedExitCode(-1978335135), 0x8a150061);
+        assert.strictEqual(unsignedExitCode(0x8a150061), 0x8a150061);
+        assert.strictEqual(unsignedExitCode(0), 0);
+        assert.strictEqual(unsignedExitCode(1), 1);
+    });
+
+    test('formats an HRESULT as uppercase hex, and plain codes not at all', () => {
+        assert.strictEqual(formatExitCodeHex(-1978335135), '0x8A150061');
+        assert.strictEqual(formatExitCodeHex(0x8a150061), '0x8A150061');
+        assert.strictEqual(formatExitCodeHex(0), '');
+        assert.strictEqual(formatExitCodeHex(1), '');
+    });
+
+    test('reports a zero exit code as success', () => {
+        const summary = summarizeCommandResult('winget install --id ggml.llamacpp -e', result());
+        assert.strictEqual(summary.succeeded, true);
+        assert.strictEqual(summary.message, 'The command completed successfully.');
+        assert.ok(summary.details.includes('command: winget install'));
+    });
+
+    test('treats "package already installed" as a harmless nothing-to-do', () => {
+        // A re-install/upgrade on an up-to-date machine MUST NOT look like a
+        // failure: the old code showed nothing at all for this case.
+        const summary = summarizeCommandResult('winget install --id ggml.llamacpp -e', result({ exitCode: -1978335135 }));
+        assert.strictEqual(summary.succeeded, true);
+        assert.strictEqual(summary.message, 'Nothing to do: a version of the package is already installed.');
+        assert.ok(summary.details.includes('-1978335135'), summary.details);
+        assert.ok(summary.details.includes('0x8A150061'), summary.details);
+    });
+
+    test('reports a real failure with the meaning of a known exit code', () => {
+        const summary = summarizeCommandResult('winget install --id ggml.llamacpp -e', result({ exitCode: -1978335215 }));
+        assert.strictEqual(summary.succeeded, false);
+        assert.strictEqual(summary.message,
+            'The command failed (exit code -1978335215 (0x8A150011) - the downloaded installer did not match the expected hash).');
+    });
+
+    test('reports an unknown non-zero exit code as a failure', () => {
+        const summary = summarizeCommandResult('brew install -y llama.cpp', result({ exitCode: 1, stderr: 'Error: llama.cpp not found' }));
+        assert.strictEqual(summary.succeeded, false);
+        assert.strictEqual(summary.message, 'The command failed (exit code 1).');
+        assert.ok(summary.details.includes('Error: llama.cpp not found'));
+    });
+
+    test('never calls a cancelled or a timed out run a success, even with exit code 0', () => {
+        // The child is killed, so a 0 here would be a lie: the install did not finish.
+        const cancelled = summarizeCommandResult('winget install', result({ cancelled: true }));
+        assert.strictEqual(cancelled.succeeded, false);
+        assert.strictEqual(cancelled.message, 'The command was cancelled.');
+
+        const timedOut = summarizeCommandResult('winget install', result({ timedOut: true }));
+        assert.strictEqual(timedOut.succeeded, false);
+        assert.strictEqual(timedOut.message, 'The command timed out.');
+    });
+
+    test('puts the TAIL of the output in the details and drops the partial first line', () => {
+        // An installer prints hundreds of progress lines before the real
+        // reason, so a summary that kept the head would show nothing useful.
+        const longErr = 'FIRST-LINE\n' + 'z'.repeat(4_000) + '\nLAST-LINE';
+        const summary = summarizeCommandResult('winget install', result({ exitCode: 1, stderr: longErr }), { maxOutputChars: 600 });
+        assert.ok(summary.details.includes('LAST-LINE'), summary.details);
+        assert.ok(!summary.details.includes('FIRST-LINE'), 'the head must not survive a tail-only summary');
+    });
+
+    test('includes the stdout tail too, because installers report there', () => {
+        const summary = summarizeCommandResult('winget install', result({ stdout: 'Installing...\nDone 10%' }));
+        assert.ok(summary.details.includes('Done 10%'), summary.details);
     });
 });
 

@@ -294,3 +294,104 @@ export const formatCommandOutput = (
     }
     return text;
 };
+
+// ---- result summary for the user ---------------------------------------
+//
+// executeCommandWithTerminalFeedback awaits the command but only writes the
+// output tail to the output channel, so a user who installs llama.cpp from the
+// menu saw the "Command Terminal" flash and nothing else - no success and no
+// failure. The summary below is the missing "did it work?" answer.
+//
+// Winget reports failures as an HRESULT in the exit code. Windows hands that
+// back as a SIGNED int32, so 0x8A150061 ("a version of the package is already
+// installed" - the most common, harmless outcome of a re-install) arrives as
+// -1978335135. Both spellings are normalized, otherwise every upgrade attempt
+// on an up-to-date machine looked like a failed install.
+
+export interface CommandResultSummary {
+    succeeded: boolean;
+    /** One-line headline, short enough for showInformationMessage/showErrorMessage. */
+    message: string;
+    /** Multi-line detail (command, exit code, meaning, output tail) for a dialog or the log. */
+    details: string;
+}
+
+interface KnownExitCode { meaning: string; harmless: boolean }
+
+const KNOWN_EXIT_CODES: Record<number, KnownExitCode> = {
+    0x8a150061: { meaning: 'a version of the package is already installed', harmless: true },
+    0x8a15002b: { meaning: 'no applicable update was found (already up to date)', harmless: true },
+    0x8a150010: { meaning: 'none of the package installers is applicable for this machine', harmless: false },
+    0x8a150011: { meaning: 'the downloaded installer did not match the expected hash', harmless: false },
+    0x8a150014: { meaning: 'no package matching the criteria was found', harmless: false },
+    0x8a150019: { meaning: 'the command requires administrator privileges', harmless: false },
+    0x8a15001c: { meaning: 'the Microsoft Store app is blocked by policy', harmless: false },
+    0x8a15003a: { meaning: 'the operation is blocked by group policy', harmless: false },
+    0x8a15005f: { meaning: 'an install location must be provided', harmless: false },
+};
+
+/** Converts a signed 32-bit exit code back to the unsigned value Windows reported. */
+export const unsignedExitCode = (exitCode: number): number =>
+    exitCode < 0 ? exitCode + 0x1_0000_0000 : exitCode;
+
+/** `0x8A150061` for an HRESULT-looking code, '' otherwise (0 and small values stay plain). */
+export const formatExitCodeHex = (exitCode: number): string => {
+    if (exitCode === 0) return '';
+    const value = unsignedExitCode(exitCode);
+    return value >= 0x8000_0000 ? '0x' + value.toString(16).toUpperCase() : '';
+};
+
+/** Last `maxChars` chars of a stream, cut at a newline so no partial line is shown. */
+const outputTail = (text: string, maxChars: number): string => {
+    const clean = sanitize(text);
+    if (clean === '') return '';
+    if (clean.length <= maxChars) return clean;
+    const cut = clean.slice(-maxChars);
+    const newline = cut.indexOf('\n');
+    return newline >= 0 ? cut.slice(newline + 1) : cut;
+};
+
+/**
+ * Turns a finished command into what the user needs to know: did it work, and
+ * if not, why (with the meaning of the exit code when it is a known one) plus
+ * the tail of the output, which is where installers put the actual error.
+ */
+export const summarizeCommandResult = (
+    command: string,
+    result: CommandExecutionResult,
+    options?: { maxOutputChars?: number }
+): CommandResultSummary => {
+    const maxOutputChars = Math.max(MIN_OUTPUT_CHARS, options?.maxOutputChars ?? 2_000);
+    const known = KNOWN_EXIT_CODES[unsignedExitCode(result.exitCode)];
+    const succeeded = !result.timedOut && !result.cancelled &&
+        (result.exitCode === 0 || (known !== undefined && known.harmless));
+
+    const hex = formatExitCodeHex(result.exitCode);
+    const exitText = 'exit code ' + result.exitCode + (hex ? ' (' + hex + ')' : '') +
+        (known ? ' - ' + known.meaning : '');
+
+    let message: string;
+    if (result.cancelled) {
+        message = 'The command was cancelled.';
+    } else if (result.timedOut) {
+        message = 'The command timed out.';
+    } else if (succeeded && result.exitCode !== 0) {
+        message = 'Nothing to do: ' + known!.meaning + '.';
+    } else if (succeeded) {
+        message = 'The command completed successfully.';
+    } else {
+        message = 'The command failed (' + exitText + ').';
+    }
+
+    const err = outputTail(result.stderr, maxOutputChars);
+    const out = outputTail(result.stdout, maxOutputChars);
+    const details = [
+        'command: ' + command,
+        'result: ' + message,
+        'exit code: ' + result.exitCode + (hex ? ' (' + hex + ')' : '') + (known ? '\nmeaning: ' + known.meaning : ''),
+        'stderr:\n' + (err !== '' ? err : '(no output)'),
+        'stdout:\n' + (out !== '' ? out : '(no output)'),
+    ].join('\n\n');
+
+    return { succeeded, message, details };
+};

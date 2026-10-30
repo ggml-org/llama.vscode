@@ -5,6 +5,7 @@ import { Utils } from "./utils";
 import { ModelType, AGENT_NAME, UI_TEXT_KEYS, UiView, PREDEFINED_LISTS_KEYS } from "./constants";
 import { PREDEFINED_LISTS } from "./lists";
 import { Agent } from "./types";
+import { CommandResultSummary, summarizeCommandResult } from "./services/terminal-command";
 
 export class Menu {
     private app: Application
@@ -365,9 +366,18 @@ export class Menu {
         return isHandled;
     }
 
-    public async installLlamacpp() {
+    /**
+     * Installs or upgrades llama.cpp.
+     *
+     * Returns what was run and whether it worked; `undefined` means no command
+     * ran at all (the user cancelled, chose the llama.app page, or the
+     * platform/Homebrew prerequisite failed). The result is reported to the
+     * user before returning, so every caller gets the feedback for free.
+     */
+    public async installLlamacpp(): Promise<LlamacppInstallOutcome | undefined> {
         if (process.platform != 'darwin' && process.platform != 'win32' && process.platform != 'linux') {
             vscode.window.showInformationMessage("Automatic install/upgrade is supported only for Mac and Windows and Linux for now. Download llama.cpp package manually and add the folder to the path. Visit github.com/ggml-org/llama.vscode/wiki for details.");
+            return undefined;
         } else {
             await this.app.llamaServer.killCommandCmd();
             const windowsArch = os.machine().toLowerCase();
@@ -387,19 +397,46 @@ export class Menu {
                     }
                 } catch (error) {
                     vscode.window.showErrorMessage("Homebrew is not installed (llama.cpp is installed with brew). Please install Homebrew from https://brew.sh before proceeding.");
-                    return;
+                    return undefined;
                 }
             } else if (process.platform === 'win32') {
-                const useWinget = await this.app.dialogs.showInstallLlamacppDialog("How to install llama.cpp?","winget", "shell script")
-                    if (useWinget) {
-                        terminalCommand = `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`;
+                const useLlamaApp = await this.app.dialogs.showInstallLlamacppDialog("How to install llama.cpp?","llama app", "winget")
+                    if (useLlamaApp) {
+                        await vscode.env.openExternal(vscode.Uri.parse('https://llama.app/'));
+                        return undefined;
                     } else {
-                        terminalCommand = "irm https://llama.app/install.ps1 | iex";
+                        terminalCommand = `winget install --id ggml.llamacpp -e${wingetArch ? ` -a ${wingetArch}` : ""}`;
                     }
             }
-            if (terminalCommand) {
-                await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand);
-            }
+            if (!terminalCommand) return undefined;
+            vscode.window.showInformationMessage("Installing llama.cpp with command '" + terminalCommand + "' ...");
+            const result = await this.app.llamaServer.executeCommandWithTerminalFeedback(terminalCommand);
+            const summary = summarizeCommandResult(terminalCommand, result);
+            await this.reportInstallResult(summary);
+            return { command: terminalCommand, succeeded: summary.succeeded };
+        }
+    }
+
+    /**
+     * Tells the user how the install/upgrade went.
+     *
+     * executeCommandWithTerminalFeedback spawns the command without a TTY and
+     * only echoes its tail to the output channel, so until now the user saw a
+     * terminal flash and had no way to know whether llama.cpp was actually
+     * installed: a failed winget run (an HRESULT such as "package already
+     * installed", reported as a large negative exit code) looked exactly like
+     * a successful one. The headline stays short enough for a notification;
+     * the full output is offered on demand, because installers print the real
+     * reason there and not in the exit code.
+     */
+    private reportInstallResult = async (summary: CommandResultSummary) => {
+        if (summary.succeeded) {
+            vscode.window.showInformationMessage("llama.cpp: " + summary.message);
+            return;
+        }
+        const choice = await vscode.window.showErrorMessage("llama.cpp: " + summary.message, 'Show Output');
+        if (choice === 'Show Output') {
+            await this.app.dialogs.showOkDialog(summary.details);
         }
     }   
 
@@ -440,4 +477,10 @@ export class Menu {
             await this.app.configuration.updateConfigValue('rag_enabled', !this.app.configuration.rag_enabled);
         } 
     }                    
+}
+
+/** What installLlamacpp ran, and whether it worked (no command = the user cancelled). */
+export interface LlamacppInstallOutcome {
+    command: string;
+    succeeded: boolean;
 }
