@@ -718,6 +718,21 @@ const AgentView: React.FC<AgentViewProps> = ({
           <PlusIcon />
           <span>New</span>
         </button>
+        {/* The Llama app provider exists on Windows and macOS only (same gate
+            as the "Add Tools Model From Llama App…" menu entry), so on other
+            hosts there is no local endpoint to import a tools model from.
+            Deliberately enabled without a tools model: importing one from the
+            Llama app is exactly what a user without a model needs. */}
+        {llamaAppSupported && (
+          <button
+            type="button"
+            className="modern-btn secondary"
+            onClick={addModelFromLlamaApp}
+            title="Add Tools Model From Llama App"
+          >
+            <span>llama app</span>
+          </button>
+        )}
         <button
           type="button"
           className="modern-btn secondary"

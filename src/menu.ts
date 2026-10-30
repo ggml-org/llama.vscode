@@ -408,7 +408,7 @@ export class Menu {
             "\n\nTL;DR,: install llama.cpp, start using" +
             "\n\nllama-vscode is an extension for code completion, chat with ai and agentic coding, focused on local model usage with llama.cpp." +
             "\n\n1. Install llama.cpp " +
-            "\n  - On startup llama.cpp installation will be suggested - accept it or alternatively Ctrl+Shift+M and select 'Install/upgrade llama.cpp' (sometimes restart is needed to adjust the paths to llama serve)" +
+            "\n  - On startup llama.cpp installation will be suggested - accept it or go to https://llama.app  (sometimes VS Code restart is needed to adjust the paths to llama serve)" +
             "\n\n2. Start using llama-vscode" +
             "\n  - For code completion - just start typing (uses completion model)" +
             "\n  - For agentic coding - click llama-vscode icon on the Activity Bar or press Ctrl+Shift+A (local usage supported, but you could also use external, paid providers)" +

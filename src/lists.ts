@@ -978,7 +978,8 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "list_directory",
                 "regex_search",
                 "get_diff",
-                "ask_user"
+                "ask_user",
+                "web_browser"
               ]
             },
             {
