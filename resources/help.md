@@ -319,6 +319,20 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.75 is released (30.10.2026)
+### What is new
+- regex_search tool is changed to be independent from RAG search.
+- Refactor  tool run_terminal_command
+- For Windows the procedure for installing lama.cpp is changed. If option llama app is selected - the web page llama.app is opened instead of running shell script.
+
+## Version 0.0.74 is released (28.10.2026)
+### What is new
+- Send prompt in sesson (between tool calls) fixed
+- Search files in agent chat is now independent from the RAG indexing
+- Auto-start default tools model for agent
+
+
+
 ## Version 0.0.73 is released (26.10.2026)
 ### What is new
 - Kimi K3.1 Pro and Kimi K3.1 Pro Highspeed added as predefined models for providers - moonshotai (supports tools on demand), openrouter, orcarouter
@@ -710,7 +724,6 @@ For more details - select 'View Documentation' from llama-vscode menu
 
 ### Requred servers
 - Tools server
-- Chat server (if search_source tool is used)
 - Embeddings server (if search_source tool is used)
 
 ### Overview
@@ -718,6 +731,17 @@ Llama agent uses AI and tools to answer questions, change and add files and do e
 Llama agent is still in development, but could produce some results with intlligent models with tools support.  
 Llama agent doesn't ask for permission for each change of a file. Use VS Code's Source Control view or github to review and rollback (if needed) the changes.  
 Llama agent asks for permission for executing terminal command. However, if the setting Tool_permit_some_terminal_commands is enabled, it will stop asking for permissions for some commands, which are considered safe.
+.
+
+A terminal command is considered safe only if EVERY part of it is read-only. Chained commands (`ls; rm -rf .`, `ls && git status`, `pwd | grep x`), output redirection (`>`, `2>&1`, heredocs), command substitution (`$(...)`, backticks), environment assignments (`FOO=bar ls`) and writes hidden in arguments (`find . -delete`, `sort -o out.txt`, `git branch -D`, `git config user.name`) are always treated as modifying, so they always ask for permission. Interpreters (`node`, `python`, `npm`, ...) are treated as safe only for version queries like `node --version`. The reason for the verdict is shown in the permission dialog.
+
+The tool run_terminal_command runs the command in a non-interactive shell (PowerShell on Windows) in the project root folder, without a TTY and without stdin. Interactive commands (git commit without -m, nano, less, npm create) will hang or fail - avoid them. The output is returned with its exit code and labelled stdout/stderr; it is cut in the middle when it is too long, so the head and the tail of the output are kept. A command that runs longer than tool_run_terminal_command_timeout seconds is killed, and the Stop button stops it too. Commands are never echoed into the Command Terminal - the command runs in a child process and its output is shown in the llama-vscode output channel.
+
+Settings:
+- tool_run_terminal_command_enabled - controls if the tool is enabled
+- tool_run_terminal_command_timeout - how long (in seconds) a command may run before it is killed. Default 300 (minimum 5, maximum 3600)
+- tool_run_terminal_command_max_chars - max number of chars of the output returned to the agent. Default 5000, limited by MAX_CHARS_TOOL_RETURN
+- tool_permit_some_terminal_commands - do not ask for permission for commands, which are considered safe
 
 ### How to use it 
 The best wey to prepare the environment for the agent is by selecting an Env (group of models). So, below is the standard workflow:
@@ -1550,7 +1574,7 @@ Llama-vscode provides a tool update_todo_list to the agent for planning and trac
 
 ### How to use it
 Update todos tool is based on Roocode's tool with the same name (the tool description is copied from Roocode). 
-If the update_todo_list is enabled (selected), the agent could use it for planning non trivial tasks (user requests). This tools is used for both creating and updating the todo items. The todo items are saved in file <project_root>\.llama-vscode-todos.md. The todo items are updated by the agent to track the execution of the plan. This file is temporary and it is removed automatically at the end of the agent tool loop (when the current user request is finished, fails or is stopped). As an additional guard, the extension adds the file to the local .git/info/exclude, so it can not be committed by mistake even if a run is interrupted (VS Code closed, crash). If this file is updated by the user, the change might be taken into account by the agent. The content of the file (together with the inital user request) is sent to the agent periodically (every 5-th iteration by default, but this could be changed from setting plan_review_frequency). The agent could overwrite the user changes in the todo items file before reading it.  
+If the update_todo_list is enabled (selected), the agent could use it for planning non trivial tasks (user requests). This tools is used for both creating and updating the todo items. The todo items are saved in file <project_root>\.llama-vscode-todos.md. The todo items are updated by the agent to track the execution of the plan. This file is removed after the execution of the current user request is finished. If this file is updated by the user, the change might be taken into account by the agent. The content of the file (together with the inital user request) is sent to the agent periodically (every 5-th iteration by default, but this could be changed from setting plan_review_frequency). The agent could overwrite the user changes in the todo items file before reading it.  
 Each time the agent uses the tool, the todo items are shown in the agent chat window. The state of the items tracked with [ ] (not started), [-] (in progres) [x] (finished)
 Todo items are not reused between the user requests.
 
@@ -1558,7 +1582,9 @@ Settings:
 - plan_review_frequency: Sets how often the todo items are sent to the agent to remind/review what is the current state of the plan
 - tool_update_todo_list_enabled - controls if the tool is enabled
 
-<img width="750" height="922" alt="image" src="https://github.com/user-attachments/assets/a4049df0-17da-4c6d-868f-a6bcbfa5f65c" />## Use cases  
+<img width="750" height="922" alt="image" src="https://github.com/user-attachments/assets/a4049df0-17da-4c6d-868f-a6bcbfa5f65c" />
+
+## Use cases  
 
 ### Overview
 The use cases below describe how to prepare and use llama-vscode in some specific cases. There are already some configurations for models and env, which could be selected and used directly
