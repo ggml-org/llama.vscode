@@ -9,6 +9,10 @@ suite("OpenAI-compatible model picker", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.ApiRoute], "https://global.api-route.com");
     });
 
+    test("registers CloudGPU without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.CloudGPU], "https://cloudgpu.app");
+    });
+
     test("handles a standard model listing with no optional metadata", () => {
         const item = formatOpenAiCompModelItem({ id: "gpt-6.1-sol" });
         assert.strictEqual(item.label, "gpt-6.1-sol");

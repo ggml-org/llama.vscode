@@ -383,6 +383,7 @@ export enum OpenAiProvidersKeys {
   LlamaApp = 'Llama app...',
   OrcaRouter = 'OrcaRouter...',
   ApiRoute = 'API Route...',
+  CloudGPU = 'CloudGPU...',
   AtlasCloud = 'Atlas Cloud...',
   Custom = 'Custom...'
 }
@@ -395,6 +396,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.OrcaRouter]: "https://api.orcarouter.ai",
   [OpenAiProvidersKeys.AtlasCloud]: "https://api.atlascloud.ai",
   [OpenAiProvidersKeys.ApiRoute]: "https://global.api-route.com",
+  [OpenAiProvidersKeys.CloudGPU]: "https://cloudgpu.app",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
 
