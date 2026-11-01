@@ -2,14 +2,14 @@ import vscode, { QuickPickItem, Uri } from "vscode";
 import { exec } from 'child_process';
 import fs from 'fs';
 import path from 'path';
-import { ChunkEntry, Env, LlmModel } from './types'
-import pm from 'picomatch'
+import { Env, LlmModel } from './types'
 import * as https from 'https';
 import * as http from 'http';
 import { URL } from 'url';
 import { Application } from "./application";
 import { UI_TEXT_KEYS } from "./constants";
 import { HtmlText } from "./web-browser";
+import { analyzeCommand } from "./services/terminal-command";
 
 
 interface BM25Stats {
@@ -23,6 +23,16 @@ interface BM25Stats {
 export class Utils {
     static MSG_NO_USER_PERMISSION = "The user doesn't give a permission to execute the request!";
     static EMPTY_CHAT = {name: "", id: ""}
+
+    /**
+     * True when a tool result is a refusal. A refusal may carry an appended
+     * `Reason: …` (the automatic permission modes explain why they denied), so
+     * callers must never compare with `=== MSG_NO_USER_PERMISSION` - that would
+     * read a reasoned denial as a successful tool call and, for edit_file, even
+     * record the file as changed.
+     */
+    static isNoUserPermission = (toolOutput: unknown): boolean =>
+        typeof toolOutput === 'string' && toolOutput.startsWith(Utils.MSG_NO_USER_PERMISSION);
 
     static getLeadingSpaces = (input: string): string => {
         // Match the leading spaces using a regular expression
@@ -211,106 +221,11 @@ export class Utils {
 
     
 
-    static isModifyingCommand = (command: string): boolean => {
-        if (!command || typeof command !== 'string') {
-            return false;
-        }
-
-        const normalizedCmd = command.trim().toLowerCase();
-
-        // List of modifying command patterns (both Windows and Unix)
-        const modifyingPatterns = [
-            // File operations
-            /^(rm|del|erase|remove)\b/,
-            /^rd\b/,
-            /^rmdir\b/,
-            /^(mv|move|ren|rename)\b/,
-            /^(cp|copy)\b/,
-            /^mkdir\b/,
-            /^ni\b/,          // New-Item (PowerShell)
-            /^out\-file\b/,
-            /^set\-content\b/,
-            /^add\-content\b/,
-            /^scp\b/,
-            /^rsync\b/,
-            
-            // System modifications
-            /^chmod\b/,
-            /^chown\b/,
-            /^attrib\b/,
-            /^icacls\b/,
-            /^cacls\b/,
-            /^reg\b/,         // regedit operations
-            /^netsh\b/,
-            /^net\b/,
-            /^diskpart\b/,
-            /^format\b/,
-            
-            // Package management
-            /^(apt|yum|dnf|pacman|brew|pip|npm|pnpm|yarn|dotnet|winget|choco)\b/,
-            
-            // Process management
-            /^(kill|taskkill|stop\-process)\b/,
-            /^start\b/,
-            
-            // Network operations
-            /^(ssh|ftp|sftp)\b/,
-            
-            // Installation/execution
-            /^\.\/\S+/,
-            /^\.\\\S+/,
-            /^\w+:\\\S+/,
-            /^\.\S+\b/,
-            /^install\b/,
-            /^uninstall\b/,
-            /^setup\b/,
-            /^msiexec\b/,
-            
-            // Dangerous patterns
-            /^>/,             // Output redirection (overwrite)
-            /^>>/,            // Output redirection (append)
-            /^\|/,            // Piping might modify if the receiving command does
-            /^&\S*/,          // Command chaining
-            /^;\S*/,          // Command sequencing
-            /^\$\w+\s*=/      // Variable assignment (might lead to modifications)
-        ];
-
-        if (modifyingPatterns.some(pattern => pattern.test(normalizedCmd))) {
-            return true;
-        }
-
-        const readOnlyPatterns = [
-            /^echo\b/,
-            /^dir\b/,
-            /^ls\b/,
-            /^cat\b/,
-            /^type\b/,
-            /^get\-content\b/,
-            /^get\-childitem\b/,
-            /^pwd\b/,
-            /^cd\b/,
-            /^chdir\b/,
-            /^where\b/,
-            /^which\b/,
-            /^find\b/,
-            /^grep\b/,
-            /^select\-string\b/,
-            /^help\b/,
-            /^man\b/,
-            /^--help\b/,
-            /^-h\b/,
-            /^\?/,
-            /^exit\b/,
-            /^clear\b/,
-            /^cls\b/
-        ];
-
-        if (readOnlyPatterns.some(pattern => pattern.test(normalizedCmd))) {
-            return false;
-        }
-
-        return true;
-    }
+    /**
+     * @deprecated Use analyzeCommand().modifying from services/terminal-command.
+     * Kept as a thin delegator so existing call sites keep working.
+     */
+    static isModifyingCommand = (command: string): boolean => analyzeCommand(command).modifying;
 
     
 
@@ -357,41 +272,6 @@ export class Utils {
             return `Error reading directory: ${error instanceof Error ? error.message : String(error)}`;
         }
     }
-
-    static getRegexpMatches = (
-        includeGlob: string,
-        excludeGlobPtr: string,
-        searchPattern: string,
-        chunks: Map<number, ChunkEntry>
-        ): string => {
-
-        const MAX_REG_EXP_MATCHES = 50;        
-        let matches:string = "";
-        let totalMatches:number = 0;
-        const regexSearch = new RegExp(searchPattern);
-        const isMatchInclude = includeGlob == undefined || includeGlob.trim() == "" ? undefined : pm(includeGlob);
-        const isMatchExclude = excludeGlobPtr == undefined || excludeGlobPtr.trim() == "" ? undefined : pm(excludeGlobPtr);
-        let valuesIterator = chunks.values()
-        let chunkIter = valuesIterator.next();
-        while (!chunkIter.done){
-            let chunk = chunkIter.value;
-            if (chunk && (isMatchInclude == undefined || isMatchInclude(chunk.uri)) && (isMatchExclude == undefined || !isMatchExclude(chunk.uri))){
-                const lines = chunk.content.split('\n');
-                let index = 0;
-                for (const line of lines){
-                    if (regexSearch.test(line)) {
-                        matches += "\n"+ chunk.uri + ":" + (chunk.firstLine + index) + ": " + line;
-                        totalMatches++;
-                        if (totalMatches > MAX_REG_EXP_MATCHES) return matches;
-                    }
-                    index++;
-                }
-            }
-            chunkIter = valuesIterator.next()
-        }
-        if (matches.trim() == "") matches = "No matches found"
-        return matches;
-    } 
 
     static getAbsolutFilePath = (filePath:string): string => {        
         if (path.isAbsolute(filePath)) {

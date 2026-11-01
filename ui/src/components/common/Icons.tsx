@@ -142,3 +142,10 @@ export const ShieldIcon: React.FC<IconProps> = ({ size = 14, className }) => (
     <path d="M5.9 8.1l1.5 1.5 2.9-2.9" />
   </svg>
 );
+
+// Used as the "current item" marker in selection menus (permissions mode).
+export const CheckIcon: React.FC<IconProps> = ({ size = 12, className }) => (
+  <svg {...base(size)} className={className}>
+    <path d="M3 8.5l3.2 3.2L13 5" />
+  </svg>
+);

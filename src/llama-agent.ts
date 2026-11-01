@@ -1244,7 +1244,7 @@ export class LlamaAgent {
                                 if (!preToolResult.stopTool) commandOutput = await toolFunc(oneToolCall.function.arguments);
                                 else commandOutput = preToolResult.resultInfo;
     
-                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
+                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && !Utils.isNoUserPermission(commandOutput)) { 
                                     let changedFile = commandDescription
                                     if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length)
                                     if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length)
@@ -1253,7 +1253,7 @@ export class LlamaAgent {
                                         this.logInUi(commandOutput + "\n\n")
                                     }
                                 }
-                                if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) deletedFiles.add(commandDescription);
+                                if (oneToolCall.function.name == "delete_file" && !Utils.isNoUserPermission(commandOutput)) deletedFiles.add(commandDescription);
                             }
                         }
                         if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){
@@ -1572,16 +1572,19 @@ export class LlamaAgent {
                                     this.currentToolSession = previousToolSession;
                                 }
 
-                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && commandOutput != Utils.MSG_NO_USER_PERMISSION) { 
+                                if ((oneToolCall.function.name == "edit_file" || oneToolCall.function.name == "multi_edit_file") && !Utils.isNoUserPermission(commandOutput)) { 
                                     let changedFile = commandDescription;
                                     if (changedFile.startsWith(TOOLS_DESC.prefixMultiEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixMultiEditFile.length);
                                     if (changedFile.startsWith(TOOLS_DESC.prefixEditFile)) changedFile = changedFile.slice(TOOLS_DESC.prefixEditFile.length);
                                     session.changedFiles.add(changedFile);
                                     if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
                                         session.logDestination.append(commandOutput + "\n\n");
-                                    }
+                                    }   
                                 }
-                                if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) session.deletedFiles.add(commandDescription);
+                                if (Utils.isNoUserPermission(commandOutput)){    
+                                    session.logDestination.append("Permission denied for tool execution." + "\n\n");
+                                }
+                                if (oneToolCall.function.name == "delete_file" && !Utils.isNoUserPermission(commandOutput)) session.deletedFiles.add(commandDescription);
                             }
                         }
                         if (this.app.tools.vscodeToolsSelected.has(oneToolCall.function.name)){

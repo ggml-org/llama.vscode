@@ -13,6 +13,19 @@ export enum UiView {
   AiRunner = 'airunner'
 }
 
+export enum ToolsPermissionsMode {
+  AllowAll = "AllowAll",
+  AutoAskIfUnsure = "AutoAskIfUnsure",
+  AutoDenyIfUnsure = "AutoDenyIfUnsure",
+  Ask = "Ask"
+}
+
+export enum LlmJudgeCommandSafe {
+  Yes = "yes",
+  No = "no",
+  Unsure = "unsure"
+}
+
 export enum Action {
   Select = 'select',
   AddLocal = 'addLocal',
@@ -385,6 +398,7 @@ export enum OpenAiProvidersKeys {
   ApiRoute = 'API Route...',
   CloudGPU = 'CloudGPU...',
   AtlasCloud = 'Atlas Cloud...',
+  Runcrate = 'Runcrate...',
   Custom = 'Custom...'
 }
 // The "Llama app" provider is available only on Windows and macOS.
@@ -397,6 +411,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.AtlasCloud]: "https://api.atlascloud.ai",
   [OpenAiProvidersKeys.ApiRoute]: "https://global.api-route.com",
   [OpenAiProvidersKeys.CloudGPU]: "https://cloudgpu.app",
+  [OpenAiProvidersKeys.Runcrate]: "https://api.runcrate.ai",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
 

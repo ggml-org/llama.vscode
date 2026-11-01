@@ -4,8 +4,20 @@ import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
 import { Plugin } from './plugin';
-import { CONFIRMATION_STATE, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
+import { CONFIRMATION_STATE, ToolsPermissionsMode as ToolsPermissionsMode, TOOLS_DESC, UI_TEXT_KEYS, LlmJudgeCommandSafe } from "./constants";
 import { Chat, Agent } from "./types";
+import {
+    analyzeCommand,
+    formatCommandOutput,
+    isInsideFolders,
+    triageCommand,
+    DEFAULT_MAX_OUTPUT_CHARS,
+    DEFAULT_TIMEOUT_MS,
+    MAX_COMMAND_CHARS,
+    MAX_TIMEOUT_MS,
+    MIN_OUTPUT_CHARS,
+    MIN_TIMEOUT_MS
+} from "./services/terminal-command";
 
 type ToolsMap = Map<string, (...args: any[]) => any>;
 
@@ -54,43 +66,203 @@ export class Tools {
         this.toolsFuncDesc.set("custom_eval_tool", this.customEvalToolDesc)
         this.toolsFuncDesc.set("llama_vscode_help", this.llamaVscodeHelpDesc)
         this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc)
-        this.toolsFuncDesc.set("update_todo_list", this.updateTodoListDesc);
         this.toolsFuncDesc.set("delegate_task", this.delegateTaskDesc)
-        this.toolsFuncDesc.set("create_agent ", this.createAgentDesc);
-        this.toolsFuncDesc.set("get_errors ", this.getErrorsDesc);
-        this.toolsFuncDesc.set("rename_symbol ", this.renameSymbolDesc);
+        this.toolsFuncDesc.set("create_agent", this.createAgentDesc);
+        this.toolsFuncDesc.set("get_errors", this.getErrorsDesc);
+        this.toolsFuncDesc.set("rename_symbol", this.renameSymbolDesc);
         this.toolsFuncDesc.set("multi_edit_file", this.multiEditFileDesc);
         this.toolsFuncDesc.set("web_browser", this.webBrowserDesc);
         this.toolsFuncDesc.set("search_tools", this.searchToolsDesc);
     }
 
     public runTerminalCommand = async (args: string ) => {
-        let command = JSON.parse(args).command;
-        
-        if (command == undefined) return "The terminal command is not provided."
-
-        if ((!this.app.configuration.tool_permit_some_terminal_commands || Utils.isModifyingCommand(command))) {
-            let [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command + 
-                "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
-            if (yesDontAsk) {
-                this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
-                vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
-            }
-            if (!yesApply) return "The user doesn't give a permission to execute this command.";;
+        let command: string | undefined;
+        try {
+            const params = JSON.parse(args);
+            // A malformed or non-string argument must not throw: the agent loop
+            // turns a throw into a 400-char slice of the stack trace.
+            if (typeof params?.command === "string") command = params.command;
+        } catch {
+            return "The tool arguments are not valid JSON.";
         }
-        
-        let {stdout, stderr} = await this.app.llamaServer.executeCommandWithTerminalFeedback(command);
-        return (stdout + "\n\n" + stderr).slice(0, this.app.configuration.MAX_CHARS_TOOL_RETURN);
+
+        if (command == undefined || command.trim() === "") return "The terminal command is not provided."
+        if (command.length > MAX_COMMAND_CHARS) return "The terminal command is too long (" + command.length +
+            " chars, max " + MAX_COMMAND_CHARS + "). Split it into smaller commands."
+
+        // The permission gate: a command that can change files or the environment
+        // is ALWAYS confirmed, whatever the "don't ask again" shortcut says.
+        const analysis = analyzeCommand(command)
+        if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+            && (!this.app.configuration.tool_permit_some_terminal_commands || analysis.modifying)) {
+            let yesApply = false
+            let yesDontAsk = false
+            let shouldAskUser = true;
+            // Why the command was denied, when it was denied automatically - it is
+            // returned to the model so it does not simply retry the same command.
+            let denyReason = "";
+            if (this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure
+                || this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoDenyIfUnsure){
+                const autoAsk = this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure;
+                // Not every command needs a model: `git status` is safe and
+                // `rm -rf /` is not, and a request costs seconds and tokens. The
+                // deterministic triage answers those two extremes and leaves only
+                // the genuinely ambiguous commands to the LLM judge.
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                const triage = triageCommand(command, {
+                    allowedRoots: this.getAllowedRoots(),
+                    cwd: workspaceRoot
+                });
+                if (triage.verdict == "safe") {
+                    shouldAskUser = false;
+                    yesApply = true;
+                    this.logCommandJudgement("Command is obviously safe, the LLM judge is not asked: " + triage.reason);
+                } else if (triage.verdict == "dangerous") {
+                    shouldAskUser = false;
+                    yesApply = false;
+                    denyReason = triage.reason;
+                    this.logCommandJudgement("Command is obviously dangerous, the LLM judge is not asked: " + triage.reason);
+                } else {
+                    const rootFolderInfo = workspaceRoot ?? "No workspace folder open.";
+                    const replacements = {
+                        rootFolderInfo: rootFolderInfo,
+                        command: command
+                    };
+                    let prompt = this.app.prompts.replacePlaceholders(this.app.prompts.SAFE_COMMAND_JUDGE, replacements)
+                    // getChatCompletion throws on a request failure (no chat or
+                    // tools model, server down). A judge that cannot be asked is
+                    // "unsure", not a crash: an exception here would reach the
+                    // agent loop as a 400-char slice of a stack trace.
+                    let judgeAnswer: unknown;
+                    try {
+                        const completion = await this.app.llamaServer.getChatCompletion(prompt)
+                        judgeAnswer = completion?.choices?.[0]?.message?.content
+                    } catch (error) {
+                        this.app.logger?.addEventLog("AGENT", "COMMAND_JUDGE_FAILED", String(error).slice(0, 200))
+                        judgeAnswer = undefined;
+                    }
+                    const aiJudgeAnswer = this.normalizeJudgeAnswer(judgeAnswer)
+
+                    if (aiJudgeAnswer == LlmJudgeCommandSafe.Yes){
+                        shouldAskUser = false;
+                        yesApply = true;
+                    } else if (aiJudgeAnswer == LlmJudgeCommandSafe.No){
+                        shouldAskUser = false;
+                        yesApply = false;
+                        denyReason = "the LLM judge answered 'no'";
+                    } else {
+                        // Not an answer at all (no chat/tools model, request failed)
+                        // counts as "unsure": ask in AutoAskIfUnsure, deny otherwise.
+                        shouldAskUser = autoAsk;
+                        yesApply = false;
+                        denyReason = autoAsk ? "" : "the LLM judge could not decide";
+                    }
+                    this.logCommandJudgement("The LLM judge answered '" + aiJudgeAnswer + "'")
+                }
+            }
+            if (shouldAskUser){
+                [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command +
+                (analysis.modifying ? "\n\n Reason: " + analysis.reason : "") +
+                "\n\nIf you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
+                if (yesDontAsk) {
+                    // Awaited on purpose: a second tool call of the same batch must
+                    // already see the elevated value or it prompts again.
+                    await this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
+                    vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
+                }
+            }    
+            if (!yesApply) return Utils.MSG_NO_USER_PERMISSION +
+                (denyReason !== "" ? " Reason: " + denyReason + "." : "");
+        }
+
+        const session = this.app.llamaAgent?.getCurrentToolSession();
+        // The system prompt tells the model the project root is the workspace
+        // folder, so relative paths must resolve there and not in whatever cwd
+        // the extension host happens to have.
+        const cwd = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+        const timeoutMs = this.getTerminalTimeoutMs();
+
+        const result = await this.app.llamaServer.executeCommandWithTerminalFeedback(command, {
+            cwd,
+            timeoutMs,
+            // Stop aborts the session controller only; without passing it here
+            // the child process kept running and the tool call never returned.
+            signal: session?.abortController?.signal
+        });
+
+        const note = result.timedOut
+            ? "The command timed out after " + Math.round(timeoutMs / 1000) + "s and was killed. " +
+              "Split it into smaller commands or raise the setting tool_run_terminal_command_timeout."
+            : result.cancelled ? "Command cancelled by the user." : undefined;
+
+        return formatCommandOutput(result, { maxChars: this.getTerminalMaxChars(), note });
     }
 
+    /**
+     * The folders the agent may work in: every workspace root plus the auto
+     * memory folder. The triage uses them to tell "inside the project" from
+     * "writes to /etc or ~/.ssh", which needs no model to be judged.
+     */
+    private getAllowedRoots = (): string[] => {
+        const roots: string[] = [];
+        // An unresolved folder (remote/untitled) has an empty fsPath, and an empty
+        // root would resolve to the process cwd and allow everything below it.
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            if (folder.uri?.fsPath) roots.push(folder.uri.fsPath);
+        }
+        if (this.app.extensionContext?.storageUri?.fsPath) {
+            roots.push(path.join(this.app.extensionContext.storageUri.fsPath, "auto_memory"));
+        }
+        return roots;
+    }
+
+    /**
+     * The judge prompt asks for exactly one word, but a chat model adds
+     * punctuation, quotes or a short sentence. Anything that is not clearly
+     * yes/no becomes "unsure" instead of being read as a permission grant.
+     */
+    private normalizeJudgeAnswer = (answer: unknown): LlmJudgeCommandSafe => {
+        const word = String(answer ?? "").trim().toLowerCase().split(/[^a-z]+/).filter(Boolean)[0] ?? "";
+        if (word === LlmJudgeCommandSafe.Yes) return LlmJudgeCommandSafe.Yes;
+        if (word === LlmJudgeCommandSafe.No) return LlmJudgeCommandSafe.No;
+        return LlmJudgeCommandSafe.Unsure;
+    }
+
+    /**
+     * Records why the automatic permission modes allowed or denied, for the UI log.
+     * Best effort on purpose: this runs inside a permission DECISION, so a failure
+     * to log must never turn an allow/deny into a thrown tool call.
+     */
+    private logCommandJudgement = (message: string) => {
+        try {
+            this.app.llamaAgent?.getCurrentToolSession()?.logDestination?.append(message + "\n\n");
+        } catch (error) {
+            this.app.logger?.addEventLog("AGENT", "COMMAND_JUDGE_LOG_FAILED", String(error).slice(0, 200));
+        }
+    }
+
+    /** Timeout in ms, clamped so a wrong setting cannot hang the agent forever. */
+    private getTerminalTimeoutMs = (): number =>
+        Math.min(MAX_TIMEOUT_MS, Math.max(MIN_TIMEOUT_MS,
+            Number(this.app.configuration.tool_run_terminal_command_timeout) * 1000 || DEFAULT_TIMEOUT_MS))
+
+    /** Output limit: a setting may only lower MAX_CHARS_TOOL_RETURN. */
+    private getTerminalMaxChars = (): number =>
+        Math.min(this.app.configuration.MAX_CHARS_TOOL_RETURN,
+            Math.max(MIN_OUTPUT_CHARS, Number(this.app.configuration.tool_run_terminal_command_max_chars) || DEFAULT_MAX_OUTPUT_CHARS))
+
     public runTerminalCommandDesc = async (args: string ) => {
-        let command = JSON.parse(args).command;
+        let command = "";
+        try {
+            const params = JSON.parse(args);
+            if (typeof params?.command === "string") command = params.command;
+        } catch { /* the log line below still renders */ }
         // The agent log is line based and a tool description is one paragraph
         // that must not contain an empty line: the UI ends the tool block there
         // and renders the rest of the command as text of the AI answer. A blank
         // line inside a command (heredoc bodies, scripted steps) is kept as a
         // whitespace-only line, which looks the same but stays in the paragraph.
-        return "Executing terminal command: " + (command ?? "").split(/\r?\n/)
+        return "Executing terminal command: " + command.split(/\r?\n/)
             .map((line: string) => (line.trim().length === 0 ? " " : line))
             .join("\n");
     }
@@ -125,6 +297,7 @@ export class Tools {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
             absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
+            if (!this.isInsideAllowedFolders(absolutePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
             let stats: fs.Stats;
             try {
                 stats = await fs.promises.stat(absolutePath);
@@ -222,13 +395,30 @@ export class Tools {
         return "Listing directory: " + dirPath;
     }
 
+    // RAG-free: searches the workspace files themselves (see
+    // services/workspace-text-search.ts). indexFilesIfNeeded() deliberately stays
+    // out of this tool - search_source is the only one that needs the index.
     public getRegextMatches = async (args: string ) => {
-        let params = JSON.parse(args);
-        
-        if (params.regex == undefined) return "The regex is not provided."
-        
-        await this.indexFilesIfNeeded();
-        return Utils.getRegexpMatches(params.include_pattern, params.exclude_pattern??"", params.regex, this.app.chatContext.entries)
+        let params: any;
+        try { params = JSON.parse(args); } catch { return "The tool arguments are not valid JSON."; }
+
+        if (params.regex == undefined || String(params.regex) === "") return "The regex is not provided."
+
+        // The agent's Stop button aborts an AbortController, not a
+        // vscode.CancellationToken, so cancellation is passed as a predicate.
+        const session = this.app.llamaAgent?.getCurrentToolSession();
+        const result = await this.app.workspaceTextSearch.search(
+            {
+                regex: String(params.regex),
+                includePattern: params.include_pattern,
+                excludePattern: params.exclude_pattern
+            },
+            undefined,
+            () => !!session?.abortController?.signal.aborted,
+            this.app.configuration.MAX_CHARS_TOOL_RETURN
+        );
+
+        return result.text;
     }   
 
     public getRegextMatchesDesc = async (args: string ) => {
@@ -394,17 +584,13 @@ export class Tools {
 
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
-            // Restrict deletion to project folder
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders || workspaceFolders.length === 0) {
-                return "Cannot delete file: no workspace folder open.";
+            // Restrict deletion to the allowed folders - the same set of roots
+            // the other file tools use, so a multi-root workspace behaves alike.
+            if (!this.isInsideAllowedFolders(absolutePath)) {
+                return `Deletion not allowed: ${filePath} is outside all workspace folders and outside auto memory folder.`;
             }
-            const workspaceRoot = workspaceFolders[0].uri.fsPath;
-            const relativePath = path.relative(workspaceRoot, absolutePath);
-            if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-                return `Deletion not allowed: ${filePath} is outside the project folder.`;
-            }
-            if (!this.app.configuration.tool_permit_file_delete){  
+            if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+                && !this.app.configuration.tool_permit_file_delete){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be deleted?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_delete", true)
@@ -463,7 +649,10 @@ export class Tools {
         if (!filePath) return "The file is not provided.";
         
         try {
-            if (!this.app.configuration.tool_permit_file_changes){  
+            if (!this.isInsideAllowedFolders(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
+            
+            if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+                && !this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
@@ -471,7 +660,7 @@ export class Tools {
                 }
                 if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
-            if (!this.isEditAllowed(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
+            
             let resultEdit = await Utils.findReplaceFile(filePath, search, replace, replaceAll, this.fileReadTimestamps)
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
                 this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
@@ -482,21 +671,17 @@ export class Tools {
             throw error;
         }        
     }
-    private isEditAllowed = (filePath: string): boolean => {
-        let isAllowed = true;
-        if (path.isAbsolute(filePath)) {
-            const resolvedFilePath = path.resolve(filePath)
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(resolvedFilePath));
-            if (!workspaceFolder) {
-                if (this.app.extensionContext.storageUri?.fsPath){
-                    let auto_memory_folder = path.join(this.app.extensionContext.storageUri?.fsPath, "auto_memory");
-                    auto_memory_folder = path.resolve(auto_memory_folder)
-                    if (!resolvedFilePath.startsWith(auto_memory_folder)) isAllowed = false;
-                } else isAllowed = false; 
-            }
-        }
-
-        return isAllowed
+    /**
+     * True when the path is inside one of the allowed roots - every workspace
+     * folder or the auto memory folder (see getAllowedRoots). A relative path is
+     * left alone: the caller resolves it against the project root, so it cannot
+     * leave the roots.
+     */
+    private isInsideAllowedFolders = (filePath: string): boolean => {
+        if (!path.isAbsolute(filePath)) return true;
+        // isInsideFolders also takes care of the separator ("/project-evil" is
+        // not inside "/project") and of the case-insensitive Windows compare.
+        return isInsideFolders(path.resolve(filePath), this.getAllowedRoots());
     }
 
     public editFileDesc = async (args: string) => {
@@ -514,10 +699,11 @@ export class Tools {
 
         if (!filePath) return "The file is not provided.";
         if (!edits || !Array.isArray(edits) || edits.length < 1) return "At least one edit operation is required.";
-        if (!this.isEditAllowed(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
+        if (!this.isInsideAllowedFolders(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
 
         try {
-            if (!this.app.configuration.tool_permit_file_changes){  
+            if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+                && !this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
@@ -782,7 +968,7 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "run_terminal_command",
-                    "description": "Runs the provided command in a terminal and returns the result. For Windows uses powershell.",
+                    "description": "Runs the provided command in a non-interactive shell (PowerShell on Windows) and returns its output. The command runs in the project root folder, without a TTY and without stdin, so interactive commands (git commit, nano, less, npm create) will hang or fail - avoid them. Output is truncated, keeping its head and tail. Timeout: " + this.app.configuration.tool_run_terminal_command_timeout + "s.",
                     "parameters": {
                         "type": "object",
                         "properties": {
@@ -882,7 +1068,7 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "regex_search",
-                    "description": "Fast text-based regex search in the code base (prefer it for finding exact function names or expressions) that finds exact pattern matches with file names and line numbers within files or directories. If there is no exclude_pattern - provide an empty string. Returns up to 50 matches in format file_name:line_number: line_content",
+                    "description": "Fast text-based regex search in the workspace (prefer it for finding exact function names or expressions). Returns up to 50 matches as file_name:line_number: line_content. Respects .gitignore, node_modules and the files.exclude/search.exclude settings. If there is no exclude_pattern - provide an empty string.",
                     "parameters": {
                         "type": "object",
                         "properties": {

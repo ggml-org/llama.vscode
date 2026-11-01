@@ -39,6 +39,8 @@ import { DslCommands } from "./dsl-commands"
 import { AgentReminder } from "./agent-reminder";
 import { Hooks } from "./hooks";
 import { WebBrowser } from "./web-browser";
+import { WorkspaceTextSearch, createWorkspaceTextSearchHost } from "./services/workspace-text-search";
+import { WorkspaceIgnoreFileCache, createWorkspaceFileCatalogHost } from "./services/workspace-file-catalog";
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -82,6 +84,7 @@ export class Application {
     public agentReminder: AgentReminder
     public hooks: Hooks
     public webBrowser: WebBrowser
+    public workspaceTextSearch: WorkspaceTextSearch
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -111,6 +114,14 @@ export class Application {
         this.prompts = new Prompts(this)
         this.git = new Git(this)
         this.webBrowser = new WebBrowser(this)
+        // RAG-free full-text search for the agent's regex_search tool. It owns
+        // its own ignore-file cache: each cache costs at most one discovery per
+        // TTL window, so sharing it with the file picker is not worth the
+        // extra wiring.
+        this.workspaceTextSearch = new WorkspaceTextSearch(
+            new WorkspaceIgnoreFileCache(createWorkspaceFileCatalogHost()),
+            createWorkspaceTextSearchHost()
+        )
         this.tools = new Tools(this)
         this.llamaAgent = new LlamaAgent(this)
         this.llamaWebviewProvider = new LlamaWebviewProvider(context.extensionUri, this, context)

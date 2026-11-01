@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AgentView, AIRunnerView, AddEnvView, AgentEditor, AgentCommandEditor } from './components';
 import { vscode } from './types/vscode';
+import { PermissionsModeInfo, parsePermissionsModes } from './utils/permissionsMode';
 
 interface AppProps { }
 
@@ -68,6 +69,15 @@ const App: React.FC<AppProps> = () => {
   const [llamaAppSupported, setLlamaAppSupported] = useState<boolean>(
     Boolean(initialState.llamaAppSupported)
   );
+  // Current `tools_permissions_mode`. Kept in the webview state so a reload of
+  // the panel does not show the "ask" default for a moment when the user
+  // actually runs in another mode.
+  const [permissionsMode, setPermissionsMode] = useState<string>(
+    initialState.permissionsMode || 'Ask'
+  );
+  // Labels / explanations of the modes, sent by the extension so the composer
+  // menu uses the same wording as package.json.
+  const [permissionsModes, setPermissionsModes] = useState<PermissionsModeInfo[] | undefined>(undefined);
   const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
   const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string, subagentEnabled: boolean}>({name:"", description:"", systemInstruction:"", toolsModel:"", subagentEnabled: false});
 
@@ -85,13 +95,14 @@ const App: React.FC<AppProps> = () => {
       currentEnv: currentEnv,
       currentState,
       llamaAppSupported,
+      permissionsMode,
       // Kept so a webview reload does not show the "no tools model" empty state
       // for a page that is usable through endpoint_tools or a pending default.
       hasToolsEndpoint,
       defaultToolsModel,
       view
     });
-  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, hasToolsEndpoint, defaultToolsModel, view]);
+  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, hasToolsEndpoint, defaultToolsModel, view, permissionsMode]);
 
   useEffect(() => {
     // Listen for messages from the extension
@@ -134,6 +145,15 @@ const App: React.FC<AppProps> = () => {
         case 'updateHostInfo':
           setLlamaAppSupported(Boolean(message.llamaAppSupported));
           break;
+        case 'updatePermissionsMode': {
+          // The extension is the source of truth: it posts the current value and
+          // the list whenever the setting changes (including changes made in the
+          // settings UI), so an unknown / missing value keeps the last known one.
+          if (typeof message.mode === 'string' && message.mode) setPermissionsMode(message.mode);
+          const modes = parsePermissionsModes(message.modes);
+          if (modes.length > 0) setPermissionsModes(modes);
+          break;
+        }
         case 'updateAgentEdit':
           setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel,subagentEnabled: message.subagentEnabled});
           break;
@@ -314,6 +334,8 @@ const App: React.FC<AppProps> = () => {
             currentState={currentState}
             setCurrentState={setCurrentState}
             llamaAppSupported={llamaAppSupported}
+            permissionsMode={permissionsMode}
+            permissionsModes={permissionsModes}
             contextFiles={contextFiles}
             setContextFiles={setContextFiles}
             imagePath={imagePath}
