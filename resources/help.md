@@ -725,7 +725,7 @@ For more details - select 'View Documentation' from llama-vscode menu
 
 ### Requred servers
 - Tools server
-- Embeddings server (if search_source tool is used)
+- Embeddings server (optional - enables embeddings filtering of tool search_source results)
 
 ### Overview
 Llama agent uses AI and tools to answer questions, change and add files and do everythin eles, which is provided by the tools.  
@@ -751,7 +751,7 @@ The best wey to prepare the environment for the agent is by selecting an Env (gr
 3. Write your request and send it with Enter or the "Send" button.  
 4. During the agent loop you could also send prompt - enter a prompt and press Enter or click the second "Send" button (on the right side)
 
-You could also use the agent only with tools model selected. In this case the tool search_source will use tools instead of chat server and filtering with embeddins server will be skipped.
+You could also use the agent only with tools model selected. In this case the tool search_source will use tools instead of chat server and filtering with embeddins server will be skipped. Tool search_source works without RAG indexing and without an embeddings server - it then searches the project files directly and ranks the fragments with BM25.
 
 Optional
 - You could add files to the context with the @ button or just by entering "@". 
@@ -1543,7 +1543,7 @@ The agent "Agent creator" makes it easier to create agents (which could be used 
 
 ### Requred servers
 - Tools server
-- Embeddings server (if search_source tool is used)
+- Embeddings server (optional - enables embeddings filtering of tool search_source results)
 
 ### Overview
 You can program from your phone with llama-vscode and Telegram. Part of the agent functionality of llama-vscode could be used from Telegram (i.e. from phone) via a Telegram Bot.  The user creates a Telegram Bot and sets it's token in setting telegram_api_token. After that all messages to this bot are forwarded to the agent in llama-vscode. The AI agent answers are sent to the user in Telegram. For security reasons, only users from a white list (setting telegram_bot_users) are allowed to use the bot. The bot answers, for example to /help command, are provided in the language, which is set in setting "Language". The user could also confirm permission requests for terminal commands, changing and deleting files from Telegram.

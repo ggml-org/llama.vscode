@@ -38,7 +38,20 @@ export class ChatContext {
         });
     }
 
-    public getRagContextChunks = async (prompt: string): Promise<ChunkEntry[]> => {
+    // True when an embeddings endpoint is configured (a started server or the
+    // endpoint_embeddings setting). Used to skip the "select the default
+    // embeddings model and wait 5 s" branch when there is nothing to select.
+    public hasEmbeddingsEndpoint = (): boolean => {
+        const modelEndpoint = this.app.getEmbeddingsModel().endpoint?.trim() ?? "";
+        return modelEndpoint !== "" || this.app.configuration.endpoint_embeddings.trim() !== "";
+    }
+
+    // `options.skipEmbeddings` forces the BM25-only path. The default keeps the
+    // previous behaviour for the other caller (chat-with-ai.ts).
+    public getRagContextChunks = async (
+        prompt: string,
+        options?: { skipEmbeddings?: boolean }
+    ): Promise<ChunkEntry[]> => {
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Extracting keywords from query..."))
         let query = this.app.prompts.replaceOnePlaceholder(this.app.prompts.CHAT_GET_KEY_WORDS, "prompt", prompt)
         let data = await this.app.llamaServer.getChatCompletion(query);
@@ -54,18 +67,25 @@ export class ChatContext {
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with BM25..."))
         let topChunksBm25 = this.rankTexts(keywords, Array.from(this.entries.values()), this.app.configuration.rag_max_bm25_filter_chunks)
         let topContextChunks: ChunkEntry[];
-        if (!this.app.getEmbeddingsModel().endpoint){
-            await this.app.modelService.selectDefaultModel(ModelType.Embeddings, PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL);
-            // Wait for the embeddings model to be loaded
-            await new Promise(resolve => setTimeout(resolve, 5000));
-        }
-        if ((this.app.getEmbeddingsModel().endpoint && this.app.getEmbeddingsModel().endpoint?.trim() != "") 
-            || this.app.configuration.endpoint_embeddings.trim() != ""){
-            this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with embeddings..."))
-            topContextChunks = await this.cosineSimilarityRank(prompt, topChunksBm25, this.app.configuration.rag_max_embedding_filter_chunks);
+        if (options?.skipEmbeddings === true) {
+            // The caller knows there is no embeddings endpoint to filter with, so
+            // neither the "select the default embeddings model" call nor its 5 s
+            // wait is entered at all.
+            topContextChunks = topChunksBm25.slice(0, this.app.configuration.rag_max_embedding_filter_chunks);
         } else {
-            vscode.window.showInformationMessage('No embeddings server. Filtering chunks with embeddings will be skipped.');
-            topContextChunks = topChunksBm25.slice(0, 5);
+            if (!this.app.getEmbeddingsModel().endpoint){
+                await this.app.modelService.selectDefaultModel(ModelType.Embeddings, PERSISTENCE_KEYS.DEFAULT_EMBS_MODEL);
+                // Wait for the embeddings model to be loaded
+                await new Promise(resolve => setTimeout(resolve, 5000));
+            }
+            if ((this.app.getEmbeddingsModel().endpoint && this.app.getEmbeddingsModel().endpoint?.trim() != "") 
+                || this.app.configuration.endpoint_embeddings.trim() != ""){
+                this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Filtering chunks with embeddings..."))
+                topContextChunks = await this.cosineSimilarityRank(prompt, topChunksBm25, this.app.configuration.rag_max_embedding_filter_chunks);
+            } else {
+                vscode.window.showInformationMessage('No embeddings server. Filtering chunks with embeddings will be skipped.');
+                topContextChunks = topChunksBm25.slice(0, 5);
+            }
         }
 
         this.app.statusbar.showTextInfo(this.app.configuration.getUiText("Context chunks ready."))

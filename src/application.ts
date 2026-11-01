@@ -41,6 +41,7 @@ import { Hooks } from "./hooks";
 import { WebBrowser } from "./web-browser";
 import { WorkspaceTextSearch, createWorkspaceTextSearchHost } from "./services/workspace-text-search";
 import { WorkspaceIgnoreFileCache, createWorkspaceFileCatalogHost } from "./services/workspace-file-catalog";
+import { WorkspaceSourceSearch } from "./services/workspace-source-search";
 
 export class Application {
     public static readonly emptyModel = {name: ""};
@@ -85,6 +86,7 @@ export class Application {
     public hooks: Hooks
     public webBrowser: WebBrowser
     public workspaceTextSearch: WorkspaceTextSearch
+    public workspaceSourceSearch: WorkspaceSourceSearch
 
     private selectedComplModel: LlmModel = Application.emptyModel
     private selectedChatModel: LlmModel = Application.emptyModel
@@ -119,6 +121,13 @@ export class Application {
         // TTL window, so sharing it with the file picker is not worth the
         // extra wiring.
         this.workspaceTextSearch = new WorkspaceTextSearch(
+            new WorkspaceIgnoreFileCache(createWorkspaceFileCatalogHost()),
+            createWorkspaceTextSearchHost()
+        )
+        // RAG-free fallback for the agent's search_source tool: no index, no
+        // embeddings, bounded scan. One ignore cache per service is the same
+        // accepted trade-off as above (at most one extra discovery per TTL).
+        this.workspaceSourceSearch = new WorkspaceSourceSearch(
             new WorkspaceIgnoreFileCache(createWorkspaceFileCatalogHost()),
             createWorkspaceTextSearchHost()
         )

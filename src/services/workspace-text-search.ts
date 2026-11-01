@@ -128,6 +128,63 @@ export const normalizeWorkspaceTextSearchInclude = (pattern: string | undefined)
     return raw.includes('/') ? raw : '**/' + raw;
 };
 
+// ---- shared per-file rules ----------------------------------------------
+//
+// The two RAG-free search services (this one and workspace-source-search.ts)
+// must agree exactly on "which text do we see for this file": the open dirty
+// buffer wins, an oversized or binary file is skipped, an unreadable file is
+// skipped instead of aborting the scan. Keeping that in one place is what keeps
+// them consistent; do not inline copies.
+
+export interface WorkspaceFileTextOptions {
+    // Default DEFAULT_MAX_FILE_BYTES.
+    maxFileBytes?: number;
+    // Prebuilt once per call with buildDirtyDocumentMap.
+    dirtyDocuments?: Map<string, WorkspaceTextSearchDocument>;
+}
+
+// Open, dirty documents keyed by fsPath. Open dirty files are few, so building
+// one Map per call is cheap.
+export const buildDirtyDocumentMap = (
+    host: WorkspaceTextSearchHost
+): Map<string, WorkspaceTextSearchDocument> => {
+    const dirtyDocuments = new Map<string, WorkspaceTextSearchDocument>();
+    for (const document of host.textDocuments) {
+        if (document.isDirty) dirtyDocuments.set(document.uri.fsPath, document);
+    }
+    return dirtyDocuments;
+};
+
+// Returns undefined when the file must be skipped (unreadable, empty, binary,
+// larger than maxFileBytes). Never throws.
+export const readWorkspaceFileText = async (
+    host: WorkspaceTextSearchHost,
+    uri: vscode.Uri,
+    options: WorkspaceFileTextOptions = {}
+): Promise<string | undefined> => {
+    const openDocument = options.dirtyDocuments?.get(uri.fsPath);
+    if (openDocument) {
+        // Unsaved buffer wins: no size or binary checks, the user's own document
+        // is text by definition.
+        const dirtyText = openDocument.getText();
+        return dirtyText.length === 0 ? undefined : dirtyText;
+    }
+
+    let bytes: Uint8Array;
+    try {
+        bytes = await host.readFile(uri);
+    } catch {
+        // A permissions error, a file deleted mid-scan or an unsupported URI
+        // scheme must not abort the whole scan.
+        return undefined;
+    }
+    const maxFileBytes = options.maxFileBytes ?? DEFAULT_MAX_FILE_BYTES;
+    if (bytes.length === 0 || bytes.length > maxFileBytes) return undefined;
+    if (bytes.subarray(0, BINARY_SNIFF_BYTES).includes(0)) return undefined;
+    const text = Buffer.from(bytes).toString('utf8');
+    return text.length === 0 ? undefined : text;
+};
+
 export class WorkspaceTextSearch {
     // A required parameter must not follow a parameter with a default, so the
     // shared ignore cache comes first and everything after it is optional.
@@ -198,10 +255,7 @@ export class WorkspaceTextSearch {
 
         // Open dirty documents are few, so one map per call is cheap and gives
         // the agent the content the user is looking at, not stale bytes.
-        const dirtyDocuments = new Map<string, WorkspaceTextSearchDocument>();
-        for (const document of this.host.textDocuments) {
-            if (document.isDirty) dirtyDocuments.set(document.uri.fsPath, document);
-        }
+        const dirtyDocuments = buildDirtyDocumentMap(this.host);
 
         const collected: string[] = [];
         const startedAt = Date.now();
@@ -229,26 +283,13 @@ export class WorkspaceTextSearch {
                 if (rules.ignores(uri.fsPath)) continue;
                 candidates++;
 
-                let text: string;
-                const openDocument = dirtyDocuments.get(uri.fsPath);
-                if (openDocument) {
-                    // Unsaved buffer wins: no size or binary checks, the user's
-                    // own document is text by definition.
-                    text = openDocument.getText();
-                } else {
-                    let bytes: Uint8Array;
-                    try {
-                        bytes = await this.host.readFile(uri);
-                    } catch {
-                        // A permissions error, a file deleted mid-scan or an
-                        // unsupported URI scheme must not abort the whole scan.
-                        continue;
-                    }
-                    if (bytes.length === 0 || bytes.length > this.maxFileBytes) continue;
-                    if (bytes.subarray(0, BINARY_SNIFF_BYTES).includes(0)) continue;
-                    text = Buffer.from(bytes).toString('utf8');
-                }
-                if (text.length === 0 || !wholeTextRegex.test(text)) continue;
+                // Shared rule set: dirty buffer wins, oversize/binary/unreadable
+                // files are skipped (see readWorkspaceFileText).
+                const text = await readWorkspaceFileText(this.host, uri, {
+                    maxFileBytes: this.maxFileBytes,
+                    dirtyDocuments
+                });
+                if (text === undefined || !wholeTextRegex.test(text)) continue;
                 scanned++;
 
                 const lines = text.split('\n');
