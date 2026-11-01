@@ -67,7 +67,7 @@ export class Configuration {
     openai_client_model: string = "";
     openai_prompt_template: string = "<|fim_prefix|>{inputPrefix}{prompt}<|fim_suffix|>{inputSuffix}<|fim_middle|>";
 
-    rag_enabled = true;
+    rag_enabled = false;
     rag_chunk_max_chars = 800
     rag_max_lines_per_chunk = 40
     rag_max_chars_per_chunk_line = 300

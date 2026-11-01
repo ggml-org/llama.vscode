@@ -164,8 +164,10 @@ export const UI_TEXT_KEYS = {
   enabled: "enabled",
   disabled: "disabled",
   rag: "RAG",
-  turnOffRAG: "Turn off RAG related features like tool search_source",
-  turnOnRAG: "Turn on RAG related features like tool search_source",
+  // These English strings are looked up in translations.ts, which already has
+  // rows for them - do not reword without adding a translation row.
+  turnOffRAG: "Turn off RAG related features like Chat with AI with project context",
+  turnOnRAG: "Turn on RAG related features like Chat with AI with project context",
 
   // UI actions
   showLlamaAgent: "Show Llama Agent",

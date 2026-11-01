@@ -1018,7 +1018,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
                 "    Finally, ask for any tools the agent should have. Prompt for a comma-separated list or indicate that they can say \"none\".",
                 "The available tools for the new agent are:",
                 "run_terminal_command: runs a terminal command and returns the output",
-                "search_source: searches the code base for the provided query and returns the most relevant chungs (works if RAG is enabled)",
+                "search_source: searches the code base for the provided query and returns the most relevant chunks (works with or without RAG indexing)",
                 "read_file: reads a file",
                 "list_directory: returns the content of a directory/folder",
                 "regex_search: does a regex search in the code base (does not require RAG)",

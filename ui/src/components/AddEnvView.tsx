@@ -724,7 +724,7 @@ const AddEnvView: React.FC<AddEnvViewProps> = ({
                 </label>
               </div>
               <div style={{ marginBottom: '8px' }}>
-                <label className="checkbox-label" title="Disable if you use only code completion feature. If enabled - indexes files on startup. Needed for search_source tool">
+                <label className="checkbox-label" title="Disable if you use only code completion feature. If enabled - indexes files on startup. Needed for 'Chat with AI with project context' and for the RAG index used by tool search_source. Tool search_source works without RAG too.">
                   <input
                     type="checkbox"
                     checked={isRagEnabled}

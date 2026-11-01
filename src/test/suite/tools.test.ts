@@ -11,23 +11,67 @@ import { suite, test, setup, suiteSetup, suiteTeardown } from 'mocha';
 class MockApplication {
     configuration = {
         MAX_CHARS_TOOL_RETURN: 10000,
+        rag_enabled: false,
         tool_permit_some_terminal_commands: true,
         tool_run_terminal_command_timeout: 300,
         tool_run_terminal_command_max_chars: 5000
     };
-    
+
     chatContext = {
-        getRagContextChunks: () => Promise.resolve([]),
-        getContextChunksInPlainText: () => Promise.resolve(''),
-        entries: []
+        getRagContextChunks: (
+            _prompt: string,
+            options?: { skipEmbeddings?: boolean }
+        ) => {
+            this.ragCalls.push({ skipEmbeddings: options?.skipEmbeddings });
+            return Promise.resolve([{
+                content: 'RAG_CHUNK', hash: 'h', uri: '', firstLine: 1, lastLine: 1, embedding: []
+            }]);
+        },
+        getContextChunksInPlainText: (chunks: any[]) => Promise.resolve('RAG:' + chunks.length),
+        hasEmbeddingsEndpoint: () => false,
+        // A Map, like the real ChatContext (entries.size is what the routing
+        // rule reads). indexWorkspaceFiles is deliberately absent: a spy would
+        // not prove anything, its absence is the assertion.
+        entries: new Map()
     };
-    
+
+    // How the RAG path was called (proves skipEmbeddings is passed).
+    ragCalls: Array<{ skipEmbeddings?: boolean }> = [];
+
+    // The RAG-free fallback. `search` records how it was called.
+    workspaceSourceSearch = {
+        search: async (
+            query: string,
+            _token?: any,
+            _isCancelled?: () => boolean,
+            maxOutputChars?: number
+        ) => {
+            this.sourceSearchCalls.push({ query, maxOutputChars });
+            return {
+                text: 'FALLBACK',
+                chunks: [],
+                keywords: [],
+                scannedFiles: 0,
+                candidateFiles: 0,
+                limitReached: undefined,
+                noChunks: true,
+                noKeywords: false
+            };
+        }
+    };
+
+    sourceSearchCalls: Array<{ query: string; maxOutputChars?: number }> = [];
+
+    logger = {
+        addEventLog: () => {}
+    };
+
     llamaServer = {
         executeCommandWithTerminalFeedback: () => Promise.resolve({
             stdout: '', stderr: '', exitCode: 0, timedOut: false, cancelled: false
         })
     };
-    
+
     git = {
         getLatestChanges: () => Promise.resolve('')
     };
@@ -360,5 +404,95 @@ suite('Terminal command judge failure handling', () => {
         assert.strictEqual(Utils.isNoUserPermission(result), true, 'expected a denial, got: ' + result);
         // The reason is what stops the model from simply retrying the same command.
         assert.ok(result.includes('Reason:'), 'expected the denial to explain itself, got: ' + result);
+    });
+});
+
+// Routing of the tool search_source: the RAG index is used only when it actually
+// exists, a failing RAG path degrades to the RAG-free fallback, and nothing may
+// index the workspace as a side effect of a search.
+suite('Tools searchSource routing', () => {
+    const createApp = () => new MockApplication();
+
+    const createTools = (app: MockApplication) => new Tools(app as unknown as Application);
+
+    test('rag disabled uses the fallback and never indexes', async () => {
+        const app = createApp();
+        const tools = createTools(app);
+
+        const result = await tools.searchSource(JSON.stringify({ query: 'search source rag' }));
+
+        assert.strictEqual(result, 'FALLBACK');
+        assert.strictEqual(app.sourceSearchCalls.length, 1);
+        assert.strictEqual(app.sourceSearchCalls[0].query, 'search source rag');
+        // The configured tool output cap is passed through.
+        assert.strictEqual(app.sourceSearchCalls[0].maxOutputChars, 10000);
+        // indexWorkspaceFiles does not exist on the mock at all - nothing can call it.
+        assert.strictEqual((app.chatContext as any).indexWorkspaceFiles, undefined);
+        assert.strictEqual((app.chatContext as any).entries.size, 0, 'the RAG index must stay empty');
+    });
+
+    test('rag enabled with an index uses the RAG path', async () => {
+        const app = createApp();
+        (app.configuration as any).rag_enabled = true;
+        (app.chatContext as any).entries.set(1, { content: 'x' });
+        const tools = createTools(app);
+
+        const result = await tools.searchSource(JSON.stringify({ query: 'rag query' }));
+
+        assert.strictEqual(result, 'RAG:1');
+        assert.strictEqual(app.sourceSearchCalls.length, 0, 'the fallback must not run when the index exists');
+        // No embeddings endpoint -> the RAG path must not stall for 5 s either.
+        assert.strictEqual(app.ragCalls.length, 1);
+        assert.strictEqual(app.ragCalls[0].skipEmbeddings, true);
+    });
+
+    test('rag enabled but the index is still empty uses the fallback', async () => {
+        const app = createApp();
+        (app.configuration as any).rag_enabled = true;
+        const tools = createTools(app);
+
+        const result = await tools.searchSource(JSON.stringify({ query: 'rag query' }));
+
+        assert.strictEqual(result, 'FALLBACK');
+        assert.strictEqual(app.sourceSearchCalls.length, 1);
+    });
+
+    test('a throwing RAG path degrades to the fallback', async () => {
+        const app = createApp();
+        (app.configuration as any).rag_enabled = true;
+        (app.chatContext as any).entries.set(1, { content: 'x' });
+        (app.chatContext as any).getRagContextChunks = () => { throw new Error('no tools model'); };
+        const tools = createTools(app);
+
+        const result = await tools.searchSource(JSON.stringify({ query: 'boom' }));
+
+        // A stack-trace slice must never reach the model.
+        assert.strictEqual(result, 'FALLBACK');
+        assert.strictEqual(app.sourceSearchCalls.length, 1);
+    });
+
+    test('a missing or empty query is reported without searching', async () => {
+        const app = createApp();
+        const tools = createTools(app);
+
+        assert.strictEqual(await tools.searchSource(JSON.stringify({})), 'The search request is not provided.');
+        assert.strictEqual(await tools.searchSource(JSON.stringify({ query: '   ' })), 'The search request is not provided.');
+        assert.strictEqual(app.sourceSearchCalls.length, 0);
+    });
+
+    test('malformed arguments are reported without throwing', async () => {
+        const app = createApp();
+        const tools = createTools(app);
+
+        assert.strictEqual(await tools.searchSource('not json'), 'The tool arguments are not valid JSON.');
+        assert.strictEqual(app.sourceSearchCalls.length, 0);
+    });
+
+    test('the description does not throw on malformed arguments', async () => {
+        const app = createApp();
+        const tools = createTools(app);
+
+        assert.ok((await tools.searchSourceDesc('not json')).includes('Searching source code for:'));
+        assert.ok((await tools.searchSourceDesc(JSON.stringify({ query: 'abc' }))).includes('abc'));
     });
 });

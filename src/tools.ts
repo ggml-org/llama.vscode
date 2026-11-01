@@ -269,20 +269,58 @@ export class Tools {
 
 
     public searchSource = async (args: string ) => {
-        let query = JSON.parse(args).query;
+        let params: any;
+        try { params = JSON.parse(args); } catch { return "The tool arguments are not valid JSON."; }
+        const query = typeof params?.query === 'string' ? params.query.trim() : "";
+        if (query === "") return "The search request is not provided."
 
-        if (query == undefined) return "The searhc request is not provided."
-        
-        await this.indexFilesIfNeeded();
-        let contextChunks = await this.app.chatContext.getRagContextChunks(query)
-        let relevantSource = await this.app.chatContext.getContextChunksInPlainText(contextChunks);
-        
-        return relevantSource;
+        // The RAG index is used only when it actually exists (rag_enabled is on
+        // AND something was indexed). Otherwise - or when the RAG path fails -
+        // the RAG-free fallback scans the workspace files instead. Never index
+        // the workspace as a side effect of a search.
+        if (this.app.configuration.rag_enabled && (this.app.chatContext?.entries?.size ?? 0) > 0) {
+            try {
+                return await this.searchSourceWithRag(query);
+            } catch (error) {
+                // getChatCompletion throws when no chat/tools model answers, the
+                // server is down or the index is inconsistent. A search tool must
+                // degrade, not hand a stack-trace slice to the model.
+                this.app.logger?.addEventLog("AGENT", "SEARCH_SOURCE_RAG_FAILED", String(error).slice(0, 200));
+            }
+        }
+
+        return await this.searchSourceWithoutRag(query);
+    }
+
+    private searchSourceWithRag = async (query: string): Promise<string> => {
+        // No statusbar text here on purpose: getRagContextChunks already reports
+        // its progress with translated getUiText() strings, and a new hard-coded
+        // English string would need a translations.ts row.
+        const chunks = await this.app.chatContext.getRagContextChunks(query, {
+            // `?.()` because a partial test mock may not define it.
+            skipEmbeddings: !this.app.chatContext.hasEmbeddingsEndpoint?.()
+        });
+        return this.app.chatContext.getContextChunksInPlainText(chunks);
+    }
+
+    private searchSourceWithoutRag = async (query: string): Promise<string> => {
+        const session = this.app.llamaAgent?.getCurrentToolSession();
+        const result = await this.app.workspaceSourceSearch.search(
+            query,
+            undefined,
+            () => !!session?.abortController?.signal.aborted,
+            this.app.configuration.MAX_CHARS_TOOL_RETURN
+        );
+        this.app.logger?.addEventLog("AGENT", "SEARCH_SOURCE_FALLBACK",
+            "chunks=" + result.chunks.length + " files=" + result.scannedFiles +
+            " limit=" + (result.limitReached ?? "-"));
+        return result.text;
     }
 
     public searchSourceDesc = async (args: string ) => {
-        let query = JSON.parse(args).query;
-        
+        let query = "";
+        try { const params = JSON.parse(args); if (typeof params?.query === 'string') query = params.query; } catch { }
+
         return " Searching source code for: " + query;
     }
 
@@ -396,8 +434,9 @@ export class Tools {
     }
 
     // RAG-free: searches the workspace files themselves (see
-    // services/workspace-text-search.ts). indexFilesIfNeeded() deliberately stays
-    // out of this tool - search_source is the only one that needs the index.
+    // services/workspace-text-search.ts). Both regex_search and search_source work
+    // without the RAG index; search_source falls back to
+    // services/workspace-source-search.ts when the index is empty.
     public getRegextMatches = async (args: string ) => {
         let params: any;
         try { params = JSON.parse(args); } catch { return "The tool arguments are not valid JSON."; }
@@ -990,13 +1029,16 @@ export class Tools {
                 "type": "function",
                 "function": {
                     "name": "search_source",
-                    "description": "Searches the code base and returns relevant code frangments from the files.",
+                    "description": "Searches the code base for the provided query and returns the most relevant code " +
+                        "fragments with their file names and line numbers. Works with or without RAG indexing and " +
+                        "without an embeddings model. Use read_file with the returned line numbers to read more, " +
+                        "or regex_search for an exact function name or expression.",
                     "parameters": {
                         "type": "object",
                         "properties": {
                             "query": {
                                 "type": "string",
-                                "description": "The query to search the relevat code"
+                                "description": "The query to search the relevant code for (keywords or a short description)"
                             }
                         },
                         "required": [
@@ -1610,13 +1652,6 @@ export class Tools {
         }
     }
 
-
-    private async indexFilesIfNeeded() {
-        if (!this.app.configuration.rag_enabled) {
-            vscode.window.showInformationMessage("Enable RAG to avoid reindexing. Project files will be indexed now.");
-            await this.app.chatContext.indexWorkspaceFiles();
-        }
-    }
 
     private getToolEnabledPropertyName(toolName: string): string {
         return "tool_" + toolName + "_enabled";
