@@ -1266,7 +1266,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
-              "name": "yolo_mode",
+              "name": "allow_all_mode",
               "prompt": [
                 "setSetting tools_permissions_mode AllowAll"
               ],
@@ -1288,7 +1288,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "prompt": [
                 "setSetting tools_permissions_mode AutoAskIfUnsure"
               ],
-              "description": "LLM analyzes and decides if the command is safe (allow) or not (deny). If unsure, the AI will ask for user permission.",
+              "description": "Obviously safe commands run without asking and obviously dangerous ones are denied; only the commands in between are judged by the LLM. If it is unsure, the AI will ask for user permission.",
               "noPrompt": true,
               "isScript": true
             },
@@ -1297,7 +1297,7 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "prompt": [
                 "setSetting tools_permissions_mode AutoDenyIfUnsure"
               ],
-              "description": "LLM analyzes and decides if the command is safe (allow) or not (deny). If unsure, the AI will deny the command.",
+              "description": "Obviously safe commands run without asking and obviously dangerous ones are denied; only the commands in between are judged by the LLM. If it is unsure, the AI will deny the command.",
               "noPrompt": true,
               "isScript": true
             },

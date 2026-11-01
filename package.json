@@ -1501,11 +1501,11 @@
         "llama-vscode.tools_permissions_mode": {
           "type": "string",
           "enum": ["AllowAll", "AutoAskIfUnsure", "AutoDenyIfUnsure", "Ask"],
-          "enumItemLabels": ["allow all commands", "auto - ask if unsure", "auto - deny if insure", "ask for permission"],
+          "enumItemLabels": ["allow all commands", "auto - ask if unsure", "auto - deny if unsure", "ask for permission"],
           "enumDescriptions": [
             "Alows all commands to be executed by AI. Known also as YOLO mode. Be careful with this mode.",
-            "LLM analyzes and decides if the command is safe (allow) or not (deny). If unsure, the AI will ask for user permission. Uses chat model (if available) or tools model.",
-            "LLM analyzes and decides if the command is safe (allow) or not (deny). If unsure, the AI will deny the command. Uses chat model (if available) or tools model.",
+            "Obviously safe commands (read-only, inside the project or the auto memory folder) run without asking. Obviously dangerous ones (privilege escalation, recursive/forced deletes, credentials and profile paths, system directories, downloads piped into a shell) are denied. Only the commands in between are judged by the LLM: allow if safe, deny if not, ask the user if unsure. Uses chat model (if available) or tools model.",
+            "Obviously safe commands (read-only, inside the project or the auto memory folder) run without asking. Obviously dangerous ones (privilege escalation, recursive/forced deletes, credentials and profile paths, system directories, downloads piped into a shell) are denied. Only the commands in between are judged by the LLM; if it is unsure or cannot answer, the command is denied. Uses chat model (if available) or tools model.",
             "Ask for permission."
           ],
           "default": "Ask",

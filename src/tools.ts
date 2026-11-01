@@ -9,6 +9,8 @@ import { Chat, Agent } from "./types";
 import {
     analyzeCommand,
     formatCommandOutput,
+    isInsideFolders,
+    triageCommand,
     DEFAULT_MAX_OUTPUT_CHARS,
     DEFAULT_TIMEOUT_MS,
     MAX_COMMAND_CHARS,
@@ -96,30 +98,66 @@ export class Tools {
             let yesApply = false
             let yesDontAsk = false
             let shouldAskUser = true;
+            // Why the command was denied, when it was denied automatically - it is
+            // returned to the model so it does not simply retry the same command.
+            let denyReason = "";
             if (this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure
                 || this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoDenyIfUnsure){
-                // TODO If the command is obviously safe or dangerous (for example remove files outside project or auto memory folder) - there is no need to ask the LLM.
-                let rootFolderInfo = ""
-                const workspaceFolders = vscode.workspace.workspaceFolders;
-                if (!workspaceFolders || workspaceFolders.length === 0) {
-                    rootFolderInfo = "No workspace folder open.";
-                } else {
-                    const workspaceRoot = workspaceFolders[0].uri.fsPath;
-                    rootFolderInfo = workspaceRoot
-                }
-                const replacements = {
-                    rootFolderInfo: rootFolderInfo,
-                    command: command
-                };
-                let prompt = this.app.prompts.replacePlaceholders(this.app.prompts.SAFE_COMMAND_JUDGE, replacements)
-                const completion = await this.app.llamaServer.getChatCompletion(prompt)
-                const aiJudgeAnswer = completion?.choices[0]?.message.content
-
-                if (aiJudgeAnswer == LlmJudgeCommandSafe.Unsure && this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure){
-                    shouldAskUser = true;
-                } else {
+                const autoAsk = this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure;
+                // Not every command needs a model: `git status` is safe and
+                // `rm -rf /` is not, and a request costs seconds and tokens. The
+                // deterministic triage answers those two extremes and leaves only
+                // the genuinely ambiguous commands to the LLM judge.
+                const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+                const triage = triageCommand(command, {
+                    allowedRoots: this.getAllowedRoots(),
+                    cwd: workspaceRoot
+                });
+                if (triage.verdict == "safe") {
                     shouldAskUser = false;
-                    yesApply = aiJudgeAnswer == LlmJudgeCommandSafe.Yes
+                    yesApply = true;
+                    this.logCommandJudgement("Command is obviously safe, the LLM judge is not asked: " + triage.reason);
+                } else if (triage.verdict == "dangerous") {
+                    shouldAskUser = false;
+                    yesApply = false;
+                    denyReason = triage.reason;
+                    this.logCommandJudgement("Command is obviously dangerous, the LLM judge is not asked: " + triage.reason);
+                } else {
+                    const rootFolderInfo = workspaceRoot ?? "No workspace folder open.";
+                    const replacements = {
+                        rootFolderInfo: rootFolderInfo,
+                        command: command
+                    };
+                    let prompt = this.app.prompts.replacePlaceholders(this.app.prompts.SAFE_COMMAND_JUDGE, replacements)
+                    // getChatCompletion throws on a request failure (no chat or
+                    // tools model, server down). A judge that cannot be asked is
+                    // "unsure", not a crash: an exception here would reach the
+                    // agent loop as a 400-char slice of a stack trace.
+                    let judgeAnswer: unknown;
+                    try {
+                        const completion = await this.app.llamaServer.getChatCompletion(prompt)
+                        judgeAnswer = completion?.choices?.[0]?.message?.content
+                    } catch (error) {
+                        this.app.logger?.addEventLog("AGENT", "COMMAND_JUDGE_FAILED", String(error).slice(0, 200))
+                        judgeAnswer = undefined;
+                    }
+                    const aiJudgeAnswer = this.normalizeJudgeAnswer(judgeAnswer)
+
+                    if (aiJudgeAnswer == LlmJudgeCommandSafe.Yes){
+                        shouldAskUser = false;
+                        yesApply = true;
+                    } else if (aiJudgeAnswer == LlmJudgeCommandSafe.No){
+                        shouldAskUser = false;
+                        yesApply = false;
+                        denyReason = "the LLM judge answered 'no'";
+                    } else {
+                        // Not an answer at all (no chat/tools model, request failed)
+                        // counts as "unsure": ask in AutoAskIfUnsure, deny otherwise.
+                        shouldAskUser = autoAsk;
+                        yesApply = false;
+                        denyReason = autoAsk ? "" : "the LLM judge could not decide";
+                    }
+                    this.logCommandJudgement("The LLM judge answered '" + aiJudgeAnswer + "'")
                 }
             }
             if (shouldAskUser){
@@ -127,7 +165,7 @@ export class Tools {
                 (analysis.modifying ? "\n\n Reason: " + analysis.reason : "") +
                 "\n\nIf you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation." +
                 "\n\nCurrent tools permissions mode: " + this.app.configuration.tools_permissions_mode + 
-                "\nYou could change tools permissions mode with commands yolo_mode, ask_mode, auto_ask_if_unsure_mode, auto_deny_if_unsure_mode or from setting tools_permissions_mode.")
+                "\nYou could change tools permissions mode with agent commands allow_all_mode, ask_mode, auto_ask_if_unsure_mode, auto_deny_if_unsure_mode or from setting tools_permissions_mode.")
                 if (yesDontAsk) {
                     // Awaited on purpose: a second tool call of the same batch must
                     // already see the elevated value or it prompts again.
@@ -135,7 +173,8 @@ export class Tools {
                     vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
                 }
             }    
-            if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
+            if (!yesApply) return Utils.MSG_NO_USER_PERMISSION +
+                (denyReason !== "" ? " Reason: " + denyReason + "." : "");
         }
 
         const session = this.app.llamaAgent?.getCurrentToolSession();
@@ -159,6 +198,49 @@ export class Tools {
             : result.cancelled ? "Command cancelled by the user." : undefined;
 
         return formatCommandOutput(result, { maxChars: this.getTerminalMaxChars(), note });
+    }
+
+    /**
+     * The folders the agent may work in: every workspace root plus the auto
+     * memory folder. The triage uses them to tell "inside the project" from
+     * "writes to /etc or ~/.ssh", which needs no model to be judged.
+     */
+    private getAllowedRoots = (): string[] => {
+        const roots: string[] = [];
+        // An unresolved folder (remote/untitled) has an empty fsPath, and an empty
+        // root would resolve to the process cwd and allow everything below it.
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            if (folder.uri?.fsPath) roots.push(folder.uri.fsPath);
+        }
+        if (this.app.extensionContext?.storageUri?.fsPath) {
+            roots.push(path.join(this.app.extensionContext.storageUri.fsPath, "auto_memory"));
+        }
+        return roots;
+    }
+
+    /**
+     * The judge prompt asks for exactly one word, but a chat model adds
+     * punctuation, quotes or a short sentence. Anything that is not clearly
+     * yes/no becomes "unsure" instead of being read as a permission grant.
+     */
+    private normalizeJudgeAnswer = (answer: unknown): LlmJudgeCommandSafe => {
+        const word = String(answer ?? "").trim().toLowerCase().split(/[^a-z]+/).filter(Boolean)[0] ?? "";
+        if (word === LlmJudgeCommandSafe.Yes) return LlmJudgeCommandSafe.Yes;
+        if (word === LlmJudgeCommandSafe.No) return LlmJudgeCommandSafe.No;
+        return LlmJudgeCommandSafe.Unsure;
+    }
+
+    /**
+     * Records why the automatic permission modes allowed or denied, for the UI log.
+     * Best effort on purpose: this runs inside a permission DECISION, so a failure
+     * to log must never turn an allow/deny into a thrown tool call.
+     */
+    private logCommandJudgement = (message: string) => {
+        try {
+            this.app.llamaAgent?.getCurrentToolSession()?.logDestination?.append(message + "\n\n");
+        } catch (error) {
+            this.app.logger?.addEventLog("AGENT", "COMMAND_JUDGE_LOG_FAILED", String(error).slice(0, 200));
+        }
     }
 
     /** Timeout in ms, clamped so a wrong setting cannot hang the agent forever. */
@@ -217,7 +299,7 @@ export class Tools {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
             absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
-            if (!this.isInsideAllowedFolders(absolutePath)) return `Error: File "${filePath}" is outside workspace folder and outside auto memory folder.`;
+            if (!this.isInsideAllowedFolders(absolutePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
             let stats: fs.Stats;
             try {
                 stats = await fs.promises.stat(absolutePath);
@@ -504,15 +586,10 @@ export class Tools {
 
         try {
             const absolutePath = Utils.getAbsolutFilePath(filePath);
-            // Restrict deletion to project folder
-            const workspaceFolders = vscode.workspace.workspaceFolders;
-            if (!workspaceFolders || workspaceFolders.length === 0) {
-                return "Cannot delete file: no workspace folder open.";
-            }
-            const workspaceRoot = workspaceFolders[0].uri.fsPath;
-            const relativePath = path.relative(workspaceRoot, absolutePath);
-            if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
-                return `Deletion not allowed: ${filePath} is outside the project folder.`;
+            // Restrict deletion to the allowed folders - the same set of roots
+            // the other file tools use, so a multi-root workspace behaves alike.
+            if (!this.isInsideAllowedFolders(absolutePath)) {
+                return `Deletion not allowed: ${filePath} is outside all workspace folders and outside auto memory folder.`;
             }
             if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
                 && !this.app.configuration.tool_permit_file_delete){  
@@ -596,21 +673,17 @@ export class Tools {
             throw error;
         }        
     }
+    /**
+     * True when the path is inside one of the allowed roots - every workspace
+     * folder or the auto memory folder (see getAllowedRoots). A relative path is
+     * left alone: the caller resolves it against the project root, so it cannot
+     * leave the roots.
+     */
     private isInsideAllowedFolders = (filePath: string): boolean => {
-        let isAllowed = true;
-        if (path.isAbsolute(filePath)) {
-            const resolvedFilePath = path.resolve(filePath)
-            const workspaceFolder = vscode.workspace.getWorkspaceFolder(vscode.Uri.file(resolvedFilePath));
-            if (!workspaceFolder) {
-                if (this.app.extensionContext.storageUri?.fsPath){
-                    let auto_memory_folder = path.join(this.app.extensionContext.storageUri?.fsPath, "auto_memory");
-                    auto_memory_folder = path.resolve(auto_memory_folder)
-                    if (!resolvedFilePath.startsWith(auto_memory_folder)) isAllowed = false;
-                } else isAllowed = false; 
-            }
-        }
-
-        return isAllowed
+        if (!path.isAbsolute(filePath)) return true;
+        // isInsideFolders also takes care of the separator ("/project-evil" is
+        // not inside "/project") and of the case-insensitive Windows compare.
+        return isInsideFolders(path.resolve(filePath), this.getAllowedRoots());
     }
 
     public editFileDesc = async (args: string) => {

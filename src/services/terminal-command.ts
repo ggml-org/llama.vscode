@@ -1,4 +1,5 @@
 import * as path from 'path';
+import * as os from 'os';
 
 // Terminal command helpers for the agent tool `run_terminal_command`.
 //
@@ -216,6 +217,257 @@ export const analyzeCommand = (command: string, platform: NodeJS.Platform = proc
 
 export const isModifyingCommand = (command: string, platform: NodeJS.Platform = process.platform): boolean =>
     analyzeCommand(command, platform).modifying;
+
+// ---- deterministic triage for the automatic permission modes ------------
+//
+// AutoAskIfUnsure/AutoDenyIfUnsure send EVERY command to the chat model, which
+// costs a request and a round of latency even for `git status` - while for
+// `rm -rf /` the answer is not in doubt either. triageCommand() answers the two
+// unambiguous extremes itself and returns 'unsure' for everything else; only
+// that last case still needs the model.
+//
+// The two mistakes are not equally expensive: a wrong 'safe' executes something
+// harmful, a wrong 'dangerous' merely denies a command the user can still run by
+// hand. So the safe path stays narrow (read-only AND inside the allowed folders,
+// which is exactly what the judge prompt calls "yes") and the dangerous path
+// only covers the unambiguous catastrophes of that same prompt.
+export type CommandRisk = 'safe' | 'dangerous' | 'unsure';
+
+export interface CommandTriage {
+    verdict: CommandRisk;
+    /** Short human readable justification; '' for 'unsure'. */
+    reason: string;
+}
+
+export interface CommandTriageOptions {
+    /** Folders the agent may work in: the workspace root(s) plus the auto memory folder. */
+    allowedRoots?: string[];
+    /** Directory relative paths are resolved against; defaults to the first allowed root. */
+    cwd?: string;
+    platform?: NodeJS.Platform;
+    /** Home directory used to expand `~`; defaults to the real one. */
+    home?: string;
+}
+
+// Commands that give the command more power than the agent (or the user)
+// intended, on every platform.
+const ESCALATION_TOKENS = new Set<string>(['sudo', 'su', 'doas', 'gsudo', 'pkexec', 'runas']);
+
+// Commands that destroy disks, the bootloader or the machine itself.
+const SYSTEM_DESTRUCTION_TOKENS = new Set<string>([
+    'fdisk', 'diskpart', 'wipefs', 'mkswap', 'shutdown', 'reboot', 'halt', 'poweroff',
+    'diskutil', 'bcdedit', 'dd', 'format', 'parted', 'mkfs'
+]);
+
+// Deleting is only "obviously" dangerous when it is recursive, forced or aimed
+// outside the project: `rm build/app.js` is a normal agent step that the model
+// judge can still reject on its own.
+const DELETE_TOKENS = new Set<string>([
+    'rm', 'rmdir', 'del', 'erase', 'rd', 'srm', 'shred', 'unlink', 'remove-item', 'ri'
+]);
+const RECURSIVE_FLAGS = new Set<string>(['-r', '-rf', '-fr', '--recursive', '-recurse', '/s', '-recurse']);
+const FORCED_FLAGS = new Set<string>(['-f', '-rf', '-fr', '--force', '-force', '/f', '/q', '/y', '--no-preserve-root']);
+
+// Credentials and shell profiles: reading them is the "no" example of the judge
+// prompt ("~/.ssh", "/etc/passwd"), whatever the command does with them.
+const SENSITIVE_PATH_RE = /(?:^|[\\/])(?:\.ssh|\.aws|\.gnupg|\.kube|\.docker|\.netrc|\.npmrc|\.git-credentials|\.bashrc|\.bash_profile|\.zshrc|\.profile|\.gitconfig|id_rsa|id_ed25519|id_dsa|sudoers|shadow)(?:[\\/]|$)/i;
+
+// System directories: a project does not live there, so any path inside them is
+// an operating-system level change, not an edit of the user's code.
+const SYSTEM_DIRECTORIES: Record<string, string[]> = {
+    posix: ['/etc', '/usr', '/bin', '/sbin', '/lib', '/lib64', '/boot', '/dev', '/proc', '/sys', '/root', '/System', '/Library'],
+    win32: ['c:\\windows', 'c:\\program files', 'c:\\program files (x86)', 'c:\\programdata']
+};
+
+// Fetch and execute in one line: remote code with no review step.
+const DOWNLOAD_AND_EXECUTE_RE = /(?:curl|wget|iwr|invoke-webrequest|invoke-restmethod)\b[^\n]*\|\s*(?:sudo\s+|doas\s+)?(?:sh|bash|zsh|ksh|fish|dash|python3?|node|perl|ruby|pwsh|powershell|cmd|iex|invoke-expression)\b/i;
+// Obfuscated/encoded execution, the usual way around a human reviewer.
+const OBFUSCATED_EXECUTION_RE = /(?:invoke-expression|\biex\b)\s*[(\s]|\|\s*(?:iex|invoke-expression)\b|-encodedcommand\b|-enc(?:oded)?\s+[A-Za-z0-9+/=]{16,}|base64\s+(?:-d|--decode|-D)\b/i;
+
+/** Splits a segment into tokens, dropping the quotes so paths can be resolved. */
+const splitTokens = (segment: string): string[] => {
+    const tokens: string[] = [];
+    let current = '';
+    let quote: string | null = null;
+    for (let i = 0; i < segment.length; i++) {
+        const ch = segment[i];
+        if (quote !== null) {
+            if (ch === quote) quote = null;
+            else current += ch;
+            continue;
+        }
+        if (ch === '"' || ch === "'") { quote = ch; continue; }
+        if (/\s/.test(ch)) {
+            if (current !== '') { tokens.push(current); current = ''; }
+            continue;
+        }
+        current += ch;
+    }
+    if (current !== '') tokens.push(current);
+    return tokens;
+};
+
+const pathFor = (platform: NodeJS.Platform): path.PlatformPath =>
+    platform === 'win32' ? path.win32 : path.posix;
+
+const expandHome = (value: string, home: string): string =>
+    value === '~' ? home
+        : value.startsWith('~/') || value.startsWith('~\\') ? home + value.slice(1)
+            : value;
+
+/**
+ * Absolute or `..`-escaping paths of one segment. Plain relative paths are left
+ * out on purpose: they resolve against the project root, so they cannot escape
+ * it, and treating every word as a path would only produce false positives.
+ */
+const pathCandidates = (tokens: string[], home: string): string[] => {
+    const candidates: string[] = [];
+    for (const token of tokens) {
+        // `--prefix=/usr/local` and `of=/dev/sda` hide the path behind '='.
+        const equal = token.indexOf('=');
+        const value = equal >= 0 ? token.slice(equal + 1) : token;
+        if (value === '') continue;
+        const expanded = expandHome(value, home);
+        const escapes = /(^|[\\/])\.\.([\\/]|$)/.test(expanded);
+        if (!path.isAbsolute(expanded) && !path.win32.isAbsolute(expanded) && !escapes) continue;
+        candidates.push(expanded);
+    }
+    return candidates;
+};
+
+/**
+ * Path comparison is case-insensitive on Windows and always separator-normalized.
+ * The platform is a parameter (not `process.platform`) so the triage can be
+ * tested for both platforms on one machine.
+ */
+const normalizePath = (value: string, platform: NodeJS.Platform): string => {
+    const resolved = pathFor(platform).resolve(value);
+    return platform === 'win32' ? resolved.toLowerCase() : resolved;
+};
+
+/**
+ * True when the candidate is one of the folders or lies below one of them. The
+ * file tools ask the same question for a single path, so it is exported.
+ */
+export const isInsideFolders = (candidate: string, folders: string[], platform: NodeJS.Platform = process.platform): boolean => {
+    const separator = pathFor(platform).sep;
+    const normalized = normalizePath(candidate, platform);
+    return folders.some(folder => {
+        // A blank root resolves to the process cwd, which would silently make
+        // "everything below the extension host's directory" allowed. Callers
+        // filter those out already; this keeps the guard local to the check.
+        if (typeof folder !== 'string' || folder.trim() === '') return false;
+        const root = normalizePath(folder, platform);
+        if (normalized === root) return true;
+        // The separator matters: /project-evil must not match the root /project.
+        return normalized.startsWith(root.endsWith(separator) ? root : root + separator);
+    });
+};
+
+const isInsideSystemDirectory = (candidate: string, platform: NodeJS.Platform): boolean => {
+    const directories = SYSTEM_DIRECTORIES[platform === 'win32' ? 'win32' : 'posix'];
+    return directories.some(directory => isInsideFolders(candidate, [directory], platform));
+};
+
+interface TriageContext {
+    platform: NodeJS.Platform;
+    command: string;
+    segments: string[];
+    tokens: string[][];
+    /** Allowed folders, already normalized for path comparison. */
+    roots: string[];
+    /** Absolute paths found in the command. */
+    paths: string[];
+    /** Subset of `paths` that is outside every allowed root. */
+    outsidePaths: string[];
+}
+
+const buildTriageContext = (command: string, options?: CommandTriageOptions): TriageContext => {
+    const platform = options?.platform ?? process.platform;
+    const roots = (options?.allowedRoots ?? []).filter(root => typeof root === 'string' && root.trim() !== '');
+    const home = options?.home ?? os.homedir();
+    const cwd = options?.cwd ?? roots[0] ?? process.cwd();
+
+    const segments = splitSegments(command);
+    const tokens = segments.map(segment => splitTokens(segment));
+    const api = pathFor(platform);
+    const paths: string[] = [];
+    for (const segmentTokens of tokens) {
+        for (const candidate of pathCandidates(segmentTokens, home)) {
+            paths.push(api.resolve(cwd, candidate));
+        }
+    }
+    const outsidePaths = paths.filter(candidate => !isInsideFolders(candidate, roots, platform));
+    return { platform, command, segments, tokens, roots, paths, outsidePaths };
+};
+
+/** Returns the reason why the command is obviously dangerous, or '' when it is not. */
+const dangerousReason = (context: TriageContext, analysis: CommandAnalysis): string => {
+    if (DOWNLOAD_AND_EXECUTE_RE.test(context.command)) return 'downloads and executes remote code';
+    if (OBFUSCATED_EXECUTION_RE.test(context.command)) return 'executes obfuscated or encoded code';
+
+    for (let index = 0; index < context.segments.length; index++) {
+        const tokens = context.tokens[index];
+        const head = (tokens[0] ?? '').toLowerCase();
+        if (head === '') continue;
+
+        if (ESCALATION_TOKENS.has(head)) return 'privilege escalation: ' + head;
+        if (head.startsWith('mkfs')) return 'system or disk level command: ' + head;
+        if (SYSTEM_DESTRUCTION_TOKENS.has(head)) return 'system or disk level command: ' + head;
+        if (head === 'init' && tokens.some(token => /^[06]$/.test(token))) return 'shuts the machine down';
+        if (head === 'start-process' && context.segments[index].toLowerCase().includes('-verb runas')) {
+            return 'privilege escalation: Start-Process -Verb RunAs';
+        }
+
+        if (DELETE_TOKENS.has(head)) {
+            const flags = tokens.slice(1).map(token => token.toLowerCase());
+            const recursive = flags.filter(flag => RECURSIVE_FLAGS.has(flag));
+            const forced = flags.filter(flag => FORCED_FLAGS.has(flag));
+            if (recursive.length > 0 || forced.length > 0) {
+                return 'recursive or forced delete: ' + head + ' ' + recursive.concat(forced).join(' ');
+            }
+        }
+    }
+
+    for (const candidate of context.paths) {
+        // Credentials are flagged even when the project root contains them (a
+        // workspace opened at ~ made ~/.ssh "inside the project"): the judge
+        // prompt answers "no" to them unconditionally.
+        if (SENSITIVE_PATH_RE.test(candidate)) return 'touches a credentials or profile path: ' + candidate;
+        // A project that happens to live under /usr or /Library must not make its
+        // own files "system files": inside an allowed root the path is the project.
+        if (isInsideFolders(candidate, context.roots, context.platform)) continue;
+        if (isInsideSystemDirectory(candidate, context.platform)) return 'touches a system directory: ' + candidate;
+    }
+
+    // The judge prompt answers "no" to every write outside the project, so a
+    // modifying command that names such a path needs no model to be denied.
+    if (analysis.modifying && context.outsidePaths.length > 0) {
+        return 'writes outside the allowed folders: ' + context.outsidePaths[0];
+    }
+    return '';
+};
+
+/**
+ * Answers "is this command obviously safe, obviously dangerous, or a case for the
+ * model?" without any network call. 'safe' means the judge prompt would answer
+ * "yes": every segment is read-only and every path stays inside the allowed
+ * folders (workspace root(s) + auto memory folder).
+ */
+export const triageCommand = (command: string, options?: CommandTriageOptions): CommandTriage => {
+    if (typeof command !== 'string' || command.trim() === '') return { verdict: 'dangerous', reason: 'empty command' };
+
+    const context = buildTriageContext(command, options);
+    const analysis = analyzeCommand(command, context.platform);
+
+    const danger = dangerousReason(context, analysis);
+    if (danger !== '') return { verdict: 'dangerous', reason: danger };
+
+    if (!analysis.modifying && context.outsidePaths.length === 0) {
+        return { verdict: 'safe', reason: 'read-only command inside the allowed folders' };
+    }
+    return { verdict: 'unsure', reason: '' };
+};
 
 // ---- shell invocation ---------------------------------------------------
 

@@ -24,6 +24,16 @@ export class Utils {
     static MSG_NO_USER_PERMISSION = "The user doesn't give a permission to execute the request!";
     static EMPTY_CHAT = {name: "", id: ""}
 
+    /**
+     * True when a tool result is a refusal. A refusal may carry an appended
+     * `Reason: …` (the automatic permission modes explain why they denied), so
+     * callers must never compare with `=== MSG_NO_USER_PERMISSION` - that would
+     * read a reasoned denial as a successful tool call and, for edit_file, even
+     * record the file as changed.
+     */
+    static isNoUserPermission = (toolOutput: unknown): boolean =>
+        typeof toolOutput === 'string' && toolOutput.startsWith(Utils.MSG_NO_USER_PERMISSION);
+
     static getLeadingSpaces = (input: string): string => {
         // Match the leading spaces using a regular expression
         const match = input.match(/^[ \t]*/);
