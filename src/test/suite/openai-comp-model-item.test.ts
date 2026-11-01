@@ -9,6 +9,20 @@ suite("OpenAI-compatible model picker", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.ApiRoute], "https://global.api-route.com");
     });
 
+    test("registers Runcrate without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Runcrate], "https://api.runcrate.ai");
+    });
+
+    test("keeps a Runcrate vendor/model ID when the catalog description is empty", () => {
+        const item = formatOpenAiCompModelItem({
+            id: "deepseek-ai/DeepSeek-V4.1-Flash", name: "DeepSeek V4.1 Flash", description: "",
+            context_length: 1048576, pricing: { prompt: "0.00000014", completion: "0.00000042" },
+        });
+        assert.strictEqual(item.label, "DeepSeek V4.1 Flash");
+        assert.strictEqual(item.detail, "deepseek-ai/DeepSeek-V4.1-Flash");
+        assert.strictEqual(item.description, "1048576 context | $0.14/M input tokens | $0.42/M output tokens");
+    });
+
     test("handles a standard model listing with no optional metadata", () => {
         const item = formatOpenAiCompModelItem({ id: "gpt-6.1-sol" });
         assert.strictEqual(item.label, "gpt-6.1-sol");
