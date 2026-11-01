@@ -319,6 +319,13 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.76 is released (02.11.2026)
+### What is new
+- Update search_source tool to continue working if RAG indexing is off
+- RAG indexing is now off by default as all agent tools could be used without RAG indexing.
+- Add OpenAI compatible providers - CloudGPU and  Runcrate
+
+
 ## Version 0.0.75 is released (01.11.2026)
 ### What is new
 - regex_search tool is changed to be independent from RAG search.
