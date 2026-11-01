@@ -4,11 +4,16 @@ import vscode, { Terminal } from "vscode";
 import { LlmModel, LlamaChatResponse, LlamaResponse, ChatMessage } from "./types";
 import { Utils } from "./utils";
 import * as cp from 'child_process';
-import * as util from 'util';
-import * as os from 'os';
 import * as fs from 'fs';
-import * as path from 'path';
 import { ModelType, PERSISTENCE_KEYS, SUPPORTED_IMG_FILE_EXTS } from "./constants";
+import {
+    addToStreamCapture,
+    buildShellInvocation,
+    capturedText,
+    CommandExecutionResult,
+    createStreamCapture,
+    DEFAULT_TIMEOUT_MS
+} from "./services/terminal-command";
 import {
     buildRuntimePropsUrl,
     estimateTokenCount,
@@ -20,6 +25,135 @@ import {
 } from './language-model-token-limits';
 
 const STATUS_OK = 200;
+
+// A login shell started without a real TTY always prints these two warnings;
+// they are noise for the model and for the user.
+const HARMLESS_TTY_WARNINGS = [
+    'cannot set terminal process group',
+    'no job control in this shell',
+];
+
+const cleanTtyNoise = (text: string): string => text
+    .split('\n')
+    .filter((line: string) => !HARMLESS_TTY_WARNINGS.some(warning => line.includes(warning)))
+    .join('\n');
+
+interface CommandOutcome {
+    stdout: string;
+    stderr: string;
+    exitCode: number;
+    timedOut: boolean;
+    cancelled: boolean;
+}
+
+// Both streams are capped together, so a chatty command cannot exhaust memory.
+// The cap has to be far above what the model receives: the head AND the tail of
+// the output are formatted later, so the middle is all that may be dropped.
+const KILL_GRACE_MS = 3_000;
+
+/**
+ * A running shell command. Keeping a handle instead of a promise is what allows
+ * the extension to kill the process group on deactivate: `detached: true` puts
+ * the child in its own group, so the OS would keep it alive otherwise.
+ */
+export interface RunningCommand {
+    result: Promise<CommandOutcome>;
+    kill: () => void;
+}
+
+/**
+ * Runs the shell with the given invocation and collects stdout/stderr without
+ * ever throwing.
+ *
+ * Why not execFile with a `timeout`: it kills only the direct child, which is
+ * `bash -ilc '<command>'`, and bash does not forward SIGTERM to the command it
+ * is waiting for. Measured: `sleep 600` survived the kill, the callback never
+ * fired and the tool call never returned - the exact hang the timeout was added
+ * for. So the shell becomes the leader of its own process group and the whole
+ * group is killed on timeout, on abort (Stop button) and on deactivate.
+ */
+const startCommand = (
+    invocation: { file: string; args: string[] },
+    options: { cwd?: string; timeoutMs: number; signal?: AbortSignal }
+): RunningCommand => {
+    const stdout = createStreamCapture();
+    const stderr = createStreamCapture();
+    let timedOut = false;
+    let cancelled = false;
+    let settled = false;
+    let escalation: NodeJS.Timeout | undefined;
+    let timer: NodeJS.Timeout | undefined;
+    let child: cp.ChildProcess | undefined;
+
+    const killTree = (signal: NodeJS.Signals) => {
+        if (!child?.pid) return;
+        if (process.platform === 'win32') {
+            try { cp.execFile('taskkill', ['/pid', String(child.pid), '/T', '/F']); } catch { /* best effort */ }
+            return;
+        }
+        try { process.kill(-child.pid, signal); } catch { /* the group is already gone */ }
+    };
+
+    const result = new Promise<CommandOutcome>(resolve => {
+        const finish = (exitCode: number) => {
+            if (settled) return;
+            settled = true;
+            if (timer) clearTimeout(timer);
+            if (escalation) clearTimeout(escalation);
+            options.signal?.removeEventListener('abort', onAbort);
+            resolve({ stdout: capturedText(stdout), stderr: capturedText(stderr), exitCode, timedOut, cancelled });
+        };
+
+        const stop = (reason: 'timeout' | 'cancel') => {
+            if (settled) return;
+            if (reason === 'timeout') timedOut = true; else cancelled = true;
+            killTree('SIGTERM');
+            // A shell can ignore SIGTERM (an interactive rc may install a trap),
+            // so the group is not allowed to outlive the tool call.
+            escalation = setTimeout(() => killTree('SIGKILL'), KILL_GRACE_MS);
+            escalation.unref();
+        };
+
+        const onAbort = () => stop('cancel');
+
+        child = cp.spawn(invocation.file, invocation.args, {
+            cwd: options.cwd,
+            // stdin is closed: a command that waits for input fails instead of
+            // hanging. This is what makes `git commit` without -m return instead
+            // of waiting forever, and how the old `exec` behaved silently.
+            stdio: ['ignore', 'pipe', 'pipe'],
+            // POSIX: a separate process group is what makes killing the whole
+            // command tree possible. Windows uses taskkill /T instead.
+            detached: process.platform !== 'win32',
+            windowsHide: true
+        });
+
+        child.stdout?.on('data', (chunk: Buffer) => addToStreamCapture(stdout, chunk.toString()));
+        child.stderr?.on('data', (chunk: Buffer) => addToStreamCapture(stderr, chunk.toString()));
+        child.on('error', (error: Error) => {
+            addToStreamCapture(stderr, error.message);
+            finish(-1);
+        });
+        child.on('close', (code: number | null, signal: NodeJS.Signals | null) => {
+            // A killed process has no exit code; report 128 the way a shell
+            // would, and -1 when nothing is known.
+            finish(typeof code === 'number' ? code : (signal ? 128 : -1));
+        });
+
+        if (options.signal?.aborted) {
+            stop('cancel');
+        } else {
+            options.signal?.addEventListener('abort', onAbort);
+        }
+
+        timer = setTimeout(() => stop('timeout'), options.timeoutMs);
+        timer.unref();
+    });
+
+    // Deactivate and the Stop button share one way of ending the command.
+    return { result, kill: () => killTree('SIGKILL') };
+};
+
 
 export interface LlamaToolsResponse {
     choices: [{
@@ -116,6 +250,9 @@ export class LlamaServer {
     private vsCodeTrainTerminal: Terminal | undefined;
     private vsCodeCommandTerminal: Terminal | undefined;
     private vsCodeToolsTerminal: Terminal | undefined;
+    // Every live terminal command, so deactivate/killCommandCmd can end the
+    // process groups. A command removes itself from the set when it finishes.
+    private runningCommands: Set<RunningCommand> = new Set();
     private aiModel = "";
     private requestTraceCounter = 0;
     private toolsTokenLimitsCache:
@@ -1259,71 +1396,80 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
         }
     }
 
+    /**
+     * Runs a command in a non-interactive shell and returns its output.
+     *
+     * Options are additive so the six call sites (architect, menu x2, agent
+     * prompt preprocessing, dsl commands, the tool) keep working unchanged.
+     * Never throws: architect.ts relies on the returned strings only.
+     *
+     * The visible terminal is decorative - the real work happens in the child
+     * process. Nothing is echoed into it, because a double-quoted echo would
+     * still expand $(...) and backticks of model-provided text and could run it.
+     */
     executeCommandWithTerminalFeedback = async (
-        command: string
-    ): Promise<{ stdout: string; stderr: string }> => {
-        const exec = util.promisify(cp.exec);
-        this.killCommandCmd();
-        // Create terminal for user feedback
-        // const terminal = vscode.window.createTerminal(terminalName);
-        // if (!this.vsCodeCommandTerminal){
-            this.vsCodeCommandTerminal = vscode.window.createTerminal({
-                name: 'llama-vscode Command Terminal'
-            });
-        // }
+        command: string,
+        options?: { cwd?: string; timeoutMs?: number; signal?: AbortSignal }
+    ): Promise<CommandExecutionResult> => {
+        this.showCommandTerminal();
+        const invocation = buildShellInvocation(command, process.platform);
+        const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+        this.app.logger.addEventLog("terminal", "exec", command);
 
-        this.vsCodeCommandTerminal.show(true);
-        this.vsCodeCommandTerminal.sendText(`echo "Executing: ${command}"`);
+        // The child runs in its own process group, so it must be reachable from
+        // killCommandCmd() as well: otherwise closing VS Code leaves it running.
+        const running = startCommand(invocation, {
+            cwd: options?.cwd,
+            timeoutMs,
+            signal: options?.signal
+        });
+        this.runningCommands.add(running);
         try {
-            // Execute command programmatically for reliable output
-            // Use the user's login shell so PATH and shell startup files are sourced.
-            const platform = os.platform();
-            let execCommand = command;
-            if (platform === 'linux' || platform === 'darwin') {
-                const userShell = process.env.SHELL || '/bin/bash';
-                const shellName = path.basename(userShell);
-                const escapedCommand = command.replace(/'/g, "'\\''");
-                if (shellName === 'bash' || shellName === 'zsh' || shellName === 'ksh' || shellName === 'sh') {
-                    execCommand = `${userShell} -ilc '${escapedCommand}'`;
-                } else if (shellName === 'fish') {
-                    execCommand = `${userShell} -l -c '${escapedCommand}'`;
-                } else {
-                    execCommand = `${userShell} -c '${escapedCommand}'`;
-                }
-            }
-            const { stdout, stderr } = await exec(execCommand);
-            // Show output in terminal
-            this.vsCodeCommandTerminal.sendText(`echo "Command completed successfully"`);
-            // this.vsCodeCommandTerminal.sendText(`echo "Output: ${stdout.trim()}"`);
-
-            // Filter out harmless TTY warnings that occur because cp.exec doesn't allocate a real TTY.
-            const harmlessTtyWarnings = [
-                'cannot set terminal process group',
-                'no job control in this shell',
-            ];
-            const cleanedStderr = stderr
-                .split('\n')
-                .filter((line: string) => !harmlessTtyWarnings.some(warning => line.includes(warning)))
-                .join('\n');
-            if (cleanedStderr) {
-                this.vsCodeCommandTerminal.sendText(`echo "${cleanedStderr.trim()}"`);
-            }
-            return { stdout, stderr: cleanedStderr };
+            const outcome = await running.result;
+            const stdout = outcome.stdout;
+            const stderr = cleanTtyNoise(outcome.stderr);
+            this.app.logger.addEventLog("terminal", outcome.timedOut ? "timeout" : outcome.cancelled ? "cancelled" : "exit",
+                String(outcome.exitCode));
+            this.logCommandOutput(stdout || stderr);
+            return { stdout, stderr, exitCode: outcome.exitCode, timedOut: outcome.timedOut, cancelled: outcome.cancelled };
         } catch (error: any) {
-            this.vsCodeCommandTerminal.sendText(`echo "Command failed: ${error.message}"`);
-            // In catch block, error.stderr may also contain these warnings
-            const harmlessTtyWarnings = [
-                'cannot set terminal process group',
-                'no job control in this shell',
-            ];
-            const cleanedStderr = (error.stderr ?? error.message ?? '')
-                .split('\n')
-                .filter((line: string) => !harmlessTtyWarnings.some(warning => line.includes(warning)))
-                .join('\n');
-            return { stdout: error.stdout ?? "", stderr: cleanedStderr };
+            // Spawning itself failed (a missing shell, EACCES, ...). The contract
+            // is "never throw", so the failure becomes the output.
+            const message = String(error?.message ?? error ?? "unknown error");
+            this.app.logger.addEventLog("terminal", "error", message);
+            return { stdout: "", stderr: cleanTtyNoise(message), exitCode: -1, timedOut: false, cancelled: false };
         } finally {
-            // Keep terminal open for a bit, then dispose
-            // setTimeout(() => terminal.dispose(), 5000);
+            this.runningCommands.delete(running);
+        }
+    }
+
+
+    /**
+     * The visible terminal used to receive an `echo` of the output, which meant
+     * interpolating model-provided text into a shell. The output channel shows
+     * the same information without any shell involved, and only the tail: a
+     * build log has thousands of lines and the last ones are the interesting.
+     */
+    private logCommandOutput = (output: string): void => {
+        const tail = output.trim().split(/\r?\n/).slice(-20).join("\n");
+        if (tail !== "") this.app.logger.addEventLog("terminal", "output", tail);
+    }
+
+    /**
+     * Reuses one terminal for command feedback: recreating it on every call (the
+     * old behaviour also called killCommandCmd() first) destroyed the previous
+     * output and made two parallel agent sessions fight over the same handle.
+     */
+    private showCommandTerminal = (): void => {
+        try {
+            if (!this.vsCodeCommandTerminal) {
+                this.vsCodeCommandTerminal = vscode.window.createTerminal({
+                    name: "llama-vscode Command Terminal"
+                });
+            }
+            this.vsCodeCommandTerminal.show(true);
+        } catch {
+            // The terminal is only cosmetic; a failure must not fail the command.
         }
     }
 
@@ -1376,6 +1522,10 @@ private createGetSummaryRequestPayload(messages: ChatMessage[], model: string) {
     }
 
     killCommandCmd = (): void => {
+        // The child runs in its own process group (detached), so disposing the
+        // terminal is not enough: the OS would keep the command alive.
+        for (const running of this.runningCommands) running.kill();
+        this.runningCommands.clear();
         if (this.vsCodeCommandTerminal) {
             this.vsCodeCommandTerminal.dispose();
             this.vsCodeCommandTerminal = undefined;

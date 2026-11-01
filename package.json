@@ -683,7 +683,7 @@
                 "search_source: searches the code base for the provided query and returns the most relevant chungs (works if RAG is enabled)",
                 "read_file: reads a file",
                 "list_directory: returns the content of a directory/folder",
-                "regex_search: does a regex search in the code base (requires RAG)",
+                "regex_search: does a regex search in the code base (does not require RAG)",
                 "delete_file: deletes the a file",
                 "edit_file: creates are changes a source file",
                 "ask_user: asks user a question without interrupting the tools loop of the agent",
@@ -1354,6 +1354,16 @@
           "default": true,
           "description": "Enable/disable tool run_terminal_command"
         },
+        "llama-vscode.tool_run_terminal_command_timeout": {
+          "type": "number",
+          "default": 300,
+          "description": "How long (in seconds) a run_terminal_command may run before it is killed. Minimum 5, maximum 3600. Commands without a TTY can neither ask nor prompt, so a command that waits for input would otherwise block the agent forever."
+        },
+        "llama-vscode.tool_run_terminal_command_max_chars": {
+          "type": "number",
+          "default": 5000,
+          "description": "Max number of chars of the output returned by run_terminal_command. Limited to MAX_CHARS_TOOL_RETURN (5000). Head and tail of the output are kept, the middle is cut."
+        },
         "llama-vscode.tool_create_agent_enabled": {
           "type": "boolean",
           "default": true,
@@ -1487,6 +1497,19 @@
           "type": "boolean",
           "default": false,
           "description": "Permit AI to execute some safe terminal commands, which do not change the environment (no guarantee) "
+        },
+        "llama-vscode.tools_permissions_mode": {
+          "type": "string",
+          "enum": ["AllowAll", "AutoAskIfUnsure", "AutoDenyIfUnsure", "Ask"],
+          "enumItemLabels": ["allow all commands", "auto - ask if unsure", "auto - deny if unsure", "ask for permission"],
+          "enumDescriptions": [
+            "Alows all commands to be executed by AI. Known also as YOLO mode. Be careful with this mode.",
+            "Obviously safe commands (read-only, inside the project or the auto memory folder) run without asking. Obviously dangerous ones (privilege escalation, recursive/forced deletes, credentials and profile paths, system directories, downloads piped into a shell) are denied. Only the commands in between are judged by the LLM: allow if safe, deny if not, ask the user if unsure. Uses chat model (if available) or tools model.",
+            "Obviously safe commands (read-only, inside the project or the auto memory folder) run without asking. Obviously dangerous ones (privilege escalation, recursive/forced deletes, credentials and profile paths, system directories, downloads piped into a shell) are denied. Only the commands in between are judged by the LLM; if it is unsure or cannot answer, the command is denied. Uses chat model (if available) or tools model.",
+            "Ask for permission."
+          ],
+          "default": "Ask",
+          "description": "Determines when a tool should ask for a permission."
         },
         "llama-vscode.tool_permit_file_changes": {
           "type": "boolean",

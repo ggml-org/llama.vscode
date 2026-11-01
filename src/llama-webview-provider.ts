@@ -9,6 +9,12 @@ import { Utils } from './utils';
 import { AGENT_COMMAND, ModelType, PREDEFINED_LISTS_KEYS, SETTING_NAME_FOR_LIST, PERSISTENCE_KEYS, SUPPORTED_TEXT_FILE_EXTS, OPENAI_COMP_PROVIDERS, OpenAiProvidersKeys, IS_LLAMA_APP_SUPPORTED, UiView } from './constants';
 import { PREDEFINED_LISTS } from './lists';
 import { WorkspaceFileCatalog } from './services/workspace-file-catalog';
+import {
+    TOOLS_PERMISSIONS_MODES,
+    getToolsPermissionsModeInfo,
+    isToolsPermissionsMode,
+    normalizeToolsPermissionsMode
+} from './services/permissions-mode';
 
 export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     public static readonly viewType = 'llama-vscode.webview';
@@ -106,6 +112,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["toggleCompletionsEnabled", this.toggleCompletionsEnabled],
                     ["toggleRagEnabled", this.toggleRagEnabled],
                     ["toggleAutoStartEnv", this.toggleAutoStartEnv],
+                    ["setPermissionsMode", this.setPermissionsMode],
                     ["getVscodeSetting ", this.getVscodeSetting ],
                     ["setAsDefault", this.setAsDefault],
                     ["removeDefaultModel", this.removeDefaultModel],
@@ -747,6 +754,40 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     toggleAutoStartEnv = async (message: any, webviewView: vscode.WebviewView) => {
         await this.app.configuration.updateEnvStartLastUsed(message.enabled)
     }
+
+    // The composer footer button writes the setting. The value is validated
+    // here (not only in the UI) because a stale bundle, a hand-written message
+    // or a future mode must never end up in the setting: an unknown value would
+    // silently fall back to the "ask"-less branch in tools.ts.
+    setPermissionsMode = async (message: any, webviewView: vscode.WebviewView) => {
+        const mode = message?.mode;
+        if (!isToolsPermissionsMode(mode)) {
+            console.warn('Ignoring an unknown tools permissions mode:', mode);
+            // Still refresh the UI: it may be showing a value the extension does
+            // not have (e.g. after the setting was reset by hand).
+            this.updatePermissionsModeInView();
+            return;
+        }
+        await this.app.configuration.updateConfigValue("tools_permissions_mode", mode);
+        // `updateConfigValue` does not refresh the webview by itself, so post the
+        // new value explicitly. Posting it unconditionally keeps this correct even
+        // when the setting already had that value (no configuration change event).
+        this.updatePermissionsModeInView();
+    }
+
+    // The composer footer shows the current permissions mode and offers the
+    // other ones. Both the value and the list come from the extension, so the
+    // labels/explanations in the UI cannot drift from package.json.
+    public updatePermissionsModeInView() {
+        const mode = normalizeToolsPermissionsMode(this.app.configuration.tools_permissions_mode);
+        this._webview?.webview?.postMessage({
+            command: 'updatePermissionsMode',
+            mode,
+            // Short label used by the footer button ("ask", "auto ask", ...).
+            shortLabel: getToolsPermissionsModeInfo(mode).shortLabel,
+            modes: TOOLS_PERMISSIONS_MODES
+        });
+    }
         
     getVscodeSetting = async (message: any, webviewView: vscode.WebviewView) => {
         const settingValue = this.app.configuration[message.key as keyof Configuration];
@@ -1232,6 +1273,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
         this.updateAgent();
         this.updateEnv();
         this.updateSettingsInView();
+        // The composer footer shows the permissions mode, so it is part of the
+        // full refresh as well (it is also posted on every setting change).
+        this.updatePermissionsModeInView();
         this.updateDefaultModelsInView();
         this.updateRequestsInfoInView()
         this.logInUi(this.app.llamaAgent.getAgentLogText())

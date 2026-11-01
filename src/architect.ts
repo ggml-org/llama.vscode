@@ -96,6 +96,12 @@ export class Architect {
                 this.indexWorspaceFiles();
             }
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
+            // The mode can also be changed outside the composer (settings UI, the
+            // allow_all_mode / ask_mode / ... agent commands), so the footer button
+            // has to follow. Only the small message is posted, not a full refresh.
+            if (event.affectsConfiguration("llama-vscode.tools_permissions_mode")) {
+                this.app.llamaWebviewProvider.updatePermissionsModeInView();
+            }
             if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
             if (this.app.configuration.isTelegramBotConfigChanged(event)){
                 if (this.app.configuration.telegram_bot_enabled) this.app.telegramBot.createBot(this.app.configuration.telegram_api_token);
@@ -607,12 +613,16 @@ export class Architect {
         stderr = stderr.toLowerCase();
         if (stderr.includes("command not found") || stderr.includes("command failed") || stderr.includes("is not recognized")) {
             let questionInstall = "llama.cpp will be installed as it is requred by llama-vscode extension.";
-            if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted.";
+            if (process.platform == 'win32') questionInstall += "\nVS Code will be restarted if you install with winget.";
             let [shouldInstall, shouldStopAsking] = await this.app.dialogs.showYesNoNodontAskDialog(questionInstall, "Confirm");
             if (shouldInstall) {
-                await this.app.menu.installLlamacpp();
+                const termCommand = await this.app.menu.installLlamacpp();
                 this.app.persistence.setGlobalValue("last_llama_cpp", (new Date()).toISOString());
-                if (process.platform == 'win32') {
+                // Restart only when winget actually ran successfully: the new
+                // PATH entry is picked up by a fresh window, but reloading
+                // after a cancelled or failed install would only interrupt the
+                // user for nothing.
+                if (process.platform == 'win32' && termCommand?.succeeded && termCommand.command.startsWith("winget")) {
                     setTimeout(() => {
                         vscode.commands.executeCommand('workbench.action.reloadWindow');
                     }, 2000);

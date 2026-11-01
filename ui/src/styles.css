@@ -1049,6 +1049,187 @@ button.chip-label {
 }
 
 /* ---------------------------------------------------------------------------
+   Tools permissions mode button + menu
+   The button is the first item of the composer footer context group. It is a
+   safety indicator, so unlike the agent / model names it never truncates and it
+   sits at full opacity.
+   ------------------------------------------------------------------------ */
+
+.permissions-mode {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  opacity: 1;
+}
+
+.composer-context .permissions-mode-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  /* No ellipsis on the mode: it must always be readable. */
+  flex: 0 0 auto;
+  overflow: visible;
+  text-overflow: clip;
+  /* Bordered so it reads as a control (and not as one more piece of text) and
+     so the current mode stands out of the "agent · model" pair. */
+  padding: 1px 5px 1px 4px;
+  border: 1px solid var(--vscode-panel-border, #30363d);
+  border-radius: 8px;
+  /* Deliberately NO background: the mode colours (green for "ask", red for
+     "allow all") have to stay readable against the composer. A filled pill
+     (badge / toolbar-hover background) washed them out and, in light themes,
+     fought the foreground colour as well. */
+  background: none;
+  color: var(--vscode-descriptionForeground, var(--vscode-editor-foreground, #f0f6fc));
+  /* Not underlined: a pill with a border is already obviously interactive. */
+  text-decoration: none;
+  line-height: 1.5;
+}
+
+.composer-context .permissions-mode-link:hover,
+.composer-context .permissions-mode-link.open {
+  text-decoration: none;
+  border-color: var(--vscode-focusBorder, var(--vscode-textLink-foreground, #58a6ff));
+  /* Hover only brightens the text (and the border) - never fills the pill, which
+     would hide the per-mode colour. */
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+/* The most permissive mode is the dangerous one: make it recognizable without
+   opening the menu. */
+.composer-context .permissions-mode-link[data-permissions-mode='AllowAll'],
+.composer-context .permissions-mode-link[data-permissions-mode='AllowAll']:hover {
+  color: var(--vscode-errorForeground, #f48771);
+  border-color: var(--vscode-errorForeground, #f48771);
+}
+
+.composer-context .permissions-mode-link[data-permissions-mode='Ask'],
+.composer-context .permissions-mode-link[data-permissions-mode='Ask']:hover {
+  color: var(--vscode-charts-green, #89d185);
+}
+
+.permissions-mode-link-label {
+  white-space: nowrap;
+}
+
+.permissions-mode-menu {
+  position: absolute;
+  /* Opens upwards: the composer is pinned to the bottom of the panel. */
+  bottom: calc(100% + 6px);
+  /* Anchored to the right edge of the button and allowed to grow leftwards, so
+     it stays inside a narrow sidebar. */
+  right: 0;
+  z-index: 1000;
+  width: min(320px, calc(100vw - 24px));
+  display: flex;
+  flex-direction: column;
+  padding: 4px;
+  background-color: var(--vscode-menu-background, var(--vscode-editor-background, #1e1e1e));
+  border: 1px solid var(--vscode-menu-border, var(--vscode-panel-border, #30363d));
+  border-radius: 6px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  /* The footer is 10px; the menu is content, so it resets the size. */
+  font-size: 11px;
+  text-align: left;
+}
+
+.permissions-mode-menu-header {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding: 3px 8px 5px;
+  border-bottom: 1px solid var(--vscode-panel-border, #30363d);
+  margin-bottom: 3px;
+}
+
+.permissions-mode-menu-title {
+  font-weight: 600;
+  color: var(--vscode-editor-foreground, #f0f6fc);
+}
+
+.permissions-mode-menu-current {
+  margin-left: auto;
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 10px;
+  opacity: 0.7;
+}
+
+.permissions-mode-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 5px;
+  width: 100%;
+  padding: 5px 7px;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  color: var(--vscode-menu-foreground, var(--vscode-editor-foreground, #f0f6fc));
+  font-family: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.permissions-mode-item:hover {
+  background-color: var(--vscode-menu-selectionBackground, var(--vscode-list-activeSelectionBackground, #04395e));
+  color: var(--vscode-menu-selectionForeground, var(--vscode-list-activeSelectionForeground, #ffffff));
+}
+
+.permissions-mode-item.selected {
+  /* The checked row keeps a visible marker even without a hover. */
+  background-color: var(--vscode-list-inactiveSelectionBackground, rgba(127, 127, 127, 0.16));
+}
+
+.permissions-mode-item.danger .permissions-mode-item-label {
+  color: var(--vscode-errorForeground, #f48771);
+}
+
+.permissions-mode-item:hover.danger .permissions-mode-item-label {
+  color: inherit;
+}
+
+.permissions-mode-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.9;
+}
+
+.permissions-mode-item-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+
+.permissions-mode-item-label {
+  font-weight: 600;
+  /* Mode names are short; still guard against a future long translation. */
+  overflow-wrap: anywhere;
+}
+
+.permissions-mode-item-desc {
+  font-size: 10px;
+  line-height: 1.35;
+  opacity: 0.8;
+  /* Explanations wrap instead of being clipped: they are the point of the menu. */
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.permissions-mode-menu-footer {
+  padding: 5px 8px 3px;
+  border-top: 1px solid var(--vscode-panel-border, #30363d);
+  margin-top: 3px;
+  font-size: 9px;
+  line-height: 1.4;
+  opacity: 0.7;
+}
+
+/* ---------------------------------------------------------------------------
    "Stop requested" feedback
    ------------------------------------------------------------------------ */
 
