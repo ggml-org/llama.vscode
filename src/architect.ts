@@ -96,6 +96,12 @@ export class Architect {
                 this.indexWorspaceFiles();
             }
             if (this.app.configuration.isToolChanged(event)) this.app.tools.init();
+            // The mode can also be changed outside the composer (settings UI, the
+            // allow_all_mode / ask_mode / ... agent commands), so the footer button
+            // has to follow. Only the small message is posted, not a full refresh.
+            if (event.affectsConfiguration("llama-vscode.tools_permissions_mode")) {
+                this.app.llamaWebviewProvider.updatePermissionsModeInView();
+            }
             if (this.app.configuration.isEnvViewSettingChanged(event)) this.app.llamaWebviewProvider.updateLlamaView();
             if (this.app.configuration.isTelegramBotConfigChanged(event)){
                 if (this.app.configuration.telegram_bot_enabled) this.app.telegramBot.createBot(this.app.configuration.telegram_api_token);

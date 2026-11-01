@@ -1266,42 +1266,6 @@ export const PREDEFINED_LISTS = new Map<string, any>([
               "isScript": true
             },
             {
-              "name": "allow_all_mode",
-              "prompt": [
-                "setSetting tools_permissions_mode AllowAll"
-              ],
-              "description": "Alows all tools commands to be executed by AI without user confirmation. Known also as YOLO mode. Be careful with this mode.",
-              "noPrompt": true,
-              "isScript": true
-            },
-            {
-              "name": "ask_mode",
-              "prompt": [
-                "setSetting tools_permissions_mode Ask"
-              ],
-              "description": "Asks user for permission for executing (some) tools commands.",
-              "noPrompt": true,
-              "isScript": true
-            },
-            {
-              "name": "auto_ask_if_unsure_mode",
-              "prompt": [
-                "setSetting tools_permissions_mode AutoAskIfUnsure"
-              ],
-              "description": "Obviously safe commands run without asking and obviously dangerous ones are denied; only the commands in between are judged by the LLM. If it is unsure, the AI will ask for user permission.",
-              "noPrompt": true,
-              "isScript": true
-            },
-            {
-              "name": "auto_deny_if_unsure_mode",
-              "prompt": [
-                "setSetting tools_permissions_mode AutoDenyIfUnsure"
-              ],
-              "description": "Obviously safe commands run without asking and obviously dangerous ones are denied; only the commands in between are judged by the LLM. If it is unsure, the AI will deny the command.",
-              "noPrompt": true,
-              "isScript": true
-            },
-            {
               "name": "select_help_agent",
               "prompt": [
                 "setAgent llama-vscode help"

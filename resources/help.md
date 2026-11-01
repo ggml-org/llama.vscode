@@ -319,11 +319,12 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
-## Version 0.0.75 is released (30.10.2026)
+## Version 0.0.75 is released (01.11.2026)
 ### What is new
 - regex_search tool is changed to be independent from RAG search.
 - Refactor  tool run_terminal_command
 - For Windows the procedure for installing lama.cpp is changed. If option llama app is selected - the web page llama.app is opened instead of running shell script.
+- Tools permissoins modes introduced - AllowAll, AutoAskIfUnsure, AutoDenyIfUnsure, Ask
 
 ## Version 0.0.74 is released (28.10.2026)
 ### What is new
@@ -1172,7 +1173,30 @@ Settings:
 
 [Screencast from 2026-01-05 15-05-00.webm](https://github.com/user-attachments/assets/41fa92f8-88db-4079-9574-486fb4286c79)
 
-## Rules
+## Permissions Modes
+
+### Overview
+Permissions modes control whether and how the agent's tool calls are executed. There are four modes:
+
+- **AllowAll**: All tool calls are allowed.
+- **AutoAskIfUnsure**: The LLM judges whether a command is safe and asks the user when unsure.
+- **AutoDenyIfUnsure**: The LLM judges whether a command is safe and denies the call when unsure.
+- **Ask**: The user is asked for confirmation.
+
+### How It Works
+The default mode is `Ask`. You can change the mode in two ways:
+
+- Change the `tools_permissions_mode` setting.
+- In the agent chat view, click the permissions mode button at the bottom-left, next to the agent selector button.
+
+### Settings
+
+`tools_permissions_mode`:
+
+- **AllowAll**: Allows all commands to be executed by the AI. Also known as YOLO mode. Use this mode with caution.
+- **AutoAskIfUnsure**: Obviously safe commands (read-only, inside the project or the auto memory folder) run without asking. Obviously dangerous commands (privilege escalation, recursive/forced deletes, credentials and profile paths, system directories, downloads piped into a shell) are denied. Only commands that fall between these categories are judged by the LLM: allow if safe, deny if unsafe, and ask the user if unsure. Uses the chat model (if available) or the tools model.
+- **AutoDenyIfUnsure**: Obviously safe commands (read-only, inside the project or the auto memory folder) run without asking. Obviously dangerous commands (privilege escalation, recursive/forced deletes, credentials and profile paths, system directories, downloads piped into a shell) are denied. Only commands that fall between these categories are judged by the LLM; if it is unsure or cannot answer, the command is denied. Uses the chat model (if available) or the tools model.
+- **Ask** (default): The user is asked for permission. In this mode, some commands can be executed automatically without asking if any of the following settings are set to `true`: `tool_permit_some_terminal_commands`, `tool_permit_file_changes`, `tool_permit_file_deletes`.## Rules
 
 ### What are rules
 Rules are additional user instructions that are added to the system prompt when an agent request is sent to the AI model. They are stored in a file, created by the user in a plain text or markdown format.

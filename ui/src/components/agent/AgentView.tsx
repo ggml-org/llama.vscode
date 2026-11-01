@@ -3,6 +3,7 @@ import { vscode } from '../../types/vscode';
 import { EMPTY_REQUEST_STATS, FileListUpdate, RequestStats, useExtensionMessages } from '../../hooks/useExtensionMessages';
 import { bestEffortDroppedFileName, collectDroppedFiles, isDropExtensionAllowed, readableDroppedFileCount, readDroppedFileContents } from '../../utils/dropFiles';
 import { getCommandName, PickerItem, PickerMode, PickerTrigger, replaceTrigger } from '../../utils/pickerItems';
+import { DEFAULT_PERMISSIONS_MODES, PermissionsMode, PermissionsModeInfo } from '../../utils/permissionsMode';
 import ChatMessages from './ChatMessages';
 import Composer from './Composer';
 import Picker from './Picker';
@@ -37,6 +38,13 @@ interface AgentViewProps {
   // True on hosts where the "Llama app" OpenAI-compatible provider exists
   // (Windows / macOS), sent by the extension. Controls host-only menu entries.
   llamaAppSupported?: boolean;
+  // Current `tools_permissions_mode` value, sent by the extension. Defaults to
+  // the setting default ("Ask") so the footer button is meaningful (and safe)
+  // before the extension has answered.
+  permissionsMode?: string;
+  // Mode list with labels and explanations, sent by the extension so the copy
+  // matches package.json. Falls back to the built-in copy.
+  permissionsModes?: PermissionsModeInfo[];
   contextFiles: Map<string, string>;
   setContextFiles: (files: Map<string, string>) => void;
   imagePath: string;
@@ -74,6 +82,8 @@ const AgentView: React.FC<AgentViewProps> = ({
   currentState,
   setCurrentState,
   llamaAppSupported = false,
+  permissionsMode = 'Ask',
+  permissionsModes,
   contextFiles,
   setContextFiles,
   imagePath,
@@ -679,6 +689,13 @@ const AgentView: React.FC<AgentViewProps> = ({
     vscode.postMessage({ command: 'moreToolsModel' });
   }, []);
 
+  // The extension writes the setting; the new value comes back through the
+  // `updatePermissionsMode` message (which also re-reads it when it was changed
+  // from the settings UI), so the button is not optimistically updated here.
+  const selectPermissionsMode = useCallback((mode: PermissionsMode) => {
+    vscode.postMessage({ command: 'setPermissionsMode', mode });
+  }, []);
+
   const addModelFromLlamaApp = useCallback(() => {
     vscode.postMessage({ command: 'addModelFromLlamaApp' });
   }, []);
@@ -878,6 +895,9 @@ const AgentView: React.FC<AgentViewProps> = ({
               onConfigureTools={() => vscode.postMessage({ command: 'configureTools', text: inputText })}
               onSelectAgent={selectAgent}
               onSelectToolsModel={selectToolsModel}
+              permissionsMode={permissionsMode}
+              permissionsModes={permissionsModes && permissionsModes.length > 0 ? permissionsModes : DEFAULT_PERMISSIONS_MODES}
+              onSelectPermissionsMode={selectPermissionsMode}
               isWorking={isWorking}
               stopRequested={stopRequested}
               currentAgent={currentAgent}

@@ -163,9 +163,7 @@ export class Tools {
             if (shouldAskUser){
                 [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command +
                 (analysis.modifying ? "\n\n Reason: " + analysis.reason : "") +
-                "\n\nIf you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation." +
-                "\n\nCurrent tools permissions mode: " + this.app.configuration.tools_permissions_mode + 
-                "\nYou could change tools permissions mode with agent commands allow_all_mode, ask_mode, auto_ask_if_unsure_mode, auto_deny_if_unsure_mode or from setting tools_permissions_mode.")
+                "\n\nIf you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
                 if (yesDontAsk) {
                     // Awaited on purpose: a second tool call of the same batch must
                     // already see the elevated value or it prompts again.
