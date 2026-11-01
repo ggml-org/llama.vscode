@@ -5,6 +5,7 @@ import fs from "fs";
 import {translations} from "./translations"
 import { Agent } from "./types";
 import { Utils } from "./utils";
+import { ToolsPermissionsMode as ToolsPermissonsMode} from "./constants";
 
 export class Configuration {
     // extension configs
@@ -88,6 +89,7 @@ export class Configuration {
     tool_regex_search_enabled = true;
     tool_delete_file_enabled = true;
     tool_permit_some_terminal_commands = false;
+    tools_permissions_mode = ToolsPermissonsMode.Ask.toString();
     tool_permit_file_changes = false
     tool_permit_file_delete = false
     tool_get_diff_enabled = false;
@@ -265,6 +267,7 @@ export class Configuration {
         this.tool_regex_search_enabled = Boolean(config.get<boolean>("tool_regex_search_enabled"));
         this.tool_delete_file_enabled = Boolean(config.get<boolean>("tool_delete_file_enabled"));
         this.tool_permit_some_terminal_commands = Boolean(config.get<boolean>("tool_permit_some_terminal_commands"));
+        this.tools_permissions_mode = String(config.get<string>("tools_permissions_mode"));
         this.tool_permit_file_changes = Boolean(config.get<boolean>("tool_permit_file_changes"));
         this. tool_permit_file_delete = Boolean(config.get<boolean>("tool_permit_file_delete"));
         this.tool_get_diff_enabled = Boolean(config.get<boolean>("tool_get_diff_enabled"));

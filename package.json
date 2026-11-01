@@ -1498,6 +1498,19 @@
           "default": false,
           "description": "Permit AI to execute some safe terminal commands, which do not change the environment (no guarantee) "
         },
+        "llama-vscode.tools_permissions_mode": {
+          "type": "string",
+          "enum": ["AllowAll", "AutoAskIfUnsure", "AutoDenyIfUnsure", "Ask"],
+          "enumItemLabels": ["allow all commands", "auto - ask if unsure", "auto - deny if insure", "ask for permission"],
+          "enumDescriptions": [
+            "Alows all commands to be executed by AI. Known also as YOLO mode. Be careful with this mode.",
+            "LLM analyzes and decides if the command is safe (allow) or not (deny). If unsure, the AI will ask for user permission. Uses chat model (if available) or tools model.",
+            "LLM analyzes and decides if the command is safe (allow) or not (deny). If unsure, the AI will deny the command. Uses chat model (if available) or tools model.",
+            "Ask for permission."
+          ],
+          "default": "Ask",
+          "description": "Determines when a tool should ask for a permission."
+        },
         "llama-vscode.tool_permit_file_changes": {
           "type": "boolean",
           "default": false,

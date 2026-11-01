@@ -13,6 +13,19 @@ export enum UiView {
   AiRunner = 'airunner'
 }
 
+export enum ToolsPermissionsMode {
+  AllowAll = "AllowAll",
+  AutoAskIfUnsure = "AutoAskIfUnsure",
+  AutoDenyIfUnsure = "AutoDenyIfUnsure",
+  Ask = "Ask"
+}
+
+export enum LlmJudgeCommandSafe {
+  Yes = "yes",
+  No = "no",
+  Unsure = "unsure"
+}
+
 export enum Action {
   Select = 'select',
   AddLocal = 'addLocal',

@@ -85,7 +85,7 @@ const READ_ONLY_TOKENS = new Set<string>([
     'ls','cat','head','tail','wc','pwd','echo','printf','file','stat','du','df','tree','diff','cmp',
     'uniq','cut','tr','basename','dirname','realpath','jq','whoami','hostname','uname','date','which',
     'whereis','type','man','help','grep','egrep','fgrep','rg','find','sort','git','node','npm','npx',
-    'python','python3','pip','cargo','go','dotnet','java','tsc','eslint','jest','pytest'
+    'python','python3','pip','cargo','go','dotnet','java','tsc','eslint','jest','pytest', 'cd'
 ]);
 
 // Read-only aliases of PowerShell/cmd. `dir`, `type` and `tree` also exist on

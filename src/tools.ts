@@ -4,7 +4,7 @@ import {Utils} from "./utils";
 import path from "path";
 import fs from 'fs';
 import { Plugin } from './plugin';
-import { CONFIRMATION_STATE, TOOLS_DESC, UI_TEXT_KEYS } from "./constants";
+import { CONFIRMATION_STATE, ToolsPermissionsMode as ToolsPermissionsMode, TOOLS_DESC, UI_TEXT_KEYS, LlmJudgeCommandSafe } from "./constants";
 import { Chat, Agent } from "./types";
 import {
     analyzeCommand,
@@ -88,19 +88,53 @@ export class Tools {
         if (command.length > MAX_COMMAND_CHARS) return "The terminal command is too long (" + command.length +
             " chars, max " + MAX_COMMAND_CHARS + "). Split it into smaller commands."
 
-        const analysis = analyzeCommand(command);
         // The permission gate: a command that can change files or the environment
         // is ALWAYS confirmed, whatever the "don't ask again" shortcut says.
-        if (analysis.modifying || !this.app.configuration.tool_permit_some_terminal_commands) {
-            const [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command +
-                (analysis.modifying ? "\n\n Reason: " + analysis.reason : "") +
-                "\n\n If you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation.")
-            if (yesDontAsk) {
-                // Awaited on purpose: a second tool call of the same batch must
-                // already see the elevated value or it prompts again.
-                await this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
-                vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
+        const analysis = analyzeCommand(command)
+        if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+            && (!this.app.configuration.tool_permit_some_terminal_commands || analysis.modifying)) {
+            let yesApply = false
+            let yesDontAsk = false
+            let shouldAskUser = true;
+            if (this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure
+                || this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoDenyIfUnsure){
+                // TODO If the command is obviously safe or dangerous (for example remove files outside project or auto memory folder) - there is no need to ask the LLM.
+                let rootFolderInfo = ""
+                const workspaceFolders = vscode.workspace.workspaceFolders;
+                if (!workspaceFolders || workspaceFolders.length === 0) {
+                    rootFolderInfo = "No workspace folder open.";
+                } else {
+                    const workspaceRoot = workspaceFolders[0].uri.fsPath;
+                    rootFolderInfo = workspaceRoot
+                }
+                const replacements = {
+                    rootFolderInfo: rootFolderInfo,
+                    command: command
+                };
+                let prompt = this.app.prompts.replacePlaceholders(this.app.prompts.SAFE_COMMAND_JUDGE, replacements)
+                const completion = await this.app.llamaServer.getChatCompletion(prompt)
+                const aiJudgeAnswer = completion?.choices[0]?.message.content
+
+                if (aiJudgeAnswer == LlmJudgeCommandSafe.Unsure && this.app.configuration.tools_permissions_mode == ToolsPermissionsMode.AutoAskIfUnsure){
+                    shouldAskUser = true;
+                } else {
+                    shouldAskUser = false;
+                    yesApply = aiJudgeAnswer == LlmJudgeCommandSafe.Yes
+                }
             }
+            if (shouldAskUser){
+                [yesApply, yesDontAsk] = await this.confirmToolPermission("Do you give a permission to execute the terminal command:\n" + command +
+                (analysis.modifying ? "\n\n Reason: " + analysis.reason : "") +
+                "\n\nIf you answer with 'Yes, don't ask again', the safe terminal commands (do not change files or environment) will be executed without confirmation." +
+                "\n\nCurrent tools permissions mode: " + this.app.configuration.tools_permissions_mode + 
+                "\nYou could change tools permissions mode with commands yolo_mode, ask_mode, auto_ask_if_unsure_mode, auto_deny_if_unsure_mode or from setting tools_permissions_mode.")
+                if (yesDontAsk) {
+                    // Awaited on purpose: a second tool call of the same batch must
+                    // already see the elevated value or it prompts again.
+                    await this.app.configuration.updateConfigValue("tool_permit_some_terminal_commands", true)
+                    vscode.window.showInformationMessage("Setting tool_permit_some_terminal_commands is set to true.")
+                }
+            }    
             if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
         }
 
@@ -183,6 +217,7 @@ export class Tools {
             let absolutePath = Utils.getAbsolutFilePath(filePath);
             if (absolutePath == "") return "File not found: " + filePath
             absolutePath = path.resolve(absolutePath) // Make the path unique for this file - no .. in the path
+            if (!this.isInsideAllowedFolders(absolutePath)) return `Error: File "${filePath}" is outside workspace folder and outside auto memory folder.`;
             let stats: fs.Stats;
             try {
                 stats = await fs.promises.stat(absolutePath);
@@ -479,7 +514,8 @@ export class Tools {
             if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
                 return `Deletion not allowed: ${filePath} is outside the project folder.`;
             }
-            if (!this.app.configuration.tool_permit_file_delete){  
+            if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+                && !this.app.configuration.tool_permit_file_delete){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be deleted?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_delete", true)
@@ -538,7 +574,10 @@ export class Tools {
         if (!filePath) return "The file is not provided.";
         
         try {
-            if (!this.app.configuration.tool_permit_file_changes){  
+            if (!this.isInsideAllowedFolders(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
+            
+            if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+                && !this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)
@@ -546,7 +585,7 @@ export class Tools {
                 }
                 if (!yesApply) return Utils.MSG_NO_USER_PERMISSION;
             }
-            if (!this.isEditAllowed(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
+            
             let resultEdit = await Utils.findReplaceFile(filePath, search, replace, replaceAll, this.fileReadTimestamps)
             if (resultEdit == UI_TEXT_KEYS.fileUpdated &&  this.app.configuration.rag_enabled && fs.existsSync(filePath)) {
                 this.app.chatContext.udpateFileIndexing(filePath, fs.readFileSync(filePath, 'utf-8'))
@@ -557,7 +596,7 @@ export class Tools {
             throw error;
         }        
     }
-    private isEditAllowed = (filePath: string): boolean => {
+    private isInsideAllowedFolders = (filePath: string): boolean => {
         let isAllowed = true;
         if (path.isAbsolute(filePath)) {
             const resolvedFilePath = path.resolve(filePath)
@@ -589,10 +628,11 @@ export class Tools {
 
         if (!filePath) return "The file is not provided.";
         if (!edits || !Array.isArray(edits) || edits.length < 1) return "At least one edit operation is required.";
-        if (!this.isEditAllowed(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
+        if (!this.isInsideAllowedFolders(filePath)) return `Error: File "${filePath}" is outside all workspace folders and outside auto memory folder.`;
 
         try {
-            if (!this.app.configuration.tool_permit_file_changes){  
+            if (this.app.configuration.tools_permissions_mode != ToolsPermissionsMode.AllowAll
+                && !this.app.configuration.tool_permit_file_changes){  
                 let [yesApply, yesDontAsk] = await this.confirmToolPermission(`Do you permit file ${filePath} to be changed?`)
                 if (yesDontAsk) {
                     this.app.configuration.updateConfigValue("tool_permit_file_changes", true)

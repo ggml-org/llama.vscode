@@ -1579,7 +1579,10 @@ export class LlamaAgent {
                                     session.changedFiles.add(changedFile);
                                     if (commandOutput != UI_TEXT_KEYS.fileUpdated){    
                                         session.logDestination.append(commandOutput + "\n\n");
-                                    }
+                                    }   
+                                }
+                                if (commandOutput === Utils.MSG_NO_USER_PERMISSION){    
+                                    session.logDestination.append("Permission denied for tool execution." + "\n\n");
                                 }
                                 if (oneToolCall.function.name == "delete_file" && commandOutput != Utils.MSG_NO_USER_PERMISSION) session.deletedFiles.add(commandDescription);
                             }
