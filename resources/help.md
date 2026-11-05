@@ -324,7 +324,7 @@ Settings:
 - New Telegram command /tokens - shows request and chant tokens/price
 - New telegram command /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
 - New telegram command /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
-- Add cheapaimodel to the OpenAI-compatible providers
+- Add cheapaimodel.ai and llm.buzz to the OpenAI-compatible providers
 
 
 ## Version 0.0.76 is released (02.11.2026)
