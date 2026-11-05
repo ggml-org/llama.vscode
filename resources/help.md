@@ -1564,6 +1564,7 @@ You can program from your phone with llama-vscode and Telegram. Part of the agen
 Every message to your Telegram bot (from 1.) will be forwarded to the agent in llama-vscode and the bot will send back the answer.  
 Here are the commands (messages, which start with "/"), which the bot can execute (if the message doesn't start with "/", it is sent to the agent) :  
 - /env - shows the current tools model and agent
+- /tokens - shows the tokens used in the last request and in the current chat, with their price if available
 - /models - shows the available models
 - /agents - shows the available agents 
 - /setmodel n - sets the model to the n-th model. (models numbers are available from command /models)
