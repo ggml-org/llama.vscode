@@ -5,6 +5,7 @@ import { CONFIRMATION_STATE, ModelType, PREDEFINED_LISTS_KEYS, TELEGRAM_BOT_COMM
 import { PREDEFINED_LISTS } from "./lists";
 import { Agent, LlmModel } from "./types";
 import { buildTokenStatsMessage, DEFAULT_TOKEN_STATS_LABELS, TokenStatsLabels } from "./services/token-stats";
+import { buildPermissionsModesMessage, resolveToolsPermissionsModeArgument } from "./services/permissions-mode";
 
 export class TelegramBot {
     private app: Application
@@ -118,6 +119,15 @@ export class TelegramBot {
             case TELEGRAM_BOT_COMMANDS.SHOW_TOKENS:
                 this.sendResponse(this.getTokensMsg());
                 return;
+            case TELEGRAM_BOT_COMMANDS.SHOW_PERMISSIONS:
+                // The list itself is built by the pure helper, the same one the
+                // unit test covers. The mode names are the (untranslated) labels
+                // from package.json - only the heading is translated.
+                this.sendResponse(buildPermissionsModesMessage(
+                    this.app.configuration.tools_permissions_mode,
+                    { title: this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailablePermissions) ?? "Available permissions modes:" }
+                ));
+                return;
             case TELEGRAM_BOT_COMMANDS.SHOW_MODELS:
                 const propModelsCount = this.app.configuration.tools_models_list.length
                 const msgModels = this.app.configuration.getUiText(UI_TEXT_KEYS.telegramAvailableModels) + " \n" +
@@ -201,6 +211,23 @@ export class TelegramBot {
                 }
             } else {
                 this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectAgent)??"");
+                return;
+            }
+        }
+
+        if (receivedMessage.toLowerCase().startsWith(TELEGRAM_BOT_COMMANDS.SET_PERMISSION)){
+            // The whole rest of the message is the argument, because a mode can be
+            // typed with spaces ("auto ask if unsure"): number, setting value or
+            // label. The parsing lives in services/permissions-mode.ts.
+            const mode = resolveToolsPermissionsModeArgument(receivedMessage.slice(TELEGRAM_BOT_COMMANDS.SET_PERMISSION.length));
+            if (mode) {
+                // Validated above, so an unknown (e.g. misspelled) mode can never
+                // be written into the setting.
+                await this.app.configuration.updateConfigValue("tools_permissions_mode", mode);
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramPermissionSetTo) + " " + mode);
+                return;
+            } else {
+                this.sendResponse(this.app.configuration.getUiText(UI_TEXT_KEYS.telegramEnterCorrectPermission)??"");
                 return;
             }
         }
@@ -363,6 +390,8 @@ export class TelegramBot {
                 TELEGRAM_BOT_COMMANDS.SHOW_AGENTS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdAgentsDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SET_MODEL + " n - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdSetModelDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SET_AGENT + " n - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdSetAgentDesc) + "\n" + 
+                TELEGRAM_BOT_COMMANDS.SHOW_PERMISSIONS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdPermissionsDesc) + "\n" + 
+                TELEGRAM_BOT_COMMANDS.SET_PERMISSION + " n - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdSetPermissionDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.STOP_AGENT + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdStopDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_AGENT_STATUS + " - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdStatusDesc) + "\n" + 
                 TELEGRAM_BOT_COMMANDS.SHOW_CHAT + " n - " + this.app.configuration.getUiText(UI_TEXT_KEYS.telegramCmdChatDesc) + "\n" +

@@ -1195,6 +1195,7 @@ The default mode is `Ask`. You can change the mode in two ways:
 
 - Change the `tools_permissions_mode` setting.
 - In the agent chat view, click the permissions mode button at the bottom-left, next to the agent selector button.
+- From the Telegram bot (see the Telegram section below) with the commands /permissions (lists the modes) and /setpermission (changes the mode).
 
 ### Settings
 
@@ -1569,6 +1570,8 @@ Here are the commands (messages, which start with "/"), which the bot can execut
 - /agents - shows the available agents 
 - /setmodel n - sets the model to the n-th model. (models numbers are available from command /models)
 - /setagent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
+- /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
+- /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
 - /tools - lists all tools with a check for the active ones
 - /addtools x,y,z - sets the active tools (x,y,z are the numbers of the tools from /tools command)
 - /removetools x,y,z - removes the tools (x,y,z are the numbers of the tools from /tools command)  
