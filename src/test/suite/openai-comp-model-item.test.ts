@@ -17,6 +17,10 @@ suite("OpenAI-compatible model picker", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Runcrate], "https://api.runcrate.ai");
     });
 
+    test("registers llm.buzz without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.LlmBuzz], "https://api.llm.buzz/api");
+    });
+    
     test("registers cheapaimodel without a duplicate API version segment", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Cheapaimodel], "https://api.cheapaimodel.ai");
     });

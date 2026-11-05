@@ -401,6 +401,7 @@ export enum OpenAiProvidersKeys {
   CloudGPU = 'CloudGPU...',
   AtlasCloud = 'Atlas Cloud...',
   Runcrate = 'Runcrate...',
+  LlmBuzz = 'llm.buzz...',
   Cheapaimodel = 'cheapaimodel...',
   Custom = 'Custom...'
 }
@@ -415,6 +416,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.ApiRoute]: "https://global.api-route.com",
   [OpenAiProvidersKeys.CloudGPU]: "https://cloudgpu.app",
   [OpenAiProvidersKeys.Runcrate]: "https://api.runcrate.ai",
+  [OpenAiProvidersKeys.LlmBuzz]: "https://api.llm.buzz/api",
   [OpenAiProvidersKeys.Cheapaimodel]: "https://api.cheapaimodel.ai",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
