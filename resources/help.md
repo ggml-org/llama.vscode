@@ -319,6 +319,14 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
+## Version 0.0.77 is released (06.11.2026)
+### What is new
+- New Telegram command /tokens - shows request and chant tokens/price
+- New telegram command /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
+- New telegram command /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
+- Add cheapaimodel to the OpenAI-compatible providers
+
+
 ## Version 0.0.76 is released (02.11.2026)
 ### What is new
 - Update search_source tool to continue working if RAG indexing is off
@@ -1191,11 +1199,11 @@ Permissions modes control whether and how the agent's tool calls are executed. T
 - **Ask**: The user is asked for confirmation.
 
 ### How It Works
-The default mode is `Ask`. You can change the mode in two ways:
+The default mode is `Ask`. You can change the mode in the following ways:
 
 - Change the `tools_permissions_mode` setting.
 - In the agent chat view, click the permissions mode button at the bottom-left, next to the agent selector button.
-- From the Telegram bot (see the Telegram section below) with the commands /permissions (lists the modes) and /setpermission (changes the mode).
+- From the Telegram bot (see the [Telegram section](https://github.com/ggml-org/llama.vscode/wiki/Telegram-bot)) with the commands /permissions (lists the modes) and /setpermission (changes the mode).
 
 ### Settings
 
@@ -1565,13 +1573,10 @@ You can program from your phone with llama-vscode and Telegram. Part of the agen
 Every message to your Telegram bot (from 1.) will be forwarded to the agent in llama-vscode and the bot will send back the answer.  
 Here are the commands (messages, which start with "/"), which the bot can execute (if the message doesn't start with "/", it is sent to the agent) :  
 - /env - shows the current tools model and agent
-- /tokens - shows the tokens used in the last request and in the current chat, with their price if available
 - /models - shows the available models
 - /agents - shows the available agents 
 - /setmodel n - sets the model to the n-th model. (models numbers are available from command /models)
 - /setagent n - sets the agent to the n-th agent. (agents numbers are available from command /agents) 
-- /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
-- /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
 - /tools - lists all tools with a check for the active ones
 - /addtools x,y,z - sets the active tools (x,y,z are the numbers of the tools from /tools command)
 - /removetools x,y,z - removes the tools (x,y,z are the numbers of the tools from /tools command)  
@@ -1583,7 +1588,9 @@ Here are the commands (messages, which start with "/"), which the bot can execut
 - / - shows available telegram bot commands
 - // - shows the available agent commands
 - /help - shows help information for using the bot
-
+- /tokens - shows the tokens used in the last request and in the current chat, with their price if available
+- /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
+- /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
 ### Settings:  
 - telegram_api_token - Telegram Bot token  
 - telegram_bot_users - List of users, which are allowed to use the bot.  
