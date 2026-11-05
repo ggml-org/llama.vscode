@@ -402,6 +402,7 @@ export enum OpenAiProvidersKeys {
   AtlasCloud = 'Atlas Cloud...',
   Runcrate = 'Runcrate...',
   LlmBuzz = 'llm.buzz...',
+  Cheapaimodel = 'cheapaimodel...',
   Custom = 'Custom...'
 }
 // The "Llama app" provider is available only on Windows and macOS.
@@ -416,6 +417,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.CloudGPU]: "https://cloudgpu.app",
   [OpenAiProvidersKeys.Runcrate]: "https://api.runcrate.ai",
   [OpenAiProvidersKeys.LlmBuzz]: "https://api.llm.buzz/api",
+  [OpenAiProvidersKeys.Cheapaimodel]: "https://api.cheapaimodel.ai",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
 
