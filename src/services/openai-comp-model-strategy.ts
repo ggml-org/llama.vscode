@@ -15,6 +15,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
     constructor(app: Application) {
         this.app = app;
         this.modelEndpointsKeyRequired.add(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.ApiRoute]);
+        this.modelEndpointsKeyRequired.add(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Cheapaimodel]);
     }
 
     add = async (details: ModelTypeDetails): Promise<void> => {
@@ -47,7 +48,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
         }
     }
 
-    addModleFromEndpoint = async (endpoint: string, isKeyRequired: boolean, providerName: string, details: ModelTypeDetails) => {
+    addModleFromEndpoint = async (endpoint: string, isKeyRequired: boolean, providerName: string, details: ModelTypeDetails, selectTempModel: boolean = false) => {
         const providerModels: QuickPickItem[] = [];
         const models = await this.getModels(endpoint, isKeyRequired);
         let selModel: vscode.QuickPickItem | undefined;
@@ -73,6 +74,11 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
                 isKeyRequired: isKeyRequired
             };
 
+            if (selectTempModel && details.modelType){
+                await this.app.modelService.selectStartModel(newModel, details.modelType, details);
+                return;
+            }
+
             const shouldAddModel = await this.app.dialogs.confirmAction("You have entered:",
                 ServiceUtils.getModelDetailsAsString(newModel) +
                 "\n\nDo you want to add a model with these properties?"
@@ -87,7 +93,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
         }
     }
 
-    private async getModels(endpoint: string, isKeyRequired: boolean): Promise<OpenAiCompModel[]> {
+    public async getModels(endpoint: string, isKeyRequired: boolean): Promise<OpenAiCompModel[]> {
         const hfEndpoint = Utils.trimTrailingSlash(endpoint) + "/v1/models";
 
         // Create a request configuration

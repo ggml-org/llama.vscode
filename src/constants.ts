@@ -326,6 +326,22 @@ export const UI_TEXT_KEYS = {
   telegramAddedTools: "Added tools:",
   telegramAnswerExactly: "Answer exacly with one of the following:",
   telegramAnswerFirst: "Answer the question first.",
+  telegramCmdTokensDesc: "shows the tokens used in the last request and in the current chat, with their price if available",
+  telegramTokensTitle: "Tokens:",
+  telegramTokensLastRequest: "Last request",
+  telegramTokensChatTotal: "Chat total",
+  telegramTokensInput: "input",
+  telegramTokensCached: "cached",
+  telegramTokensOutput: "output",
+  telegramTokensPriceNotAvailable: "price not available",
+  telegramTokensPriceNote: "Price works only for OpenRouter and OrcaRouter; not finished/stopped requests are not included but are taxed.",
+  telegramTokensNone: "No tokens have been used yet in this chat.",
+  telegramTokensUnit: "tokens",
+  telegramCmdPermissionsDesc: "shows the current tools permissions mode and the available modes",
+  telegramCmdSetPermissionDesc: "sets the tools permissions mode by number or name. (the modes are available from command /permissions)",
+  telegramAvailablePermissions: "Available permissions modes:",
+  telegramPermissionSetTo: "Permissions mode set to",
+  telegramEnterCorrectPermission: "Please enter correct permissions mode. (see the modes with /permissions command).",
 
 
   // Other
@@ -390,6 +406,9 @@ export const TELEGRAM_BOT_COMMANDS = {
   SHOW_TOOLS: "/tools" as const,
   ADD_TOOLS: "/addtools" as const,
   REMOVE_TOOLS: "/removetools" as const,
+  SHOW_TOKENS: "/tokens" as const,
+  SHOW_PERMISSIONS: "/permissions" as const,
+  SET_PERMISSION: "/setpermission" as const,
   SHOW_HELP: "/help" as const,
 } as const;
 
