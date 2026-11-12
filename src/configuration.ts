@@ -568,4 +568,23 @@ export class Configuration {
     updateConfigValue = async (settingName: string, value: any, target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Global) => {
         await this.config.update(settingName, value, target);
     }
+
+    /**
+     * The scope the user actually stores `agent_commands` in. The setting is
+     * window-scoped, so a workspace value shadows the global one on read -
+     * writing at Global while the commands live in the workspace file would be
+     * silently shadowed (the write would look like a no-op).
+     */
+    getAgentCommandsScope = (): vscode.ConfigurationTarget => {
+        const inspected = this.config.inspect<any[]>("agent_commands");
+        if (inspected?.workspaceValue !== undefined) return vscode.ConfigurationTarget.Workspace;
+        return vscode.ConfigurationTarget.Global;
+    }
+
+    /**
+     * Persists the agent commands list at the scope it is stored in.
+     */
+    updateAgentCommands = async (value: any[]) => {
+        await this.updateConfigValue("agent_commands", value, this.getAgentCommandsScope());
+    }
 }

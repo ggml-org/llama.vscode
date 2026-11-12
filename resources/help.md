@@ -10,11 +10,11 @@ Prompt commands send a message directly to the AI agent (`no_prompt_to_agent: fa
 Script commands execute local actions within `llama-vscode` without sending a prompt to the agent (`no_prompt_to_agent: true`, `is_script: true`). They automate IDE-specific tasks such as selecting models or agents, adjusting settings, and more. The command content is interpreted as a [Script](https://github.com/ggml-org/llama.vscode/wiki/Scripts) and runs locally. Any `.lvs` file located in the `scripts_folder` directory is automatically registered as a script command and becomes accessible when typing `/` in the prompt field.
 
 #### Scheduling
-You can schedule agent commands to run at regular intervals. Configure an optional start time, execution interval, and total number of executions. Scheduled commands only run while VS Code is open. Restarting VS Code resets execution counters (e.g., total runs remaining) and re-evaluates pending schedules. The prompt commands are executed in parallel to the running agent (if any) in the background. They use the  selected agent, model and tools at the time of execution. The execution details are available from button Chat History.
+You can schedule agent commands to run at regular intervals. Configure an optional start time, execution interval, and total number of executions. Scheduled commands only run while VS Code is open. The number of executions performed so far is stored with the command in the `agent_commands` setting, so it survives a VS Code restart; the command stops running once it reaches the configured total. Use the **Reset** button in the Agent Command Editor to set the counter back to 0 and give the command a fresh budget. Pending schedules are re-evaluated on startup. The prompt commands are executed in parallel to the running agent (if any) in the background. They use the  selected agent, model and tools at the time of execution. The execution details are available from button Chat History.
 
 #### Additional Details
 - **Editor Access:** Open the Agent Command Editor by clicking the `` `>_` `` button in the chat interface.
-- **Storage & Management:** Commands are saved in the `agent_commands` setting. You can manage them via the `llama-vscode` menu option **"Agent commands..."**.
+- **Storage & Management:** Commands are saved in the `agent_commands` setting. You can manage them via the `llama-vscode` menu option **"Agent commands..."**. Each command stores its periodic-execution counter in the same setting (`executedTimes`).
 - **Terminal Interpolation:** Prompts can include shell commands using the syntax `` !'<command>' `` (similar to Claude Code). During preprocessing, these commands are executed, and their output replaces the original placeholder. Example: `` !'pwd' `` inserts the current working directory.
 - **File Paths as Prompts:** You can also store a file path in the prompt field. Before execution, the editor reads the file and uses its contents as the prompt. Files may contain either plain text prompts or script logic.
 
@@ -325,6 +325,7 @@ Settings:
 - New telegram command /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
 - New telegram command /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
 - Add cheapaimodel.ai and llm.buzz to the OpenAI-compatible providers
+- Agent commands remember how many times they were executed (`executedTimes`); the counter is shown in the Agent Command Editor and can be reset.
 
 
 ## Version 0.0.76 is released (02.11.2026)

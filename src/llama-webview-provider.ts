@@ -84,6 +84,7 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                     ["addEditAgentCommand", this.addEditAgentCommand],
                     ["copyAsNewAgentCommand", this.copyAsNewAgentCommand],
                     ["saveEditAgentCommand", this.saveEditAgentCommand],
+                    ["resetExecutedTimes", this.resetExecutedTimes],
                     ["deleteEditAgentCommand", this.deleteEditAgentCommand],
                     ["showAgentViewLocation", this.showAgentViewLocation],
                     ["showSelectedModels", this.showSelectedModels],
@@ -349,7 +350,9 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
             executePeriodically: Boolean(message.executePeriodically),
             startTime: message.startTime ?? "",
             period: message.period !== undefined && message.period !== "" ? Number(message.period) : undefined,
-            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== "" ? Number(message.totalExecutionTimes) : undefined
+            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== "" ? Number(message.totalExecutionTimes) : undefined,
+            // A brand-new command starts with a fresh budget.
+            executedTimes: 0
         };
         this.addEditAgentCommandToUi(newAgentCommand);
     }
@@ -389,6 +392,37 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
     deleteEditAgentCommand = async (message: any, webviewView: vscode.WebviewView) => {
         await this.app.agentCommandService.deleteAgentCommandByName(message.commandName);
         this.addEditAgentCommandToUi (null as any)
+    }
+
+    resetExecutedTimes = async (message: any, webviewView: vscode.WebviewView) => {
+        const commandName = String(message?.name ?? "").trim();
+        if (!commandName) {
+            vscode.window.showWarningMessage("Select an agent command before resetting the executed times.");
+            return;
+        }
+        try {
+            // Only user commands may be written - predefined ones live in lists.ts
+            // and never exist in the setting (getAgentCommand() would return them).
+            const stored = (this.app.configuration.agent_commands as AgentCommand[]).find(cmd => cmd.name === commandName);
+            if (!stored) {
+                vscode.window.showWarningMessage(`The agent command "${commandName}" is not saved yet - nothing to reset.`);
+                return;
+            }
+            const changed = await this.app.agentCommandService.setExecutedTimes(commandName, 0);
+            if (!changed) {
+                vscode.window.showWarningMessage(`The executed times of "${commandName}" are already 0.`);
+            }
+            // Patch ONLY the counter in the editor - re-posting the whole command
+            // would discard unsaved edits in the other fields. The settings write
+            // re-arms an exhausted periodic command via agentCommandScheduler.reschedule().
+            webviewView.webview.postMessage({
+                command: 'executedTimesReset',
+                name: commandName,
+                executedTimes: 0
+            });
+        } catch (error) {
+            vscode.window.showErrorMessage(`Could not reset the executed times: ${error instanceof Error ? error.message : String(error)}`);
+        }
     }
 
     showAgentViewLocation = async (message: any, webviewView: vscode.WebviewView) => {
@@ -1261,7 +1295,8 @@ export class LlamaWebviewProvider implements vscode.WebviewViewProvider {
                 executePeriodically: Boolean(agentCommand?.executePeriodically),
                 startTime: agentCommand?.startTime ?? "",
                 period: agentCommand?.period ?? "",
-                totalExecutionTimes: agentCommand?.totalExecutionTimes ?? ""
+                totalExecutionTimes: agentCommand?.totalExecutionTimes ?? "",
+                executedTimes: agentCommand?.executedTimes ?? 0
             });
         }, 500);
     }

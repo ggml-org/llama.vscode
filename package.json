@@ -786,6 +786,11 @@
                 "type": "number",
                 "description": "Total number of executions for the periodic command. Empty (omitted) means infinite.",
                 "default": 0
+              },
+              "executedTimes": {
+                "type": "number",
+                "description": "Number of periodic executions already performed. Maintained by the extension, persisted with the command (survives a restart). Use the Reset button in the agent command editor to set it back to 0.",
+                "default": 0
               }
             },
             "required": [

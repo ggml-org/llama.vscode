@@ -11,6 +11,7 @@ interface AgentCommandEditDetails {
   startTime: string;
   period: string;
   totalExecutionTimes: string;
+  executedTimes: string;
 }
 
 const emptyDetails: AgentCommandEditDetails = {
@@ -22,7 +23,8 @@ const emptyDetails: AgentCommandEditDetails = {
   executePeriodically: false,
   startTime: "",
   period: "",
-  totalExecutionTimes: ""
+  totalExecutionTimes: "",
+  executedTimes: "0"
 };
 
 // Convert a total number of seconds into its Days/Hours/Minutes/Seconds parts.
@@ -110,7 +112,8 @@ const AgentCommandEditor: React.FC = () => {
             executePeriodically: Boolean(message.executePeriodically),
             startTime: message.startTime ?? "",
             period: message.period !== undefined && message.period !== null ? String(message.period) : "",
-            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== null ? String(message.totalExecutionTimes) : ""
+            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== null ? String(message.totalExecutionTimes) : "",
+            executedTimes: message.executedTimes !== undefined && message.executedTimes !== null ? String(message.executedTimes) : "0"
           });
           // Sync the Days/Hours/Minutes/Seconds inputs with the loaded period.
           setPeriodParts((() => {
@@ -120,6 +123,9 @@ const AgentCommandEditor: React.FC = () => {
             const p = secondsToParts(loadedTotal);
             return { days: String(p.days), hours: String(p.hours), minutes: String(p.minutes), seconds: String(p.seconds) };
           })());
+          break;
+        case 'executedTimesReset':
+          setAgentCommandEditDetails(prev => ({ ...prev, executedTimes: String(message.executedTimes ?? 0) }));
           break;
         default:
           break;
@@ -152,6 +158,9 @@ const AgentCommandEditor: React.FC = () => {
     parsePartValue(periodParts.minutes),
     parsePartValue(periodParts.seconds)
   );
+
+  const executedTimesNumber = parsePartValue(agentCommandEditDetails.executedTimes);
+  const totalExecutionTimesNumber = parsePartValue(agentCommandEditDetails.totalExecutionTimes);
 
   const handleSaveAgentCommand = () => {
     vscode.postMessage({
@@ -187,7 +196,8 @@ const AgentCommandEditor: React.FC = () => {
       executePeriodically: false,
       startTime: "",
       period: "",
-      totalExecutionTimes: ""
+      totalExecutionTimes: "",
+      executedTimes: "0"
     });
   };
 
@@ -203,6 +213,21 @@ const AgentCommandEditor: React.FC = () => {
       command: 'deleteEditAgentCommand',
       commandName: agentCommandEditDetails.name
     });
+  };
+
+  // Resets the persisted execution counter of the SAVED command. The extension
+  // persists the new value immediately (it is runtime state, not part of the
+  // edited form), so no Save is needed. The local value is updated optimistically
+  // because the confirmation message can be lost if the view is re-mounted - the
+  // setting remains the authoritative value.
+  const handleResetExecutedTimes = () => {
+    const name = agentCommandEditDetails.name?.trim();
+    if (!name) {
+      vscode.postMessage({ command: 'resetExecutedTimes', name: "" });  // extension shows the warning
+      return;
+    }
+    setAgentCommandEditDetails(prev => ({ ...prev, executedTimes: "0" }));
+    vscode.postMessage({ command: 'resetExecutedTimes', name });
   };
 
   return (
@@ -365,7 +390,7 @@ const AgentCommandEditor: React.FC = () => {
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>
-                    Total Execution Times (empty = infinite, VS Code restart resets execution counters)
+                    Total Execution Times (empty = infinite)
                   </label>
                   <input
                     type="number"
@@ -375,6 +400,37 @@ const AgentCommandEditor: React.FC = () => {
                     className="modern-input"
                     style={{ width: '100%', boxSizing: 'border-box' }}
                   />
+                </div>
+                <div style={{ marginTop: '10px' }}>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}
+                         title="Number of periodic executions already performed. Persisted with the agent command, so it survives a VS Code restart.">
+                    Executed (empty = 0)
+                  </label>
+                  <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                    <input
+                      type="number"
+                      min={0}
+                      value={agentCommandEditDetails.executedTimes}
+                      readOnly
+                      title="Managed by the extension - use Reset to clear it."
+                      className="modern-input"
+                      style={{ flex: 1, minWidth: 0, opacity: 0.8 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleResetExecutedTimes}
+                      title="Set the executed times back to 0 (the command can run totalExecutionTimes times again)."
+                      className="modern-btn secondary"
+                      style={{ padding: '6px 12px', fontSize: '13px', flexShrink: 0, whiteSpace: 'nowrap' }}
+                    >
+                      Reset
+                    </button>
+                  </div>
+                  {totalExecutionTimesNumber > 0 && (
+                    <div style={{ marginTop: '4px', fontSize: '12px', opacity: 0.7 }}>
+                      Remaining: {Math.max(0, totalExecutionTimesNumber - executedTimesNumber)} of {totalExecutionTimesNumber}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
