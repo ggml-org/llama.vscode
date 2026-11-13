@@ -25,6 +25,10 @@ suite("OpenAI-compatible model picker", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Cheapaimodel], "https://api.cheapaimodel.ai");
     });
 
+    test("registers UberLLM without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.UberLLM], "https://api.uberllm.dev");
+    });  
+      
     test("registers Standard Compute without a duplicate API version segment", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.StandardCompute], "https://api.stdcmpt.com");
     });
