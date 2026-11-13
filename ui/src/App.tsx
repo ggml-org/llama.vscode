@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import { AgentView, AIRunnerView, AddEnvView, AgentEditor, AgentCommandEditor } from './components';
 import { vscode } from './types/vscode';
 import { PermissionsModeInfo, parsePermissionsModes } from './utils/permissionsMode';
+import {
+  AgentCommandEditDetails,
+  PeriodParts,
+  detailsFromLoadAgentCommandMessage,
+  detailsFromPersistedState,
+  periodPartsFromPersistedState,
+  periodToParts
+} from './utils/agentCommandEditor';
 
 interface AppProps { }
 
@@ -80,6 +88,18 @@ const App: React.FC<AppProps> = () => {
   const [permissionsModes, setPermissionsModes] = useState<PermissionsModeInfo[] | undefined>(undefined);
   const [agentEditTools, setAgentEditTools] = useState<Map<string, string>>(new Map());
   const [agentEditDetails, setAgentEditDetails] = useState<{name:string, description:string, systemInstruction:string, toolsModel: string, subagentEnabled: boolean}>({name:"", description:"", systemInstruction:"", toolsModel:"", subagentEnabled: false});
+  // Agent Command Editor form. Owned here (and not by AgentCommandEditor) so the
+  // selected agent command survives switching to another view and back:
+  // <AgentCommandEditor /> is only rendered while the view is "agentcommandeditor"
+  // and would lose its local state on every view switch. Initialized from the
+  // persisted webview state so it also survives a webview reload.
+  const [agentCommandEditDetails, setAgentCommandEditDetails] = useState<AgentCommandEditDetails>(
+    detailsFromPersistedState(initialState.agentCommandEditDetails)
+  );
+  const [agentCommandPeriodParts, setAgentCommandPeriodParts] = useState<PeriodParts>(() => {
+    const persisted = initialState.agentCommandPeriodParts;
+    return persisted ? periodPartsFromPersistedState(persisted) : periodToParts(initialState.agentCommandEditDetails?.period);
+  });
 
   // Save state to VS Code whenever it changes
   useEffect(() => {
@@ -100,9 +120,13 @@ const App: React.FC<AppProps> = () => {
       // for a page that is usable through endpoint_tools or a pending default.
       hasToolsEndpoint,
       defaultToolsModel,
-      view
+      view,
+      // The agent command editor form: persisted so the selected agent command
+      // is still shown after a webview reload / panel reload.
+      agentCommandEditDetails,
+      agentCommandPeriodParts
     });
-  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, hasToolsEndpoint, defaultToolsModel, view, permissionsMode]);
+  }, [displayText, inputText, currentToolsModel, currentChatModel, currentEmbeddingsModel, currentCompletionModel, currentAgentModel, currentAgent, currentEnv, currentState, llamaAppSupported, hasToolsEndpoint, defaultToolsModel, view, permissionsMode, agentCommandEditDetails, agentCommandPeriodParts]);
 
   useEffect(() => {
     // Listen for messages from the extension
@@ -161,6 +185,22 @@ const App: React.FC<AppProps> = () => {
           setAgentEditDetails({name: message.name, description: message.description, systemInstruction: message.systemInstruction, toolsModel: message.toolsModel, subagentEnabled: message.subagentEnabled});
           setCurrentAgentModel(message.toolsModel);
           setAgentEditTools(new Map(message.tools || []));
+          break;
+        // Agent command editor messages are handled HERE and not in
+        // <AgentCommandEditor />: that component is unmounted whenever another
+        // view is selected, so a listener there would miss the message that
+        // selects the command (the extension posts it ~100ms after switching
+        // the view, and the view can change again before/while it arrives).
+        case 'loadAgentCommand': {
+          const details = detailsFromLoadAgentCommandMessage(message);
+          setAgentCommandEditDetails(details);
+          // Sync the Days/Hours/Minutes/Seconds inputs with the loaded period.
+          setAgentCommandPeriodParts(periodToParts(details.period));
+          break;
+        }
+        case 'executedTimesReset':
+          // Patch ONLY the counter - a full reload would discard unsaved edits.
+          setAgentCommandEditDetails((prev: AgentCommandEditDetails) => ({ ...prev, executedTimes: String(message.executedTimes ?? 0) }));
           break;
         default:
           break;
@@ -364,7 +404,12 @@ const App: React.FC<AppProps> = () => {
 
       {view === viewAgentCommandEditor && (
         <div>
-          <AgentCommandEditor />
+          <AgentCommandEditor
+            agentCommandEditDetails={agentCommandEditDetails}
+            setAgentCommandEditDetails={setAgentCommandEditDetails}
+            periodParts={agentCommandPeriodParts}
+            setPeriodParts={setAgentCommandPeriodParts}
+          />
         </div>
       )}
 

@@ -14,7 +14,7 @@ You can schedule agent commands to run at regular intervals. Configure an option
 
 #### Additional Details
 - **Editor Access:** Open the Agent Command Editor by clicking the `` `>_` `` button in the chat interface.
-- **Storage & Management:** Commands are saved in the `agent_commands` setting. You can manage them via the `llama-vscode` menu option **"Agent commands..."**. Each command stores its periodic-execution counter in the same setting (`executedTimes`).
+- **Storage & Management:** Commands are saved in the `agent_commands` setting. You can manage them via the `llama-vscode` menu option **"Agent commands..."**.
 - **Terminal Interpolation:** Prompts can include shell commands using the syntax `` !'<command>' `` (similar to Claude Code). During preprocessing, these commands are executed, and their output replaces the original placeholder. Example: `` !'pwd' `` inserts the current working directory.
 - **File Paths as Prompts:** You can also store a file path in the prompt field. Before execution, the editor reads the file and uses its contents as the prompt. Files may contain either plain text prompts or script logic.
 
@@ -321,11 +321,17 @@ Settings:
 
 ## Version 0.0.77 is released (06.11.2026)
 ### What is new
+- Executed times to agent commands added
+- Agent Command Editor fix - after changing views the loaded comand is not lost
+- Add Standard Compute and UberLLM to the list of the OpenAI-compatible providers.
+
+
+## Version 0.0.77 is released (06.11.2026)
+### What is new
 - New Telegram command /tokens - shows request and chant tokens/price
 - New telegram command /permissions - shows the current tools permissions mode (setting tools_permissions_mode) and the available modes
 - New telegram command /setpermission x - sets the tools permissions mode by number or name. (the modes are available from command /permissions, i.e. "1", "AllowAll", "auto ask")
 - Add cheapaimodel.ai and llm.buzz to the OpenAI-compatible providers
-- Agent commands remember how many times they were executed (`executedTimes`); the counter is shown in the Agent Command Editor and can be reset.
 
 
 ## Version 0.0.76 is released (02.11.2026)

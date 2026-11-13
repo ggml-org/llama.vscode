@@ -1,73 +1,15 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { vscode } from '../types/vscode';
-
-interface AgentCommandEditDetails {
-  name: string;
-  description: string;
-  prompt: string;
-  noPrompt: boolean;
-  isScript: boolean;
-  executePeriodically: boolean;
-  startTime: string;
-  period: string;
-  totalExecutionTimes: string;
-  executedTimes: string;
-}
-
-const emptyDetails: AgentCommandEditDetails = {
-  name: "",
-  description: "",
-  prompt: "",
-  noPrompt: false,
-  isScript: false,
-  executePeriodically: false,
-  startTime: "",
-  period: "",
-  totalExecutionTimes: "",
-  executedTimes: "0"
-};
-
-// Convert a total number of seconds into its Days/Hours/Minutes/Seconds parts.
-const secondsToParts = (totalSeconds: number): { days: number; hours: number; minutes: number; seconds: number } => {
-  const total = Math.max(0, Math.floor(totalSeconds));
-  return {
-    days: Math.floor(total / 86400),
-    hours: Math.floor((total % 86400) / 3600),
-    minutes: Math.floor((total % 3600) / 60),
-    seconds: total % 60
-  };
-};
-
-// Convert Days/Hours/Minutes/Seconds parts into a total number of seconds.
-const partsToSeconds = (days: number, hours: number, minutes: number, seconds: number): number => {
-  return (Math.max(0, Math.floor(days)) * 86400) +
-         (Math.max(0, Math.floor(hours)) * 3600) +
-         (Math.max(0, Math.floor(minutes)) * 60) +
-         Math.max(0, Math.floor(seconds));
-};
-
-// ISO datetime string -> value for an <input type="datetime-local"> (e.g. "2025-01-01T09:00:00").
-const isoToLocalInputValue = (iso: string): string => {
-  if (!iso) return "";
-  const date = new Date(iso);
-  if (isNaN(date.getTime())) return "";
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-};
-
-// value from an <input type="datetime-local"> (e.g. "2025-01-01T09:00") -> ISO datetime string.
-const localInputValueToIso = (value: string): string => {
-  if (!value) return "";
-  const date = new Date(value);
-  if (isNaN(date.getTime())) return value;
-  return date.toISOString();
-};
-
-// Parse a user-entered period part value (empty or non-numeric -> 0).
-const parsePartValue = (value: string): number => {
-  const n = parseInt(value, 10);
-  return isNaN(n) ? 0 : Math.max(0, n);
-};
+import {
+  AgentCommandEditDetails,
+  PeriodParts,
+  emptyAgentCommandEditDetails,
+  emptyPeriodParts,
+  isoToLocalInputValue,
+  localInputValueToIso,
+  parsePartValue,
+  partsToSeconds
+} from '../utils/agentCommandEditor';
 
 // The Days/Hours/Minutes/Seconds input fields used to edit the period.
 const PERIOD_PART_FIELDS = [
@@ -77,15 +19,24 @@ const PERIOD_PART_FIELDS = [
   { key: 'seconds', label: 'Seconds', title: 'Seconds' }
 ] as const;
 
-const AgentCommandEditor: React.FC = () => {
-  const [agentCommandEditDetails, setAgentCommandEditDetails] = useState<AgentCommandEditDetails>(emptyDetails);
-  const [periodParts, setPeriodParts] = useState<{ days: string; hours: string; minutes: string; seconds: string }>({
-    days: "",
-    hours: "",
-    minutes: "",
-    seconds: ""
-  });
+interface AgentCommandEditorProps {
+  /**
+   * The edited form, owned by App.tsx. It must NOT be component state: App.tsx
+   * unmounts this component whenever another view is selected, so local state
+   * would lose the selected agent command on every view switch.
+   */
+  agentCommandEditDetails: AgentCommandEditDetails;
+  setAgentCommandEditDetails: React.Dispatch<React.SetStateAction<AgentCommandEditDetails>>;
+  periodParts: PeriodParts;
+  setPeriodParts: React.Dispatch<React.SetStateAction<PeriodParts>>;
+}
 
+const AgentCommandEditor: React.FC<AgentCommandEditorProps> = ({
+  agentCommandEditDetails,
+  setAgentCommandEditDetails,
+  periodParts,
+  setPeriodParts
+}) => {
   // Refs
   const elemNameRef = useRef<HTMLTextAreaElement>(null);
 
@@ -96,48 +47,13 @@ const AgentCommandEditor: React.FC = () => {
     }
   }, []);
 
-  useEffect(() => {
-    // Listen for messages from the extension
-    const handleMessage = (event: MessageEvent) => {
-      const message = event.data;
-      console.log('Received message from extension:', message);
-      switch (message.command) {
-        case 'loadAgentCommand':
-          setAgentCommandEditDetails({
-            name: message.name ?? "",
-            description: message.description ?? "",
-            prompt: message.prompt ?? "",
-            noPrompt: Boolean(message.noPrompt),
-            isScript: Boolean(message.isScript),
-            executePeriodically: Boolean(message.executePeriodically),
-            startTime: message.startTime ?? "",
-            period: message.period !== undefined && message.period !== null ? String(message.period) : "",
-            totalExecutionTimes: message.totalExecutionTimes !== undefined && message.totalExecutionTimes !== null ? String(message.totalExecutionTimes) : "",
-            executedTimes: message.executedTimes !== undefined && message.executedTimes !== null ? String(message.executedTimes) : "0"
-          });
-          // Sync the Days/Hours/Minutes/Seconds inputs with the loaded period.
-          setPeriodParts((() => {
-            const loadedPeriod = message.period !== undefined && message.period !== null ? Number(message.period) : 0;
-            const loadedTotal = !isNaN(loadedPeriod) && loadedPeriod > 0 ? Math.floor(loadedPeriod) : 0;
-            if (loadedTotal <= 0) return { days: "", hours: "", minutes: "", seconds: "" };
-            const p = secondsToParts(loadedTotal);
-            return { days: String(p.days), hours: String(p.hours), minutes: String(p.minutes), seconds: String(p.seconds) };
-          })());
-          break;
-        case 'executedTimesReset':
-          setAgentCommandEditDetails(prev => ({ ...prev, executedTimes: String(message.executedTimes ?? 0) }));
-          break;
-        default:
-          break;
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  // NOTE: the extension messages `loadAgentCommand` / `executedTimesReset` are
+  // handled in App.tsx, which is mounted for the whole life of the webview. This
+  // component is unmounted on every view switch, so a listener here would drop
+  // the message that selects a command (see handleMessage in App.tsx).
 
   const updateDetails = (patch: Partial<AgentCommandEditDetails>) => {
-    setAgentCommandEditDetails(prev => ({ ...prev, ...patch }));
+    setAgentCommandEditDetails((prev: AgentCommandEditDetails) => ({ ...prev, ...patch }));
   };
 
   const handlePeriodPartChange = (part: keyof typeof periodParts, value: string) => {
@@ -184,8 +100,10 @@ const AgentCommandEditor: React.FC = () => {
   };
 
   const handleNewAgentCommand = () => {
-    setAgentCommandEditDetails(emptyDetails);
-    setPeriodParts({ days: "", hours: "", minutes: "", seconds: "" });
+    // Reset the form in App.tsx (the owner of the state) - this component would
+    // lose the empty form on the next view switch otherwise.
+    setAgentCommandEditDetails({ ...emptyAgentCommandEditDetails });
+    setPeriodParts({ ...emptyPeriodParts });
     vscode.postMessage({
       command: 'addEditAgentCommand',
       name: "",
@@ -226,7 +144,7 @@ const AgentCommandEditor: React.FC = () => {
       vscode.postMessage({ command: 'resetExecutedTimes', name: "" });  // extension shows the warning
       return;
     }
-    setAgentCommandEditDetails(prev => ({ ...prev, executedTimes: "0" }));
+    setAgentCommandEditDetails((prev: AgentCommandEditDetails) => ({ ...prev, executedTimes: "0" }));
     vscode.postMessage({ command: 'resetExecutedTimes', name });
   };
 
