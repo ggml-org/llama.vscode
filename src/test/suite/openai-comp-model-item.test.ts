@@ -27,6 +27,10 @@ suite("OpenAI-compatible model picker", () => {
 
     test("registers UberLLM without a duplicate API version segment", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.UberLLM], "https://api.uberllm.dev");
+    });  
+      
+    test("registers Standard Compute without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.StandardCompute], "https://api.stdcmpt.com");
     });
 
     test("keeps a Runcrate vendor/model ID when the catalog description is empty", () => {
