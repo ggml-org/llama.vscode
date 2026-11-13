@@ -80,7 +80,9 @@ export interface AgentCommand {
     executePeriodically?: boolean,
     startTime?: string,
     period?: number,
-    totalExecutionTimes?: number
+    totalExecutionTimes?: number,
+    // Number of scheduled executions already performed (persisted with the command).
+    executedTimes?: number
 }
 
 export interface chatMessage {

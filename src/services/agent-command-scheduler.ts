@@ -2,6 +2,7 @@ import { Application } from "../application";
 import { AgentCommand } from "../types";
 import { PREDEFINED_LISTS_KEYS } from "../constants";
 import { PREDEFINED_LISTS } from "../lists";
+import { Utils } from "../utils";
 
 /**
  * Schedules periodic execution of user-defined agent commands
@@ -11,14 +12,18 @@ import { PREDEFINED_LISTS } from "../lists";
  * background:true, memory log and in-memory todo), so it does not interfere
  * with the foreground agent UI.
  *
- * Execution counters are in-memory only and reset on extension restart.
+ * Execution counters are seeded from the persisted `executedTimes` field of the
+ * command, written back to the `agent_commands` setting after every execution,
+ * and therefore survive an extension restart. The in-memory map stays as a fast
+ * path that avoids re-reading the setting on every tick.
  */
 export class AgentCommandScheduler {
     private app: Application;
 
     // name -> pending setTimeout handle
     private timers: Map<string, NodeJS.Timeout> = new Map();
-    // name -> number of executions performed in this extension session
+    // name -> number of executions performed for this command (seeded from the
+    // persisted executedTimes, kept in sync with it on every execution)
     private executionCounters: Map<string, number> = new Map();
     // name -> true while a background session for this command is running (overlap guard)
     private activeExecutions: Map<string, boolean> = new Map();
@@ -105,7 +110,9 @@ export class AgentCommandScheduler {
             initialDelayMs = 0;
         }
 
-        this.executionCounters.set(commandName, 0);
+        // Seed the in-memory counter from the persisted one so the budget spent in
+        // previous windows is respected (0 when the command has never run).
+        this.executionCounters.set(commandName, Utils.normalizeExecutedTimes(command.executedTimes));
 
         if (initialDelayMs === 0) {
             // Run immediately, then schedule the next execution.
@@ -154,6 +161,15 @@ export class AgentCommandScheduler {
         // Cancel the existing timer but keep the execution counter.
         this.unscheduleCommand(commandName);
 
+        // Adopt a LOWER persisted value: that can only be an external reset (the
+        // editor's Reset button or a hand-edited setting). A higher value is our
+        // own write (already in memory) - memory is the fresher truth then.
+        const persisted = Utils.normalizeExecutedTimes(command.executedTimes);
+        const inMemory = this.executionCounters.get(commandName);
+        if (inMemory === undefined || persisted < inMemory) {
+            this.executionCounters.set(commandName, persisted);
+        }
+
         const periodSeconds = command.period && command.period > 0 ? command.period : 3600;
         const periodMs = periodSeconds * 1000;
 
@@ -181,7 +197,8 @@ export class AgentCommandScheduler {
     }
 
     public getExecutionCount(commandName: string): number {
-        return this.executionCounters.get(commandName) ?? 0;
+        const command = this.getUserCommands().find(cmd => cmd.name === commandName);
+        return this.executionCounters.get(commandName) ?? Utils.normalizeExecutedTimes(command?.executedTimes);
     }
 
     /**
@@ -208,10 +225,14 @@ export class AgentCommandScheduler {
             return;
         }
 
-        // Respect totalExecutionTimes (empty/0/undefined = infinite)
-        const total = command.totalExecutionTimes;
-        const executed = this.executionCounters.get(commandName) ?? 0;
-        if (total !== undefined && total !== null && total > 0 && executed >= total) {
+        // Respect totalExecutionTimes (empty/0/undefined = infinite). The persisted
+        // value is the source of truth; the in-memory counter is the fast path.
+        const total = Utils.normalizeExecutedTimes(command.totalExecutionTimes);
+        const executed = this.executionCounters.get(commandName) ?? Utils.normalizeExecutedTimes(command.executedTimes);
+        const isInfinite = total === 0;
+        if (!isInfinite && executed >= total) {
+            // Timer + memory only: the persisted executedTimes is the record of the
+            // consumed budget and may only be lowered by an explicit reset.
             this.removeCommand(commandName);
             return;
         }
@@ -220,7 +241,13 @@ export class AgentCommandScheduler {
         // for this command is still running, but keep the schedule alive.
         if (!this.activeExecutions.get(commandName)) {
             this.activeExecutions.set(commandName, true);
-            this.executionCounters.set(commandName, executed + 1);
+            const nextExecuted = executed + 1;
+            // Memory FIRST, then persist: the settings change event fires after the
+            // write and re-enters reschedule(), which must see the updated memory.
+            this.executionCounters.set(commandName, nextExecuted);
+            // Fire-and-forget: a failed settings write must not break the schedule.
+            this.app.agentCommandService.setExecutedTimes(commandName, nextExecuted)
+                .catch((error) => console.error(`Agent command scheduler: could not persist executedTimes for "${commandName}":`, error));
             this.app.llamaAgent.runAgentCommandInBackground(commandName)
                 .catch((error) => {
                     console.error(`Agent command scheduler: error executing "${commandName}":`, error);

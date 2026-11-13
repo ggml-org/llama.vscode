@@ -10,7 +10,7 @@ Prompt commands send a message directly to the AI agent (`no_prompt_to_agent: fa
 Script commands execute local actions within `llama-vscode` without sending a prompt to the agent (`no_prompt_to_agent: true`, `is_script: true`). They automate IDE-specific tasks such as selecting models or agents, adjusting settings, and more. The command content is interpreted as a [Script](https://github.com/ggml-org/llama.vscode/wiki/Scripts) and runs locally. Any `.lvs` file located in the `scripts_folder` directory is automatically registered as a script command and becomes accessible when typing `/` in the prompt field.
 
 #### Scheduling
-You can schedule agent commands to run at regular intervals. Configure an optional start time, execution interval, and total number of executions. Scheduled commands only run while VS Code is open. Restarting VS Code resets execution counters (e.g., total runs remaining) and re-evaluates pending schedules. The prompt commands are executed in parallel to the running agent (if any) in the background. They use the  selected agent, model and tools at the time of execution. The execution details are available from button Chat History.
+You can schedule agent commands to run at regular intervals. Configure an optional start time, execution interval, and total number of executions. Scheduled commands only run while VS Code is open. The number of executions performed so far is stored with the command in the `agent_commands` setting, so it survives a VS Code restart; the command stops running once it reaches the configured total. Use the **Reset** button in the Agent Command Editor to set the counter back to 0 and give the command a fresh budget. Pending schedules are re-evaluated on startup. The prompt commands are executed in parallel to the running agent (if any) in the background. They use the  selected agent, model and tools at the time of execution. The execution details are available from button Chat History.
 
 #### Additional Details
 - **Editor Access:** Open the Agent Command Editor by clicking the `` `>_` `` button in the chat interface.
@@ -317,6 +317,13 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/dca91333-687e-4856-b187-25df50d17b1c" />
 
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
+
+
+## Version 0.0.77 is released (06.11.2026)
+### What is new
+- Executed times to agent commands added
+- Agent Command Editor fix - after changing views the loaded comand is not lost
+- Add Standard Compute and UberLLM to the list of the OpenAI-compatible providers.
 
 
 ## Version 0.0.77 is released (06.11.2026)

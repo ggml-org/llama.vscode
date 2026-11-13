@@ -147,6 +147,26 @@ export class AgentCommandService {
     }
 
     /**
+     * Writes executedTimes for one user-defined command (matched by name) and saves
+     * the agent_commands setting. Returns false when the command does not exist or
+     * the stored value already equals the new one (no write in that case - the
+     * settings change re-enters the scheduler's reschedule()).
+     * Only the counter is touched - all other fields are preserved as stored.
+     */
+    public async setExecutedTimes(commandName: string, executedTimes: number): Promise<boolean> {
+        // Look up ONLY the user commands: predefined commands must never be written.
+        const agentCommands = this.app.configuration.agent_commands as AgentCommand[];
+        const command = agentCommands.find(cmd => cmd.name === commandName);
+        if (!command) return false;
+        const normalized = Utils.normalizeExecutedTimes(executedTimes);
+        if (Utils.normalizeExecutedTimes(command.executedTimes) === normalized) return false; // no change, no write
+        command.executedTimes = normalized;
+        // Write at the scope the user actually stores agent_commands in.
+        await this.app.configuration.updateAgentCommands(agentCommands);
+        return true;
+    }
+
+    /**
      * Adds a new agent command or updates an existing one (matched by name).
      * Used by the AgentCommandEditor UI.
      */
@@ -159,7 +179,11 @@ export class AgentCommandService {
                 this.getAgentCommandDetailsAsString(agentCommand)
             );
             if (shouldUpdate) {
+                // The editor does not own executedTimes - a stale form value must
+                // never overwrite a counter the scheduler bumped meanwhile.
+                const storedExecutedTimes = existing.executedTimes;
                 Object.assign(existing, agentCommand);
+                existing.executedTimes = Utils.normalizeExecutedTimes(storedExecutedTimes);
                 this.app.configuration.updateConfigValue(SETTING_NAME_FOR_LIST.AGENT_COMMANDS, agentCommands);
                 vscode.window.showInformationMessage("The agent command is updated: " + existing.name);
             }
@@ -180,7 +204,9 @@ export class AgentCommandService {
             const selectedAgentCommand = allAgentCommands[agentCommandIndex];
             const copyCommand: AgentCommand = {
                 ...selectedAgentCommand,
-                name: "Copy of " + selectedAgentCommand.name
+                name: "Copy of " + selectedAgentCommand.name,
+                // A copy with a consumed budget would silently refuse to run.
+                executedTimes: 0
             };
             this.app.llamaWebviewProvider.addEditAgentCommandToUi(copyCommand)
         }
@@ -243,7 +269,14 @@ export class AgentCommandService {
     getAgentCommandsList = () => {
         let commands = this.getAgentCommands();
         
-        let agentCommands =  commands.map(cmd => `${cmd.executePeriodically ? "⏰ " : ""}[${cmd.noPrompt?AGENT_COMMAND.type_preffix_script:AGENT_COMMAND.type_preffix_prompt}]${cmd.name} | ${cmd.description}`)
+        let agentCommands =  commands.map(cmd =>
+            `${cmd.executePeriodically ? "⏰ " : ""}[${cmd.noPrompt?AGENT_COMMAND.type_preffix_script:AGENT_COMMAND.type_preffix_prompt}]${cmd.name} | ${cmd.description}` +
+            // Progress of a scheduled command, appended AFTER the description so the
+            // picker parser (everything after the first "|") keeps working.
+            (cmd.executePeriodically
+                ? ` (executed: ${Utils.normalizeExecutedTimes(cmd.executedTimes)}/${Utils.normalizeExecutedTimes(cmd.totalExecutionTimes) || "∞"})`
+                : "")
+        )
         
         const scriptsFolder = path.join(this.app.configuration.scripts_folder, "")
         let scriptCommands = this.getScriptCommands()
@@ -303,6 +336,9 @@ export class AgentCommandService {
         const shouldAddModel = await this.app.dialogs.confirmAction("A new agent command will be added. Do you want to add the agent command?", modelDetails);
 
         if (shouldAddModel) {
+            // Always persisted as an explicit number (0 when absent) so the field is
+            // discoverable in the settings JSON and never written as null/NaN.
+            newAgentCommand.executedTimes = Utils.normalizeExecutedTimes(newAgentCommand.executedTimes);
             agentCommands.push(newAgentCommand);
             this.app.configuration.updateConfigValue(settingName, agentCommands);
             vscode.window.showInformationMessage("The agent command is added.");
@@ -372,6 +408,9 @@ export class AgentCommandService {
         newAgentCommand.executePeriodically = Boolean(newAgentCommand.executePeriodically);
         newAgentCommand.period = newAgentCommand.period !== undefined && newAgentCommand.period !== null ? Number(newAgentCommand.period) : undefined;
         newAgentCommand.totalExecutionTimes = newAgentCommand.totalExecutionTimes !== undefined && newAgentCommand.totalExecutionTimes !== null ? Number(newAgentCommand.totalExecutionTimes) : undefined;
+        // An imported file may carry the execution counter - honour it; a file
+        // without the field starts at 0.
+        newAgentCommand.executedTimes = Utils.normalizeExecutedTimes(newAgentCommand.executedTimes);
 
         await this.persistAgentCommandToSetting(newAgentCommand, agentCommands, settingName);
     }
@@ -387,6 +426,7 @@ export class AgentCommandService {
             "\nstart time: " + selectedAgentCommand.startTime +
             "\nperiod (seconds): " + selectedAgentCommand.period +
             "\ntotal execution times: " + (selectedAgentCommand.totalExecutionTimes || "infinite") +
+            "\nexecuted times: " + Utils.normalizeExecutedTimes(selectedAgentCommand.executedTimes) +
             "\n\ncontext: " + (selectedAgentCommand.context ? selectedAgentCommand.context.join(", ") : "");
     }
 }

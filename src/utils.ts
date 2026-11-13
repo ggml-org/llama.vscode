@@ -761,6 +761,18 @@ export class Utils {
         return items;
     } 
 
+    /**
+     * Coerces a persisted/webview/imported value into a valid execution counter.
+     * Missing, empty, non-numeric, negative or non-finite values become 0.
+     * Used for both `executedTimes` and `totalExecutionTimes` (0 = infinite).
+     */
+    public static normalizeExecutedTimes = (value: any): number => {
+        if (value === undefined || value === null) return 0;
+        const n = Number(value);
+        if (!Number.isFinite(n) || n < 0) return 0;
+        return Math.floor(n);
+    }
+
 
 
     static removeFirstAndLastLinesIfBackticks = (input: string): string => {
