@@ -319,7 +319,13 @@ Settings:
 <img width="580" height="779" alt="image" src="https://github.com/user-attachments/assets/bb29e0c8-85b4-4e7a-a3d9-f2d9a1679d3d" />
 
 
-## Version 0.0.77 is released (06.11.2026)
+## Version 0.0.79 is released (20.11.2026)
+### What is new
+- Changed files in agent chat view optimization - only names are shown and the path is shown as a tooltip 
+- OpenAI compatible providers added - Requesty
+
+
+## Version 0.0.78 is released (13.11.2026)
 ### What is new
 - Executed times to agent commands added
 - Agent Command Editor fix - after changing views the loaded comand is not lost
@@ -1356,6 +1362,7 @@ Same like code completion server, but use embeddings model and a little bit diff
 ```bash  
 `llama serve -hf ggml-org/Nomic-Embed-Text-V2-GGUF --port 8010 -ub 2048 -b 2048 --ctx-size 2048 --embeddings`  
 ```
+
 ### Setup llama.cpp servers for Mac  
 
 Show llama-vscode menu (Ctrl+Shift+M) and select "Install/upgrade llama.cpp" (if not yet done). After that add/select the models you want to use.   
