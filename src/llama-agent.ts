@@ -211,6 +211,18 @@ export interface AgentSession {
     defaultAgent?: Agent;                 // Agent used when the session started
 }
 
+// Escapes the characters that would end a markdown link text early, so a file
+// name like "[id].tsx" (Next.js) does not break the link. A line break would end
+// the whole markdown block, so it is flattened to a space.
+const escapeMarkdownLinkText = (text: string): string =>
+    text.replace(/\r?\n/g, ' ').replace(/[\\[\]]/g, (match) => '\\' + match);
+
+// Escapes the characters that would end a markdown link title (which is quoted
+// with double quotes). Backslashes are escaped as well, otherwise a Windows path
+// such as "C:\Users" would be read as an escape sequence.
+const escapeMarkdownLinkTitle = (text: string): string =>
+    text.replace(/\r?\n/g, ' ').replace(/[\\"]/g, (match) => '\\' + match);
+
 export class LlamaAgent {
     public app: Application
     private lastStopRequestTime = Date.now();
@@ -1362,8 +1374,7 @@ export class LlamaAgent {
     // (telegram renders command: links as dead links).
     private getFileChangeLink = (filePath: string): string => {
         if (this.isTlgrBotRequest) return filePath;
-        const args = encodeURIComponent(JSON.stringify({ filePath: filePath }));
-        return `[${filePath}](command:llama-vscode.openChangedFile?${args})`;
+        return this.buildFileChangeLink(filePath);
     };
     
     /**
@@ -1371,9 +1382,50 @@ export class LlamaAgent {
      */
     private getFileChangeLinkForSession(session: AgentSession, filePath: string): string {
         if (session.isTlgrBotRequest) return filePath;
-        const args = encodeURIComponent(JSON.stringify({ filePath: filePath }));
-        return `[${filePath}](command:llama-vscode.openChangedFile?${args})`;
+        return this.buildFileChangeLink(filePath);
     }
+
+    /**
+     * Builds the clickable markdown link for a changed file. Only the short file
+     * name is used as the link text: a full path took up most of the chat width.
+     * The full path is kept in the markdown link title, which the UI renders as
+     * the native tooltip of the anchor - relative to the project root for files
+     * inside it, absolute for files outside (e.g. auto memory files). Clicking
+     * still opens the file: the command argument is unchanged.
+     */
+    private buildFileChangeLink = (filePath: string): string => {
+        // encodeURIComponent leaves the parentheses alone, but an unbalanced ")"
+        // closes the markdown link destination early - a Next.js route folder
+        // such as "(dashboard)" broke the link. VS Code decodes them again.
+        const args = encodeURIComponent(JSON.stringify({ filePath: filePath }))
+            .replace(/\(/g, '%28')
+            .replace(/\)/g, '%29');
+        const linkText = escapeMarkdownLinkText(path.basename(filePath));
+        const tooltip = escapeMarkdownLinkTitle(this.getFileChangeTooltip(filePath));
+        return `[${linkText}](command:llama-vscode.openChangedFile?${args} "${tooltip}")`;
+    };
+
+    /**
+     * Path shown in the tooltip of a changed-file link: relative to the project
+     * root (workspace folder) when the file is inside one, absolute otherwise.
+     */
+    private getFileChangeTooltip = (filePath: string): string => {
+        const absolutePath = Utils.getAbsolutFilePath(filePath);
+        // No workspace folder open: the path is already what the user gave us.
+        if (!absolutePath) return filePath;
+        for (const folder of vscode.workspace.workspaceFolders ?? []) {
+            const relativePath = path.relative(folder.uri.fsPath, absolutePath);
+            // ".." and "../x" mean "outside" - a sibling folder like
+            // "<root>-old" produces exactly that, while a file merely NAMED
+            // "..foo" must stay relative. An absolute result means a different
+            // drive on Windows, so the file is outside the folder as well.
+            const isOutside = relativePath === '..'
+                || relativePath.startsWith('..' + path.sep)
+                || path.isAbsolute(relativePath);
+            if (relativePath && !isOutside) return relativePath;
+        }
+        return absolutePath;
+    };
 
     public async updateChat() {
         let chat = this.app.getChat();
