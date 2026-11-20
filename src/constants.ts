@@ -424,6 +424,7 @@ export enum OpenAiProvidersKeys {
   Cheapaimodel = 'cheapaimodel...',
   UberLLM = 'UberLLM...',
   StandardCompute = 'Standard Compute...',
+  Requesty = 'Requesty...',
   Custom = 'Custom...'
 }
 // The "Llama app" provider is available only on Windows and macOS.
@@ -441,6 +442,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.Cheapaimodel]: "https://api.cheapaimodel.ai",
   [OpenAiProvidersKeys.UberLLM]: "https://api.uberllm.dev",
   [OpenAiProvidersKeys.StandardCompute]: "https://api.stdcmpt.com",
+  [OpenAiProvidersKeys.Requesty]: "https://router.requesty.ai",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
 

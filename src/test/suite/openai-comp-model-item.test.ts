@@ -33,6 +33,10 @@ suite("OpenAI-compatible model picker", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.StandardCompute], "https://api.stdcmpt.com");
     });
 
+    test("registers Requesty without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Requesty], "https://router.requesty.ai");
+    });
+
     test("keeps a Runcrate vendor/model ID when the catalog description is empty", () => {
         const item = formatOpenAiCompModelItem({
             id: "deepseek-ai/DeepSeek-V4.1-Flash", name: "DeepSeek V4.1 Flash", description: "",
