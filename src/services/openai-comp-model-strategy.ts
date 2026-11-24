@@ -16,6 +16,7 @@ export class OpenAiCompModelStrategy implements IAddStrategy {
         this.app = app;
         this.modelEndpointsKeyRequired.add(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.ApiRoute]);
         this.modelEndpointsKeyRequired.add(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Cheapaimodel]);
+        this.modelEndpointsKeyRequired.add(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Onomeo]);
     }
 
     add = async (details: ModelTypeDetails): Promise<void> => {
