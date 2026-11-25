@@ -37,6 +37,17 @@ suite("OpenAI-compatible model picker", () => {
         assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.Requesty], "https://router.requesty.ai");
     });
 
+    test("registers TeamoRouter without a duplicate API version segment", () => {
+        assert.strictEqual(OPENAI_COMP_PROVIDERS[OpenAiProvidersKeys.TeamoRouter], "https://api.teamorouter.com");
+    });
+
+    test("falls back to the model ID for a TeamoRouter catalog row without name or pricing", () => {
+        const item = formatOpenAiCompModelItem({ id: "deepseek-v4-flash" });
+        assert.strictEqual(item.label, "deepseek-v4-flash");
+        assert.strictEqual(item.description, "Context and pricing not provided");
+        assert.strictEqual(item.detail, "deepseek-v4-flash");
+    });
+
     test("keeps a Runcrate vendor/model ID when the catalog description is empty", () => {
         const item = formatOpenAiCompModelItem({
             id: "deepseek-ai/DeepSeek-V4.1-Flash", name: "DeepSeek V4.1 Flash", description: "",
