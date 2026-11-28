@@ -425,6 +425,7 @@ export enum OpenAiProvidersKeys {
   UberLLM = 'UberLLM...',
   StandardCompute = 'Standard Compute...',
   Requesty = 'Requesty...',
+  LLMTR = 'LLMTR...',
   Custom = 'Custom...'
 }
 // The "Llama app" provider is available only on Windows and macOS.
@@ -443,6 +444,7 @@ export const OPENAI_COMP_PROVIDERS: Record<OpenAiProvidersKeys, string> = {
   [OpenAiProvidersKeys.UberLLM]: "https://api.uberllm.dev",
   [OpenAiProvidersKeys.StandardCompute]: "https://api.stdcmpt.com",
   [OpenAiProvidersKeys.Requesty]: "https://router.requesty.ai",
+  [OpenAiProvidersKeys.LLMTR]: "https://llmtr.com",
   [OpenAiProvidersKeys.Custom]: ""
 } as Record<OpenAiProvidersKeys, string>
 
